@@ -1,0 +1,136 @@
+.shell {
+  min-height: 100dvh;
+  background: #f5f5f7;
+}
+
+.sider {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 72px;
+  padding: 14px 16px;
+  color: #ffffff;
+}
+
+.brand[data-collapsed="true"] {
+  justify-content: center;
+  padding-inline: 8px;
+}
+
+.brandMark {
+  display: grid;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 8px;
+  background: #e9f5ef;
+  color: #1d1d1f;
+  font-weight: 800;
+}
+
+.brandText {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.brandText strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brandText span {
+  color: rgb(255 255 255 / 66%);
+  font-size: 12px;
+}
+
+.desktopMenu {
+  border-inline-end: 0;
+  padding-inline: 8px;
+}
+
+.main {
+  min-width: 0;
+  background: #f5f5f7;
+}
+
+.content {
+  min-width: 0;
+  padding: 24px;
+}
+
+.bottomNav {
+  position: fixed;
+  z-index: 20;
+  right: auto;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  left: 50%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: min(calc(100dvw - 24px), 520px);
+  min-height: 68px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid rgb(226 232 228 / 82%);
+  border-radius: 24px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 18px 46px rgb(24 54 47 / 16%);
+  backdrop-filter: blur(16px);
+  contain: layout paint;
+  transform: translate3d(-50%, 0, 0);
+  transition: box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
+  will-change: transform;
+}
+
+.bottomNavItem {
+  display: grid;
+  min-width: 0;
+  min-height: 56px;
+  place-items: center;
+  gap: 2px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: #64736d;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.1;
+  transition: background 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.bottomNavItem[data-active="true"] {
+  background: #e8f3ee;
+  color: #216e5a;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgb(33 110 90 / 16%);
+  transform: translateY(-2px);
+}
+
+.bottomNavIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+@media (max-width: 767px) {
+  .content {
+    padding: 16px 12px calc(88px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .content {
+    padding: 20px;
+  }
+}

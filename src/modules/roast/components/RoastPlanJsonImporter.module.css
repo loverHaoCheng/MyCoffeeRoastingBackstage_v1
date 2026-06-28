@@ -1,0 +1,45 @@
+.panel {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e5e5ea;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 12px 32px rgb(29 29 31 / 6%);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header h2 {
+  margin: 0;
+  color: #1d1d1f;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.editor {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 767px) {
+  .panel {
+    padding: 14px;
+  }
+
+  .header {
+    display: grid;
+  }
+
+}

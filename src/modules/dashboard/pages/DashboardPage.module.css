@@ -1,0 +1,146 @@
+.page {
+  display: grid;
+  max-width: 1440px;
+  margin: 0 auto;
+  gap: 18px;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 176px;
+  padding: 24px;
+  border: 1px solid #dce8e3;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgb(239 249 245 / 92%) 0%, rgb(241 247 255 / 96%) 54%, #fff8ed 100%),
+    #ffffff;
+}
+
+.heroCopy {
+  display: grid;
+  max-width: 720px;
+  gap: 8px;
+}
+
+.heroCopy span {
+  color: #216e5a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.heroCopy h1 {
+  margin: 0;
+  color: #17211d;
+  font-size: 30px;
+  line-height: 1.18;
+}
+
+.heroCopy p {
+  margin: 0;
+  color: #5f6f68;
+  font-size: 15px;
+}
+
+.heroActions {
+  justify-content: flex-end;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.panel {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e0e8e4;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panelHeader span {
+  color: #738078;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.panelHeader h2 {
+  margin: 2px 0 0;
+  color: #17211d;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+@media (max-width: 767px) {
+  .page {
+    gap: 14px;
+  }
+
+  .hero {
+    display: grid;
+    align-items: start;
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .heroCopy h1 {
+    font-size: 24px;
+  }
+
+  .heroActions {
+    justify-content: stretch;
+  }
+
+  .heroActions :global(.ant-space-item) {
+    flex: 1 1 142px;
+  }
+
+  .heroActions :global(.ant-btn) {
+    width: 100%;
+  }
+
+  .metricGrid,
+  .workspaceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .panelHeader {
+    align-items: flex-start;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspaceGrid {
+    grid-template-columns: 1fr;
+  }
+}
