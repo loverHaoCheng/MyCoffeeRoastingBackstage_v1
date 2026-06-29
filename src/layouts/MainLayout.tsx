@@ -81,15 +81,6 @@ export function MainLayout() {
           trigger={null}
           width={232}
         >
-          <div className={styles.brand} data-collapsed={sidebarCollapsed}>
-            <span className={styles.brandMark}>焙</span>
-            {!sidebarCollapsed ? (
-              <div className={styles.brandText}>
-                <strong>咖啡烘焙</strong>
-                <span>Roasting OS</span>
-              </div>
-            ) : null}
-          </div>
           <Menu
             className={styles.desktopMenu}
             items={menuItems}
@@ -98,7 +89,6 @@ export function MainLayout() {
               navigateByKey(key);
             }}
             selectedKeys={[selectedKey]}
-            theme="dark"
           />
         </Sider>
       ) : null}

@@ -208,6 +208,7 @@ export function BeanPage() {
       </section>
 
       <UnifiedSearchBar
+        className={styles.searchBar}
         inputAriaLabel="搜索生豆"
         onChange={(event) => {
           setKeyword(event.target.value);

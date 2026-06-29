@@ -5,6 +5,7 @@ import type { ChangeEvent } from 'react';
 import styles from './UnifiedSearchBar.module.css';
 
 interface UnifiedSearchBarProps {
+  className?: string;
   inputAriaLabel: string;
   placeholder: string;
   sectionAriaLabel: string;
@@ -13,6 +14,7 @@ interface UnifiedSearchBarProps {
 }
 
 export function UnifiedSearchBar({
+  className,
   inputAriaLabel,
   placeholder,
   sectionAriaLabel,
@@ -20,7 +22,7 @@ export function UnifiedSearchBar({
   onChange,
 }: UnifiedSearchBarProps) {
   return (
-    <section className={styles.container} aria-label={sectionAriaLabel}>
+    <section className={className ? `${styles.container} ${className}` : styles.container} aria-label={sectionAriaLabel}>
       <div className={styles.field}>
         <Input
           allowClear

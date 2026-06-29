@@ -1,5 +1,4 @@
 import { EditOutlined, EyeOutlined } from '@ant-design/icons';
-import { Tag } from 'antd';
 import dayjs from 'dayjs';
 
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
@@ -11,20 +10,6 @@ interface RoastBatchCardProps {
   onEdit?: (batchId: string) => void;
   onView?: (batchId: string) => void;
 }
-
-const getRoastLevelColor = (level: string): string => {
-  const map: Record<string, string> = {
-    '极浅': 'blue',
-    '浅焙': 'cyan',
-    '肉桂': 'green',
-    '中浅': 'lime',
-    '中焙': 'gold',
-    '中深': 'orange',
-    '深焙': 'red',
-    '极深': 'volcano',
-  };
-  return map[level] || 'default';
-};
 
 export function RoastBatchCard({ batch, onDelete, onEdit, onView }: RoastBatchCardProps) {
   const displayName = batch.roastedBeanName || batch.greenBeanName;
@@ -61,9 +46,6 @@ export function RoastBatchCard({ batch, onDelete, onEdit, onView }: RoastBatchCa
           onClick: () => onEdit?.(batch.id),
         },
       ]}
-      bodyFooter={batch.roastPlanName ? (
-        <Tag color={getRoastLevelColor(batch.roastLevel)}>计划：{batch.roastPlanName}</Tag>
-      ) : undefined}
       deleteLabel={`删除 ${displayName}`}
       description={`${formattedDate} · ${batch.roastLevel}`}
       metaItems={metaItems}
