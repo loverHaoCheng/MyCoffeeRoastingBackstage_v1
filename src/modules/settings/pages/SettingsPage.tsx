@@ -167,6 +167,7 @@ export function SettingsPage() {
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
   const [isTemplateDrawerOpen, setIsTemplateDrawerOpen] = useState(false);
+  const [visibleCode, setVisibleCode] = useState<null | 'author' | 'sponsor'>(null);
   const [templateDraft, setTemplateDraft] = useState<CostTemplateFormValues>(createEmptyCostTemplateFormValues());
   const [templateErrors, setTemplateErrors] = useState<Partial<Record<keyof CostTemplateFormValues, string>>>({});
   const hasBootstrapConnection =
@@ -305,6 +306,10 @@ export function SettingsPage() {
     setIsTemplateDrawerOpen(false);
     setIsCreatingTemplate(false);
     setTemplateErrors({});
+  };
+
+  const handleToggleCode = (code: 'author' | 'sponsor') => {
+    setVisibleCode((current) => (current === code ? null : code));
   };
 
   const handleDeleteTemplate = (template: CostTemplate) => {
@@ -559,6 +564,44 @@ export function SettingsPage() {
               );
             })}
           </div>
+        </section>
+
+        <section className={styles.qrSection}>
+          <header className={styles.sectionHeader}>
+            <h2>作者交流与赞助支持</h2>
+            <p className={styles.sectionStatusCopy}>
+              下面两个入口默认收起，只在你点击按钮后才会展示对应二维码。
+            </p>
+          </header>
+
+          <div className={styles.qrActions}>
+            <Button
+              className={styles.qrButton}
+              onClick={() => handleToggleCode('author')}
+              type={visibleCode === 'author' ? 'primary' : 'default'}
+            >
+              和作者交流一下
+            </Button>
+            <Button
+              className={styles.qrButton}
+              onClick={() => handleToggleCode('sponsor')}
+              type={visibleCode === 'sponsor' ? 'primary' : 'default'}
+            >
+              请作者喝杯咖啡
+            </Button>
+          </div>
+
+          {visibleCode ? (
+            <div className={styles.qrPanel}>
+              <div className={styles.qrCard}>
+                <img
+                  alt={visibleCode === 'author' ? '作者码' : '赞助码'}
+                  className={styles.qrImage}
+                  src={visibleCode === 'author' ? '/settings-codes/author-code.png' : '/settings-codes/sponsor-code.png'}
+                />
+              </div>
+            </div>
+          ) : null}
         </section>
       </form>
 

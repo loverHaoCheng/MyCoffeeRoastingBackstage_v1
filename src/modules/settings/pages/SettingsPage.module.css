@@ -203,6 +203,53 @@
   gap: 8px;
 }
 
+.qrSection {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid rgb(229 229 231 / 90%);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 96%) 0%, rgb(249 249 251 / 94%) 100%);
+  box-shadow: 0 14px 36px rgb(15 23 42 / 6%);
+}
+
+.qrActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.qrButton {
+  min-width: 160px;
+}
+
+.qrPanel {
+  display: grid;
+  justify-items: center;
+  padding: 6px 0 0;
+}
+
+.qrCard {
+  display: grid;
+  gap: 0;
+  width: min(100%, 420px);
+  padding: 18px;
+  border: 1px solid rgb(229 229 231 / 92%);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 10px 24px rgb(15 23 42 / 5%);
+}
+
+.qrImage {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: 16px;
+  background: #fff;
+}
+
 .templateDrawer:global(.ant-drawer) :global(.ant-drawer-header) {
   padding: 20px 22px 0;
   border-bottom: 0;
@@ -287,5 +334,19 @@
   .templateDrawerPanel {
     padding: 18px;
     border-radius: 22px;
+  }
+
+  .qrSection {
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .qrButton {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .qrCard {
+    padding: 16px;
   }
 }
