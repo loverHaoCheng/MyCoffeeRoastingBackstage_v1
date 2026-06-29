@@ -1,3 +1,5 @@
+import type { Bean } from '@/types/domain';
+
 export interface RoastPlanJsonStep {
   time: string;
   event: string;
@@ -10,7 +12,7 @@ export interface RoastPlanJsonStep {
 export interface RoastPlanJsonInput {
   name: string;
   beanName: string;
-  beanId?: number;
+  beanId?: Bean['id'];
   batchWeightGrams: number;
   roastLevel: string;
   purpose?: string;

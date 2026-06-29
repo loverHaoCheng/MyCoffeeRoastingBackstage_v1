@@ -12,7 +12,7 @@ export const roastPlanJsonStepSchema = z.object({
 export const roastPlanJsonSchema = z.object({
   name: z.string().min(1, '计划名称不能为空'),
   beanName: z.string(),
-  beanId: z.number().int().positive().optional(),
+  beanId: z.union([z.number().int().positive(), z.string().min(1)]).optional(),
   batchWeightGrams: z.number().positive('批次重量必须大于 0'),
   roastLevel: z.string().min(1, '烘焙目标不能为空'),
   purpose: z.string().optional(),

@@ -1,4 +1,5 @@
 import 'antd/dist/reset.css';
+import '@ant-design/v5-patch-for-react-19';
 import '@/app/styles/global.css';
 
 import { StrictMode } from 'react';

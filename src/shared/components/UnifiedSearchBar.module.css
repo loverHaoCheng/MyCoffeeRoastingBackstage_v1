@@ -1,0 +1,27 @@
+.container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgb(221 232 227 / 78%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 8px 20px rgb(29 29 31 / 4%);
+}
+
+.field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.field :global(.ant-input-affix-wrapper) {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  align-items: center;
+}
+
+.field :global(.ant-input) {
+  font-size: 14px;
+}

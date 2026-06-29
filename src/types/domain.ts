@@ -4,21 +4,29 @@ export interface EntityTimestamps {
 }
 
 export interface Bean extends EntityTimestamps {
-  id: number;
+  id: number | string;
   name: string;
   origin: string;
   process: string;
   grade: string;
   stockKg: number;
   costPerKg: number;
-  supplierId: number;
+  supplierId?: number | null;
+  supplierName?: string | null;
+  // 扩展字段：从 Supabase 视图获取
+  variety?: string;
+  harvestSeason?: string;
+  code?: string;
+  defaultRoastInputGrams?: number;
+  defaultSaleUnitPrice?: number | null;
+  defaultSaleUnitWeightGrams?: number | null;
 }
 
 export interface RoastPlan extends EntityTimestamps {
-  id: number;
+  id: number | string;
   name: string;
   beanName: string;
-  beanId: number;
+  beanId: Bean['id'];
   batchWeightGrams: number;
   plannedBatchKg: number;
   targetRoastLevel: string;
@@ -39,7 +47,7 @@ export interface RoastPlanStep {
 
 export interface RoastBatch extends EntityTimestamps {
   id: number;
-  planId: number;
+  planId: RoastPlan['id'];
   batchNo: string;
   inputKg: number;
   outputKg: number;
@@ -50,7 +58,7 @@ export interface RoastBatch extends EntityTimestamps {
 
 export interface InventoryItem extends EntityTimestamps {
   id: number;
-  beanId: number;
+  beanId: Bean['id'];
   location: string;
   quantityKg: number;
   reservedKg: number;
@@ -60,7 +68,7 @@ export interface InventoryItem extends EntityTimestamps {
 export interface ProductionBatch extends EntityTimestamps {
   id: number;
   batchNo: string;
-  roastPlanId: number;
+  roastPlanId: RoastPlan['id'];
   roastBatchId: number;
   packageSpec: string;
   plannedOutput: number;

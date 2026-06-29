@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-import { seedRoastPlans } from '@/modules/roast/constants/roastPlan.mock';
 import {
   createRoastPlan,
   createRoastPlanFromJson,
@@ -12,19 +11,19 @@ import type { RoastPlan } from '@/types/domain';
 
 interface RoastPlanState {
   plans: RoastPlan[];
-  selectedPlanId: number;
+  selectedPlanId: RoastPlan['id'];
   addPlan: (input: RoastPlanJsonInput) => RoastPlan;
   addPlanFromJson: (jsonText: string) => RoastPlan;
-  deletePlan: (planId: number) => void;
-  selectPlan: (planId: number) => void;
-  updatePlan: (planId: number, input: RoastPlanJsonInput) => RoastPlan;
+  deletePlan: (planId: RoastPlan['id']) => void;
+  selectPlan: (planId: RoastPlan['id']) => void;
+  updatePlan: (planId: RoastPlan['id'], input: RoastPlanJsonInput) => RoastPlan;
 }
 
 export const useRoastPlanStore = create<RoastPlanState>((set, get) => ({
-  plans: seedRoastPlans,
-  selectedPlanId: seedRoastPlans[0]?.id ?? 0,
+  plans: [],
+  selectedPlanId: 0,
   addPlan: (input) => {
-    const nextId = Math.max(0, ...get().plans.map((plan) => plan.id)) + 1;
+    const nextId = Math.max(0, ...get().plans.map((plan) => (typeof plan.id === 'number' ? plan.id : 0))) + 1;
     const plan = createRoastPlan(input, nextId);
 
     set((state) => ({
@@ -35,7 +34,7 @@ export const useRoastPlanStore = create<RoastPlanState>((set, get) => ({
     return plan;
   },
   addPlanFromJson: (jsonText) => {
-    const nextId = Math.max(0, ...get().plans.map((plan) => plan.id)) + 1;
+    const nextId = Math.max(0, ...get().plans.map((plan) => (typeof plan.id === 'number' ? plan.id : 0))) + 1;
     const plan = createRoastPlanFromJson(jsonText, nextId);
 
     set((state) => ({

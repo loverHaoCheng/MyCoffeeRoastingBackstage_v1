@@ -13,3 +13,16 @@
 所有持久化实体统一包含 `id`、`createdAt`、`updatedAt`。
 
 生产批次通过 `roastPlanId` 关联烘焙计划，现场执行时可按计划节点确认操作。
+
+## 生豆未来拆表
+
+为了支持更准确的成本、库存和烘焙追踪，生豆数据后续拆为以下模型：
+
+- `green_beans`: 生豆主档案
+- `green_bean_purchase_batches`: 采购批次与剩余库存
+- `bean_sale_specs`: 销售规格
+- `roast_profiles`: 烘焙方案
+- `roast_records`: 烘焙记录
+- `green_bean_inventory_overview`: 前端读取用汇总视图
+
+详细字段说明见 `docs/data-models/green-bean-supabase.md`。

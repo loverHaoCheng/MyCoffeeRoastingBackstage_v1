@@ -11,16 +11,16 @@ import styles from './RoastPlanJsonImporter.module.css';
 const { TextArea } = Input;
 
 interface RoastPlanJsonImporterProps {
-  onImport: (jsonText: string) => void;
+  onImport: (jsonText: string) => Promise<void> | void;
 }
 
 export function RoastPlanJsonImporter({ onImport }: RoastPlanJsonImporterProps) {
-  const [jsonText, setJsonText] = useState(sampleRoastPlanJson);
+  const [jsonText, setJsonText] = useState('');
   const { message } = App.useApp();
 
-  const handleImport = () => {
+  const handleImport = async () => {
     try {
-      onImport(jsonText);
+      await onImport(jsonText);
       void message.success('已根据 JSON 创建烘焙计划');
     } catch (error) {
       const errorMessage = error instanceof AppError ? error.message : '导入失败，请检查 JSON 内容。';
@@ -40,7 +40,7 @@ export function RoastPlanJsonImporter({ onImport }: RoastPlanJsonImporterProps) 
             setJsonText(sampleRoastPlanJson);
           }}
         >
-          示例
+          填入模板
         </Button>
       </div>
       <Alert
@@ -55,6 +55,7 @@ export function RoastPlanJsonImporter({ onImport }: RoastPlanJsonImporterProps) 
         onChange={(event) => {
           setJsonText(event.target.value);
         }}
+        placeholder="可直接粘贴烘焙计划 JSON，或点击右上角填入模板"
         spellCheck={false}
         value={jsonText}
       />

@@ -13,8 +13,8 @@ import styles from './RoastPlanDetail.module.css';
 
 interface RoastPlanDetailProps {
   mode: 'view' | 'edit';
-  onDelete: (planId: number) => void;
-  onUpdate: (planId: number, input: RoastPlanJsonInput) => void;
+  onDelete: (planId: RoastPlan['id']) => Promise<void> | void;
+  onUpdate: (planId: RoastPlan['id'], input: RoastPlanJsonInput) => Promise<void> | void;
   plan: RoastPlan;
 }
 
@@ -22,9 +22,9 @@ export function RoastPlanDetail({ mode, onDelete, onUpdate, plan }: RoastPlanDet
   const { message } = App.useApp();
   const initialValues = useMemo(() => roastPlanToJsonInput(plan), [plan]);
 
-  const handleSubmit = (input: RoastPlanJsonInput) => {
+  const handleSubmit = async (input: RoastPlanJsonInput) => {
     try {
-      onUpdate(plan.id, input);
+      await onUpdate(plan.id, input);
       void message.success('烘焙计划已保存');
     } catch (error) {
       const errorMessage = error instanceof AppError ? error.message : '保存失败，请检查表单内容。';
@@ -94,8 +94,8 @@ export function RoastPlanDetail({ mode, onDelete, onUpdate, plan }: RoastPlanDet
           cancelText="取消"
           okText="删除"
           okButtonProps={{ danger: true }}
-          onConfirm={() => {
-            onDelete(plan.id);
+          onConfirm={async () => {
+            await onDelete(plan.id);
           }}
           title="删除这个烘焙计划？"
         >

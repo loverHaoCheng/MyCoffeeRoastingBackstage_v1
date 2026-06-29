@@ -7,7 +7,7 @@ import type { RoastPlanJsonInput } from '../types';
 import { RoastPlanForm } from './RoastPlanForm';
 
 interface RoastPlanManualCreatorProps {
-  onCreate: (input: RoastPlanJsonInput) => void;
+  onCreate: (input: RoastPlanJsonInput) => Promise<void> | void;
 }
 
 const defaultRoastPlanFormValues: RoastPlanJsonInput = {
@@ -44,9 +44,9 @@ const defaultRoastPlanFormValues: RoastPlanJsonInput = {
 export function RoastPlanManualCreator({ onCreate }: RoastPlanManualCreatorProps) {
   const { message } = App.useApp();
 
-  const submitForm = (values: RoastPlanJsonInput) => {
+  const submitForm = async (values: RoastPlanJsonInput) => {
     try {
-      onCreate(values);
+      await onCreate(values);
       void message.success('已通过界面创建烘焙计划');
     } catch (error) {
       const errorMessage = error instanceof AppError ? error.message : '创建失败，请检查表单内容。';

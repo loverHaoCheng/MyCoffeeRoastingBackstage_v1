@@ -15,13 +15,19 @@
   gap: 7px;
 }
 
-.field > span {
+.labelText {
   overflow: hidden;
   color: #6e6e73;
   font-size: 13px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.requiredMark {
+  margin-left: 4px;
+  color: #d13d32;
+  font-style: normal;
 }
 
 .field :global(.ant-input),

@@ -1,0 +1,60 @@
+.panel {
+  padding: 0;
+}
+
+.loadingState,
+.feedbackState {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+}
+
+/* ---- 查看模式 ---- */
+.summaryGrid {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 20px;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: #f5f5f7;
+  border-radius: 12px;
+}
+
+.summaryItem span {
+  font-size: 12px;
+  color: #86868b;
+  letter-spacing: 0.02em;
+}
+
+.summaryItem strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.detailSection {
+  padding: 4px 0;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f2;
+}
+
+.detailRow:last-child {
+  border-bottom: none;
+}
+
+.detailLabel {
+  font-size: 13px;
+  color: #6e6e73;
+}

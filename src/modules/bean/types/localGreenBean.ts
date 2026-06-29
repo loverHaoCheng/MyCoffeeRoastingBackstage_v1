@@ -1,0 +1,40 @@
+export interface GreenBeanFormInput {
+  code: string;
+  defaultRoastInputGrams: number;
+  displayName: string;
+  harvestSeason?: null | string;
+  millName?: null | string;
+  notes?: null | string;
+  originArea?: null | string;
+  originCountry?: null | string;
+  originRegion?: null | string;
+  processMethod: string;
+  purchasedTotalPrice: number;
+  purchasedWeightGrams: number;
+  supplierName?: null | string;
+  variety: string;
+  altitudeMetersMax?: null | number;
+  altitudeMetersMin?: null | number;
+  densityGPerL?: null | number;
+  moisturePercent?: null | number;
+  defaultSaleUnitWeightGrams?: null | number;
+  defaultSaleUnitPrice: number;
+}
+
+export interface GreenBeanCreateInput extends GreenBeanFormInput {}
+
+export interface GreenBeanUpdateInput extends GreenBeanFormInput {}
+
+export interface GreenBeanEditableDetail extends GreenBeanFormInput {
+  beanId: string;
+  defaultSaleSpecId?: null | string;
+  purchaseBatchId?: null | string;
+  remainingWeightGrams?: null | number;
+}
+
+export interface LocalGreenBeanRecord extends GreenBeanCreateInput {
+  createdAt: string;
+  id: string;
+  source: 'local';
+  updatedAt: string;
+}

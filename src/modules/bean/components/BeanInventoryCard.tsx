@@ -1,11 +1,13 @@
+import { EditOutlined, EyeOutlined } from '@ant-design/icons';
+
+import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 import type { Bean } from '@/types/domain';
-
-import styles from './BeanInventoryCard.module.css';
-
-type StockTone = 'stable' | 'watch' | 'low';
 
 interface BeanInventoryCardProps {
   bean: Bean;
+  onDelete?: () => void;
+  onEdit?: (beanId: Bean['id']) => void;
+  onView?: (beanId: Bean['id']) => void;
 }
 
 const formatKg = new Intl.NumberFormat('zh-CN', {
@@ -18,60 +20,43 @@ const formatCurrency = new Intl.NumberFormat('zh-CN', {
   style: 'currency',
 });
 
-const getStockTone = (stockKg: number): StockTone => {
-  if (stockKg <= 20) {
-    return 'low';
-  }
+export function BeanInventoryCard({ bean, onDelete, onEdit, onView }: BeanInventoryCardProps) {
+  const supplierText = bean.supplierName?.trim()
+    ? bean.supplierName
+      : bean.supplierId != null
+        ? `#${String(bean.supplierId)}`
+        : '待配置';
 
-  if (stockKg <= 40) {
-    return 'watch';
-  }
-
-  return 'stable';
-};
-
-const getStockText = (tone: StockTone): string => {
-  if (tone === 'low') {
-    return '低库存';
-  }
-
-  if (tone === 'watch') {
-    return '关注';
-  }
-
-  return '充足';
-};
-
-export function BeanInventoryCard({ bean }: BeanInventoryCardProps) {
-  const tone = getStockTone(bean.stockKg);
+  const metaItems = [
+    { key: 'stock', label: '库存', value: `${formatKg.format(bean.stockKg)} kg` },
+    { key: 'cost', label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
+    { key: 'supplier', label: '供应商', value: supplierText, multiline: true },
+    { key: 'updatedAt', label: '更新', value: new Date(bean.updatedAt).toLocaleDateString('zh-CN') },
+  ];
 
   return (
-    <article className={styles.card} data-tone={tone}>
-      <div className={styles.header}>
-        <strong>{bean.name}</strong>
-        <span>{getStockText(tone)}</span>
-      </div>
-
-      <p>{[bean.origin, bean.process, bean.grade].filter(Boolean).join(' · ')}</p>
-
-      <dl className={styles.metaGrid}>
-        <div>
-          <dt>库存</dt>
-          <dd>{formatKg.format(bean.stockKg)} kg</dd>
-        </div>
-        <div>
-          <dt>成本</dt>
-          <dd>{formatCurrency.format(bean.costPerKg)} / kg</dd>
-        </div>
-        <div>
-          <dt>供应商</dt>
-          <dd>#{String(bean.supplierId)}</dd>
-        </div>
-        <div>
-          <dt>更新</dt>
-          <dd>{new Date(bean.updatedAt).toLocaleDateString('zh-CN')}</dd>
-        </div>
-      </dl>
-    </article>
+    <UnifiedDataCard
+      actions={[
+        {
+          key: 'view',
+          label: '查看',
+          icon: <EyeOutlined />,
+          ariaLabel: `查看 ${bean.name}`,
+          onClick: () => onView?.(bean.id),
+        },
+        {
+          key: 'edit',
+          label: '编辑',
+          icon: <EditOutlined />,
+          ariaLabel: `编辑 ${bean.name}`,
+          onClick: () => onEdit?.(bean.id),
+        },
+      ]}
+      deleteLabel={`删除 ${bean.name}`}
+      description={[bean.origin, bean.process, bean.grade].filter(Boolean).join(' · ')}
+      metaItems={metaItems}
+      onDelete={onDelete}
+      title={bean.name}
+    />
   );
 }

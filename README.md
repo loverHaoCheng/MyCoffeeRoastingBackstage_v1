@@ -74,3 +74,15 @@ JSON 基础结构如下：
 生豆库存模块当前使用 `src/modules/bean/constants/bean.mock.ts` 的本地数据。后续接入 Supabase 时，替换 `src/modules/bean/services/bean.service.ts` 中的 `beanRepository` 即可；文件内已预留 `createSupabaseBeanRepository`、`SupabaseBeanClient` 与 `SupabaseBeanRecord` 映射类型。
 
 烘焙计划表单的生豆字段会读取同一套生豆服务数据，选择后写入 `beanId` 与 `beanName`，便于后续与 Supabase 同步的生豆表保持一致。
+
+## 设置模块
+
+- 新增 `/settings` 页面，用于录入生豆库和熟豆库两套 Supabase `Project URL` 与 `Publishable Key`
+- 设置会保存在浏览器本地，当前仅用于前端连接配置管理，不会保存高权限密钥
+- 生豆列表会在成功拉取后写入 `localStorage` 本地缓存；当 Supabase 出现超时、断网或限流等可恢复错误时，页面会自动回退到缓存数据
+
+## Supabase 建表
+
+- 生豆拆表迁移 SQL：`supabase/migrations/20260628_create_green_bean_core.sql`
+- 数据模型说明：`docs/data-models/green-bean-supabase.md`
+- 双库连接架构：`docs/architecture/settings-and-supabase.md`

@@ -29,6 +29,35 @@ describe('router', () => {
       </ConfigProvider>,
     );
 
-    expect(await screen.findByRole('heading', { name: '生豆库存' })).toBeInTheDocument();
+    expect(await screen.findByLabelText('生豆库存概览')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'dashboard 工作台' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'database 生豆库存' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'setting 设置' })).toBeInTheDocument();
+  });
+
+  it('opens the settings route', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/settings'],
+    });
+
+    render(
+      <ConfigProvider>
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </AntApp>
+      </ConfigProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '生豆数据库' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '当前数据同步状态' })).toBeInTheDocument();
   });
 });

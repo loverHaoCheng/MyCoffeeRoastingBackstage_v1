@@ -1,19 +1,50 @@
-import { ModuleComingSoonPage } from '@/shared/components/ModuleComingSoonPage';
+import { Alert, App } from 'antd';
+
+import { useBeans } from '@/modules/bean/hooks';
+import { CostCalculatorForm } from '@/modules/finance/components';
+import { useSaveCostCalculation } from '@/modules/finance/hooks';
+import { financeService } from '@/modules/finance/services';
+
+import styles from './FinancePage.module.css';
 
 export function FinancePage() {
+  const { message } = App.useApp();
+  const resolvedDataSource = financeService.getResolvedDataSource();
+  const beansQuery = useBeans();
+  const saveMutation = useSaveCostCalculation();
+
+  const beans = beansQuery.data ?? [];
+
+  const beanError =
+    beansQuery.error instanceof Error ? (
+      <Alert
+        message="生豆数据加载失败"
+        showIcon
+        type="error"
+        description={beansQuery.error.message}
+      />
+    ) : null;
+
   return (
-    <ModuleComingSoonPage
-      actions={[{ label: '成本核算', primary: true }, { label: '利润报表' }]}
-      focusItems={['生豆采购成本', '烘焙能耗分摊', '人工与包装成本', '批次毛利分析']}
-      stats={[
-        { label: '均价', value: '58.4 元/kg', tone: 'green' },
-        { label: '本周成本', value: '19,972', tone: 'blue' },
-        { label: '能耗占比', value: '7.8%', tone: 'amber' },
-        { label: '异常成本', value: '1', tone: 'red' },
-      ]}
-      subtitle="沉淀采购、生产、包装和销售成本，为利润分析和经营决策提供依据。"
-      title="成本分析"
-    />
+    <main className={styles.page}>
+      <section className={styles.alertStack}>
+        {beanError}
+      </section>
+
+      <CostCalculatorForm
+        beans={beans}
+        canSave={resolvedDataSource != null}
+        isSaving={saveMutation.isPending}
+        onSubmit={async (input) => {
+          try {
+            await saveMutation.mutateAsync(input);
+            void message.success('成本核算已保存到 Supabase');
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : '保存失败，请稍后重试';
+            void message.error(errorMessage);
+          }
+        }}
+      />
+    </main>
   );
 }
-

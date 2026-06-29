@@ -6,3 +6,42 @@ export const beanSchema = z.object({
   stockKg: z.number().nonnegative(),
 });
 
+const optionalTrimmedText = z.string().trim().max(200).nullable().optional();
+const optionalNonnegativeNumber = z.number().nonnegative().nullable().optional();
+
+export const greenBeanCreateFormSchema = z
+  .object({
+    code: z.string().trim().min(1, '请输入生豆编号').max(60, '生豆编号长度不能超过 60 个字符'),
+    defaultRoastInputGrams: z.number().int().positive('请输入有效的单次烘焙量'),
+    displayName: z.string().trim().min(1, '请输入显示名称').max(120, '显示名称长度不能超过 120 个字符'),
+    harvestSeason: z.string().trim().max(60, '产季长度不能超过 60 个字符').nullable().optional(),
+    millName: optionalTrimmedText,
+    notes: z.string().trim().max(2000, '备注长度不能超过 2000 个字符').nullable().optional(),
+    originArea: optionalTrimmedText,
+    originCountry: z.string().trim().max(80, '产地国家长度不能超过 80 个字符').nullable().optional(),
+    originRegion: z.string().trim().max(80, '产区长度不能超过 80 个字符').nullable().optional(),
+    processMethod: z.string().trim().min(1, '请输入处理法').max(80, '处理法长度不能超过 80 个字符'),
+    purchasedTotalPrice: z.number().positive('请输入有效的购买总价'),
+    purchasedWeightGrams: z.number().int().positive('请输入有效的购买重量'),
+    supplierName: optionalTrimmedText,
+    defaultSaleUnitPrice: z.number().positive('请输入有效的出售单份售价'),
+    defaultSaleUnitWeightGrams: z.number().int().positive('请输入有效的出售单份重量').nullable().optional(),
+    variety: z.string().trim().min(1, '请输入豆种').max(120, '豆种长度不能超过 120 个字符'),
+    altitudeMetersMax: optionalNonnegativeNumber,
+    altitudeMetersMin: optionalNonnegativeNumber,
+    densityGPerL: optionalNonnegativeNumber,
+    moisturePercent: z.number().min(0, '含水率不能小于 0').max(100, '含水率不能大于 100').nullable().optional(),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.altitudeMetersMin != null &&
+      value.altitudeMetersMax != null &&
+      value.altitudeMetersMax < value.altitudeMetersMin
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '海拔上限不能小于海拔下限',
+        path: ['altitudeMetersMax'],
+      });
+    }
+  });

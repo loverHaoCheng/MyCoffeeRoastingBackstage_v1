@@ -1,0 +1,49 @@
+.creator {
+  display: grid;
+  gap: 24px;
+  padding: 4px 0;
+}
+
+.section h4 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #86868b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  color: #86868b;
+}
+
+.fieldValue {
+  font-size: 14px;
+  color: #1d1d1f;
+  font-weight: 500;
+  padding: 6px 0;
+}
+
+.imageUploadPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border: 2px dashed rgb(221 232 227);
+  border-radius: 12px;
+  color: #86868b;
+  font-size: 13px;
+}

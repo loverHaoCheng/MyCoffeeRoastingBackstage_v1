@@ -1,4 +1,13 @@
-export type AppErrorCode = 'NETWORK' | 'HTTP' | 'BUSINESS' | 'UNKNOWN';
+export type AppErrorCode =
+  | 'NETWORK'
+  | 'HTTP'
+  | 'BUSINESS'
+  | 'UNKNOWN'
+  | 'AUTH'
+  | 'CONFIG'
+  | 'RATE_LIMIT'
+  | 'TIMEOUT'
+  | 'DATA';
 
 export interface AppErrorOptions {
   code: AppErrorCode;
@@ -19,4 +28,3 @@ export class AppError extends Error {
     this.cause = options.cause;
   }
 }
-

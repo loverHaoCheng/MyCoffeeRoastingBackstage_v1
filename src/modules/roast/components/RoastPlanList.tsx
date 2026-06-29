@@ -1,57 +1,58 @@
 import { EditOutlined, EyeOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
 
+import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 import type { RoastPlan } from '@/types/domain';
 
 import styles from './RoastPlanList.module.css';
 
 interface RoastPlanListProps {
-  onEdit: (planId: number) => void;
-  onView: (planId: number) => void;
+  onDelete?: (plan: RoastPlan) => void;
+  onEdit: (planId: RoastPlan['id']) => void;
+  onView: (planId: RoastPlan['id']) => void;
   plans: RoastPlan[];
 }
 
-export function RoastPlanList({ plans, onEdit, onView }: RoastPlanListProps) {
+const statusLabel: Record<RoastPlan['status'], string> = {
+  draft: '草稿',
+  inProgress: '进行中',
+  completed: '已完成',
+  cancelled: '已取消',
+};
+
+export function RoastPlanList({ plans, onDelete, onEdit, onView }: RoastPlanListProps) {
   return (
     <div className={styles.list} aria-label="烘焙计划列表">
-      {plans.map((plan) => {
-        const metaItems = [plan.beanName, `${String(plan.batchWeightGrams)}g`, plan.targetRoastLevel].filter(
-          Boolean,
-        );
-
-        return (
-          <article className={styles.item} key={plan.id}>
-            <div className={styles.itemBody}>
-              <strong>{plan.name}</strong>
-              <span>{metaItems.join(' · ')}</span>
-            </div>
-            <div className={styles.itemFooter}>
-              <Button
-                aria-label={`查看 ${plan.name}`}
-                className={styles.cardAction}
-                icon={<EyeOutlined />}
-                onClick={() => {
-                  onView(plan.id);
-                }}
-                size="small"
-              >
-                查看
-              </Button>
-              <Button
-                aria-label={`编辑 ${plan.name}`}
-                className={styles.cardAction}
-                icon={<EditOutlined />}
-                onClick={() => {
-                  onEdit(plan.id);
-                }}
-                size="small"
-              >
-                编辑
-              </Button>
-            </div>
-          </article>
-        );
-      })}
+      {plans.map((plan) => (
+        <UnifiedDataCard
+          key={plan.id}
+          actions={[
+            {
+              key: 'view',
+              label: '查看',
+              icon: <EyeOutlined />,
+              ariaLabel: `查看 ${plan.name}`,
+              onClick: () => onView(plan.id),
+            },
+            {
+              key: 'edit',
+              label: '编辑',
+              icon: <EditOutlined />,
+              ariaLabel: `编辑 ${plan.name}`,
+              onClick: () => onEdit(plan.id),
+            },
+          ]}
+          deleteLabel={`删除 ${plan.name}`}
+          description={plan.roastPurpose}
+          metaItems={[
+            { key: 'beanName', label: '生豆', value: plan.beanName || '待配置', multiline: true },
+            { key: 'batchWeight', label: '批次重量', value: plan.batchWeightGrams != null ? `${String(plan.batchWeightGrams)} g` : '-' },
+            { key: 'roastLevel', label: '烘焙度', value: plan.targetRoastLevel || '-' },
+            { key: 'status', label: '状态', value: statusLabel[plan.status] },
+          ]}
+          onDelete={onDelete ? () => onDelete(plan) : undefined}
+          title={plan.name}
+        />
+      ))}
     </div>
   );
 }

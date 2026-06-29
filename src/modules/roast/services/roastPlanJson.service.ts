@@ -6,47 +6,40 @@ import type { RoastPlanJsonInput } from '../types';
 
 export const sampleRoastPlanJson = JSON.stringify(
   {
-    name: '肯尼亚 柏拉 AA Plus SL28 SL34 水洗',
-    beanName: '肯尼亚 柏拉 AA Plus SL28 SL34 水洗',
-    beanId: 101,
+    name: '新建烘焙计划',
+    beanName: '待选择生豆',
+    beanId: '',
     batchWeightGrams: 200,
-    roastLevel: '手冲浅烘',
+    roastLevel: '中焙',
     purpose: '手冲',
     steps: [
       {
         time: '0:00',
         event: '入豆',
         operation: '入豆',
-        temperature: '235°C',
-        firePower: '90%',
+        temperature: '200°C',
+        firePower: '80%',
       },
       {
-        time: '1:20~1:30',
+        time: '1:30',
         event: '回温点',
         operation: '保持',
         temperature: '-',
-        firePower: '90%',
+        firePower: '80%',
       },
       {
-        time: '2:00',
-        event: '前段降火',
-        operation: '降火',
-        temperature: '-',
-        firePower: '85%',
-      },
-      {
-        time: '4:40~5:00',
+        time: '4:30',
         event: '转黄',
         operation: '降火',
-        temperature: '154~158°C（参考）',
-        firePower: '75%',
+        temperature: '150°C',
+        firePower: '70%',
       },
       {
-        time: '8:50~9:20',
+        time: '8:30',
         event: '一爆开始',
         operation: '保持',
-        temperature: '208±2°C',
-        firePower: '65%',
+        temperature: '198°C',
+        firePower: '60%',
       },
     ],
   },
@@ -110,7 +103,7 @@ export function roastPlanToJsonInput(plan: RoastPlan): RoastPlanJsonInput {
   return {
     name: plan.name,
     beanId: plan.beanId,
-    beanName: '',
+    beanName: plan.beanName,
     batchWeightGrams: plan.batchWeightGrams,
     roastLevel: plan.targetRoastLevel,
     purpose: plan.roastPurpose,
@@ -126,10 +119,11 @@ export function roastPlanToJsonInput(plan: RoastPlan): RoastPlanJsonInput {
 }
 
 export function updateRoastPlanFromInput(plan: RoastPlan, input: RoastPlanJsonInput): RoastPlan {
-  const nextPlan = createRoastPlan(input, plan.id);
+  const nextPlan = createRoastPlan(input, typeof plan.id === 'number' ? plan.id : 0);
 
   return {
     ...nextPlan,
+    id: plan.id,
     createdAt: plan.createdAt,
     status: plan.status,
   };

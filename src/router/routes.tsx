@@ -4,9 +4,6 @@ import { Navigate, createBrowserRouter, type RouteObject } from 'react-router-do
 
 import { MainLayout } from '@/layouts/MainLayout';
 
-const DashboardPage = lazy(() =>
-  import('@/modules/dashboard').then((module) => ({ default: module.DashboardPage })),
-);
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));
 const RoastPage = lazy(() =>
   import('@/modules/roast').then((module) => ({ default: module.RoastPage })),
@@ -14,8 +11,8 @@ const RoastPage = lazy(() =>
 const ProductionPage = lazy(() =>
   import('@/modules/production').then((module) => ({ default: module.ProductionPage })),
 );
-const FinancePage = lazy(() =>
-  import('@/modules/finance').then((module) => ({ default: module.FinancePage })),
+const SettingsPage = lazy(() =>
+  import('@/modules/settings').then((module) => ({ default: module.SettingsPage })),
 );
 
 const withPageFallback = (children: ReactNode) => {
@@ -39,11 +36,7 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <Navigate to="/dashboard" replace />,
-      },
-      {
-        path: 'dashboard',
-        element: withPageFallback(<DashboardPage />),
+        element: <Navigate to="/beans" replace />,
       },
       {
         path: 'beans',
@@ -63,13 +56,17 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'finance',
-        element: withPageFallback(<FinancePage />),
+        element: <Navigate to="/settings" replace />,
+      },
+      {
+        path: 'settings',
+        element: withPageFallback(<SettingsPage />),
       },
     ],
   },
   {
     path: '*',
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/beans" replace />,
   },
 ];
 

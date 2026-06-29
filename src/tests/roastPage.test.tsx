@@ -77,7 +77,7 @@ describe('RoastPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /查看 埃塞俄比亚/ }));
 
-    expect(screen.getByText('查看烘焙计划')).toBeInTheDocument();
+    expect(screen.getByText('烘焙计划详情')).toBeInTheDocument();
     expect(screen.getByText('计划名称')).toBeInTheDocument();
     expect(screen.getByText('烘焙节点')).toBeInTheDocument();
     expect(screen.queryByLabelText('计划名称')).not.toBeInTheDocument();
@@ -89,11 +89,15 @@ describe('RoastPage', () => {
   it('opens the creation drawer with JSON importer', () => {
     renderWithQuery(<RoastPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: '新建计划' }));
+    fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
 
-    expect(screen.getByRole('tab', { name: 'AI 导入计划' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '界面创建' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'JSON 导入' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '手动创建' })).toBeInTheDocument();
     expect(screen.queryByText('JSON Import')).not.toBeInTheDocument();
+
+    // 切换到 JSON 导入标签页
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON 导入' }));
+
     expect(screen.getByRole('heading', { name: '根据 JSON 快速创建' })).toBeInTheDocument();
   });
 });

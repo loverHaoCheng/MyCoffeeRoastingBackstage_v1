@@ -1,12 +1,11 @@
 import {
   ApartmentOutlined,
-  DashboardOutlined,
   DatabaseOutlined,
-  DollarCircleOutlined,
   FireOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { Grid, Layout, Menu } from 'antd';
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useEffect, useMemo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { appNavigationItems, type AppRouteKey } from '@/router/navigation';
@@ -18,11 +17,10 @@ const { Content, Sider } = Layout;
 const { useBreakpoint } = Grid;
 
 const iconByRoute: Record<AppRouteKey, ReactNode> = {
-  dashboard: <DashboardOutlined />,
   bean: <DatabaseOutlined />,
   roast: <FireOutlined />,
   production: <ApartmentOutlined />,
-  finance: <DollarCircleOutlined />,
+  settings: <SettingOutlined />,
 };
 
 export function MainLayout() {
@@ -31,10 +29,14 @@ export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isWide = screens.md ?? false;
+  const bottomNavItems = useMemo(
+    () => appNavigationItems.filter((item) => item.showInBottomNav !== false),
+    [],
+  );
 
   const selectedKey = useMemo(() => {
     return (
-      appNavigationItems.find((item) => location.pathname.startsWith(item.path))?.key ?? 'dashboard'
+      appNavigationItems.find((item) => location.pathname.startsWith(item.path))?.key ?? 'bean'
     );
   }, [location.pathname]);
 
@@ -47,6 +49,14 @@ export function MainLayout() {
       })),
     [],
   );
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'auto',
+    });
+  }, [location.pathname]);
 
   const navigateByKey = (key: string) => {
     const target = appNavigationItems.find((item) => item.key === key);
@@ -101,8 +111,12 @@ export function MainLayout() {
 
       {!isWide ? (
         <>
-          <nav aria-label="主导航" className={styles.bottomNav}>
-            {appNavigationItems.map((item) => (
+          <nav
+            aria-label="主导航"
+            className={styles.bottomNav}
+            style={{ gridTemplateColumns: `repeat(${bottomNavItems.length}, minmax(0, 1fr))` }}
+          >
+            {bottomNavItems.map((item) => (
               <button
                 aria-current={selectedKey === item.key ? 'page' : undefined}
                 className={styles.bottomNavItem}

@@ -11,10 +11,23 @@ import styles from './RoastPlanManualCreator.module.css';
 
 interface RoastPlanFormProps {
   initialValues: RoastPlanJsonInput;
-  onSubmit: (input: RoastPlanJsonInput) => void;
+  onSubmit: (input: RoastPlanJsonInput) => Promise<void> | void;
   resetOnSubmit?: boolean;
   submitLabel: string;
 }
+
+const renderLabel = (label: string, required = false) => {
+  return (
+    <span className={styles.labelText}>
+      {label}
+      {required ? (
+        <em aria-hidden="true" className={styles.requiredMark}>
+          *
+        </em>
+      ) : null}
+    </span>
+  );
+};
 
 export function RoastPlanForm({
   initialValues,
@@ -35,10 +48,10 @@ export function RoastPlanForm({
     reset(initialValues);
   }, [initialValues, reset]);
 
-  const submitForm = (values: RoastPlanJsonInput) => {
+  const submitForm = async (values: RoastPlanJsonInput) => {
     const selectedBean = beans.find((bean) => bean.id === values.beanId);
 
-    onSubmit({
+    await onSubmit({
       ...values,
       beanName: selectedBean?.name ?? values.beanName,
     });
@@ -52,7 +65,7 @@ export function RoastPlanForm({
     <form className={styles.form} onSubmit={(event) => void handleSubmit(submitForm)(event)}>
       <section className={styles.fieldGrid}>
         <label className={styles.field}>
-          <span>计划名称</span>
+          {renderLabel('计划名称', true)}
           <Controller
             control={control}
             name="name"
@@ -61,7 +74,7 @@ export function RoastPlanForm({
         </label>
 
         <label className={styles.field}>
-          <span>生豆</span>
+          {renderLabel('生豆', true)}
           <Controller
             control={control}
             name="beanId"
@@ -95,7 +108,7 @@ export function RoastPlanForm({
         />
 
         <label className={styles.field}>
-          <span>批次重量</span>
+          {renderLabel('批次重量', true)}
           <Controller
             control={control}
             name="batchWeightGrams"
@@ -114,7 +127,7 @@ export function RoastPlanForm({
         </label>
 
         <label className={styles.field}>
-          <span>烘焙目标</span>
+          {renderLabel('烘焙目标', true)}
           <Controller
             control={control}
             name="roastLevel"
@@ -123,7 +136,7 @@ export function RoastPlanForm({
         </label>
 
         <label className={styles.field}>
-          <span>用途</span>
+          {renderLabel('用途')}
           <Controller
             control={control}
             name="purpose"
@@ -199,7 +212,7 @@ export function RoastPlanForm({
 
                     <div className={styles.stepFields}>
                       <label className={styles.field}>
-                        <span>时间</span>
+                        {renderLabel('时间', true)}
                         <Controller
                           control={control}
                           name={`steps.${stepIndex}.time` as `steps.${number}.time`}
@@ -207,7 +220,7 @@ export function RoastPlanForm({
                         />
                       </label>
                       <label className={styles.field}>
-                        <span>事件</span>
+                        {renderLabel('事件', true)}
                         <Controller
                           control={control}
                           name={`steps.${stepIndex}.event` as `steps.${number}.event`}
@@ -215,7 +228,7 @@ export function RoastPlanForm({
                         />
                       </label>
                       <label className={styles.field}>
-                        <span>操作</span>
+                        {renderLabel('操作', true)}
                         <Controller
                           control={control}
                           name={`steps.${stepIndex}.operation` as `steps.${number}.operation`}
@@ -223,7 +236,7 @@ export function RoastPlanForm({
                         />
                       </label>
                       <label className={styles.field}>
-                        <span>炉温</span>
+                        {renderLabel('炉温', true)}
                         <Controller
                           control={control}
                           name={`steps.${stepIndex}.temperature` as `steps.${number}.temperature`}
@@ -231,7 +244,7 @@ export function RoastPlanForm({
                         />
                       </label>
                       <label className={styles.field}>
-                        <span>火力</span>
+                        {renderLabel('火力', true)}
                         <Controller
                           control={control}
                           name={`steps.${stepIndex}.firePower` as `steps.${number}.firePower`}

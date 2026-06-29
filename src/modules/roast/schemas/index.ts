@@ -4,7 +4,7 @@ export { roastPlanJsonSchema, roastPlanJsonStepSchema } from './roastPlanJson.sc
 
 export const roastPlanSchema = z.object({
   name: z.string().min(1),
-  beanId: z.number().int().positive(),
+  beanId: z.union([z.number().int().positive(), z.string().min(1)]),
   batchWeightGrams: z.number().positive(),
   targetRoastLevel: z.string().min(1),
 });
