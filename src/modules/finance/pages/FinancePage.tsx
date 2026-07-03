@@ -33,12 +33,18 @@ export function FinancePage() {
 
       <CostCalculatorForm
         beans={beans}
-        canSave={resolvedDataSource != null}
+        canSave
         isSaving={saveMutation.isPending}
         onSubmit={async (input) => {
           try {
-            await saveMutation.mutateAsync(input);
-            void message.success('成本核算已保存到 Supabase');
+            const savedRecord = await saveMutation.mutateAsync(input);
+            const isLocalOnlyRecord = savedRecord.id.startsWith('local-');
+
+            void message.success(
+              isLocalOnlyRecord
+                ? '成本核算已保存到本地，联网后会自动同步'
+                : `成本核算已同步到${resolvedDataSource === 'roastedBean' ? '熟豆库' : '生豆库'}`,
+            );
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : '保存失败，请稍后重试';
             void message.error(errorMessage);

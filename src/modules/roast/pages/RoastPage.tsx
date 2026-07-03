@@ -1,7 +1,9 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { App, Button, Drawer, Empty, Grid, Spin, Tabs } from 'antd';
+import { App, Drawer, Empty, Grid, Spin, Tabs } from 'antd';
 import { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
+import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import {
   RoastPlanDetail,
   RoastPlanList,
@@ -9,12 +11,15 @@ import {
   RoastPlanJsonImporter,
 } from '@/modules/roast/components';
 import {
-  useCreateRoastPlan,
-  useCreateRoastPlanFromJson,
+  roastPlanQueryKeys,
   useDeleteRoastPlan,
   useRoastPlans,
   useUpdateRoastPlan,
 } from '@/modules/roast/hooks';
+import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
+import { useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
+import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
 import type { RoastPlan } from '@/types/domain';
 import type { RoastPlanJsonInput } from '@/modules/roast/types';
@@ -22,6 +27,18 @@ import type { RoastPlanJsonInput } from '@/modules/roast/types';
 import styles from './RoastPage.module.css';
 
 type DetailMode = 'view' | 'edit';
+
+const getDetailDrawerTitle = (mode: DetailMode | null): string => {
+  if (mode === 'view') {
+    return '烘焙计划详情';
+  }
+
+  if (mode === 'edit') {
+    return '编辑烘焙计划';
+  }
+
+  return '';
+};
 
 const matchesKeyword = (plan: RoastPlan, keyword: string): boolean => {
   const normalized = keyword.trim().toLowerCase();
@@ -33,9 +50,17 @@ const matchesKeyword = (plan: RoastPlan, keyword: string): boolean => {
     .includes(normalized);
 };
 
+const sortPlansByUpdatedAt = (plans: RoastPlan[]): RoastPlan[] => {
+  return [...plans].sort((left, right) => {
+    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  });
+};
+
 export function RoastPage() {
   const { message, modal } = App.useApp();
+  const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
+  const { supabaseConnections } = useSupabaseConnectionSettings();
   const [keyword, setKeyword] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState<RoastPlan['id'] | null>(null);
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
@@ -43,12 +68,13 @@ export function RoastPage() {
   const [creationTab, setCreationTab] = useState<'manual' | 'json'>('manual');
 
   const { data: plans = [], isFetching, refetch } = useRoastPlans();
-  const createMutation = useCreateRoastPlan();
-  const createJsonMutation = useCreateRoastPlanFromJson();
   const updateMutation = useUpdateRoastPlan();
   const deleteMutation = useDeleteRoastPlan();
 
   const isWide = screens.md ?? false;
+  const hasGreenBeanConnection =
+    supabaseConnections.greenBean.projectUrl.trim().length > 0 &&
+    supabaseConnections.greenBean.publishableKey.trim().length > 0;
 
   const filteredPlans = useMemo(
     () => plans.filter((p) => matchesKeyword(p, keyword)),
@@ -92,29 +118,92 @@ export function RoastPage() {
   };
 
   // 更新计划
-  const handleUpdate = async (planId: RoastPlan['id'], input: RoastPlanJsonInput) => {
-    await updateMutation.mutateAsync({ planId, input });
-    void message.success('烘焙计划已保存');
+  const handleUpdate = (planId: RoastPlan['id'], input: RoastPlanJsonInput) => {
+    submissionBackupService.save('update', { input, planId }, 'roastPlan');
+
+    void (async () => {
+      try {
+        await updateMutation.mutateAsync({ planId, input });
+        await refreshAllAppData(queryClient);
+        await refetch();
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
+        void message.error(errorMessage);
+      }
+    })();
   };
 
   // 手动创建
-  const handleCreateManual = async (input: RoastPlanJsonInput) => {
-    await createMutation.mutateAsync(input);
+  const handleCreateManual = (input: RoastPlanJsonInput) => {
     setCreationDrawerOpen(false);
-    void message.success('烘焙计划已创建');
+    submissionBackupService.save('create', input, 'roastPlan');
+    const optimisticPlan = roastPlanService.createOptimisticPlan(input);
+
+    queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) => {
+      return sortPlansByUpdatedAt([
+        optimisticPlan,
+        ...current.filter((plan) => String(plan.id) !== String(optimisticPlan.id)),
+      ]);
+    });
+
+    void (async () => {
+      try {
+        const response = await roastPlanService.createPlan(input);
+        const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
+
+        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
+        void queryClient.invalidateQueries({ queryKey: roastPlanQueryKeys.all });
+      } catch (error: unknown) {
+        const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
+        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
+        const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
+        void message.error(errorMessage);
+      }
+    })();
   };
 
   // JSON 导入创建
-  const handleCreateFromJson = async (jsonText: string) => {
-    await createJsonMutation.mutateAsync(jsonText);
+  const handleCreateFromJson = (jsonText: string) => {
     setCreationDrawerOpen(false);
-    void message.success('烘焙计划已创建');
+    submissionBackupService.save('create', { jsonText }, 'roastPlan');
+    const optimisticPlan = roastPlanService.createOptimisticPlanFromJson(jsonText);
+
+    queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) => {
+      return sortPlansByUpdatedAt([
+        optimisticPlan,
+        ...current.filter((plan) => String(plan.id) !== String(optimisticPlan.id)),
+      ]);
+    });
+
+    void (async () => {
+      try {
+        const response = await roastPlanService.createPlanFromJson(jsonText);
+        const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
+
+        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
+        void queryClient.invalidateQueries({ queryKey: roastPlanQueryKeys.all });
+      } catch (error: unknown) {
+        const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
+        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
+        const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
+        void message.error(errorMessage);
+      }
+    })();
   };
 
   // 关闭详情
   const closeDetail = () => {
     setSelectedPlanId(null);
     setDetailMode(null);
+  };
+
+  const handleOpenCreateDrawer = () => {
+    if (!hasGreenBeanConnection) {
+      void message.warning('请先前往设置页创建并连接生豆数据库，完成后才能新增烘焙计划。');
+      return;
+    }
+
+    setCreationDrawerOpen(true);
   };
 
   return (
@@ -142,12 +231,10 @@ export function RoastPage() {
       </section>
 
       {/* FAB */}
-      <Button
-        aria-label="新增烘焙计划"
-        className={styles.fab}
+      <ViewportFloatingActionButton
+        ariaLabel="新增烘焙计划"
         icon={<PlusOutlined />}
-        onClick={() => setCreationDrawerOpen(true)}
-        shape="circle"
+        onClick={handleOpenCreateDrawer}
       />
 
       {/* 创建抽屉 */}
@@ -166,12 +253,22 @@ export function RoastPage() {
             {
               key: 'manual',
               label: '手动创建',
-              children: <RoastPlanManualCreator onCreate={handleCreateManual} />,
+              children: (
+                <RoastPlanManualCreator
+                  onCancel={() => setCreationDrawerOpen(false)}
+                  onCreate={handleCreateManual}
+                />
+              ),
             },
             {
               key: 'json',
               label: 'JSON 导入',
-              children: <RoastPlanJsonImporter onImport={handleCreateFromJson} />,
+              children: (
+                <RoastPlanJsonImporter
+                  onCancel={() => setCreationDrawerOpen(false)}
+                  onImport={handleCreateFromJson}
+                />
+              ),
             },
           ]}
         />
@@ -185,12 +282,13 @@ export function RoastPage() {
         onClose={closeDetail}
         open={selectedPlan !== null && detailMode !== null}
         placement={isWide ? 'right' : 'bottom'}
-        title={detailMode === 'view' ? '烘焙计划详情' : '编辑烘焙计划'}
+        title={getDetailDrawerTitle(detailMode)}
         width={720}
       >
         {selectedPlan && detailMode ? (
           <RoastPlanDetail
             mode={detailMode}
+            onClose={closeDetail}
             onDelete={(planId) => {
               const plan = plans.find((p) => p.id === planId);
               if (plan) handleDelete(plan);

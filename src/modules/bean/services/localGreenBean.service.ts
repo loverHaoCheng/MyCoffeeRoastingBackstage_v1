@@ -1,6 +1,11 @@
+import { AppError } from '@/shared/errors/AppError';
 import type { Bean } from '@/types/domain';
 
-import type { GreenBeanCreateInput, LocalGreenBeanRecord } from '../types/localGreenBean';
+import type {
+  GreenBeanCreateInput,
+  GreenBeanUpdateInput,
+  LocalGreenBeanRecord,
+} from '../types/localGreenBean';
 
 interface LocalGreenBeanSnapshot {
   records: LocalGreenBeanRecord[];
@@ -9,6 +14,7 @@ interface LocalGreenBeanSnapshot {
 
 const LOCAL_GREEN_BEAN_VERSION = 1;
 export const localGreenBeanStorageKey = 'coffee-roasting-backstage:local-green-beans';
+const legacyLocalGreenBeanBackupStorageKey = 'coffee-roasting-backstage:local-green-beans:backup';
 
 const canUseStorage = (): boolean => {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -40,11 +46,33 @@ const isLocalGreenBeanRecord = (value: unknown): value is LocalGreenBeanRecord =
     typeof record.processMethod === 'string' &&
     isFiniteNumber(record.defaultRoastInputGrams) &&
     isFiniteNumber(record.purchasedWeightGrams) &&
+    (record.remainingWeightGrams == null || isFiniteNumber(record.remainingWeightGrams)) &&
     isFiniteNumber(record.purchasedTotalPrice) &&
     isFiniteNumber(record.defaultSaleUnitPrice) &&
     typeof record.createdAt === 'string' &&
     typeof record.updatedAt === 'string'
   );
+};
+
+const normalizeRemainingWeightGrams = (
+  purchasedWeightGrams: number,
+  remainingWeightGrams: null | number | undefined,
+): number => {
+  if (!isFiniteNumber(remainingWeightGrams)) {
+    return purchasedWeightGrams;
+  }
+
+  return Math.min(Math.max(Math.round(remainingWeightGrams), 0), purchasedWeightGrams);
+};
+
+const normalizeLocalGreenBeanRecord = (record: LocalGreenBeanRecord): LocalGreenBeanRecord => {
+  return {
+    ...record,
+    remainingWeightGrams: normalizeRemainingWeightGrams(
+      record.purchasedWeightGrams,
+      record.remainingWeightGrams,
+    ),
+  };
 };
 
 const isLocalGreenBeanSnapshot = (value: unknown): value is LocalGreenBeanSnapshot => {
@@ -69,6 +97,7 @@ const loadSnapshot = (): LocalGreenBeanSnapshot | null => {
   const rawValue = window.localStorage.getItem(localGreenBeanStorageKey);
 
   if (!rawValue) {
+    window.localStorage.removeItem(legacyLocalGreenBeanBackupStorageKey);
     return null;
   }
 
@@ -79,7 +108,10 @@ const loadSnapshot = (): LocalGreenBeanSnapshot | null => {
       return null;
     }
 
-    return parsed;
+    return {
+      ...parsed,
+      records: parsed.records.map(normalizeLocalGreenBeanRecord),
+    };
   } catch {
     return null;
   }
@@ -91,6 +123,14 @@ const saveSnapshot = (snapshot: LocalGreenBeanSnapshot): void => {
   }
 
   window.localStorage.setItem(localGreenBeanStorageKey, JSON.stringify(snapshot));
+  window.localStorage.removeItem(legacyLocalGreenBeanBackupStorageKey);
+};
+
+const saveRecords = (records: LocalGreenBeanRecord[]): void => {
+  saveSnapshot({
+    records,
+    version: LOCAL_GREEN_BEAN_VERSION,
+  });
 };
 
 const createLocalBeanId = (): string => {
@@ -114,7 +154,7 @@ const calculateCostPerKg = (record: GreenBeanCreateInput): number => {
 };
 
 const calculateStockKg = (record: GreenBeanCreateInput): number => {
-  return Number((record.purchasedWeightGrams / 1000).toFixed(1));
+  return Number((normalizeRemainingWeightGrams(record.purchasedWeightGrams, record.remainingWeightGrams) / 1000).toFixed(1));
 };
 
 export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bean => ({
@@ -143,6 +183,7 @@ export const localGreenBeanService = {
     }
 
     window.localStorage.removeItem(localGreenBeanStorageKey);
+    window.localStorage.removeItem(legacyLocalGreenBeanBackupStorageKey);
   },
   create(input: GreenBeanCreateInput): LocalGreenBeanRecord {
     const currentRecords = this.listRecords();
@@ -159,6 +200,10 @@ export const localGreenBeanService = {
       originCountry: normalizeText(input.originCountry),
       originRegion: normalizeText(input.originRegion),
       processMethod: input.processMethod.trim(),
+      remainingWeightGrams: normalizeRemainingWeightGrams(
+        input.purchasedWeightGrams,
+        input.remainingWeightGrams,
+      ),
       supplierName: normalizeText(input.supplierName),
       variety: input.variety.trim(),
       createdAt: timestamp,
@@ -167,12 +212,43 @@ export const localGreenBeanService = {
       updatedAt: timestamp,
     };
 
-    saveSnapshot({
-      records: [nextRecord, ...currentRecords],
-      version: LOCAL_GREEN_BEAN_VERSION,
-    });
+    saveRecords([nextRecord, ...currentRecords]);
 
     return nextRecord;
+  },
+  adjustRemainingWeight(beanId: string, deltaGrams: number): LocalGreenBeanRecord {
+    const records = this.listRecords();
+    const index = records.findIndex((record) => record.id === beanId);
+
+    if (index === -1) {
+      throw new AppError('未找到本地生豆记录。', { code: 'DATA' });
+    }
+
+    const currentRecord = records[index]!;
+    const currentRemainingWeight = normalizeRemainingWeightGrams(
+      currentRecord.purchasedWeightGrams,
+      currentRecord.remainingWeightGrams,
+    );
+    const nextRemainingWeight = currentRemainingWeight - deltaGrams;
+
+    if (nextRemainingWeight < 0) {
+      throw new AppError('剩余库存不足，无法记录本次烘焙。', { code: 'DATA' });
+    }
+
+    const updatedRecord = normalizeLocalGreenBeanRecord({
+      ...currentRecord,
+      remainingWeightGrams: Math.min(nextRemainingWeight, currentRecord.purchasedWeightGrams),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const nextRecords = [...records];
+    nextRecords[index] = updatedRecord;
+    saveRecords(nextRecords);
+
+    return updatedRecord;
+  },
+  findRecordById(beanId: string): LocalGreenBeanRecord | null {
+    return this.listRecords().find((record) => record.id === beanId) ?? null;
   },
   listBeans(): Bean[] {
     return this.listRecords().map(mapLocalGreenBeanRecordToBean);
@@ -191,8 +267,52 @@ export const localGreenBeanService = {
       return false;
     }
 
-    saveSnapshot({ records: filtered, version: LOCAL_GREEN_BEAN_VERSION });
+    saveRecords(filtered);
 
     return true;
+  },
+  removeById(beanId: string): boolean {
+    const allRecords = this.listRecords();
+    const filtered = allRecords.filter((record) => record.id !== beanId);
+
+    if (filtered.length === allRecords.length) {
+      return false;
+    }
+
+    saveRecords(filtered);
+
+    return true;
+  },
+  update(beanId: string, input: GreenBeanUpdateInput): LocalGreenBeanRecord {
+    const records = this.listRecords();
+    const index = records.findIndex((record) => record.id === beanId);
+
+    if (index === -1) {
+      throw new AppError('未找到本地生豆记录。', { code: 'DATA' });
+    }
+
+    const currentRecord = records[index]!;
+    const updatedRecord = normalizeLocalGreenBeanRecord({
+      ...currentRecord,
+      ...input,
+      code: input.code.trim(),
+      displayName: input.displayName.trim(),
+      harvestSeason: normalizeText(input.harvestSeason),
+      millName: normalizeText(input.millName),
+      notes: normalizeText(input.notes),
+      originArea: normalizeText(input.originArea),
+      originCountry: normalizeText(input.originCountry),
+      originRegion: normalizeText(input.originRegion),
+      processMethod: input.processMethod.trim(),
+      supplierName: normalizeText(input.supplierName),
+      variety: input.variety.trim(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const nextRecords = [...records];
+    nextRecords[index] = updatedRecord;
+    saveRecords(nextRecords);
+
+    return updatedRecord;
   },
 };

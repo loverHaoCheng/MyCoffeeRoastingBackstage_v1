@@ -11,8 +11,11 @@ export const financeQueryKeys = {
 };
 
 export function useCostCalculations(enabled = true) {
+  const initialCalculations = financeService.getBootstrappedCalculations();
+
   return useQuery({
     enabled,
+    initialData: initialCalculations.length > 0 ? initialCalculations : undefined,
     queryKey: financeQueryKeys.calculations(),
     queryFn: async () => {
       const response = await financeService.listCalculations();

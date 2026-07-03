@@ -1,8 +1,8 @@
 import { ImportOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, App, Button, Input, Space } from 'antd';
+import { Alert, Button, Input } from 'antd';
 import { useState } from 'react';
 
-import { AppError } from '@/shared/errors/AppError';
+import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 
 import { sampleRoastPlanJson } from '../services/roastPlanJson.service';
 
@@ -11,21 +11,15 @@ import styles from './RoastPlanJsonImporter.module.css';
 const { TextArea } = Input;
 
 interface RoastPlanJsonImporterProps {
+  onCancel?: () => void;
   onImport: (jsonText: string) => Promise<void> | void;
 }
 
-export function RoastPlanJsonImporter({ onImport }: RoastPlanJsonImporterProps) {
+export function RoastPlanJsonImporter({ onCancel, onImport }: RoastPlanJsonImporterProps) {
   const [jsonText, setJsonText] = useState('');
-  const { message } = App.useApp();
 
-  const handleImport = async () => {
-    try {
-      await onImport(jsonText);
-      void message.success('已根据 JSON 创建烘焙计划');
-    } catch (error) {
-      const errorMessage = error instanceof AppError ? error.message : '导入失败，请检查 JSON 内容。';
-      void message.error(errorMessage);
-    }
+  const handleImport = () => {
+    void onImport(jsonText);
   };
 
   return (
@@ -59,11 +53,12 @@ export function RoastPlanJsonImporter({ onImport }: RoastPlanJsonImporterProps) 
         spellCheck={false}
         value={jsonText}
       />
-      <Space className={styles.actions} wrap>
+      <DrawerActionBar>
+        {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
         <Button icon={<ImportOutlined />} onClick={handleImport} type="primary">
           创建烘焙计划
         </Button>
-      </Space>
+      </DrawerActionBar>
     </section>
   );
 }

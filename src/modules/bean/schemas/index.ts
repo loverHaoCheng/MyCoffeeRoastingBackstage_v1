@@ -23,6 +23,7 @@ export const greenBeanCreateFormSchema = z
     processMethod: z.string().trim().min(1, '请输入处理法').max(80, '处理法长度不能超过 80 个字符'),
     purchasedTotalPrice: z.number().positive('请输入有效的购买总价'),
     purchasedWeightGrams: z.number().int().positive('请输入有效的购买重量'),
+    remainingWeightGrams: z.number().int().nonnegative('请输入有效的剩余重量'),
     supplierName: optionalTrimmedText,
     defaultSaleUnitPrice: z.number().positive('请输入有效的出售单份售价'),
     defaultSaleUnitWeightGrams: z.number().int().positive('请输入有效的出售单份重量').nullable().optional(),
@@ -42,6 +43,14 @@ export const greenBeanCreateFormSchema = z
         code: z.ZodIssueCode.custom,
         message: '海拔上限不能小于海拔下限',
         path: ['altitudeMetersMax'],
+      });
+    }
+
+    if (value.remainingWeightGrams > value.purchasedWeightGrams) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '剩余重量不能大于购买重量',
+        path: ['remainingWeightGrams'],
       });
     }
   });

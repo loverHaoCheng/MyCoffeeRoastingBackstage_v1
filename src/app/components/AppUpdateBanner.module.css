@@ -1,0 +1,29 @@
+.banner {
+  width: 100%;
+}
+
+.banner :global(.ant-alert) {
+  align-items: flex-start;
+  border: 1px solid rgb(0 122 255 / 14%);
+  border-radius: 22px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 18px 42px rgb(15 23 42 / 12%);
+  backdrop-filter: blur(18px);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  .actions {
+    width: 100%;
+  }
+
+  .actions :global(.ant-btn) {
+    flex: 1 1 0;
+  }
+}

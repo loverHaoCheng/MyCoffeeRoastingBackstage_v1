@@ -24,6 +24,7 @@ export interface BeanCacheStatus {
 
 const BEAN_CACHE_VERSION = 1;
 export const beanCacheStorageKey = 'coffee-roasting-backstage:beans-cache';
+const legacyBeanCacheBackupStorageKey = 'coffee-roasting-backstage:beans-cache:backup';
 export const beanCacheUpdatedEventName = 'coffee-roasting-backstage:beans-cache-updated';
 
 const canUseStorage = (): boolean => {
@@ -88,6 +89,7 @@ const loadSnapshot = (): BeanCacheSnapshot | null => {
   const rawValue = window.localStorage.getItem(beanCacheStorageKey);
 
   if (!rawValue) {
+    window.localStorage.removeItem(legacyBeanCacheBackupStorageKey);
     return null;
   }
 
@@ -110,6 +112,7 @@ const saveSnapshot = (snapshot: BeanCacheSnapshot): void => {
   }
 
   window.localStorage.setItem(beanCacheStorageKey, JSON.stringify(snapshot));
+  window.localStorage.removeItem(legacyBeanCacheBackupStorageKey);
   emitUpdate();
 };
 
@@ -120,6 +123,7 @@ export const beanCacheService = {
     }
 
     window.localStorage.removeItem(beanCacheStorageKey);
+    window.localStorage.removeItem(legacyBeanCacheBackupStorageKey);
     emitUpdate();
   },
   getBeans(): Bean[] | null {

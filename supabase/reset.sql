@@ -11,6 +11,7 @@ drop view if exists public.roast_plan_overview;
 drop view if exists public.green_bean_inventory_overview;
 
 drop table if exists public.cost_calculations cascade;
+drop table if exists public.app_settings cascade;
 drop table if exists public.roast_batches cascade;
 drop table if exists public.roast_records cascade;
 drop table if exists public.roast_profiles cascade;

@@ -58,6 +58,7 @@ describe('router', () => {
     );
 
     expect(await screen.findByRole('heading', { name: '生豆数据库' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '当前数据同步状态' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '当前数据同步状态' })).not.toBeInTheDocument();
+    expect(screen.queryByText('同步状态')).not.toBeInTheDocument();
   });
 });

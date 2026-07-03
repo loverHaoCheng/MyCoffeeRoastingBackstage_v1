@@ -7,6 +7,7 @@ import { greenBeanCreateFormSchema } from '@/modules/bean/schemas';
 import { calculateCostMetrics } from '@/modules/finance/services';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import type { CostTemplate } from '@/modules/settings/types';
+import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 
 import type { GreenBeanFormInput } from '../types/localGreenBean';
 
@@ -18,6 +19,7 @@ interface BeanFormProps {
   autoApplyDefaultCostTemplate?: boolean;
   enableCostTemplateSelection?: boolean;
   initialValues: GreenBeanFormInput;
+  onCancel?: () => void;
   onSubmit: (input: GreenBeanFormInput) => Promise<void> | void;
   resetOnSubmit?: boolean;
   submitLabel: string;
@@ -42,6 +44,7 @@ const fieldPathMap: Record<string, FieldPath<GreenBeanFormInput>> = {
   processMethod: 'processMethod',
   purchasedTotalPrice: 'purchasedTotalPrice',
   purchasedWeightGrams: 'purchasedWeightGrams',
+  remainingWeightGrams: 'remainingWeightGrams',
   supplierName: 'supplierName',
   variety: 'variety',
 };
@@ -102,6 +105,7 @@ export function BeanForm({
   autoApplyDefaultCostTemplate = false,
   enableCostTemplateSelection = false,
   initialValues,
+  onCancel,
   onSubmit,
   resetOnSubmit = false,
   submitLabel,
@@ -112,19 +116,21 @@ export function BeanForm({
     clearErrors,
     control,
     formState: { errors },
-    getValues,
     handleSubmit,
     reset,
     setError,
+    setFocus,
     setValue,
     watch,
   } = useForm<GreenBeanFormInput>({
     defaultValues: initialValues,
   });
   const templateSyncShouldDirtyRef = useRef(false);
+  const lastPurchasedWeightRef = useRef(initialValues.purchasedWeightGrams);
   const currentRoastInputGrams = watch('defaultRoastInputGrams');
-  const currentSaleUnitPrice = watch('defaultSaleUnitPrice');
-  const currentSaleUnitWeightGrams = watch('defaultSaleUnitWeightGrams');
+  const currentPurchasedTotalPrice = watch('purchasedTotalPrice');
+  const currentPurchasedWeightGrams = watch('purchasedWeightGrams');
+  const currentRemainingWeightGrams = watch('remainingWeightGrams');
   const selectedTemplate = useMemo(() => {
     if (!enableCostTemplateSelection) {
       return null;
@@ -140,6 +146,21 @@ export function BeanForm({
     costTemplateSettings.templates,
     enableCostTemplateSelection,
     selectedTemplateId,
+  ]);
+
+  useEffect(() => {
+    reset(initialValues);
+    lastPurchasedWeightRef.current = initialValues.purchasedWeightGrams;
+    templateSyncShouldDirtyRef.current = false;
+    setSelectedTemplateId(
+      enableCostTemplateSelection && autoApplyDefaultCostTemplate ? costTemplateSettings.defaultTemplateId ?? null : null,
+    );
+  }, [
+    autoApplyDefaultCostTemplate,
+    costTemplateSettings.defaultTemplateId,
+    enableCostTemplateSelection,
+    initialValues,
+    reset,
   ]);
 
   useEffect(() => {
@@ -163,20 +184,35 @@ export function BeanForm({
     }
 
     const shouldDirty = templateSyncShouldDirtyRef.current;
-    const formValues = getValues();
 
     setValue('defaultRoastInputGrams', selectedTemplate.roastInputWeightGrams, { shouldDirty });
-
-    const nextDefaults = calculateTemplateDrivenSaleDefaults(selectedTemplate, {
-      defaultRoastInputGrams: selectedTemplate.roastInputWeightGrams,
-      purchasedTotalPrice: formValues.purchasedTotalPrice,
-      purchasedWeightGrams: formValues.purchasedWeightGrams,
-    });
-
-    setValue('defaultSaleUnitPrice', nextDefaults.defaultSaleUnitPrice, { shouldDirty });
-    setValue('defaultSaleUnitWeightGrams', nextDefaults.defaultSaleUnitWeightGrams, { shouldDirty });
     templateSyncShouldDirtyRef.current = true;
-  }, [enableCostTemplateSelection, getValues, selectedTemplate, setValue]);
+  }, [enableCostTemplateSelection, selectedTemplate, setValue]);
+
+  useEffect(() => {
+    const previousPurchasedWeight = lastPurchasedWeightRef.current;
+
+    if (
+      currentPurchasedWeightGrams !== previousPurchasedWeight &&
+      (currentRemainingWeightGrams == null || currentRemainingWeightGrams === previousPurchasedWeight)
+    ) {
+      setValue('remainingWeightGrams', currentPurchasedWeightGrams, { shouldDirty: true });
+    }
+
+    lastPurchasedWeightRef.current = currentPurchasedWeightGrams;
+  }, [currentPurchasedWeightGrams, currentRemainingWeightGrams, setValue]);
+
+  const templatePreview = useMemo(() => {
+    if (!selectedTemplate) {
+      return null;
+    }
+
+    return calculateTemplateDrivenSaleDefaults(selectedTemplate, {
+      defaultRoastInputGrams: currentRoastInputGrams > 0 ? currentRoastInputGrams : selectedTemplate.roastInputWeightGrams,
+      purchasedTotalPrice: currentPurchasedTotalPrice,
+      purchasedWeightGrams: currentPurchasedWeightGrams,
+    });
+  }, [currentPurchasedTotalPrice, currentPurchasedWeightGrams, currentRoastInputGrams, selectedTemplate]);
 
   const submitForm = async (values: GreenBeanFormInput) => {
     clearErrors();
@@ -197,6 +233,16 @@ export function BeanForm({
           type: 'manual',
         });
       });
+
+      const firstFieldPath = result.error.issues
+        .map((issue) => fieldPathMap[issue.path.join('.')])
+        .find((fieldPath): fieldPath is FieldPath<GreenBeanFormInput> => fieldPath != null);
+
+      if (firstFieldPath) {
+        window.requestAnimationFrame(() => {
+          setFocus(firstFieldPath);
+        });
+      }
 
       return;
     }
@@ -220,7 +266,7 @@ export function BeanForm({
           <p>先建立生豆主档，后续烘焙方案与烘焙记录会自动关联到这条数据。</p>
         </header>
         <div className={styles.fieldGrid}>
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="code">
             {renderLabel('生豆编号', true)}
             <Controller
               control={control}
@@ -232,7 +278,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="displayName">
             {renderLabel('显示名称', true)}
             <Controller
               control={control}
@@ -246,7 +292,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="supplierName">
             {renderLabel('生豆商')}
             <Controller
               control={control}
@@ -260,7 +306,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="variety">
             {renderLabel('豆种', true)}
             <Controller
               control={control}
@@ -272,7 +318,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="harvestSeason">
             {renderLabel('产季')}
             <Controller
               control={control}
@@ -286,7 +332,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="processMethod">
             {renderLabel('处理法', true)}
             <Controller
               control={control}
@@ -298,7 +344,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="millName">
             {renderLabel('处理厂')}
             <Controller
               control={control}
@@ -325,7 +371,7 @@ export function BeanForm({
           <p>这部分字段用于后续做批次筛选、成本分析和图片识别自动回填。</p>
         </header>
         <div className={styles.fieldGrid}>
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="originCountry">
             {renderLabel('产地国家')}
             <Controller
               control={control}
@@ -339,7 +385,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="originRegion">
             {renderLabel('产区')}
             <Controller
               control={control}
@@ -353,7 +399,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="originArea">
             {renderLabel('更细分产区')}
             <Controller
               control={control}
@@ -372,7 +418,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="moisturePercent">
             {renderLabel('含水率')}
             <Controller
               control={control}
@@ -396,7 +442,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="altitudeMetersMin">
             {renderLabel('海拔下限')}
             <Controller
               control={control}
@@ -419,7 +465,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="altitudeMetersMax">
             {renderLabel('海拔上限')}
             <Controller
               control={control}
@@ -442,7 +488,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="densityGPerL">
             {renderLabel('密度')}
             <Controller
               control={control}
@@ -474,8 +520,8 @@ export function BeanForm({
         </header>
         <div className={styles.fieldGrid}>
           {enableCostTemplateSelection ? (
-            <label className={`${styles.field} ${styles.fieldWide}`}>
-              {renderLabel('成本模板', autoApplyDefaultCostTemplate)}
+            <label className={`${styles.field} ${styles.fieldWide}`} data-field-path="costTemplate">
+              {renderLabel('成本模板')}
               <Select
                 aria-label="成本模板"
                 allowClear={!autoApplyDefaultCostTemplate}
@@ -492,7 +538,7 @@ export function BeanForm({
               />
               <span className={styles.helpText}>
                 {selectedTemplate
-                  ? '会先带入参考烘焙量、参考零售规格和参考定价，后续仍可手动修改'
+                  ? '会带入默认单次烘焙量，并根据当前采购重量与总价实时给出参考售价'
                   : autoApplyDefaultCostTemplate
                     ? '请先在设置中建立成本模板'
                     : '如需重算默认规格和售价，可在这里选择成本模板'}
@@ -500,10 +546,10 @@ export function BeanForm({
               <div className={`${styles.linkedHint} ${styles.inlineHint}`}>
                 {selectedTemplate ? (
                   <>
-                    已根据模板“{selectedTemplate.name}”生成参考值：
+                    模板“{selectedTemplate.name}”当前参考值：
                     单次烘焙量 {currentRoastInputGrams}g，
-                    最终单份出售重量 {currentSaleUnitWeightGrams ?? '-'}g，
-                    最终定价 ¥{currentSaleUnitPrice.toFixed(2)}。
+                    建议单份出售重量 {selectedTemplate.saleUnitWeightGrams}g，
+                    建议定价 ¥{templatePreview?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}。
                   </>
                 ) : (
                   '选择成本模板后，会先生成最终单份出售重量、最终定价与默认单次烘焙量的参考值。'
@@ -512,7 +558,7 @@ export function BeanForm({
             </label>
           ) : null}
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="purchasedWeightGrams">
             {renderLabel('购买重量', true)}
             <Controller
               control={control}
@@ -531,11 +577,34 @@ export function BeanForm({
               )}
             />
             <span className={`${styles.helpText} ${errors.purchasedWeightGrams ? styles.helpTextError : ''}`}>
-              {getErrorMessage(errors.purchasedWeightGrams?.message, '用于初始化当前可用库存')}
+              {getErrorMessage(errors.purchasedWeightGrams?.message, '总库存，表示本批生豆累计购买重量')}
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="remainingWeightGrams">
+            {renderLabel('剩余重量', true)}
+            <Controller
+              control={control}
+              name="remainingWeightGrams"
+              render={({ field }) => (
+                <InputNumber
+                  aria-label="剩余重量"
+                  min={0}
+                  onChange={(value) => {
+                    field.onChange(value ?? 0);
+                  }}
+                  precision={0}
+                  suffix="g"
+                  value={field.value}
+                />
+              )}
+            />
+            <span className={`${styles.helpText} ${errors.remainingWeightGrams ? styles.helpTextError : ''}`}>
+              {getErrorMessage(errors.remainingWeightGrams?.message, '剩余库存，可根据盘点结果后续手动修正')}
+            </span>
+          </label>
+
+          <label className={styles.field} data-field-path="purchasedTotalPrice">
             {renderLabel('购买总价', true)}
             <Controller
               control={control}
@@ -558,7 +627,7 @@ export function BeanForm({
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="defaultSaleUnitWeightGrams">
             {renderLabel('最终单份出售重量')}
             <Controller
               control={control}
@@ -578,12 +647,12 @@ export function BeanForm({
             />
             <span className={`${styles.helpText} ${errors.defaultSaleUnitWeightGrams ? styles.helpTextError : ''}`}>
               {selectedTemplate
-                ? errors.defaultSaleUnitWeightGrams?.message ?? '可参考模板结果手动填写，会作为熟豆容量同步'
+                ? errors.defaultSaleUnitWeightGrams?.message ?? `请手动填写；可参考模板建议 ${selectedTemplate.saleUnitWeightGrams}g`
                 : formatOptionalHelp(errors.defaultSaleUnitWeightGrams?.message, '可手动填写最终零售容量')}
             </span>
           </label>
 
-          <label className={styles.field}>
+          <label className={styles.field} data-field-path="defaultSaleUnitPrice">
             {renderLabel('最终定价', true)}
             <Controller
               control={control}
@@ -603,7 +672,7 @@ export function BeanForm({
             />
             <span className={`${styles.helpText} ${errors.defaultSaleUnitPrice ? styles.helpTextError : ''}`}>
               {selectedTemplate
-                ? errors.defaultSaleUnitPrice?.message ?? '可参考模板结果手动填写，会作为熟豆价格同步'
+                ? errors.defaultSaleUnitPrice?.message ?? `请手动填写；当前模板建议 ¥${templatePreview?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}`
                 : getErrorMessage(errors.defaultSaleUnitPrice?.message, '可手动填写最终零售价')}
             </span>
           </label>
@@ -616,7 +685,7 @@ export function BeanForm({
           <h3>补充说明</h3>
           <p>这里预留给杯测、批次备注和未来 AI 图像识别回填结果。</p>
         </header>
-        <label className={styles.notesField}>
+        <label className={styles.notesField} data-field-path="notes">
           {renderLabel('备注')}
           <Controller
             control={control}
@@ -635,11 +704,16 @@ export function BeanForm({
         <div className={styles.linkedHint}>烘焙方案、烘焙记录不会在这里手动填写，创建生豆后会在烘焙模块继续关联。</div>
       </section>
 
-      <div className={styles.actions}>
+      <DrawerActionBar>
+        {onCancel ? (
+          <Button block onClick={onCancel}>
+            取消
+          </Button>
+        ) : null}
         <Button block htmlType="submit" icon={<SaveOutlined />} type="primary">
           {submitLabel}
         </Button>
-      </div>
+      </DrawerActionBar>
     </form>
   );
 }

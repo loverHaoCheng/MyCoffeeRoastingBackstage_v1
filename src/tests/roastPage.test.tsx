@@ -1,8 +1,35 @@
 import { fireEvent, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RoastPage } from '@/modules/roast';
+import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
+import { supabaseConnectionSettingsStorageKey } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { useSettingsStore } from '@/modules/settings/store';
+import {
+  createDefaultCostTemplateSettings,
+  createDefaultSupabaseConnectionSettings,
+} from '@/modules/settings/types';
 import { renderWithQuery } from '@/tests/renderWithProviders';
+import { localGreenBeanStorageKey } from '@/modules/bean/services';
+
+vi.mock('@/modules/bean/hooks', () => ({
+  useBeans: () => ({
+    data: [
+      {
+        id: 'local-test-bean-1',
+        name: '测试生豆',
+        origin: '埃塞俄比亚 · 古吉',
+        process: '水洗',
+        grade: '74110',
+        stockKg: 30,
+        costPerKg: 70,
+        createdAt: '2026-07-03T00:00:00.000Z',
+        updatedAt: '2026-07-03T00:00:00.000Z',
+      },
+    ],
+    isLoading: false,
+  }),
+}));
 
 const getStepTimeValue = (index: number) => {
   const input = document.querySelector<HTMLInputElement>(`input[name="steps.${String(index)}.time"]`);
@@ -13,6 +40,92 @@ const getStepTimeValue = (index: number) => {
 };
 
 describe('RoastPage', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    useSettingsStore.setState({
+      costTemplateSettings: createDefaultCostTemplateSettings(),
+      supabaseConnections: createDefaultSupabaseConnectionSettings(),
+    });
+
+    window.localStorage.setItem(
+      supabaseConnectionSettingsStorageKey,
+      JSON.stringify({
+        greenBean: {
+          projectUrl: 'https://green-demo.supabase.co',
+          publishableKey: 'sb_publishable_green_demo',
+        },
+        roastedBean: {
+          projectUrl: '',
+          publishableKey: '',
+        },
+        updatedAt: '2026-07-03T00:00:00.000Z',
+      }),
+    );
+    window.localStorage.setItem(
+      costTemplateSettingsStorageKey,
+      JSON.stringify({
+        defaultTemplateId: 'template-1',
+        templates: [
+          {
+            id: 'template-1',
+            name: '默认模板',
+            notes: '',
+            roastInputWeightGrams: 200,
+            saleUnitWeightGrams: 100,
+            dehydrationRate: 14,
+            packagingCost: 0,
+            energyCost: 0,
+            laborCost: 0,
+            otherCost: 0,
+            targetProfitRate: 30,
+            createdAt: '2026-07-03T00:00:00.000Z',
+            updatedAt: '2026-07-03T00:00:00.000Z',
+          },
+        ],
+        updatedAt: '2026-07-03T00:00:00.000Z',
+      }),
+    );
+    window.localStorage.setItem(
+      localGreenBeanStorageKey,
+      JSON.stringify({
+        records: [
+          {
+            id: 'local-test-bean-1',
+            source: 'local',
+            code: 'GB-TEST-001',
+            displayName: '测试生豆',
+            variety: '74110',
+            processMethod: '水洗',
+            originCountry: '埃塞俄比亚',
+            originRegion: '古吉',
+            originArea: null,
+            harvestSeason: '2026',
+            moistureRatio: null,
+            altitudeMeters: null,
+            density: null,
+            millName: null,
+            notes: null,
+            supplierName: '测试供应商',
+            purchasedWeightGrams: 30000,
+            purchasedTotalPrice: 2100,
+            defaultRoastInputGrams: 200,
+            defaultSaleUnitPrice: 88,
+            defaultSaleUnitWeightGrams: 100,
+            finalSaleUnitPrice: 88,
+            finalSaleUnitWeightGrams: 100,
+            costTemplateId: 'template-1',
+            createdAt: '2026-07-03T00:00:00.000Z',
+            updatedAt: '2026-07-03T00:00:00.000Z',
+          },
+        ],
+        version: 1,
+      }),
+    );
+
+    useSettingsStore.getState().loadSupabaseConnections();
+    useSettingsStore.getState().loadCostTemplates();
+  });
+
   it('renders roast plan cards and opens detail drawer for editing', async () => {
     renderWithQuery(<RoastPage />);
 
@@ -23,7 +136,6 @@ describe('RoastPage', () => {
     expect(screen.queryByRole('img', { name: 'check-circle' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '删除计划' })).not.toBeInTheDocument();
     expect(screen.queryByRole('table', { name: '烘焙计划节点' })).not.toBeInTheDocument();
-    expect(screen.queryByText('草稿')).not.toBeInTheDocument();
     expect(screen.queryByText('8 个节点')).not.toBeInTheDocument();
     expect(screen.queryByText('计划数量')).not.toBeInTheDocument();
     expect(screen.queryByText('PLANS')).not.toBeInTheDocument();
@@ -56,13 +168,9 @@ describe('RoastPage', () => {
 
     expect(getStepTimeValue(0)).toBe('0:00');
 
-    fireEvent.change(screen.getByLabelText('计划名称'), {
+    fireEvent.change(screen.getByPlaceholderText('例如 肯尼亚 柏拉 AA Plus 水洗'), {
       target: { value: '更新后的肯尼亚测试计划' },
     });
-    fireEvent.click(saveButton);
-
-    expect(await screen.findByDisplayValue('更新后的肯尼亚测试计划')).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole('button', { name: '添加节点' }));
 
     expect(screen.getByText('节点 9')).toBeInTheDocument();
@@ -70,6 +178,10 @@ describe('RoastPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '删除节点 9' }));
 
     expect(screen.queryByText('节点 9')).not.toBeInTheDocument();
+
+    fireEvent.click(saveButton);
+
+    expect(await screen.findByRole('button', { name: /查看 更新后的肯尼亚测试计划/ })).toBeInTheDocument();
   });
 
   it('opens a read-only detail drawer for viewing', () => {

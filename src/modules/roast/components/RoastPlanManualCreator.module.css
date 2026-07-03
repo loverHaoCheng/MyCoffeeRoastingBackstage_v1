@@ -4,15 +4,23 @@
 }
 
 .fieldGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  justify-content: space-between;
 }
 
 .field {
   display: grid;
+  flex: 1 1 40%;
+  max-width: 40%;
   min-width: 0;
   gap: 7px;
+}
+
+.field:only-child {
+  flex-basis: 100%;
+  max-width: 100%;
 }
 
 .labelText {
@@ -32,7 +40,13 @@
 
 .field :global(.ant-input),
 .field :global(.ant-input-number),
-.field :global(.ant-select) {
+.field :global(.ant-input-number-affix-wrapper),
+.field :global(.ant-select),
+.field :global(.ant-input-affix-wrapper) {
+  width: 100%;
+}
+
+.field :global(.ant-input-number-affix-wrapper .ant-input-number) {
   width: 100%;
 }
 
@@ -106,10 +120,22 @@
 .actions :global(.ant-btn) {
   min-height: 44px;
   border-radius: 8px;
+  border-color: rgb(229 229 231 / 92%);
+  background: rgb(255 255 255 / 92%);
+  color: #1d1d1f;
 }
 
 @media (max-width: 767px) {
-  .fieldGrid,
+  .fieldGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .field,
+  .stepFields {
+    max-width: 100%;
+  }
+
   .stepFields {
     grid-template-columns: 1fr;
   }

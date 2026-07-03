@@ -1,9 +1,8 @@
 import { DeleteOutlined } from '@ant-design/icons';
-import { App, Button, Popconfirm } from 'antd';
+import { Button, Popconfirm } from 'antd';
 import { useMemo } from 'react';
 
 import { roastPlanToJsonInput } from '@/modules/roast/services/roastPlanJson.service';
-import { AppError } from '@/shared/errors/AppError';
 import type { RoastPlan } from '@/types/domain';
 
 import type { RoastPlanJsonInput } from '../types';
@@ -13,23 +12,18 @@ import styles from './RoastPlanDetail.module.css';
 
 interface RoastPlanDetailProps {
   mode: 'view' | 'edit';
+  onClose: () => void;
   onDelete: (planId: RoastPlan['id']) => Promise<void> | void;
   onUpdate: (planId: RoastPlan['id'], input: RoastPlanJsonInput) => Promise<void> | void;
   plan: RoastPlan;
 }
 
-export function RoastPlanDetail({ mode, onDelete, onUpdate, plan }: RoastPlanDetailProps) {
-  const { message } = App.useApp();
+export function RoastPlanDetail({ mode, onClose, onDelete, onUpdate, plan }: RoastPlanDetailProps) {
   const initialValues = useMemo(() => roastPlanToJsonInput(plan), [plan]);
 
-  const handleSubmit = async (input: RoastPlanJsonInput) => {
-    try {
-      await onUpdate(plan.id, input);
-      void message.success('烘焙计划已保存');
-    } catch (error) {
-      const errorMessage = error instanceof AppError ? error.message : '保存失败，请检查表单内容。';
-      void message.error(errorMessage);
-    }
+  const handleSubmit = (input: RoastPlanJsonInput) => {
+    onClose();
+    void onUpdate(plan.id, input);
   };
 
   if (mode === 'view') {
@@ -88,7 +82,6 @@ export function RoastPlanDetail({ mode, onDelete, onUpdate, plan }: RoastPlanDet
 
   return (
     <section className={styles.panel}>
-      <RoastPlanForm initialValues={initialValues} onSubmit={handleSubmit} submitLabel="保存计划" />
       <div className={styles.dangerZone}>
         <Popconfirm
           cancelText="取消"
@@ -104,6 +97,12 @@ export function RoastPlanDetail({ mode, onDelete, onUpdate, plan }: RoastPlanDet
           </Button>
         </Popconfirm>
       </div>
+      <RoastPlanForm
+        initialValues={initialValues}
+        onCancel={onClose}
+        onSubmit={handleSubmit}
+        submitLabel="保存计划"
+      />
     </section>
   );
 }

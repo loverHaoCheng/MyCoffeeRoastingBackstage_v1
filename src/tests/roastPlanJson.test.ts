@@ -8,7 +8,8 @@ describe('createRoastPlanFromJson', () => {
     const plan = createRoastPlanFromJson(sampleRoastPlanJson, 12);
 
     expect(plan.id).toBe(12);
-    expect(plan.name).toContain('肯尼亚');
+    expect(plan.name).toBe('新建烘焙计划');
+    expect(plan.beanId).toBe('sample-bean-id');
     expect(plan.batchWeightGrams).toBe(200);
     expect(plan.steps[0]?.eventName).toBe('入豆');
   });
@@ -17,4 +18,3 @@ describe('createRoastPlanFromJson', () => {
     expect(() => createRoastPlanFromJson('{ bad json', 13)).toThrow(AppError);
   });
 });
-

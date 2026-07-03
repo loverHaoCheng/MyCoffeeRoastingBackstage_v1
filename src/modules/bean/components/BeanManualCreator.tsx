@@ -1,5 +1,6 @@
 import { App } from 'antd';
 
+import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { AppError } from '@/shared/errors/AppError';
 
 import type { GreenBeanCreateInput } from '../types/localGreenBean';
@@ -7,6 +8,7 @@ import type { GreenBeanCreateInput } from '../types/localGreenBean';
 import { BeanForm } from './BeanForm';
 
 interface BeanManualCreatorProps {
+  onCancel?: () => void;
   onCreate: (input: GreenBeanCreateInput) => Promise<void> | void;
 }
 
@@ -14,7 +16,7 @@ const defaultBeanFormValues: GreenBeanCreateInput = {
   code: '',
   defaultRoastInputGrams: 200,
   defaultSaleUnitPrice: 0,
-  defaultSaleUnitWeightGrams: 100,
+  defaultSaleUnitWeightGrams: null,
   displayName: '',
   harvestSeason: '',
   millName: '',
@@ -25,6 +27,7 @@ const defaultBeanFormValues: GreenBeanCreateInput = {
   processMethod: '',
   purchasedTotalPrice: 0,
   purchasedWeightGrams: 1000,
+  remainingWeightGrams: 1000,
   supplierName: '',
   variety: '',
   altitudeMetersMax: null,
@@ -33,10 +36,16 @@ const defaultBeanFormValues: GreenBeanCreateInput = {
   moisturePercent: null,
 };
 
-export function BeanManualCreator({ onCreate }: BeanManualCreatorProps) {
+export function BeanManualCreator({ onCancel, onCreate }: BeanManualCreatorProps) {
   const { message } = App.useApp();
+  const { costTemplateSettings } = useCostTemplateSettings();
 
   const submitForm = async (values: GreenBeanCreateInput) => {
+    if (costTemplateSettings.templates.length === 0) {
+      void message.warning('请先在设置页创建成本模板，再新增生豆。');
+      return;
+    }
+
     try {
       await onCreate(values);
     } catch (error) {
@@ -50,6 +59,7 @@ export function BeanManualCreator({ onCreate }: BeanManualCreatorProps) {
       autoApplyDefaultCostTemplate
       enableCostTemplateSelection
       initialValues={defaultBeanFormValues}
+      onCancel={onCancel}
       onSubmit={submitForm}
       resetOnSubmit
       submitLabel="创建生豆"

@@ -31,6 +31,7 @@ interface GreenBeanTableUpdateInput {
 interface EditablePurchaseBatchInput {
   purchased_total_price: number;
   purchased_weight_grams: number;
+  remaining_weight_grams: number;
   supplier_name?: null | string;
 }
 
@@ -40,6 +41,7 @@ interface EditableSaleSpecInput {
 }
 
 export interface BeanRepository {
+  adjustRemainingWeight(beanId: string | number, deltaGrams: number): Promise<ApiResponse<Bean>>;
   createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>>;
   getEditableBean(beanId: string | number): Promise<ApiResponse<GreenBeanEditableDetail>>;
   getBeanById(beanId: string | number): Promise<ApiResponse<Bean | null>>;
@@ -88,6 +90,7 @@ interface SupabaseGreenBeanRecord {
   altitude_meters_max: null | number;
   altitude_meters_min: null | number;
   code: string;
+  created_at: string;
   default_roast_input_grams: number;
   density_g_per_l: null | number;
   display_name: string;
@@ -100,21 +103,49 @@ interface SupabaseGreenBeanRecord {
   origin_country: null | string;
   origin_region: null | string;
   process_method: string;
+  updated_at: string;
   variety: string;
 }
 
 interface SupabasePurchaseBatchRecord {
+  created_at?: string;
+  green_bean_id?: string;
   id: string;
   purchased_total_price: number;
   purchased_weight_grams: number;
+  received_at?: string;
   remaining_weight_grams: number;
   supplier_name: null | string;
+  updated_at?: string;
 }
 
 interface SupabaseSaleSpecRecord {
+  created_at?: string;
+  green_bean_id?: string;
   id: string;
+  is_default?: boolean;
   unit_price: number;
   unit_weight_grams: number;
+  updated_at?: string;
+}
+
+interface SupabaseRoastBatchOverviewRecord {
+  green_bean_id: string;
+  id: string;
+  updated_at?: string;
+}
+
+interface SupabaseAppSettingRecord {
+  id: string;
+  key: string;
+  updated_at?: null | string;
+  value: unknown;
+}
+
+interface BeanSaleDefaultsSettingValue {
+  defaultSaleUnitPrice: number;
+  defaultSaleUnitWeightGrams: null | number;
+  updatedAt?: null | string;
 }
 
 interface SupabaseErrorLike {
@@ -152,6 +183,10 @@ const normalizeText = (value: null | string | undefined): null | string => {
 
 const toNullableNumber = (value: null | number | undefined): null | number => {
   return value == null ? null : value;
+};
+
+const normalizeRemainingWeightGrams = (input: Pick<GreenBeanUpdateInput, 'purchasedWeightGrams' | 'remainingWeightGrams'>): number => {
+  return Math.min(Math.max(input.remainingWeightGrams, 0), input.purchasedWeightGrams);
 };
 
 const mapBeanFormInputToTableInput = (input: GreenBeanUpdateInput): GreenBeanTableUpdateInput => ({
@@ -212,6 +247,10 @@ const mergeBeans = (beans: Bean[]): Bean[] => {
   });
 };
 
+const getBootstrappedBeans = (): Bean[] => {
+  return mergeBeans(beanCacheService.getBeans() ?? []);
+};
+
 export const mapSupabaseBeanRecordToBean = (record: SupabaseBeanRecord): Bean => ({
   id: record.id,
   name: record.name,
@@ -253,13 +292,15 @@ const mapSupabaseEditableBeanToFormInput = (
   bean: SupabaseGreenBeanRecord,
   latestPurchaseBatch: null | SupabasePurchaseBatchRecord,
   defaultSaleSpec: null | SupabaseSaleSpecRecord,
+  savedSaleDefaults: null | BeanSaleDefaultsSettingValue,
 ): GreenBeanEditableDetail => ({
   beanId: bean.id,
   code: bean.code,
   defaultRoastInputGrams: bean.default_roast_input_grams,
   defaultSaleSpecId: defaultSaleSpec?.id ?? null,
-  defaultSaleUnitPrice: defaultSaleSpec?.unit_price ?? 0,
-  defaultSaleUnitWeightGrams: defaultSaleSpec?.unit_weight_grams ?? null,
+  defaultSaleUnitPrice: savedSaleDefaults?.defaultSaleUnitPrice ?? defaultSaleSpec?.unit_price ?? 0,
+  defaultSaleUnitWeightGrams:
+    savedSaleDefaults?.defaultSaleUnitWeightGrams ?? defaultSaleSpec?.unit_weight_grams ?? null,
   displayName: bean.display_name,
   harvestSeason: bean.harvest_season,
   millName: bean.mill_name,
@@ -271,7 +312,8 @@ const mapSupabaseEditableBeanToFormInput = (
   purchaseBatchId: latestPurchaseBatch?.id ?? null,
   purchasedTotalPrice: latestPurchaseBatch?.purchased_total_price ?? 0,
   purchasedWeightGrams: latestPurchaseBatch?.purchased_weight_grams ?? 0,
-  remainingWeightGrams: latestPurchaseBatch?.remaining_weight_grams ?? null,
+  remainingWeightGrams:
+    latestPurchaseBatch?.remaining_weight_grams ?? latestPurchaseBatch?.purchased_weight_grams ?? 0,
   supplierName: latestPurchaseBatch?.supplier_name ?? null,
   variety: bean.variety,
   altitudeMetersMax: bean.altitude_meters_max,
@@ -280,15 +322,148 @@ const mapSupabaseEditableBeanToFormInput = (
   moisturePercent: bean.moisture_percent,
 });
 
+const compareIsoDateDesc = (left?: null | string, right?: null | string): number => {
+  const leftTime = left ? new Date(left).getTime() : 0;
+  const rightTime = right ? new Date(right).getTime() : 0;
+
+  return rightTime - leftTime;
+};
+
+const getLatestPurchaseBatchRecord = (
+  purchaseBatches: SupabasePurchaseBatchRecord[],
+): null | SupabasePurchaseBatchRecord => {
+  return [...purchaseBatches].sort((left, right) => {
+    const receivedAtComparison = compareIsoDateDesc(left.received_at, right.received_at);
+
+    if (receivedAtComparison !== 0) {
+      return receivedAtComparison;
+    }
+
+    return compareIsoDateDesc(left.created_at, right.created_at);
+  })[0] ?? null;
+};
+
+const getDefaultSaleSpecRecord = (
+  saleSpecs: SupabaseSaleSpecRecord[],
+): null | SupabaseSaleSpecRecord => {
+  return (
+    [...saleSpecs]
+      .filter((saleSpec) => saleSpec.is_default !== false)
+      .sort((left, right) => {
+        const updatedAtComparison = compareIsoDateDesc(left.updated_at, right.updated_at);
+
+        if (updatedAtComparison !== 0) {
+          return updatedAtComparison;
+        }
+
+        return compareIsoDateDesc(left.created_at, right.created_at);
+      })[0] ?? null
+  );
+};
+
+const getBeanSaleDefaultsSettingKey = (beanId: string): string => {
+  return `green_bean_sale_defaults:${beanId}`;
+};
+
+const parseBeanSaleDefaultsSettingValue = (value: unknown): null | BeanSaleDefaultsSettingValue => {
+  if (typeof value !== 'object' || value == null) {
+    return null;
+  }
+
+  const record = value as Partial<BeanSaleDefaultsSettingValue>;
+
+  if (typeof record.defaultSaleUnitPrice !== 'number' || !Number.isFinite(record.defaultSaleUnitPrice)) {
+    return null;
+  }
+
+  if (
+    record.defaultSaleUnitWeightGrams != null &&
+    (typeof record.defaultSaleUnitWeightGrams !== 'number' || !Number.isFinite(record.defaultSaleUnitWeightGrams))
+  ) {
+    return null;
+  }
+
+  return {
+    defaultSaleUnitPrice: record.defaultSaleUnitPrice,
+    defaultSaleUnitWeightGrams: record.defaultSaleUnitWeightGrams ?? null,
+    updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : null,
+  };
+};
+
+const buildInventoryOverviewRecordFromTables = (
+  bean: SupabaseGreenBeanRecord,
+  purchaseBatches: SupabasePurchaseBatchRecord[],
+  saleSpecs: SupabaseSaleSpecRecord[],
+  roastBatchCount: number,
+  savedSaleDefaults: null | BeanSaleDefaultsSettingValue,
+): SupabaseGreenBeanInventoryRecord => {
+  const latestPurchaseBatch = getLatestPurchaseBatchRecord(purchaseBatches);
+  const defaultSaleSpec = getDefaultSaleSpecRecord(saleSpecs);
+  const totalPurchasedWeightGrams = latestPurchaseBatch?.purchased_weight_grams ?? 0;
+  const totalRemainingWeightGrams = latestPurchaseBatch?.remaining_weight_grams ?? 0;
+  const totalPurchasedPrice = latestPurchaseBatch?.purchased_total_price ?? 0;
+
+  return {
+    id: bean.id,
+    code: bean.code,
+    created_at: bean.created_at,
+    default_roast_input_grams: bean.default_roast_input_grams,
+    default_sale_unit_price: savedSaleDefaults?.defaultSaleUnitPrice ?? defaultSaleSpec?.unit_price ?? null,
+    default_sale_unit_weight_grams:
+      savedSaleDefaults?.defaultSaleUnitWeightGrams ?? defaultSaleSpec?.unit_weight_grams ?? null,
+    display_name: bean.display_name,
+    harvest_season: bean.harvest_season ?? '',
+    latest_supplier_name: latestPurchaseBatch?.supplier_name ?? null,
+    origin_area: bean.origin_area,
+    origin_country: bean.origin_country ?? '',
+    origin_region: bean.origin_region ?? '',
+    process_method: bean.process_method,
+    roast_record_count: roastBatchCount,
+    total_purchased_weight_grams: totalPurchasedWeightGrams,
+    total_remaining_weight_grams: totalRemainingWeightGrams,
+    updated_at: [
+      bean.updated_at,
+      latestPurchaseBatch?.updated_at,
+      defaultSaleSpec?.updated_at,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .sort((left, right) => compareIsoDateDesc(left, right))[0] ?? bean.updated_at,
+    variety: bean.variety,
+    weighted_cost_per_kg:
+      totalPurchasedWeightGrams > 0
+        ? Number(((totalPurchasedPrice / totalPurchasedWeightGrams) * 1000).toFixed(2))
+        : 0,
+  };
+};
+
 export class MockBeanRepository implements BeanRepository {
   private readonly beans: Bean[];
 
-  constructor(beans: Bean[] = []) {
-    this.beans = beans;
+  constructor(beans: Bean[] = beanCacheService.getBeans() ?? []) {
+    this.beans = [...beans];
   }
 
   getBeanById(beanId: string | number): Promise<ApiResponse<Bean | null>> {
     return Promise.resolve(ok(this.beans.find((bean) => String(bean.id) === String(beanId)) ?? null));
+  }
+
+  async adjustRemainingWeight(beanId: string | number, deltaGrams: number): Promise<ApiResponse<Bean>> {
+    const bean = this.beans.find((item) => String(item.id) === String(beanId));
+
+    if (!bean) {
+      throw new AppError('未找到生豆记录。', { code: 'DATA' });
+    }
+
+    const nextStockKg = bean.stockKg - deltaGrams / 1000;
+
+    if (nextStockKg < 0) {
+      throw new AppError('剩余库存不足，无法记录本次烘焙。', { code: 'DATA' });
+    }
+
+    bean.stockKg = Number(nextStockKg.toFixed(1));
+    bean.updatedAt = new Date().toISOString();
+
+    return ok(bean);
   }
 
   getEditableBean(beanId: string | number): Promise<ApiResponse<GreenBeanEditableDetail>> {
@@ -315,6 +490,7 @@ export class MockBeanRepository implements BeanRepository {
         processMethod: bean.process,
         purchasedTotalPrice: Math.round(bean.costPerKg * bean.stockKg),
         purchasedWeightGrams: Math.round(bean.stockKg * 1000),
+        remainingWeightGrams: Math.round(bean.stockKg * 1000),
         supplierName: bean.supplierName ?? null,
         variety: bean.variety ?? bean.grade,
         altitudeMetersMax: null,
@@ -349,8 +525,34 @@ export class MockBeanRepository implements BeanRepository {
   async deleteBean(_beanId: string | number): Promise<void> {
     // Mock 模式不支持删除
   }
-  async createBean(_input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
-    throw new AppError('Mock 仓库不支持创建。', { code: 'CONFIG' });
+  async createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
+    const now = new Date().toISOString();
+    const bean: Bean = {
+      id: `mock-bean-${Date.now()}`,
+      name: input.displayName.trim(),
+      origin: [input.originCountry, input.originRegion, input.originArea].filter(Boolean).join(' · '),
+      process: input.processMethod.trim(),
+      grade: input.variety.trim(),
+      stockKg: Number((((input.remainingWeightGrams ?? input.purchasedWeightGrams) ?? 0) / 1000).toFixed(1)),
+      costPerKg:
+        input.purchasedWeightGrams > 0
+          ? Number(((input.purchasedTotalPrice / input.purchasedWeightGrams) * 1000).toFixed(2))
+          : 0,
+      supplierName: input.supplierName ?? null,
+      createdAt: now,
+      updatedAt: now,
+      variety: input.variety.trim(),
+      harvestSeason: input.harvestSeason?.trim() || undefined,
+      code: input.code.trim(),
+      defaultRoastInputGrams: input.defaultRoastInputGrams,
+      defaultSaleUnitPrice: input.defaultSaleUnitPrice,
+      defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
+    };
+
+    this.beans.unshift(bean);
+    beanCacheService.save(this.beans, 'mock');
+
+    return ok(bean);
   }
 }
 
@@ -366,6 +568,11 @@ export function createSupabaseBeanRepository(
     },
     async getEditableBean() {
       throw new AppError('此仓库不支持编辑详情，请使用 SupabaseRestClient 仓库。', {
+        code: 'CONFIG',
+      });
+    },
+    async adjustRemainingWeight() {
+      throw new AppError('此仓库不支持库存调整，请使用 SupabaseRestClient 仓库。', {
         code: 'CONFIG',
       });
     },
@@ -409,16 +616,135 @@ export function createSupabaseGreenBeanInventoryRepository(
   const tableName = options.tableName ?? 'green_beans';
   const viewName = options.viewName ?? 'green_bean_inventory_overview';
 
-  const getLatestInventoryBean = async (beanId: string | number): Promise<Bean> => {
-    const viewRows = await client.list<SupabaseGreenBeanInventoryRecord>(viewName, {
-      match: { id: beanId },
+  const loadBeanSaleDefaultsRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+      limit: 1,
+      match: { key: getBeanSaleDefaultsSettingKey(String(beanId)) },
+      orderBy: {
+        ascending: false,
+        column: 'updated_at',
+      },
     });
 
-    if (viewRows.length === 0) {
+    return rows[0] ?? null;
+  };
+
+  const loadBeanSaleDefaultsMap = async (): Promise<Map<string, BeanSaleDefaultsSettingValue>> => {
+    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+      orderBy: {
+        ascending: false,
+        column: 'updated_at',
+      },
+    });
+    const result = new Map<string, BeanSaleDefaultsSettingValue>();
+
+    rows.forEach((row) => {
+      if (!row.key.startsWith('green_bean_sale_defaults:')) {
+        return;
+      }
+
+      const beanId = row.key.replace('green_bean_sale_defaults:', '');
+      const parsedValue = parseBeanSaleDefaultsSettingValue(row.value);
+
+      if (!beanId || !parsedValue || result.has(beanId)) {
+        return;
+      }
+
+      result.set(beanId, parsedValue);
+    });
+
+    return result;
+  };
+
+  const saveBeanSaleDefaults = async (
+    beanId: string | number,
+    input: Pick<GreenBeanUpdateInput, 'defaultSaleUnitPrice' | 'defaultSaleUnitWeightGrams'>,
+  ): Promise<void> => {
+    const currentRecord = await loadBeanSaleDefaultsRecord(beanId);
+    const payload = {
+      key: getBeanSaleDefaultsSettingKey(String(beanId)),
+      value: {
+        defaultSaleUnitPrice: input.defaultSaleUnitPrice,
+        defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    if (!currentRecord) {
+      await client.insert('app_settings', payload);
+      return;
+    }
+
+    await client.update('app_settings', payload, {
+      match: { id: currentRecord.id },
+      select: '*',
+    });
+  };
+
+  const loadInventoryOverviewRecordsFromTables = async (): Promise<SupabaseGreenBeanInventoryRecord[]> => {
+    const [beans, purchaseBatches, saleSpecs, roastBatches, savedSaleDefaultsMap] = await Promise.all([
+      client.list<SupabaseGreenBeanRecord>(tableName, {
+        orderBy: {
+          ascending: false,
+          column: 'updated_at',
+        },
+      }),
+      client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches'),
+      client.list<SupabaseSaleSpecRecord>('bean_sale_specs'),
+      client.list<SupabaseRoastBatchOverviewRecord>('roast_batches'),
+      loadBeanSaleDefaultsMap(),
+    ]);
+
+    const purchaseBatchMap = new Map<string, SupabasePurchaseBatchRecord[]>();
+    const saleSpecMap = new Map<string, SupabaseSaleSpecRecord[]>();
+    const roastBatchMap = new Map<string, SupabaseRoastBatchOverviewRecord[]>();
+
+    purchaseBatches.forEach((batch) => {
+      if (!batch.green_bean_id) {
+        return;
+      }
+
+      const current = purchaseBatchMap.get(batch.green_bean_id) ?? [];
+      current.push(batch);
+      purchaseBatchMap.set(batch.green_bean_id, current);
+    });
+
+    saleSpecs.forEach((saleSpec) => {
+      if (!saleSpec.green_bean_id) {
+        return;
+      }
+
+      const current = saleSpecMap.get(saleSpec.green_bean_id) ?? [];
+      current.push(saleSpec);
+      saleSpecMap.set(saleSpec.green_bean_id, current);
+    });
+
+    roastBatches.forEach((roastBatch) => {
+      const current = roastBatchMap.get(roastBatch.green_bean_id) ?? [];
+      current.push(roastBatch);
+      roastBatchMap.set(roastBatch.green_bean_id, current);
+    });
+
+    return beans.map((bean) =>
+      buildInventoryOverviewRecordFromTables(
+        bean,
+        purchaseBatchMap.get(bean.id) ?? [],
+        saleSpecMap.get(bean.id) ?? [],
+        (roastBatchMap.get(bean.id) ?? []).length,
+        savedSaleDefaultsMap.get(bean.id) ?? null,
+      ),
+    );
+  };
+
+  const getLatestInventoryBean = async (beanId: string | number): Promise<Bean> => {
+    const overviewRecords = await loadInventoryOverviewRecordsFromTables();
+    const record = overviewRecords.find((item) => item.id === String(beanId));
+
+    if (!record) {
       throw new AppError('未找到最新的生豆库存数据。', { code: 'DATA' });
     }
 
-    return mapSupabaseGreenBeanInventoryRecordToBean(viewRows[0]!);
+    return mapSupabaseGreenBeanInventoryRecordToBean(record);
   };
 
   const getEditableBeanDetail = async (beanId: string | number): Promise<GreenBeanEditableDetail> => {
@@ -432,27 +758,19 @@ export function createSupabaseGreenBeanInventoryRepository(
     }
 
     const purchaseRows = await client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches', {
-      limit: 1,
       match: { green_bean_id: beanId },
-      orderBy: {
-        ascending: false,
-        column: 'received_at',
-      },
     });
 
     const saleSpecRows = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
-      limit: 1,
       match: { green_bean_id: beanId, is_default: true },
-      orderBy: {
-        ascending: false,
-        column: 'updated_at',
-      },
     });
+    const savedSaleDefaults = parseBeanSaleDefaultsSettingValue((await loadBeanSaleDefaultsRecord(beanId))?.value);
 
     return mapSupabaseEditableBeanToFormInput(
       beanRows[0]!,
-      purchaseRows[0] ?? null,
-      saleSpecRows[0] ?? null,
+      getLatestPurchaseBatchRecord(purchaseRows),
+      getDefaultSaleSpecRecord(saleSpecRows),
+      savedSaleDefaults,
     );
   };
 
@@ -463,19 +781,15 @@ export function createSupabaseGreenBeanInventoryRepository(
     const payload: EditablePurchaseBatchInput = {
       purchased_total_price: input.purchasedTotalPrice,
       purchased_weight_grams: input.purchasedWeightGrams,
+      remaining_weight_grams: normalizeRemainingWeightGrams(input),
       supplier_name: normalizeText(input.supplierName),
     };
 
     const latestBatchRows = await client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches', {
-      limit: 1,
       match: { green_bean_id: beanId },
-      orderBy: {
-        ascending: false,
-        column: 'received_at',
-      },
     });
 
-    const latestBatch = latestBatchRows[0];
+    const latestBatch = getLatestPurchaseBatchRecord(latestBatchRows);
 
     if (!latestBatch) {
       await client.insert('green_bean_purchase_batches', {
@@ -483,17 +797,15 @@ export function createSupabaseGreenBeanInventoryRepository(
         purchased_total_price: payload.purchased_total_price,
         purchased_weight_grams: payload.purchased_weight_grams,
         received_at: new Date().toISOString().slice(0, 10),
-        remaining_weight_grams: payload.purchased_weight_grams,
+        remaining_weight_grams: payload.remaining_weight_grams,
         supplier_name: payload.supplier_name ?? null,
       });
       return;
     }
 
-    const nextRemainingWeight = Math.min(latestBatch.remaining_weight_grams, payload.purchased_weight_grams);
-
     await client.update('green_bean_purchase_batches', {
       ...payload,
-      remaining_weight_grams: Math.max(nextRemainingWeight, 0),
+      remaining_weight_grams: payload.remaining_weight_grams,
     }, {
       match: { id: latestBatch.id },
       select: '*',
@@ -506,15 +818,15 @@ export function createSupabaseGreenBeanInventoryRepository(
   ): Promise<void> => {
     if (input.defaultSaleUnitWeightGrams == null) {
       const existingSaleSpecs = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
-        limit: 1,
         match: { green_bean_id: beanId, is_default: true },
       });
+      const defaultSaleSpec = getDefaultSaleSpecRecord(existingSaleSpecs);
 
-      if (existingSaleSpecs.length > 0) {
+      if (defaultSaleSpec) {
         await client.update('bean_sale_specs', {
           unit_price: input.defaultSaleUnitPrice,
         }, {
-          match: { id: existingSaleSpecs[0]!.id },
+          match: { id: defaultSaleSpec.id },
           select: '*',
         });
         return;
@@ -524,11 +836,11 @@ export function createSupabaseGreenBeanInventoryRepository(
     }
 
     const existingSaleSpecs = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
-      limit: 1,
       match: { green_bean_id: beanId, is_default: true },
     });
+    const defaultSaleSpec = getDefaultSaleSpecRecord(existingSaleSpecs);
 
-    if (existingSaleSpecs.length === 0) {
+    if (!defaultSaleSpec) {
       await client.insert('bean_sale_specs', {
         channel: 'default',
         green_bean_id: beanId,
@@ -543,7 +855,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       unit_price: input.defaultSaleUnitPrice,
       unit_weight_grams: input.defaultSaleUnitWeightGrams,
     }, {
-      match: { id: existingSaleSpecs[0]!.id },
+      match: { id: defaultSaleSpec.id },
       select: '*',
     });
   };
@@ -554,18 +866,45 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       return ok(beans.data.find((bean) => String(bean.id) === String(beanId)) ?? null);
     },
+    async adjustRemainingWeight(beanId, deltaGrams) {
+      const purchaseRows = await client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches', {
+        match: { green_bean_id: beanId },
+      });
+
+      const latestBatch = getLatestPurchaseBatchRecord(purchaseRows);
+
+      if (!latestBatch) {
+        throw new AppError('当前生豆缺少采购批次，无法更新剩余库存。', { code: 'DATA' });
+      }
+
+      const nextRemainingWeight = latestBatch.remaining_weight_grams - deltaGrams;
+
+      if (nextRemainingWeight < 0) {
+        throw new AppError('剩余库存不足，无法记录本次烘焙。', { code: 'DATA' });
+      }
+
+      await client.update('green_bean_purchase_batches', {
+        remaining_weight_grams: Math.min(nextRemainingWeight, latestBatch.purchased_weight_grams),
+      }, {
+        match: { id: latestBatch.id },
+        select: '*',
+      });
+
+      const bean = await getLatestInventoryBean(beanId);
+
+      beanCacheService.save([bean], 'supabase');
+
+      return ok(bean);
+    },
     async getEditableBean(beanId) {
       return ok(await getEditableBeanDetail(beanId));
     },
     async listBeans() {
-      const rows = await client.list<SupabaseGreenBeanInventoryRecord>(viewName, {
-        orderBy: {
-          ascending: false,
-          column: 'updated_at',
-        },
-      });
+      const rows = await loadInventoryOverviewRecordsFromTables();
 
-      const beans = rows.map((record) => mapSupabaseGreenBeanInventoryRecordToBean(record));
+      const beans = rows
+        .sort((left, right) => compareIsoDateDesc(left.updated_at, right.updated_at))
+        .map((record) => mapSupabaseGreenBeanInventoryRecordToBean(record));
 
       beanCacheService.save(beans, 'supabase');
 
@@ -586,6 +925,7 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       await upsertLatestPurchaseBatch(beanId, input);
       await upsertDefaultSaleSpec(beanId, input);
+      await saveBeanSaleDefaults(beanId, input);
 
       const bean = await getLatestInventoryBean(beanId);
 
@@ -648,6 +988,7 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       await upsertLatestPurchaseBatch(newBeanId, input);
       await upsertDefaultSaleSpec(newBeanId, input);
+      await saveBeanSaleDefaults(newBeanId, input);
 
       const bean = await getLatestInventoryBean(newBeanId);
 
@@ -694,6 +1035,56 @@ export const resolveBeanRepository = (): BeanRepository => {
 };
 
 export const beanService = {
+  getBootstrappedBeans,
+  createOptimisticBean(input: GreenBeanCreateInput): Bean {
+    const localRecord = localGreenBeanService.create(input);
+
+    const bean: Bean = {
+      id: localRecord.id,
+      name: localRecord.displayName,
+      origin: [localRecord.originCountry, localRecord.originRegion, localRecord.originArea]
+        .filter(Boolean)
+        .join(' · '),
+      process: localRecord.processMethod,
+      grade: localRecord.variety,
+      stockKg: parseFloat((((localRecord.remainingWeightGrams ?? localRecord.purchasedWeightGrams) ?? 0) / 1000).toFixed(1)),
+      costPerKg:
+        localRecord.purchasedWeightGrams > 0
+          ? parseFloat((((localRecord.purchasedTotalPrice ?? 0) / localRecord.purchasedWeightGrams) * 1000).toFixed(2))
+          : 0,
+      supplierName: localRecord.supplierName ?? null,
+      createdAt: localRecord.createdAt,
+      updatedAt: localRecord.updatedAt,
+      variety: localRecord.variety,
+      harvestSeason: localRecord.harvestSeason ?? undefined,
+      code: localRecord.code,
+      defaultRoastInputGrams: localRecord.defaultRoastInputGrams,
+      defaultSaleUnitPrice: localRecord.defaultSaleUnitPrice,
+      defaultSaleUnitWeightGrams: localRecord.defaultSaleUnitWeightGrams ?? null,
+    };
+
+    return bean;
+  },
+  finalizeOptimisticBean(optimisticBeanId: string, remoteBean: Bean): Bean[] {
+    localGreenBeanService.removeById(optimisticBeanId);
+    const nextBeans = mergeBeans([remoteBean]);
+
+    beanCacheService.save(nextBeans.filter((bean) => !String(bean.id).startsWith('local-')), 'supabase');
+
+    return nextBeans;
+  },
+  rollbackOptimisticBean(optimisticBeanId: string): Bean[] {
+    localGreenBeanService.removeById(optimisticBeanId);
+
+    return mergeBeans(beanCacheService.getBeans() ?? []);
+  },
+  async createRemoteBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
+    if (!beanSyncService.isOnline()) {
+      throw new AppError('当前网络不可用，无法同步到 Supabase。', { code: 'NETWORK' });
+    }
+
+    return resolveBeanRepository().createBean(input);
+  },
   async createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
     // 在线且已配置 Supabase：直接同步到 Supabase
     if (beanSyncService.isOnline()) {
@@ -724,7 +1115,7 @@ export const beanService = {
         .join(' · '),
       process: localRecord.processMethod,
       grade: localRecord.variety,
-      stockKg: parseFloat(((localRecord.purchasedWeightGrams ?? 0) / 1000).toFixed(1)),
+      stockKg: parseFloat((((localRecord.remainingWeightGrams ?? localRecord.purchasedWeightGrams) ?? 0) / 1000).toFixed(1)),
       costPerKg:
         localRecord.purchasedWeightGrams > 0
           ? parseFloat((((localRecord.purchasedTotalPrice ?? 0) / localRecord.purchasedWeightGrams) * 1000).toFixed(2))
@@ -738,6 +1129,19 @@ export const beanService = {
     };
 
     return ok(bean);
+  },
+  async adjustRemainingWeight(beanId: string | number, deltaGrams: number): Promise<ApiResponse<Bean>> {
+    if (typeof beanId === 'string' && beanId.startsWith('local-')) {
+      const updatedRecord = localGreenBeanService.adjustRemainingWeight(beanId, deltaGrams);
+
+      return ok(localGreenBeanService.listBeans().find((bean) => bean.id === updatedRecord.id)!);
+    }
+
+    if (!beanSyncService.isOnline()) {
+      throw new AppError('当前离线，无法更新生豆剩余库存，请联网后再试。', { code: 'NETWORK' });
+    }
+
+    return resolveBeanRepository().adjustRemainingWeight(beanId, deltaGrams);
   },
   async getEditableBean(beanId: string | number): Promise<ApiResponse<GreenBeanEditableDetail>> {
     if (typeof beanId === 'string' && beanId.startsWith('local-')) {
@@ -763,6 +1167,7 @@ export const beanService = {
         processMethod: localRecord.processMethod,
         purchasedTotalPrice: localRecord.purchasedTotalPrice,
         purchasedWeightGrams: localRecord.purchasedWeightGrams,
+        remainingWeightGrams: localRecord.remainingWeightGrams ?? localRecord.purchasedWeightGrams,
         supplierName: localRecord.supplierName ?? null,
         variety: localRecord.variety,
         altitudeMetersMax: localRecord.altitudeMetersMax ?? null,
@@ -809,10 +1214,70 @@ export const beanService = {
       throw error;
     }
   },
+  async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
+    if (!beanSyncService.isOnline()) {
+      return { downloaded: 0, uploaded: 0 };
+    }
+
+    const repository = resolveBeanRepository();
+    const localRecords = localGreenBeanService.listRecords();
+    let uploaded = 0;
+
+    if (localRecords.length > 0) {
+      const remoteBeforeSync = await repository.listBeans();
+      const remoteCodes = new Set(
+        remoteBeforeSync.data
+          .map((bean) => bean.code?.trim())
+          .filter((code): code is string => Boolean(code)),
+      );
+
+      for (const record of localRecords) {
+        const normalizedCode = record.code.trim();
+
+        if (normalizedCode.length === 0) {
+          continue;
+        }
+
+        if (remoteCodes.has(normalizedCode)) {
+          localGreenBeanService.removeByCode(normalizedCode);
+          continue;
+        }
+
+        await repository.createBean(beanSyncService.localRecordToCreateInput(record as unknown as Record<string, unknown>));
+        localGreenBeanService.removeByCode(normalizedCode);
+        remoteCodes.add(normalizedCode);
+        uploaded += 1;
+      }
+    }
+
+    const remoteAfterSync = await repository.listBeans();
+    const bootstrappedBeforeSync = getBootstrappedBeans();
+    const mergedRemoteBeans = mergeBeans(remoteAfterSync.data);
+
+    beanCacheService.save(remoteAfterSync.data, 'supabase');
+
+    const beforeSignature = JSON.stringify(
+      bootstrappedBeforeSync.map((bean) => `${String(bean.id)}:${bean.updatedAt}`),
+    );
+    const afterSignature = JSON.stringify(
+      mergedRemoteBeans.map((bean) => `${String(bean.id)}:${bean.updatedAt}`),
+    );
+
+    return {
+      downloaded: beforeSignature === afterSignature ? 0 : mergedRemoteBeans.length,
+      uploaded,
+    };
+  },
   syncBeans(): Promise<ApiResponse<Bean[]>> {
     return this.listBeans();
   },
   async updateBean(beanId: string | number, input: GreenBeanUpdateInput): Promise<ApiResponse<Bean>> {
+    if (typeof beanId === 'string' && beanId.startsWith('local-')) {
+      const updatedRecord = localGreenBeanService.update(beanId, input);
+
+      return ok(localGreenBeanService.listBeans().find((bean) => bean.id === updatedRecord.id)!);
+    }
+
     // 在线且已配置 Supabase：直接同步到 Supabase
     if (beanSyncService.isOnline()) {
       try {
@@ -844,13 +1309,7 @@ export const beanService = {
     // 离线或在线删除失败：记录 pending delete
     // 如果是本地 ID（local- 开头），直接从本地存储中删除
     if (typeof beanId === 'string' && beanId.startsWith('local-')) {
-      const allRecords = localGreenBeanService.listRecords();
-      const filtered = allRecords.filter((r) => r.id !== beanId);
-      const snapshot = { records: filtered, version: 1 as const };
-      window.localStorage.setItem(
-        'coffee-roasting-backstage:local-green-beans',
-        JSON.stringify(snapshot),
-      );
+      localGreenBeanService.removeById(beanId);
     } else {
       beanSyncService.recordPendingDelete(beanId);
     }

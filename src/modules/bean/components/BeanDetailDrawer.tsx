@@ -1,7 +1,10 @@
 import { App, Button, Result, Spin } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
 
+import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import { useBeanEditableDetail } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services';
+import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import type { Bean } from '@/types/domain';
 
 import { BeanForm } from './BeanForm';
@@ -28,14 +31,18 @@ const formatCurrency = new Intl.NumberFormat('zh-CN', {
 
 export function BeanDetailDrawer({ bean, mode, onClose, onUpdate }: BeanDetailDrawerProps) {
   const { message } = App.useApp();
+  const queryClient = useQueryClient();
   const editableDetailQuery = useBeanEditableDetail(bean.id);
+  const totalWeightGrams = editableDetailQuery.data?.purchasedWeightGrams ?? Math.round(bean.stockKg * 1000);
+  const remainingWeightGrams = editableDetailQuery.data?.remainingWeightGrams ?? Math.round(bean.stockKg * 1000);
 
   if (mode === 'view') {
     const summaryItems = [
       { label: '名称', value: bean.name },
       { label: '产地', value: bean.origin || '待补充' },
       { label: '处理法', value: bean.process },
-      { label: '库存', value: `${formatKg.format(bean.stockKg)} kg` },
+      { label: '总库存', value: `${formatKg.format(totalWeightGrams / 1000)} kg` },
+      { label: '剩余库存', value: `${formatKg.format(remainingWeightGrams / 1000)} kg` },
       { label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
       { label: '默认烘焙量', value: bean.defaultRoastInputGrams ? `${bean.defaultRoastInputGrams} g` : '待补充' },
       {
@@ -116,11 +123,21 @@ export function BeanDetailDrawer({ bean, mode, onClose, onUpdate }: BeanDetailDr
       <BeanForm
         enableCostTemplateSelection
         initialValues={editableDetailQuery.data}
-        onSubmit={async (input) => {
-          await beanService.updateBean(bean.id, input);
-          void message.success('生豆信息已更新');
-          onUpdate();
+        onCancel={onClose}
+        onSubmit={(input) => {
           onClose();
+          submissionBackupService.save('update', { beanId: bean.id, input }, 'bean');
+
+          void (async () => {
+            try {
+              await beanService.updateBean(bean.id, input);
+              await refreshAllAppData(queryClient);
+              onUpdate();
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : '生豆同步失败，本地已备份。';
+              void message.error(errorMessage);
+            }
+          })();
         }}
         submitLabel="保存生豆"
       />

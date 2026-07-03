@@ -1,12 +1,9 @@
-import { App } from 'antd';
-
-import { AppError } from '@/shared/errors/AppError';
-
 import type { RoastPlanJsonInput } from '../types';
 
 import { RoastPlanForm } from './RoastPlanForm';
 
 interface RoastPlanManualCreatorProps {
+  onCancel?: () => void;
   onCreate: (input: RoastPlanJsonInput) => Promise<void> | void;
 }
 
@@ -41,22 +38,15 @@ const defaultRoastPlanFormValues: RoastPlanJsonInput = {
   ],
 };
 
-export function RoastPlanManualCreator({ onCreate }: RoastPlanManualCreatorProps) {
-  const { message } = App.useApp();
-
-  const submitForm = async (values: RoastPlanJsonInput) => {
-    try {
-      await onCreate(values);
-      void message.success('已通过界面创建烘焙计划');
-    } catch (error) {
-      const errorMessage = error instanceof AppError ? error.message : '创建失败，请检查表单内容。';
-      void message.error(errorMessage);
-    }
+export function RoastPlanManualCreator({ onCancel, onCreate }: RoastPlanManualCreatorProps) {
+  const submitForm = (values: RoastPlanJsonInput) => {
+    void onCreate(values);
   };
 
   return (
     <RoastPlanForm
       initialValues={defaultRoastPlanFormValues}
+      onCancel={onCancel}
       onSubmit={submitForm}
       resetOnSubmit
       submitLabel="创建烘焙计划"

@@ -1,18 +1,25 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { App, Button, Drawer, Empty, Grid, Spin } from 'antd';
+import { App, Drawer, Empty, Grid, Spin } from 'antd';
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
+import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
+import { useBeans } from '@/modules/bean/hooks';
 import {
   RoastBatchCard,
   RoastBatchCreator,
   RoastBatchDrawer,
 } from '@/modules/roast/components';
 import {
-  useCreateRoastBatch,
   useDeleteRoastBatch,
   useRoastBatches,
   useUpdateRoastBatch,
 } from '@/modules/roast/hooks';
+import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
+import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
+import { useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
+import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
 import type { RoastBatchCreateInput, RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 
@@ -30,18 +37,29 @@ const matchesKeyword = (batch: RoastBatchRecord, keyword: string): boolean => {
     .includes(normalized);
 };
 
+const sortBatchesByRoastDate = (batches: RoastBatchRecord[]): RoastBatchRecord[] => {
+  return [...batches].sort((left, right) => {
+    return new Date(right.roastDate).getTime() - new Date(left.roastDate).getTime();
+  });
+};
+
 export function ProductionPage() {
   const { message, modal } = App.useApp();
+  const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
+  const { supabaseConnections } = useSupabaseConnectionSettings();
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
   const { data: batches = [], isFetching, refetch } = useRoastBatches();
-  const createMutation = useCreateRoastBatch();
+  const { data: beans = [] } = useBeans();
   const updateMutation = useUpdateRoastBatch();
   const deleteMutation = useDeleteRoastBatch();
   const isWide = screens.md ?? false;
+  const hasGreenBeanConnection =
+    supabaseConnections.greenBean.projectUrl.trim().length > 0 &&
+    supabaseConnections.greenBean.publishableKey.trim().length > 0;
 
   const filteredBatches = batches.filter((b) => matchesKeyword(b, keyword));
   const selectedBatch = batches.find((b) => b.id === selectedBatchId) ?? null;
@@ -79,10 +97,46 @@ export function ProductionPage() {
     });
   };
 
-  const handleCreate = async (input: RoastBatchCreateInput) => {
-    await createMutation.mutateAsync(input);
+  const handleCreate = (input: RoastBatchCreateInput) => {
     setCreationDrawerOpen(false);
-    void message.success('烘焙记录已保存');
+    submissionBackupService.save('create', input, 'roastBatch');
+    const optimisticBatch = roastBatchService.createOptimisticBatch(input);
+
+    queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), (current = []) => {
+      return sortBatchesByRoastDate([
+        optimisticBatch,
+        ...current.filter((batch) => batch.id !== optimisticBatch.id),
+      ]);
+    });
+
+    void (async () => {
+      try {
+        const response = await roastBatchService.createBatch(input);
+        const nextBatches = roastBatchService.finalizeOptimisticBatch(optimisticBatch.id, response.data);
+
+        queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
+        void refreshAllAppData(queryClient).catch(() => undefined);
+      } catch (error: unknown) {
+        const nextBatches = roastBatchService.rollbackOptimisticBatch(optimisticBatch.id);
+        queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
+        const errorMessage = error instanceof Error ? error.message : '烘焙记录同步失败，本地已备份。';
+        void message.error(errorMessage);
+      }
+    })();
+  };
+
+  const handleOpenCreateDrawer = () => {
+    if (!hasGreenBeanConnection) {
+      void message.warning('请先前往设置页创建并连接生豆数据库，完成后才能新增烘焙记录。');
+      return;
+    }
+
+    if (beans.length === 0) {
+      void message.warning('当前还没有可选的生豆，请先创建至少一条生豆数据。');
+      return;
+    }
+
+    setCreationDrawerOpen(true);
   };
 
   return (
@@ -118,12 +172,10 @@ export function ProductionPage() {
       </section>
 
       {/* FAB */}
-      <Button
-        aria-label="新增烘焙记录"
-        className={styles.fab}
+      <ViewportFloatingActionButton
+        ariaLabel="新增烘焙记录"
         icon={<PlusOutlined />}
-        onClick={() => setCreationDrawerOpen(true)}
-        shape="circle"
+        onClick={handleOpenCreateDrawer}
       />
 
       {/* 创建抽屉 */}
@@ -135,7 +187,10 @@ export function ProductionPage() {
         placement="bottom"
         title="新增烘焙记录"
       >
-        <RoastBatchCreator onCreate={(input) => void handleCreate(input)} />
+        <RoastBatchCreator
+          onCancel={() => setCreationDrawerOpen(false)}
+          onCreate={(input) => void handleCreate(input)}
+        />
       </Drawer>
 
       {/* 详情/编辑抽屉 */}
@@ -163,9 +218,18 @@ export function ProductionPage() {
             onDelete={handleDelete}
             onModeChange={setDetailMode}
             onUpdate={async (batchId, input) => {
-              await updateMutation.mutateAsync({ batchId, input });
-              void message.success('烘焙记录已更新');
-              await refetch();
+              submissionBackupService.save('update', { batchId, input }, 'roastBatch');
+
+              void (async () => {
+                try {
+                  await updateMutation.mutateAsync({ batchId, input });
+                  await refreshAllAppData(queryClient);
+                  await refetch();
+                } catch (error: unknown) {
+                  const errorMessage = error instanceof Error ? error.message : '烘焙记录同步失败，本地已备份。';
+                  void message.error(errorMessage);
+                }
+              })();
             }}
           />
         ) : null}

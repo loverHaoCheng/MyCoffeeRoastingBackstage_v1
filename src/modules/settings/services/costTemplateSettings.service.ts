@@ -8,6 +8,7 @@ import {
 import { logger } from '@/shared/logger/logger';
 
 export const costTemplateSettingsStorageKey = 'coffee-roasting-backstage:cost-templates';
+const legacyCostTemplateSettingsBackupStorageKey = 'coffee-roasting-backstage:cost-templates:backup';
 
 const canUseStorage = (): boolean => {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -34,6 +35,7 @@ export const costTemplateSettingsService = {
     }
 
     window.localStorage.removeItem(costTemplateSettingsStorageKey);
+    window.localStorage.removeItem(legacyCostTemplateSettingsBackupStorageKey);
   },
   createTemplate(values: CostTemplateFormValues, templateId?: string, createdAt?: string): CostTemplate {
     const timestamp = new Date().toISOString();
@@ -54,6 +56,7 @@ export const costTemplateSettingsService = {
     const rawValue = window.localStorage.getItem(costTemplateSettingsStorageKey);
 
     if (!rawValue) {
+      window.localStorage.removeItem(legacyCostTemplateSettingsBackupStorageKey);
       return createDefaultCostTemplateSettings();
     }
 
@@ -65,24 +68,20 @@ export const costTemplateSettingsService = {
         logger.warn('cost template settings parse failed', {
           issues: result.error.issues,
         });
-
         return createDefaultCostTemplateSettings();
       }
 
-      if (result.data.templates.length === 0) {
-        return createDefaultCostTemplateSettings();
-      }
-
-      const hasDefaultTemplate = result.data.templates.some((template) => template.id === result.data.defaultTemplateId);
+      const hasDefaultTemplate =
+        result.data.defaultTemplateId == null ||
+        result.data.templates.some((template) => template.id === result.data.defaultTemplateId);
 
       return {
-        defaultTemplateId: hasDefaultTemplate ? result.data.defaultTemplateId ?? null : result.data.templates[0]!.id,
+        defaultTemplateId: hasDefaultTemplate ? result.data.defaultTemplateId ?? null : result.data.templates[0]?.id ?? null,
         templates: result.data.templates,
         updatedAt: result.data.updatedAt ?? null,
       };
     } catch (error) {
       logger.error('cost template settings load failed', { error });
-
       return createDefaultCostTemplateSettings();
     }
   },
@@ -91,7 +90,10 @@ export const costTemplateSettingsService = {
       return settings;
     }
 
-    window.localStorage.setItem(costTemplateSettingsStorageKey, JSON.stringify(settings));
+    const serialized = JSON.stringify(settings);
+
+    window.localStorage.setItem(costTemplateSettingsStorageKey, serialized);
+    window.localStorage.removeItem(legacyCostTemplateSettingsBackupStorageKey);
     logger.info('cost template settings saved', {
       templateCount: settings.templates.length,
       updatedAt: settings.updatedAt,

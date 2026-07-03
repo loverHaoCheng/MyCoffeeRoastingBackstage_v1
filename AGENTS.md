@@ -2,15 +2,15 @@
 
 Version: 1.0
 
-> 
+>
 
 Last Updated: 2026-06-26
 
-> 
+>
 
 适用于长期维护的 React + TypeScript 项目，包括 SaaS 系统、管理后台、ERP、数据平台、工具型应用及中大型业务系统。
 
-------
+---
 
 # **1. 项目设计目标**
 
@@ -27,7 +27,7 @@ Last Updated: 2026-06-26
 - 类型安全（Type Safety）
 - AI 协作友好（AI Friendly）
 
-------
+---
 
 ## **1.2 架构原则**
 
@@ -47,7 +47,7 @@ Last Updated: 2026-06-26
 - 巨型页面
 - 业务逻辑散落 UI
 
-------
+---
 
 # **2. 技术栈规范**
 
@@ -66,7 +66,7 @@ TypeScript 5+
 JavaScript 业务代码
 ```
 
-------
+---
 
 ## **2.2 构建工具**
 
@@ -83,7 +83,7 @@ JavaScript 业务代码
 Create React App
 ```
 
-------
+---
 
 ## **2.3 UI组件库**
 
@@ -102,7 +102,7 @@ Shadcn/UI
 避免重复造轮子
 ```
 
-------
+---
 
 ## **2.4 样式方案**
 
@@ -120,7 +120,7 @@ CSS Module
 !important 滥用
 ```
 
-------
+---
 
 ## **2.7 UI 设计大前提**
 
@@ -151,7 +151,7 @@ Apple 公司设计风格
 移动端横向页面滚动
 ```
 
-------
+---
 
 ## **2.5 数据请求**
 
@@ -167,7 +167,7 @@ TanStack Query
 页面内部直接 fetch
 ```
 
-------
+---
 
 ## **2.6 状态管理**
 
@@ -189,7 +189,7 @@ Zustand + React Query
 单一全局超级 Store
 ```
 
-------
+---
 
 # **3. 项目目录结构**
 
@@ -225,7 +225,7 @@ src/
 └── main.tsx
 ```
 
-------
+---
 
 # **4. Feature First 架构**
 
@@ -242,7 +242,7 @@ modules/
 └── finance/
 ```
 
-------
+---
 
 ## **单模块结构**
 
@@ -260,7 +260,7 @@ bean/
 └── index.ts
 ```
 
-------
+---
 
 # **5. DDD 领域设计**
 
@@ -272,7 +272,7 @@ bean/
 生豆管理
 ```
 
-------
+---
 
 ### **Roast**
 
@@ -281,7 +281,7 @@ bean/
 烘焙曲线
 ```
 
-------
+---
 
 ### **Inventory**
 
@@ -289,7 +289,7 @@ bean/
 库存管理
 ```
 
-------
+---
 
 ### **Production**
 
@@ -297,7 +297,7 @@ bean/
 生产批次
 ```
 
-------
+---
 
 ### **Formula**
 
@@ -305,7 +305,7 @@ bean/
 烘焙配方
 ```
 
-------
+---
 
 ### **Finance**
 
@@ -314,7 +314,7 @@ bean/
 利润分析
 ```
 
-------
+---
 
 # **6. TypeScript 规范**
 
@@ -322,27 +322,27 @@ bean/
 
 ```json
 {
-  "strict": true
+	"strict": true
 }
 ```
 
-------
+---
 
 ## **禁止**
 
 ```ts
-any
+any;
 ```
 
-------
+---
 
 ## **使用**
 
 ```ts
-unknown
+unknown;
 ```
 
-------
+---
 
 ## **所有数据必须定义类型**
 
@@ -350,8 +350,8 @@ unknown
 
 ```ts
 interface Bean {
-  id: number;
-  name: string;
+	id: number;
+	name: string;
 }
 ```
 
@@ -361,7 +361,7 @@ interface Bean {
 const bean = {};
 ```
 
-------
+---
 
 # **7. 组件开发规范**
 
@@ -381,7 +381,7 @@ BeanDeleteDialog
 BeanCardEditorDeleteManager
 ```
 
-------
+---
 
 ## **文件大小限制**
 
@@ -403,7 +403,7 @@ BeanCardEditorDeleteManager
 > 500 行
 ```
 
-------
+---
 
 ## **Props 必须声明**
 
@@ -411,17 +411,17 @@ BeanCardEditorDeleteManager
 
 ```ts
 interface Props {
-  beanId: number;
+	beanId: number;
 }
 ```
 
 禁止：
 
 ```ts
-props: any
+props: any;
 ```
 
-------
+---
 
 # **8. Hooks 规范**
 
@@ -439,7 +439,7 @@ useProductionBatch
 页面组件承担全部业务逻辑
 ```
 
-------
+---
 
 # **9. 状态管理规范**
 
@@ -458,7 +458,7 @@ useUserStore
 useGlobalStore
 ```
 
-------
+---
 
 # **10. API 设计规范**
 
@@ -476,19 +476,19 @@ roast.service.ts
 inventory.service.ts
 ```
 
-------
+---
 
 ## **统一返回格式**
 
 ```ts
 interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
+	code: number;
+	message: string;
+	data: T;
 }
 ```
 
-------
+---
 
 # **11. Repository 模式**
 
@@ -512,7 +512,7 @@ Database
 UI直接访问数据库
 ```
 
-------
+---
 
 # **12. 表单规范**
 
@@ -528,18 +528,18 @@ React Hook Form
 Zod
 ```
 
-------
+---
 
 ## **示例**
 
 ```ts
 const BeanSchema = z.object({
-  name: z.string().min(1),
-  weight: z.number().positive()
+	name: z.string().min(1),
+	weight: z.number().positive(),
 });
 ```
 
-------
+---
 
 # **13. 错误处理规范**
 
@@ -549,7 +549,7 @@ const BeanSchema = z.object({
 class AppError extends Error {}
 ```
 
-------
+---
 
 统一边界：
 
@@ -557,38 +557,38 @@ class AppError extends Error {}
 <ErrorBoundary>
 ```
 
-------
+---
 
 禁止：
 
 ```ts
-console.log(error)
+console.log(error);
 ```
 
 后直接结束。
 
-------
+---
 
 # **14. 日志规范**
 
 统一日志工具：
 
 ```ts
-logger.debug()
-logger.info()
-logger.warn()
-logger.error()
+logger.debug();
+logger.info();
+logger.warn();
+logger.error();
 ```
 
 禁止：
 
 ```ts
-console.log()
+console.log();
 ```
 
 进入生产环境。
 
-------
+---
 
 # **15. 测试规范**
 
@@ -599,7 +599,7 @@ Vitest
 React Testing Library
 ```
 
-------
+---
 
 覆盖率要求：
 
@@ -608,19 +608,19 @@ React Testing Library
 普通模块 ≥ 60%
 ```
 
-------
+---
 
 # **16. 性能规范**
 
 允许：
 
 ```tsx
-React.memo
-useMemo
-useCallback
+React.memo;
+useMemo;
+useCallback;
 ```
 
-------
+---
 
 原则：
 
@@ -629,7 +629,7 @@ useCallback
 避免过度优化
 ```
 
-------
+---
 
 # **17. 安全规范**
 
@@ -647,7 +647,7 @@ LocalStorage
 HttpOnly Cookie
 ```
 
-------
+---
 
 ## **输入校验**
 
@@ -659,7 +659,7 @@ HttpOnly Cookie
 XSS过滤
 ```
 
-------
+---
 
 # **18. Git 提交规范**
 
@@ -675,7 +675,7 @@ test:
 chore:
 ```
 
-------
+---
 
 示例：
 
@@ -687,7 +687,7 @@ fix(roast): correct development ratio calculation
 refactor(inventory): optimize stock update flow
 ```
 
-------
+---
 
 # **19. AI 协作开发规范**
 
@@ -700,7 +700,7 @@ Type Check 通过
 单元测试通过
 ```
 
-------
+---
 
 禁止 AI 生成：
 
@@ -711,7 +711,7 @@ any
 隐藏业务逻辑
 ```
 
-------
+---
 
 # **20. 文档规范**
 
@@ -731,7 +731,7 @@ README
 代码完成后不更新文档
 ```
 
-------
+---
 
 # **21. 插件化架构预留**
 
@@ -752,7 +752,7 @@ plugins/
 核心业务与插件解耦
 ```
 
-------
+---
 
 # **22. 数据库设计原则**
 
@@ -766,7 +766,7 @@ Production
 User
 ```
 
-------
+---
 
 统一包含：
 
@@ -776,7 +776,7 @@ createdAt
 updatedAt
 ```
 
-------
+---
 
 禁止：
 
@@ -784,7 +784,7 @@ updatedAt
 字段命名不统一
 ```
 
-------
+---
 
 # **23. 项目演进路线**
 
@@ -794,7 +794,7 @@ updatedAt
 单用户工具
 ```
 
-------
+---
 
 ## **V2**
 
@@ -802,7 +802,7 @@ updatedAt
 多用户系统
 ```
 
-------
+---
 
 ## **V3**
 
@@ -810,7 +810,7 @@ updatedAt
 权限系统
 ```
 
-------
+---
 
 ## **V4**
 
@@ -818,7 +818,7 @@ updatedAt
 工作流引擎
 ```
 
-------
+---
 
 ## **V5**
 
@@ -826,7 +826,7 @@ updatedAt
 插件系统
 ```
 
-------
+---
 
 ## **V6**
 
@@ -834,7 +834,7 @@ updatedAt
 微前端架构
 ```
 
-------
+---
 
 # **24. 生豆管理系统专项要求**
 
@@ -874,7 +874,7 @@ AI烘焙建议
 
 所有架构设计必须保证未来扩展无需推翻现有系统。
 
-------
+---
 
 # **25. 最终原则**
 
@@ -898,6 +898,4 @@ AI烘焙建议
 
 ## 其他需求
 
-1.样式以 apple 设计风格进行开发。
-
-2.UI 尽量简洁。以黑白灰为主色调。
+1.以黑白灰为主色调。2.存在可以复用的组件或功能展示类似的组件尽可以复用，便于后期维护。

@@ -1,5 +1,6 @@
 import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
 import { AppError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/services/api.types';
 import { SupabaseRestClient } from '@/services/supabaseRestClient';
 
@@ -9,6 +10,7 @@ import type {
   CostCalculationRecord,
   FinanceDataSource,
 } from '../types';
+import { localCostCalculationService } from './localCostCalculation.service';
 
 interface FinanceRepository {
   listCalculations(): Promise<ApiResponse<CostCalculationRecord[]>>;
@@ -57,6 +59,91 @@ const normalizeText = (value: null | string | undefined): null | string => {
 
   return nextValue.length > 0 ? nextValue : null;
 };
+
+const getCalculationSignature = (
+  record: Pick<
+    CostCalculationRecord,
+    | 'beanId'
+    | 'beanName'
+    | 'calculationName'
+    | 'purchaseCostPerKg'
+    | 'dehydrationRate'
+    | 'roastInputWeightGrams'
+    | 'packagingCost'
+    | 'energyCost'
+    | 'laborCost'
+    | 'otherCost'
+    | 'saleUnitWeightGrams'
+    | 'saleUnitPrice'
+    | 'targetProfitRate'
+    | 'notes'
+    | 'dataSource'
+  >,
+): string => {
+  return JSON.stringify({
+    beanId: record.beanId,
+    beanName: record.beanName.trim(),
+    calculationName: record.calculationName.trim(),
+    dataSource: record.dataSource,
+    dehydrationRate: record.dehydrationRate,
+    energyCost: record.energyCost,
+    laborCost: record.laborCost,
+    notes: normalizeText(record.notes),
+    otherCost: record.otherCost,
+    packagingCost: record.packagingCost,
+    purchaseCostPerKg: record.purchaseCostPerKg,
+    roastInputWeightGrams: record.roastInputWeightGrams,
+    saleUnitPrice: record.saleUnitPrice,
+    saleUnitWeightGrams: record.saleUnitWeightGrams,
+    targetProfitRate: record.targetProfitRate,
+  });
+};
+
+const getCalculationSyncSnapshot = (records: CostCalculationRecord[]): string => {
+  return JSON.stringify(
+    [...records]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map((record) => `${record.id}:${record.updatedAt}`),
+  );
+};
+
+const mapFormInputToLocalRecord = (
+  input: CostCalculationFormInput,
+  dataSource: FinanceDataSource,
+): CostCalculationRecord => {
+  const metrics = calculateCostMetrics(input);
+  const timestamp = new Date().toISOString();
+  const resolvedSaleUnitPrice = input.saleUnitPrice > 0 ? input.saleUnitPrice : metrics.suggestedSalePrice;
+
+  return {
+    ...input,
+    ...metrics,
+    calculationName: input.calculationName.trim(),
+    createdAt: timestamp,
+    dataSource,
+    id: localCostCalculationService.createLocalId(),
+    notes: normalizeText(input.notes),
+    saleUnitPrice: resolvedSaleUnitPrice,
+    updatedAt: timestamp,
+  };
+};
+
+const mapCostCalculationRecordToFormInput = (record: CostCalculationRecord): CostCalculationFormInput => ({
+  beanId: record.beanId,
+  beanName: record.beanName,
+  calculationName: record.calculationName,
+  dehydrationRate: record.dehydrationRate,
+  energyCost: record.energyCost,
+  laborCost: record.laborCost,
+  notes: record.notes,
+  otherCost: record.otherCost,
+  packagingCost: record.packagingCost,
+  purchaseCostPerKg: record.purchaseCostPerKg,
+  roastInputWeightGrams: record.roastInputWeightGrams,
+  saleUnitPrice: record.saleUnitPrice,
+  saleUnitWeightGrams: record.saleUnitWeightGrams,
+  targetProfitRate: record.targetProfitRate,
+});
 
 export const calculateCostMetrics = (input: CostCalculationFormInput): CostCalculationMetrics => {
   const safeSaleUnitWeightGrams = input.saleUnitWeightGrams > 0 ? input.saleUnitWeightGrams : 1;
@@ -214,13 +301,87 @@ const resolveFinanceRepository = (): FinanceRepository => {
 };
 
 export const financeService = {
+  getBootstrappedCalculations(): CostCalculationRecord[] {
+    return localCostCalculationService.list();
+  },
   getResolvedDataSource(): FinanceDataSource | null {
     return resolveFinanceConnection()?.dataSource ?? null;
   },
   async listCalculations(): Promise<ApiResponse<CostCalculationRecord[]>> {
-    return resolveFinanceRepository().listCalculations();
+    const cachedRecords = localCostCalculationService.list();
+    const resolved = resolveFinanceConnection();
+
+    if (!resolved) {
+      return ok(cachedRecords);
+    }
+
+    try {
+      const response = await createSupabaseFinanceRepository(resolved.client, resolved.dataSource).listCalculations();
+      localCostCalculationService.replace(response.data);
+      return response;
+    } catch (error) {
+      if (cachedRecords.length > 0) {
+        logger.warn('finance list failed, falling back to local cache', { error });
+        return ok(cachedRecords);
+      }
+
+      throw error;
+    }
   },
   async saveCalculation(input: CostCalculationFormInput): Promise<ApiResponse<CostCalculationRecord>> {
-    return resolveFinanceRepository().saveCalculation(input);
+    const resolved = resolveFinanceConnection();
+
+    if (resolved && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+      try {
+        const response = await createSupabaseFinanceRepository(resolved.client, resolved.dataSource).saveCalculation(input);
+        localCostCalculationService.upsert(response.data);
+        return response;
+      } catch (error) {
+        logger.warn('finance save failed, falling back to local cache', { error });
+      }
+    }
+
+    const localRecord = mapFormInputToLocalRecord(input, resolved?.dataSource ?? 'greenBean');
+    localCostCalculationService.upsert(localRecord);
+
+    return ok(localRecord);
+  },
+  async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return { downloaded: 0, uploaded: 0 };
+    }
+
+    const resolved = resolveFinanceConnection();
+
+    if (!resolved) {
+      return { downloaded: 0, uploaded: 0 };
+    }
+
+    const repository = createSupabaseFinanceRepository(resolved.client, resolved.dataSource);
+    const localRecordsBeforeSync = localCostCalculationService.list();
+    const remoteBeforeSync = await repository.listCalculations();
+    const remoteIds = new Set(remoteBeforeSync.data.map((record) => record.id));
+    let uploaded = 0;
+
+    for (const record of localRecordsBeforeSync) {
+      if (remoteIds.has(record.id)) {
+        continue;
+      }
+
+      await repository.saveCalculation(mapCostCalculationRecordToFormInput(record));
+      uploaded += 1;
+    }
+
+    const remoteAfterSync = await repository.listCalculations();
+    const nextRecords = remoteAfterSync.data;
+    const beforeSignature = getCalculationSyncSnapshot(localRecordsBeforeSync);
+    const afterSignature = getCalculationSyncSnapshot(nextRecords);
+
+    localCostCalculationService.replace(nextRecords);
+
+    return {
+      downloaded: beforeSignature === afterSignature ? 0 : nextRecords.length,
+      uploaded,
+    };
   },
 };

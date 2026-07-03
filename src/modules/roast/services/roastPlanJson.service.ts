@@ -8,7 +8,7 @@ export const sampleRoastPlanJson = JSON.stringify(
   {
     name: '新建烘焙计划',
     beanName: '待选择生豆',
-    beanId: '',
+    beanId: 'sample-bean-id',
     batchWeightGrams: 200,
     roastLevel: '中焙',
     purpose: '手冲',

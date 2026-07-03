@@ -1,14 +1,18 @@
-import { DeleteOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Input, InputNumber, Select, Tag } from 'antd';
+import { DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { Button, DatePicker, Input, InputNumber, Select } from 'antd';
 import dayjs from 'dayjs';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { useRoastPlans } from '@/modules/roast/hooks';
+import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
+import { scrollToField } from '@/shared/forms/scrollToField';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
 
 import styles from './RoastBatchDrawer.module.css';
 
 type DrawerMode = 'view' | 'edit';
 const ROAST_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm';
+const GENERIC_BEAN_ID = 'generic';
 
 const toPickerValue = (value: string) => {
   if (!value) {
@@ -26,7 +30,7 @@ interface RoastBatchDrawerProps {
   onClose: () => void;
   onDelete?: (batch: RoastBatchRecord) => void;
   onModeChange?: (mode: DrawerMode) => void;
-  onUpdate?: (batchId: string, input: RoastBatchUpdateInput) => Promise<void>;
+  onUpdate?: (batchId: string, input: RoastBatchUpdateInput) => Promise<void> | void;
 }
 
 const ROAST_LEVELS = ['极浅', '浅焙', '肉桂', '中浅', '中焙', '中深', '深焙', '极深'];
@@ -35,6 +39,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
   if (!batch) return null;
 
   const isView = mode === 'view';
+  const { data: plans = [] } = useRoastPlans();
 
   // 编辑模式下的表单状态
   const [form, setForm] = useState({
@@ -52,9 +57,54 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
     totalRoastTime: batch.totalRoastTime,
     notes: batch.notes || '',
   });
+  const availablePlans = form.greenBeanId
+    ? plans.filter((plan) => {
+        const planBeanId = String(plan.beanId);
+
+        return planBeanId === GENERIC_BEAN_ID || planBeanId === form.greenBeanId;
+      })
+    : [];
+
+  useEffect(() => {
+    setForm({
+      roastDate: batch.roastDate,
+      greenBeanId: batch.greenBeanId,
+      greenBeanName: batch.greenBeanName,
+      roastedBeanName: batch.roastedBeanName || '',
+      roastPlanId: batch.roastPlanId || '',
+      roastPlanName: batch.roastPlanName || '',
+      inputWeightGrams: batch.inputWeightGrams,
+      outputWeightGrams: batch.outputWeightGrams,
+      roastLevel: batch.roastLevel,
+      developmentRatio: batch.developmentRatio,
+      firstCrackTime: batch.firstCrackTime,
+      totalRoastTime: batch.totalRoastTime,
+      notes: batch.notes || '',
+    });
+  }, [batch]);
 
   const handleSave = async () => {
     if (!batch || !onUpdate) return;
+    if (!form.roastDate) {
+      scrollToField('roastDate');
+      return;
+    }
+
+    if (!form.greenBeanId) {
+      scrollToField('greenBeanId');
+      return;
+    }
+
+    if (form.inputWeightGrams <= 0) {
+      scrollToField('inputWeightGrams');
+      return;
+    }
+
+    if (form.outputWeightGrams < 0) {
+      scrollToField('outputWeightGrams');
+      return;
+    }
+
     const updateInput: RoastBatchUpdateInput = {
       roastDate: form.roastDate,
       greenBeanId: form.greenBeanId,
@@ -70,7 +120,8 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
       totalRoastTime: form.totalRoastTime,
       notes: form.notes || undefined,
     };
-    await onUpdate(batch.id, updateInput);
+    onClose();
+    void onUpdate(batch.id, updateInput);
   };
 
   const lossRate = form.inputWeightGrams > 0
@@ -95,16 +146,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
               编辑
             </Button>
           )}
-          {!isView && (
-            <Button
-              icon={<SaveOutlined />}
-              onClick={handleSave}
-              size="small"
-              type="primary"
-            >
-              保存
-            </Button>
-          )}
         </div>
       </header>
 
@@ -114,7 +155,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
         <section className={styles.section}>
           <h4>基本信息</h4>
           <div className={styles.fieldGrid}>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="roastDate">
               <span className={styles.fieldLabel}>烘焙日期</span>
               {isView ? (
                 <span className={styles.fieldValue}>
@@ -136,10 +177,10 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
                 />
               )}
             </div>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="roastLevel">
               <span className={styles.fieldLabel}>烘焙程度</span>
               {isView ? (
-                <Tag color={getRoastLevelColor(batch.roastLevel)}>{batch.roastLevel}</Tag>
+                <span className={styles.fieldValue}>{batch.roastLevel}</span>
               ) : (
                 <Select
                   value={form.roastLevel}
@@ -156,7 +197,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
         <section className={styles.section}>
           <h4>生豆信息</h4>
           <div className={styles.fieldGrid}>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="greenBeanId">
               <span className={styles.fieldLabel}>生豆</span>
               {isView ? (
                 <span className={styles.fieldValue}>{batch.greenBeanName}</span>
@@ -167,7 +208,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
                 </>
               )}
             </div>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="roastedBeanName">
               <span className={styles.fieldLabel}>熟豆名称</span>
               {isView ? (
                 <span className={styles.fieldValue}>{batch.roastedBeanName || batch.greenBeanName}</span>
@@ -179,6 +220,31 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
                 />
               )}
             </div>
+            <div className={styles.field} data-field-path="roastPlanId">
+              <span className={styles.fieldLabel}>烘焙计划</span>
+              {isView ? (
+                <span className={styles.fieldValue}>{batch.roastPlanName?.trim() || '未关联'}</span>
+              ) : (
+                <Select
+                  allowClear
+                  value={form.roastPlanId || undefined}
+                  onChange={(planId) => {
+                    const plan = availablePlans.find((item) => String(item.id) === planId);
+                    setForm((current) => ({
+                      ...current,
+                      roastPlanId: planId || '',
+                      roastPlanName: plan?.name || '',
+                    }));
+                  }}
+                  placeholder={form.greenBeanId ? '选择通用计划或当前生豆对应计划' : '请先选择生豆'}
+                  options={availablePlans.map((plan) => ({
+                    label: `${plan.name}${String(plan.beanId) === GENERIC_BEAN_ID ? ' · 通用' : ''}`,
+                    value: String(plan.id),
+                  }))}
+                  style={{ width: '100%' }}
+                />
+              )}
+            </div>
           </div>
         </section>
 
@@ -186,7 +252,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
         <section className={styles.section}>
           <h4>烘焙数据</h4>
           <div className={styles.fieldGrid}>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="inputWeightGrams">
               <span className={styles.fieldLabel}>入豆量 (g)</span>
               {isView ? (
                 <span className={styles.fieldValue}>{batch.inputWeightGrams} g</span>
@@ -199,7 +265,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
                 />
               )}
             </div>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="outputWeightGrams">
               <span className={styles.fieldLabel}>出豆量 (g)</span>
               {isView ? (
                 <span className={styles.fieldValue}>{batch.outputWeightGrams} g</span>
@@ -212,11 +278,11 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
                 />
               )}
             </div>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="developmentRatio">
               <span className={styles.fieldLabel}>失水率</span>
               <span className={styles.fieldValue}>{lossRate}%</span>
             </div>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="firstCrackTime">
               <span className={styles.fieldLabel}>发展比 (%)</span>
               {isView ? (
                 <span className={styles.fieldValue}>{batch.developmentRatio ?? '-'}%</span>
@@ -230,7 +296,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
                 />
               )}
             </div>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="totalRoastTime">
               <span className={styles.fieldLabel}>一爆时间 (s)</span>
               {isView ? (
                 <span className={styles.fieldValue}>{batch.firstCrackTime ?? '-'} s</span>
@@ -299,29 +365,20 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
 
       {/* 底部操作栏（编辑模式） */}
       {!isView && (
-        <footer className={styles.footer}>
+        <DrawerActionBar>
           <Button onClick={onClose} block>取消</Button>
           <Button type="primary" onClick={handleSave} block>完成</Button>
-        </footer>
+        </DrawerActionBar>
       )}
 
       {/* 查看模式的删除按钮 */}
       {isView && onDelete && (
-        <footer className={styles.footer}>
+        <DrawerActionBar>
           <Button danger icon={<DeleteOutlined />} onClick={() => onDelete(batch)} block>
             删除此记录
           </Button>
-        </footer>
+        </DrawerActionBar>
       )}
     </div>
   );
-}
-
-function getRoastLevelColor(level: string): string {
-  const map: Record<string, string> = {
-    '极浅': 'blue', '浅焙': 'cyan', '肉桂': 'green',
-    '中浅': 'lime', '中焙': 'gold', '中深': 'orange',
-    '深焙': 'red', '极深': 'volcano',
-  };
-  return map[level] || 'default';
 }

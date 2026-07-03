@@ -1,22 +1,60 @@
-import { App, Alert, Button, Drawer, Grid, Input, InputNumber, Popconfirm, Tag } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { CopyOutlined, DownOutlined } from '@ant-design/icons';
+import { App, Alert, Button, Drawer, Grid, Input, InputNumber, Popconfirm, Slider, Tag } from 'antd';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useBeanCacheStatus } from '@/modules/bean/hooks';
+import { beanQueryKeys } from '@/modules/bean/hooks';
+import { roastBatchQueryKeys, roastPlanQueryKeys } from '@/modules/roast/hooks';
 import { costTemplateFormSchema, supabaseConnectionFormSchema } from '@/modules/settings/schemas';
-import { useCostTemplateSettings, useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { useAppDisplaySettings, useCostTemplateSettings, useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { appDisplaySettingsSyncService } from '@/modules/settings/services/appDisplaySettingsSync.service';
+import { supabaseConnectionProbeService } from '@/modules/settings/services/supabaseConnectionProbe.service';
+import { costTemplateSyncService } from '@/modules/settings/services/costTemplateSync.service';
 import {
+  appDisplayScaleMax,
+  appDisplayScaleMin,
+  appDisplayScaleStep,
   createEmptyCostTemplateFormValues,
   type CostTemplate,
   type CostTemplateFormValues,
+  type SupabaseDataSource,
   type SupabaseConnectionFormValues,
+  type SupabaseProjectConnection,
 } from '@/modules/settings/types';
 import { AppError, type AppErrorCode } from '@/shared/errors/AppError';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
+import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
+import { scrollToField } from '@/shared/forms/scrollToField';
+import authorCodeImage from '@/assets/settings-codes/author-code.png';
+import sponsorCodeImage from '@/assets/settings-codes/sponsor-code.png';
 
 import styles from './SettingsPage.module.css';
 
 const { useBreakpoint } = Grid;
+type QrCodeKey = 'author' | 'sponsor';
+const appBuildVersionLabel = `当前 Web 上传版本：${__APP_BUILD_VERSION__}`;
+
+const qrCodeEntries: Record<
+  QrCodeKey,
+  {
+    alt: string;
+    buttonLabel: string;
+    image: string;
+  }
+> = {
+  author: {
+    alt: '作者交流二维码',
+    buttonLabel: '和作者交流一下',
+    image: authorCodeImage,
+  },
+  sponsor: {
+    alt: '赞助支持二维码',
+    buttonLabel: '请作者喝杯咖啡',
+    image: sponsorCodeImage,
+  },
+};
 
 const formatStatusTime = (value: null | string): string => {
   if (!value) {
@@ -33,6 +71,10 @@ const getSyncStatusLabel = (
   status: 'cached' | 'empty' | 'error' | 'fallback' | 'idle',
   hasConnection: boolean,
 ): string => {
+  if (!hasConnection) {
+    return '未配置连接';
+  }
+
   if (status === 'cached') {
     return '已同步完成';
   }
@@ -49,38 +91,15 @@ const getSyncStatusLabel = (
     return '同步异常';
   }
 
-  if (hasConnection) {
-    return '已配置，待首次同步';
-  }
-
-  return '未配置连接';
+  return '已配置，待首次同步';
 };
 
-const getSyncStatusTone = (
-  status: 'cached' | 'empty' | 'error' | 'fallback' | 'idle',
-  hasConnection: boolean,
-): 'blue' | 'default' | 'gold' | 'green' | 'red' => {
-  if (status === 'cached') {
-    return 'green';
+const getLastSyncLabel = (value: null | string, hasConnection: boolean): string => {
+  if (!hasConnection) {
+    return '未连接';
   }
 
-  if (status === 'empty') {
-    return 'blue';
-  }
-
-  if (status === 'fallback') {
-    return 'gold';
-  }
-
-  if (status === 'error') {
-    return 'red';
-  }
-
-  if (hasConnection) {
-    return 'blue';
-  }
-
-  return 'default';
+  return formatStatusTime(value);
 };
 
 const getSourceLabel = (source: 'mock' | 'supabase' | null): string => {
@@ -93,6 +112,22 @@ const getSourceLabel = (source: 'mock' | 'supabase' | null): string => {
   }
 
   return '未初始化';
+};
+
+const isValidProjectConnection = (projectUrl: string, publishableKey: string): boolean => {
+  const normalizedUrl = projectUrl.trim();
+  const normalizedKey = publishableKey.trim();
+
+  if (!normalizedUrl || !normalizedKey || /\s/.test(normalizedKey)) {
+    return false;
+  }
+
+  try {
+    const url = new URL(normalizedUrl);
+    return url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 };
 
 const isAppErrorCode = (value: null | string): value is AppErrorCode => {
@@ -125,6 +160,46 @@ const getSyncAlertDescription = (errorCode: null | string): string => {
   return getUserFacingErrorMessage(new AppError('', { code: errorCode }));
 };
 
+type ConnectionProbeStatus = 'checking' | 'connected' | 'error' | 'idle';
+
+const getConnectionTagColor = (
+  hasConnection: boolean,
+  probeStatus: ConnectionProbeStatus,
+): 'blue' | 'default' | 'green' | 'orange' => {
+  if (!hasConnection) {
+    return 'default';
+  }
+
+  if (probeStatus === 'error') {
+    return 'orange';
+  }
+
+  if (probeStatus === 'checking') {
+    return 'blue';
+  }
+
+  return 'green';
+};
+
+const getConnectionTagLabel = (
+  hasConnection: boolean,
+  probeStatus: ConnectionProbeStatus,
+): string => {
+  if (!hasConnection) {
+    return '未连接';
+  }
+
+  if (probeStatus === 'error') {
+    return '连接异常';
+  }
+
+  if (probeStatus === 'checking') {
+    return '检查中';
+  }
+
+  return '已连接';
+};
+
 const mapCostTemplateToFormValues = (template: CostTemplate): CostTemplateFormValues => ({
   dehydrationRate: template.dehydrationRate,
   energyCost: template.energyCost,
@@ -138,10 +213,44 @@ const mapCostTemplateToFormValues = (template: CostTemplate): CostTemplateFormVa
   targetProfitRate: template.targetProfitRate,
 });
 
+const copyTextToClipboard = async (text: string): Promise<void> => {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  if (typeof document === 'undefined') {
+    throw new Error('当前环境不支持复制');
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  textarea.style.pointerEvents = 'none';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  const copied = document.execCommand('copy');
+  document.body.removeChild(textarea);
+
+  if (!copied) {
+    throw new Error('复制失败');
+  }
+};
+
 export function SettingsPage() {
   const { message } = App.useApp();
+  const queryClient = useQueryClient();
   const screens = useBreakpoint();
   const beanCacheStatus = useBeanCacheStatus();
+  const {
+    appDisplaySettings,
+    loadAppDisplaySettings,
+    saveAppDisplaySettings,
+  } = useAppDisplaySettings();
   const {
     costTemplateSettings,
     deleteCostTemplate,
@@ -154,6 +263,7 @@ export function SettingsPage() {
     clearErrors,
     control,
     formState: { errors },
+    getValues,
     reset,
     setError,
   } = useForm<SupabaseConnectionFormValues>({
@@ -164,27 +274,160 @@ export function SettingsPage() {
   });
   const watchedValues = useWatch({ control });
   const lastSavedValuesRef = useRef(JSON.stringify(supabaseConnections));
+  const lastGreenBeanRefreshSignatureRef = useRef('');
+  const [connectionProbeState, setConnectionProbeState] = useState<Record<SupabaseDataSource, ConnectionProbeStatus>>({
+    greenBean: 'idle',
+    roastedBean: 'idle',
+  });
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
   const [isTemplateDrawerOpen, setIsTemplateDrawerOpen] = useState(false);
-  const [visibleCode, setVisibleCode] = useState<null | 'author' | 'sponsor'>(null);
+  const [visibleCode, setVisibleCode] = useState<null | QrCodeKey>(null);
   const [templateDraft, setTemplateDraft] = useState<CostTemplateFormValues>(createEmptyCostTemplateFormValues());
   const [templateErrors, setTemplateErrors] = useState<Partial<Record<keyof CostTemplateFormValues, string>>>({});
-  const hasBootstrapConnection =
-    supabaseConnections.greenBean.projectUrl.trim().length > 0 &&
-    supabaseConnections.greenBean.publishableKey.trim().length > 0;
-  const hasRoastedBeanConnection =
-    supabaseConnections.roastedBean.projectUrl.trim().length > 0 &&
-    supabaseConnections.roastedBean.publishableKey.trim().length > 0;
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    const collapsedByDefault = import.meta.env.MODE !== 'test';
+
+    return {
+      costTemplates: collapsedByDefault,
+      displayScale: collapsedByDefault,
+      greenBean: collapsedByDefault,
+      roastedBean: collapsedByDefault,
+    };
+  });
+  const hasBootstrapConnection = isValidProjectConnection(
+    supabaseConnections.greenBean.projectUrl,
+    supabaseConnections.greenBean.publishableKey,
+  );
+  const hasRoastedBeanConnection = isValidProjectConnection(
+    supabaseConnections.roastedBean.projectUrl,
+    supabaseConnections.roastedBean.publishableKey,
+  );
   const shouldShowSyncAlert =
     hasBootstrapConnection &&
     beanCacheStatus.errorCode != null &&
     (beanCacheStatus.status === 'error' || beanCacheStatus.status === 'fallback');
 
+  const refreshGreenBeanDependencies = useCallback(async (connectionSignature: string) => {
+    if (!connectionSignature || lastGreenBeanRefreshSignatureRef.current === connectionSignature) {
+      return;
+    }
+
+    lastGreenBeanRefreshSignatureRef.current = connectionSignature;
+    await costTemplateSyncService.syncSafely(costTemplateSettings);
+    await appDisplaySettingsSyncService.syncSafely(appDisplaySettings);
+    loadCostTemplates();
+    loadAppDisplaySettings();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: beanQueryKeys.all }),
+      queryClient.invalidateQueries({ queryKey: roastPlanQueryKeys.all }),
+      queryClient.invalidateQueries({ queryKey: roastBatchQueryKeys.all }),
+    ]);
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: beanQueryKeys.all, type: 'active' }),
+      queryClient.refetchQueries({ queryKey: roastPlanQueryKeys.all, type: 'active' }),
+      queryClient.refetchQueries({ queryKey: roastBatchQueryKeys.all, type: 'active' }),
+    ]);
+  }, [appDisplaySettings, costTemplateSettings, loadAppDisplaySettings, loadCostTemplates, queryClient]);
+
+  const verifyConnection = useCallback(
+    async (dataSource: SupabaseDataSource, connection: SupabaseProjectConnection) => {
+      setConnectionProbeState((current) => ({
+        ...current,
+        [dataSource]: 'checking',
+      }));
+
+      try {
+        await supabaseConnectionProbeService.verify(dataSource, connection);
+        setConnectionProbeState((current) => ({
+          ...current,
+          [dataSource]: 'connected',
+        }));
+        return true;
+      } catch {
+        setConnectionProbeState((current) => ({
+          ...current,
+          [dataSource]: 'error',
+        }));
+        return false;
+      }
+    },
+    [],
+  );
+
+  const persistSupabaseConnectionDraft = useCallback(
+    async (dataSource: SupabaseDataSource) => {
+      const nextValues = getValues();
+      const draftValues: SupabaseConnectionFormValues = {
+        greenBean: {
+          projectUrl: nextValues.greenBean.projectUrl ?? '',
+          publishableKey: nextValues.greenBean.publishableKey ?? '',
+        },
+        roastedBean: {
+          projectUrl: nextValues.roastedBean.projectUrl ?? '',
+          publishableKey: nextValues.roastedBean.publishableKey ?? '',
+        },
+      };
+      const serializedValues = JSON.stringify(draftValues);
+
+      if (serializedValues !== lastSavedValuesRef.current) {
+        saveSupabaseConnections(draftValues);
+        lastSavedValuesRef.current = serializedValues;
+      }
+
+      const connection = draftValues[dataSource];
+      const isValidConnection = isValidProjectConnection(
+        connection.projectUrl,
+        connection.publishableKey,
+      );
+
+      if (!isValidConnection) {
+        setConnectionProbeState((current) => ({
+          ...current,
+          [dataSource]: 'idle',
+        }));
+        return;
+      }
+
+      const isVerified = await verifyConnection(dataSource, connection);
+
+      if (!isVerified || dataSource !== 'greenBean') {
+        return;
+      }
+
+      const signature = JSON.stringify({
+        projectUrl: connection.projectUrl.trim(),
+        publishableKey: connection.publishableKey.trim(),
+      });
+
+      void refreshGreenBeanDependencies(signature);
+    },
+    [getValues, refreshGreenBeanDependencies, saveSupabaseConnections, verifyConnection],
+  );
+
   useEffect(() => {
+    loadAppDisplaySettings();
     loadSupabaseConnections();
     loadCostTemplates();
-  }, [loadCostTemplates, loadSupabaseConnections]);
+  }, [loadAppDisplaySettings, loadCostTemplates, loadSupabaseConnections]);
+
+  useEffect(() => {
+    if (!hasBootstrapConnection) {
+      return;
+    }
+
+    const signature = JSON.stringify({
+      projectUrl: supabaseConnections.greenBean.projectUrl.trim(),
+      publishableKey: supabaseConnections.greenBean.publishableKey.trim(),
+    });
+
+    void refreshGreenBeanDependencies(signature);
+  }, [
+    hasBootstrapConnection,
+    refreshGreenBeanDependencies,
+    supabaseConnections.greenBean.projectUrl,
+    supabaseConnections.greenBean.publishableKey,
+  ]);
 
   useEffect(() => {
     reset({
@@ -217,37 +460,6 @@ export function SettingsPage() {
     setTemplateDraft(mapCostTemplateToFormValues(activeTemplate));
     setTemplateErrors({});
   }, [costTemplateSettings, editingTemplateId, isCreatingTemplate]);
-
-  useEffect(() => {
-    if (!watchedValues?.greenBean || !watchedValues?.roastedBean) {
-      return;
-    }
-
-    const draftValues: SupabaseConnectionFormValues = {
-      greenBean: {
-        projectUrl: watchedValues.greenBean.projectUrl ?? '',
-        publishableKey: watchedValues.greenBean.publishableKey ?? '',
-      },
-      roastedBean: {
-        projectUrl: watchedValues.roastedBean.projectUrl ?? '',
-        publishableKey: watchedValues.roastedBean.publishableKey ?? '',
-      },
-    };
-    const serializedValues = JSON.stringify(draftValues);
-
-    if (serializedValues === lastSavedValuesRef.current) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      saveSupabaseConnections(draftValues);
-      lastSavedValuesRef.current = serializedValues;
-    }, 120);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [saveSupabaseConnections, watchedValues]);
 
   useEffect(() => {
     const result = supabaseConnectionFormSchema.safeParse(watchedValues);
@@ -312,8 +524,52 @@ export function SettingsPage() {
     setVisibleCode((current) => (current === code ? null : code));
   };
 
+  const activeQrEntry = visibleCode ? qrCodeEntries[visibleCode] : null;
+
+  const toggleSection = (key: keyof typeof collapsedSections) => {
+    setCollapsedSections((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  };
+
+  const handleDisplayScaleChange = (value: number) => {
+    const nextSettings = saveAppDisplaySettings(Number(value.toFixed(2)));
+    void appDisplaySettingsSyncService.syncSafely(nextSettings);
+  };
+
+  const handleCopyGreenBeanInitSql = async () => {
+    try {
+      const { default: greenBeanSupabaseInitSql } = await import('../../../../supabase/init.sql?raw');
+      await copyTextToClipboard(greenBeanSupabaseInitSql);
+      void message.success('最新生豆 Supabase 建库 SQL 已复制');
+    } catch {
+      void message.error('复制失败，请检查浏览器剪贴板权限');
+    }
+  };
+
+  const handleCopyRoastedBeanInitSql = async () => {
+    try {
+      const { default: roastedBeanSupabaseInitSql } = await import('../../../../supabase/roasted-bean-init.sql?raw');
+      await copyTextToClipboard(roastedBeanSupabaseInitSql);
+      void message.success('熟豆 Supabase 初始化 SQL 已复制');
+    } catch {
+      void message.error('复制失败，请检查浏览器剪贴板权限');
+    }
+  };
+
   const handleDeleteTemplate = (template: CostTemplate) => {
     deleteCostTemplate(template.id);
+    const nextSettings = {
+      ...costTemplateSettings,
+      defaultTemplateId:
+        costTemplateSettings.defaultTemplateId === template.id
+          ? costTemplateSettings.templates.find((item) => item.id !== template.id)?.id ?? null
+          : costTemplateSettings.defaultTemplateId,
+      templates: costTemplateSettings.templates.filter((item) => item.id !== template.id),
+      updatedAt: new Date().toISOString(),
+    };
+    void costTemplateSyncService.syncSafely(nextSettings);
 
     if (editingTemplateId === template.id) {
       handleCloseTemplateDrawer();
@@ -341,10 +597,25 @@ export function SettingsPage() {
       });
 
       setTemplateErrors(nextErrors);
+      const firstField = result.error.issues
+        .map((issue) => issue.path[0] as keyof CostTemplateFormValues | undefined)
+        .find((field): field is keyof CostTemplateFormValues => field != null);
+
+      if (firstField) {
+        scrollToField(String(firstField));
+      }
       return;
     }
 
     const savedTemplate = saveCostTemplate(result.data, isCreatingTemplate ? undefined : editingTemplateId ?? undefined);
+    void costTemplateSyncService.syncSafely({
+      defaultTemplateId:
+        costTemplateSettings.defaultTemplateId ?? savedTemplate.id,
+      templates: isCreatingTemplate
+        ? [savedTemplate, ...costTemplateSettings.templates]
+        : costTemplateSettings.templates.map((template) => (template.id === savedTemplate.id ? savedTemplate : template)),
+      updatedAt: new Date().toISOString(),
+    });
     setIsCreatingTemplate(false);
     setEditingTemplateId(savedTemplate.id);
     setIsTemplateDrawerOpen(false);
@@ -355,254 +626,368 @@ export function SettingsPage() {
 
   return (
     <main className={styles.page}>
-      {shouldShowSyncAlert ? (
-        <Alert
-          className={styles.syncAlert}
-          description={getSyncAlertDescription(beanCacheStatus.errorCode)}
-          message={getSyncAlertTitle(beanCacheStatus.status)}
-          showIcon
-          type={beanCacheStatus.status === 'fallback' ? 'warning' : 'error'}
-        />
-      ) : null}
-
       <form className={styles.form}>
-        <section className={styles.section}>
+        <article className={styles.statusInlineBar}>
+          <div className={styles.statusInlineGroup}>
+            <strong className={styles.statusInlineValue}>
+              {getSyncStatusLabel(beanCacheStatus.status, hasBootstrapConnection)}
+            </strong>
+          </div>
+          <div className={styles.statusInlineDivider} />
+          <div className={styles.statusInlineGroup}>
+            <strong className={styles.statusInlineValue}>
+              {getLastSyncLabel(beanCacheStatus.syncedAt, hasBootstrapConnection)}
+            </strong>
+          </div>
+        </article>
+
+        <section className={styles.section} data-collapsed={collapsedSections.greenBean}>
           <header className={styles.sectionHeader}>
             <div className={styles.sectionHeaderRow}>
-              <h2>生豆数据库</h2>
-              <Tag color={hasBootstrapConnection ? 'green' : 'default'}>
-                {hasBootstrapConnection ? '已连接' : '未连接'}
-              </Tag>
-            </div>
-            <p className={styles.sectionStatusCopy}>
-              {hasBootstrapConnection ? '当前会尝试连接生豆 Supabase 项目。' : '未填写完整连接信息时，不会发起生豆同步请求。'}
-            </p>
-          </header>
-          <div className={styles.fieldGrid}>
-            <div className={styles.field}>
-              <label htmlFor="green-bean-project-url">Project URL</label>
-              <Controller
-                control={control}
-                name="greenBean.projectUrl"
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    id="green-bean-project-url"
-                    placeholder="https://your-green-bean-project.supabase.co"
-                    status={errors.greenBean?.projectUrl ? 'error' : undefined}
-                  />
-                )}
+              <div className={styles.sectionHeaderTitleGroup}>
+                <h2>生豆数据库</h2>
+                <Tag color={getConnectionTagColor(hasBootstrapConnection, connectionProbeState.greenBean)}>
+                  {getConnectionTagLabel(hasBootstrapConnection, connectionProbeState.greenBean)}
+                </Tag>
+              </div>
+              <Button
+                aria-label={collapsedSections.greenBean ? '展开' : '收起'}
+                className={styles.collapseButton}
+                data-expanded={!collapsedSections.greenBean}
+                icon={<DownOutlined />}
+                onClick={() => {
+                  toggleSection('greenBean');
+                }}
+                type="text"
               />
-              <span className={styles.helpText}>
-                {errors.greenBean?.projectUrl?.message ?? '示例：https://xxx.supabase.co'}
-              </span>
             </div>
-            <div className={styles.field}>
-              <label htmlFor="green-bean-publishable-key">Publishable Key</label>
-              <Controller
-                control={control}
-                name="greenBean.publishableKey"
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    id="green-bean-publishable-key"
-                    placeholder="sb_publishable_xxx 或匿名公开 key"
-                    status={errors.greenBean?.publishableKey ? 'error' : undefined}
-                  />
-                )}
-              />
-              <span className={styles.helpText}>
-                {errors.greenBean?.publishableKey?.message ?? '前端只应使用公开可暴露的 publishable key'}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.section}>
-          <header className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderRow}>
-              <h2>熟豆数据库</h2>
-              <Tag color={hasRoastedBeanConnection ? 'green' : 'default'}>
-                {hasRoastedBeanConnection ? '已连接' : '未连接'}
-              </Tag>
-            </div>
-            <p className={styles.sectionStatusCopy}>
-              {hasRoastedBeanConnection
-                ? '当前会尝试连接熟豆 Supabase 项目，后续新增烘焙记录会同步写入熟豆库。'
-                : '熟豆数据库可暂时留空；未配置时，未来新增烘焙记录不会同步到熟豆库。'}
-            </p>
           </header>
-          <div className={styles.fieldGrid}>
-            <div className={styles.field}>
-              <label htmlFor="roasted-bean-project-url">Project URL</label>
-              <Controller
-                control={control}
-                name="roastedBean.projectUrl"
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    id="roasted-bean-project-url"
-                    placeholder="https://your-roasted-bean-project.supabase.co"
-                    status={errors.roastedBean?.projectUrl ? 'error' : undefined}
-                  />
-                )}
-              />
-              <span className={styles.helpText}>
-                {errors.roastedBean?.projectUrl?.message ?? '留空则不启用熟豆同步；填写后新增烘焙会同步到熟豆库'}
-              </span>
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="roasted-bean-publishable-key">Publishable Key</label>
-              <Controller
-                control={control}
-                name="roastedBean.publishableKey"
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    id="roasted-bean-publishable-key"
-                    placeholder="sb_publishable_xxx 或匿名公开 key"
-                    status={errors.roastedBean?.publishableKey ? 'error' : undefined}
-                  />
-                )}
-              />
-              <span className={styles.helpText}>
-                {errors.roastedBean?.publishableKey?.message ?? '只在需要启用熟豆同步时填写这组连接信息'}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.statusSection}>
-          <header className={styles.sectionHeader}>
-            <h2>当前数据同步状态</h2>
-          </header>
-
-          <div className={styles.statusGrid}>
-            <article className={styles.statusCard}>
-              <span>同步状态</span>
-              <strong>{getSyncStatusLabel(beanCacheStatus.status, hasBootstrapConnection)}</strong>
-            </article>
-            <article className={styles.statusCard}>
-              <span>最近同步</span>
-              <strong>{formatStatusTime(beanCacheStatus.syncedAt)}</strong>
-            </article>
-          </div>
-        </section>
-
-        <section className={styles.section}>
-          <header className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderRow}>
-              <h2>成本模板</h2>
-              <Button onClick={handleCreateTemplate} type="default">
-                新建模板
-              </Button>
-            </div>
-            <p className={styles.sectionStatusCopy}>
-              成本核算已经并入设置。这里维护不同烘焙或销售场景下的模板，创建生豆时选择模板后，会自动换算默认熟豆规格与建议售价。
-            </p>
-          </header>
-
-          <div className={styles.templateGrid}>
-            {costTemplateSettings.templates.map((template) => {
-              const isDefault = template.id === costTemplateSettings.defaultTemplateId;
-              const isEditing = isTemplateDrawerOpen && !isCreatingTemplate && template.id === editingTemplateId;
-
-              return (
-                <article className={styles.templateCard} data-active={isEditing} key={template.id}>
-                  <div className={styles.templateCardHeader}>
-                    <div className={styles.templateTitleBlock}>
-                      <strong>{template.name}</strong>
-                      {isDefault ? <Tag color="green">默认模板</Tag> : null}
-                    </div>
-                    <span className={styles.templateMeta}>
-                      生豆 {template.roastInputWeightGrams}g · 单份 {template.saleUnitWeightGrams}g · 利润率 {template.targetProfitRate}%
-                    </span>
-                  </div>
-                  <div className={styles.templateStats}>
-                    <span>脱水率 {template.dehydrationRate}%</span>
-                    <span>包装 ¥{template.packagingCost.toFixed(2)}</span>
-                    <span>能耗 ¥{template.energyCost.toFixed(2)}</span>
-                    <span>人工 ¥{template.laborCost.toFixed(2)}</span>
-                    <span>其他 ¥{template.otherCost.toFixed(2)}</span>
-                  </div>
-                  {template.notes ? <p className={styles.templateNotes}>{template.notes}</p> : null}
-                  <div className={styles.templateActions}>
-                    <Button
-                      onClick={() => {
-                        handleEditTemplate(template);
-                      }}
-                      type={isEditing ? 'primary' : 'default'}
-                    >
-                      编辑
-                    </Button>
-                    <Button
-                      disabled={isDefault}
-                      onClick={() => {
-                        setDefaultCostTemplate(template.id);
-                        void message.success('已设为默认模板');
-                      }}
-                    >
-                      设为默认
-                    </Button>
-                    <Popconfirm
-                      cancelText="取消"
-                      okText="删除"
-                      onConfirm={() => {
-                        handleDeleteTemplate(template);
-                      }}
-                      title={`删除模板「${template.name}」？`}
-                    >
-                      <Button
-                        danger
-                        disabled={costTemplateSettings.templates.length <= 1}
-                      >
-                        删除
-                      </Button>
-                    </Popconfirm>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className={styles.qrSection}>
-          <header className={styles.sectionHeader}>
-            <h2>作者交流与赞助支持</h2>
-            <p className={styles.sectionStatusCopy}>
-              下面两个入口默认收起，只在你点击按钮后才会展示对应二维码。
-            </p>
-          </header>
-
-          <div className={styles.qrActions}>
-            <Button
-              className={styles.qrButton}
-              onClick={() => handleToggleCode('author')}
-              type={visibleCode === 'author' ? 'primary' : 'default'}
-            >
-              和作者交流一下
-            </Button>
-            <Button
-              className={styles.qrButton}
-              onClick={() => handleToggleCode('sponsor')}
-              type={visibleCode === 'sponsor' ? 'primary' : 'default'}
-            >
-              请作者喝杯咖啡
-            </Button>
-          </div>
-
-          {visibleCode ? (
-            <div className={styles.qrPanel}>
-              <div className={styles.qrCard}>
-                <img
-                  alt={visibleCode === 'author' ? '作者码' : '赞助码'}
-                  className={styles.qrImage}
-                  src={visibleCode === 'author' ? '/settings-codes/author-code.png' : '/settings-codes/sponsor-code.png'}
+          <div aria-hidden={collapsedSections.greenBean} className={styles.sectionCollapse} data-collapsed={collapsedSections.greenBean}>
+            <div className={styles.sectionCollapseInner}>
+              {shouldShowSyncAlert ? (
+                <Alert
+                  className={styles.syncAlert}
+                  description={getSyncAlertDescription(beanCacheStatus.errorCode)}
+                  message={getSyncAlertTitle(beanCacheStatus.status)}
+                  showIcon
+                  type={beanCacheStatus.status === 'fallback' ? 'warning' : 'error'}
                 />
+              ) : null}
+              <div className={styles.sectionActions}>
+                <Button icon={<CopyOutlined />} onClick={() => void handleCopyGreenBeanInitSql()}>
+                  复制最新生豆建库 SQL
+                </Button>
+              </div>
+              <div className={styles.fieldGrid}>
+                <div className={styles.field}>
+                  <label htmlFor="green-bean-project-url">Project URL</label>
+                  <Controller
+                    control={control}
+                    name="greenBean.projectUrl"
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        id="green-bean-project-url"
+                        onBlur={() => {
+                          field.onBlur();
+                          void persistSupabaseConnectionDraft('greenBean');
+                        }}
+                        placeholder="https://your-green-bean-project.supabase.co"
+                        status={errors.greenBean?.projectUrl ? 'error' : undefined}
+                      />
+                    )}
+                  />
+                  {errors.greenBean?.projectUrl?.message ? <span className={styles.helpText}>{errors.greenBean.projectUrl.message}</span> : null}
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="green-bean-publishable-key">Publishable Key</label>
+                  <Controller
+                    control={control}
+                    name="greenBean.publishableKey"
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        id="green-bean-publishable-key"
+                        onBlur={() => {
+                          field.onBlur();
+                          void persistSupabaseConnectionDraft('greenBean');
+                        }}
+                        placeholder="sb_publishable_xxx 或匿名公开 key"
+                        status={errors.greenBean?.publishableKey ? 'error' : undefined}
+                      />
+                    )}
+                  />
+                  {errors.greenBean?.publishableKey?.message ? (
+                    <span className={styles.helpText}>{errors.greenBean.publishableKey.message}</span>
+                  ) : null}
+                </div>
               </div>
             </div>
-          ) : null}
+          </div>
         </section>
+
+        <section className={styles.section} data-collapsed={collapsedSections.roastedBean}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderRow}>
+              <div className={styles.sectionHeaderTitleGroup}>
+                <h2>熟豆数据库</h2>
+                <Tag color={getConnectionTagColor(hasRoastedBeanConnection, connectionProbeState.roastedBean)}>
+                  {getConnectionTagLabel(hasRoastedBeanConnection, connectionProbeState.roastedBean)}
+                </Tag>
+              </div>
+              <Button
+                aria-label={collapsedSections.roastedBean ? '展开' : '收起'}
+                className={styles.collapseButton}
+                data-expanded={!collapsedSections.roastedBean}
+                icon={<DownOutlined />}
+                onClick={() => {
+                  toggleSection('roastedBean');
+                }}
+                type="text"
+              />
+            </div>
+          </header>
+          <div aria-hidden={collapsedSections.roastedBean} className={styles.sectionCollapse} data-collapsed={collapsedSections.roastedBean}>
+            <div className={styles.sectionCollapseInner}>
+              <div className={styles.sectionActions}>
+                <Button icon={<CopyOutlined />} onClick={() => void handleCopyRoastedBeanInitSql()}>
+                  复制熟豆建库 SQL
+                </Button>
+              </div>
+              <div className={styles.fieldGrid}>
+                <div className={styles.field}>
+                  <label htmlFor="roasted-bean-project-url">Project URL</label>
+                  <Controller
+                    control={control}
+                    name="roastedBean.projectUrl"
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        id="roasted-bean-project-url"
+                        onBlur={() => {
+                          field.onBlur();
+                          void persistSupabaseConnectionDraft('roastedBean');
+                        }}
+                        placeholder="https://your-roasted-bean-project.supabase.co"
+                        status={errors.roastedBean?.projectUrl ? 'error' : undefined}
+                      />
+                    )}
+                  />
+                  {errors.roastedBean?.projectUrl?.message ? (
+                    <span className={styles.helpText}>{errors.roastedBean.projectUrl.message}</span>
+                  ) : null}
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="roasted-bean-publishable-key">Publishable Key</label>
+                  <Controller
+                    control={control}
+                    name="roastedBean.publishableKey"
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        id="roasted-bean-publishable-key"
+                        onBlur={() => {
+                          field.onBlur();
+                          void persistSupabaseConnectionDraft('roastedBean');
+                        }}
+                        placeholder="sb_publishable_xxx 或匿名公开 key"
+                        status={errors.roastedBean?.publishableKey ? 'error' : undefined}
+                      />
+                    )}
+                  />
+                  {errors.roastedBean?.publishableKey?.message ? (
+                    <span className={styles.helpText}>{errors.roastedBean.publishableKey.message}</span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.section} data-collapsed={collapsedSections.displayScale}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderRow}>
+              <div className={styles.sectionHeaderTitleGroup}>
+                <h2>显示缩放</h2>
+                <Tag color="blue">{Math.round(appDisplaySettings.scale * 100)}%</Tag>
+              </div>
+              <Button
+                aria-label={collapsedSections.displayScale ? '展开' : '收起'}
+                className={styles.collapseButton}
+                data-expanded={!collapsedSections.displayScale}
+                icon={<DownOutlined />}
+                onClick={() => {
+                  toggleSection('displayScale');
+                }}
+                type="text"
+              />
+            </div>
+          </header>
+          <div aria-hidden={collapsedSections.displayScale} className={styles.sectionCollapse} data-collapsed={collapsedSections.displayScale}>
+            <div className={styles.sectionCollapseInner}>
+              <div className={styles.zoomPanel}>
+                <Slider
+                  marks={{
+                    [appDisplayScaleMin]: `${Math.round(appDisplayScaleMin * 100)}%`,
+                    1: '100%',
+                    [appDisplayScaleMax]: `${Math.round(appDisplayScaleMax * 100)}%`,
+                  }}
+                  max={appDisplayScaleMax}
+                  min={appDisplayScaleMin}
+                  onChange={handleDisplayScaleChange}
+                  step={appDisplayScaleStep}
+                  tooltip={{ formatter: (value) => `${Math.round((value ?? 1) * 100)}%` }}
+                  value={appDisplaySettings.scale}
+                />
+                <div className={styles.zoomActions}>
+                  <Button
+                    onClick={() => {
+                      handleDisplayScaleChange(1);
+                    }}
+                  >
+                    恢复 100%
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      handleDisplayScaleChange(1);
+                      void message.success('显示缩放已恢复默认');
+                    }}
+                  >
+                    重置缩放设置
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.section} data-collapsed={collapsedSections.costTemplates}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderRow}>
+              <div className={styles.sectionHeaderTitleGroup}>
+                <h2>成本模板</h2>
+              </div>
+              <Button
+                aria-label={collapsedSections.costTemplates ? '展开' : '收起'}
+                className={styles.collapseButton}
+                data-expanded={!collapsedSections.costTemplates}
+                icon={<DownOutlined />}
+                onClick={() => {
+                  toggleSection('costTemplates');
+                }}
+                type="text"
+              />
+            </div>
+          </header>
+          <div aria-hidden={collapsedSections.costTemplates} className={styles.sectionCollapse} data-collapsed={collapsedSections.costTemplates}>
+            <div className={styles.sectionCollapseInner}>
+              <div className={styles.sectionActions}>
+                <Button className={styles.sectionActionButtonFull} onClick={handleCreateTemplate} type="default">
+                  新建模板
+                </Button>
+              </div>
+
+              {costTemplateSettings.templates.length === 0 ? (
+                <div className={styles.templateEmptyState}>还没有成本模板，先新建一个模板即可在创建生豆时复用。</div>
+              ) : (
+                <div className={styles.templateGrid}>
+                  {costTemplateSettings.templates.map((template) => {
+                    const isDefault = template.id === costTemplateSettings.defaultTemplateId;
+                    const isEditing = isTemplateDrawerOpen && !isCreatingTemplate && template.id === editingTemplateId;
+
+                    return (
+                      <article className={styles.templateCard} data-active={isEditing} key={template.id}>
+                        <div className={styles.templateCardHeader}>
+                          <div className={styles.templateTitleBlock}>
+                            <strong>{template.name}</strong>
+                            {isDefault ? <Tag color="green">默认模板</Tag> : null}
+                          </div>
+                          <span className={styles.templateMeta}>
+                            生豆 {template.roastInputWeightGrams}g · 单份 {template.saleUnitWeightGrams}g · 利润率 {template.targetProfitRate}%
+                          </span>
+                        </div>
+                        <div className={styles.templateStats}>
+                          <span>脱水率 {template.dehydrationRate}%</span>
+                          <span>包装 ¥{template.packagingCost.toFixed(2)}</span>
+                          <span>能耗 ¥{template.energyCost.toFixed(2)}</span>
+                          <span>人工 ¥{template.laborCost.toFixed(2)}</span>
+                          <span>其他 ¥{template.otherCost.toFixed(2)}</span>
+                        </div>
+                        {template.notes ? <p className={styles.templateNotes}>{template.notes}</p> : null}
+                        <div className={styles.templateActions}>
+                          <Button
+                            onClick={() => {
+                              handleEditTemplate(template);
+                            }}
+                            type={isEditing ? 'primary' : 'default'}
+                          >
+                            编辑
+                          </Button>
+                          <Button
+                            disabled={isDefault}
+                            onClick={() => {
+                              setDefaultCostTemplate(template.id);
+                              void costTemplateSyncService.syncSafely({
+                                ...costTemplateSettings,
+                                defaultTemplateId: template.id,
+                                updatedAt: new Date().toISOString(),
+                              });
+                              void message.success('已设为默认模板');
+                            }}
+                          >
+                            设为默认
+                          </Button>
+                          <Popconfirm
+                            cancelText="取消"
+                            okText="删除"
+                            onConfirm={() => {
+                              handleDeleteTemplate(template);
+                            }}
+                            title={`删除模板「${template.name}」？`}
+                          >
+                            <Button danger>
+                              删除
+                            </Button>
+                          </Popconfirm>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.qrSection} data-expanded={visibleCode ? 'true' : 'false'}>
+          <div className={styles.qrActions}>
+            {(Object.entries(qrCodeEntries) as Array<[QrCodeKey, (typeof qrCodeEntries)[QrCodeKey]]>).map(([code, entry]) => (
+              <Button
+                aria-pressed={visibleCode === code}
+                className={styles.qrButton}
+                key={code}
+                onClick={() => handleToggleCode(code)}
+                type={visibleCode === code ? 'primary' : 'default'}
+              >
+                {entry.buttonLabel}
+              </Button>
+            ))}
+          </div>
+
+          <div aria-hidden={!visibleCode} className={styles.sectionCollapse} data-collapsed={!visibleCode}>
+            <div className={styles.sectionCollapseInner}>
+              {activeQrEntry ? (
+                <div className={styles.qrPanel}>
+                  <div className={styles.qrCard} key={visibleCode}>
+                    <img alt={activeQrEntry.alt} className={styles.qrImage} src={activeQrEntry.image} />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        <p className={styles.buildVersion}>{appBuildVersionLabel}</p>
       </form>
 
       <Drawer
@@ -620,7 +1005,7 @@ export function SettingsPage() {
           </header>
 
           <div className={styles.fieldGrid}>
-            <div className={styles.field}>
+            <div className={styles.field} data-field-path="name">
               <label htmlFor="template-name">模板名称</label>
               <Input
                 id="template-name"
@@ -634,7 +1019,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.name ?? '用于生豆创建时快速选择模板'}</span>
             </div>
 
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="roastInputWeightGrams">
               <label htmlFor="template-roast-input-weight">生豆重量</label>
               <InputNumber
                 id="template-roast-input-weight"
@@ -652,7 +1037,7 @@ export function SettingsPage() {
               </span>
             </div>
 
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="saleUnitWeightGrams">
               <label htmlFor="template-sale-unit-weight">出售单份熟豆重量</label>
               <InputNumber
                 id="template-sale-unit-weight"
@@ -670,7 +1055,7 @@ export function SettingsPage() {
               </span>
             </div>
 
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="dehydrationRate">
               <label htmlFor="template-dehydration-rate">脱水率</label>
               <InputNumber
                 id="template-dehydration-rate"
@@ -687,7 +1072,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.dehydrationRate ?? '用于推算单锅出豆量'}</span>
             </div>
 
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="targetProfitRate">
               <label htmlFor="template-target-profit-rate">目标利润率</label>
               <InputNumber
                 id="template-target-profit-rate"
@@ -705,7 +1090,7 @@ export function SettingsPage() {
               </span>
             </div>
 
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="packagingCost">
               <label htmlFor="template-packaging-cost">包装费用</label>
               <InputNumber
                 id="template-packaging-cost"
@@ -721,7 +1106,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.packagingCost ?? '按单锅计入总成本'}</span>
             </div>
 
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="energyCost">
               <label htmlFor="template-energy-cost">能耗费用</label>
               <InputNumber
                 id="template-energy-cost"
@@ -737,7 +1122,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.energyCost ?? '按单锅计入总成本'}</span>
             </div>
 
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="laborCost">
               <label htmlFor="template-labor-cost">人工费用</label>
               <InputNumber
                 id="template-labor-cost"
@@ -753,7 +1138,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.laborCost ?? '按单锅计入总成本'}</span>
             </div>
 
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="otherCost">
               <label htmlFor="template-other-cost">其他费用</label>
               <InputNumber
                 id="template-other-cost"
@@ -770,7 +1155,7 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className={styles.field}>
+          <div className={styles.field} data-field-path="notes">
             <label htmlFor="template-notes">模板备注</label>
             <Input.TextArea
               id="template-notes"
@@ -785,12 +1170,12 @@ export function SettingsPage() {
             <span className={styles.helpText}>{templateErrors.notes ?? '便于团队区分不同销售场景'}</span>
           </div>
 
-          <div className={styles.templateEditorActions}>
+          <DrawerActionBar>
             <Button onClick={handleCloseTemplateDrawer}>取消</Button>
             <Button onClick={handleSaveTemplate} type="primary">
               {isCreatingTemplate ? '创建模板' : '保存模板'}
             </Button>
-          </div>
+          </DrawerActionBar>
         </section>
       </Drawer>
     </main>

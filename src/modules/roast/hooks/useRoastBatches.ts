@@ -17,7 +17,10 @@ const shouldRetry = (failureCount: number, error: unknown): boolean => {
 };
 
 export function useRoastBatches() {
+  const initialBatches = roastBatchService.getBootstrappedBatches();
+
   return useQuery({
+    initialData: initialBatches.length > 0 ? initialBatches : undefined,
     queryKey: roastBatchQueryKeys.list(),
     queryFn: async () => {
       const response = await roastBatchService.listBatches();

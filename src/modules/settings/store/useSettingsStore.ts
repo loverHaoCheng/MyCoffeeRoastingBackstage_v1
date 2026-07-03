@@ -1,10 +1,13 @@
 import { create } from 'zustand';
 
+import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
 import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
 import {
+  createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
   createDefaultSupabaseConnectionSettings,
+  type AppDisplaySettings,
   type CostTemplate,
   type CostTemplateFormValues,
   type CostTemplateSettings,
@@ -13,11 +16,15 @@ import {
 } from '@/modules/settings/types';
 
 interface SettingsState {
+  appDisplaySettings: AppDisplaySettings;
   costTemplateSettings: CostTemplateSettings;
   deleteCostTemplate: (templateId: string) => void;
+  loadAppDisplaySettings: () => void;
   loadCostTemplates: () => void;
   loadSupabaseConnections: () => void;
+  resetAppDisplaySettings: () => void;
   saveCostTemplate: (values: CostTemplateFormValues, templateId?: string) => CostTemplate;
+  saveAppDisplaySettings: (scale: number) => AppDisplaySettings;
   setDefaultCostTemplate: (templateId: string) => void;
   supabaseConnections: SupabaseConnectionSettings;
   resetCostTemplates: () => void;
@@ -26,6 +33,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
+  appDisplaySettings: appDisplaySettingsService.load(),
   costTemplateSettings: costTemplateSettingsService.load(),
   supabaseConnections: supabaseConnectionSettingsService.load(),
   deleteCostTemplate: (templateId) => {
@@ -36,7 +44,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           ? {
               defaultTemplateId:
                 state.costTemplateSettings.defaultTemplateId === templateId
-                  ? nextTemplates[0]!.id
+                  ? nextTemplates[0]?.id ?? null
                   : state.costTemplateSettings.defaultTemplateId,
               templates: nextTemplates,
               updatedAt: new Date().toISOString(),
@@ -51,6 +59,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   loadCostTemplates: () => {
     set({
       costTemplateSettings: costTemplateSettingsService.load(),
+    });
+  },
+  loadAppDisplaySettings: () => {
+    set({
+      appDisplaySettings: appDisplaySettingsService.load(),
     });
   },
   loadSupabaseConnections: () => {
@@ -103,6 +116,13 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     costTemplateSettingsService.save(nextValue);
     set({ costTemplateSettings: nextValue });
   },
+  resetAppDisplaySettings: () => {
+    const nextValue = createDefaultAppDisplaySettings();
+
+    appDisplaySettingsService.clear();
+    appDisplaySettingsService.save(nextValue);
+    set({ appDisplaySettings: nextValue });
+  },
   resetSupabaseConnections: () => {
     const nextValue = createDefaultSupabaseConnectionSettings();
 
@@ -117,5 +137,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
     supabaseConnectionSettingsService.save(nextValue);
     set({ supabaseConnections: nextValue });
+  },
+  saveAppDisplaySettings: (scale) => {
+    const nextValue: AppDisplaySettings = {
+      scale,
+      updatedAt: new Date().toISOString(),
+    };
+
+    appDisplaySettingsService.save(nextValue);
+    set({ appDisplaySettings: nextValue });
+
+    return nextValue;
   },
 }));

@@ -1,16 +1,22 @@
 import { DownOutlined, MinusCircleOutlined, PlusOutlined, SaveOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Input, InputNumber, Select, Space } from 'antd';
+import { App, Button, Input, InputNumber, Select } from 'antd';
 import { useEffect } from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, type FieldPath, useFieldArray, useForm } from 'react-hook-form';
 
 import { useBeans } from '@/modules/bean/hooks';
+import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
+import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 
 import type { RoastPlanJsonInput } from '../types';
 
 import styles from './RoastPlanManualCreator.module.css';
 
+const GENERIC_BEAN_ID = 'generic';
+const GENERIC_BEAN_NAME = '通用';
+
 interface RoastPlanFormProps {
   initialValues: RoastPlanJsonInput;
+  onCancel?: () => void;
   onSubmit: (input: RoastPlanJsonInput) => Promise<void> | void;
   resetOnSubmit?: boolean;
   submitLabel: string;
@@ -31,12 +37,21 @@ const renderLabel = (label: string, required = false) => {
 
 export function RoastPlanForm({
   initialValues,
+  onCancel,
   onSubmit,
   resetOnSubmit = false,
   submitLabel,
 }: RoastPlanFormProps) {
+  const { message } = App.useApp();
   const { data: beans = [], isLoading: beansLoading } = useBeans();
-  const { control, handleSubmit, reset, setValue } = useForm<RoastPlanJsonInput>({
+  const beanOptions = [
+    { label: GENERIC_BEAN_NAME, value: GENERIC_BEAN_ID },
+    ...beans.map((bean) => ({
+      label: bean.name,
+      value: String(bean.id),
+    })),
+  ];
+  const { control, handleSubmit, reset, setFocus, setValue } = useForm<RoastPlanJsonInput>({
     defaultValues: initialValues,
   });
   const { append, fields, move, remove } = useFieldArray({
@@ -49,12 +64,37 @@ export function RoastPlanForm({
   }, [initialValues, reset]);
 
   const submitForm = async (values: RoastPlanJsonInput) => {
-    const selectedBean = beans.find((bean) => bean.id === values.beanId);
+    if (values.beanId == null || String(values.beanId).trim().length === 0) {
+      void message.warning('请选择生豆或“通用”后再保存烘焙计划。');
+      window.requestAnimationFrame(() => {
+        setFocus('beanId');
+      });
+      return;
+    }
 
-    await onSubmit({
+    const selectedBean = beans.find((bean) => String(bean.id) === String(values.beanId));
+    const isGenericPlan = String(values.beanId) === GENERIC_BEAN_ID;
+    const payload = {
       ...values,
-      beanName: selectedBean?.name ?? values.beanName,
-    });
+      beanName: isGenericPlan ? GENERIC_BEAN_NAME : selectedBean?.name ?? values.beanName,
+    };
+    const validationResult = roastPlanJsonSchema.safeParse(payload);
+
+    if (!validationResult.success) {
+      void message.error(validationResult.error.issues.map((issue) => issue.message).join('；'));
+      const firstFieldPath = validationResult.error.issues
+        .map((issue) => issue.path.join('.') as FieldPath<RoastPlanJsonInput>)
+        .find(Boolean);
+
+      if (firstFieldPath) {
+        window.requestAnimationFrame(() => {
+          setFocus(firstFieldPath);
+        });
+      }
+      return;
+    }
+
+    await onSubmit(validationResult.data);
 
     if (resetOnSubmit) {
       reset(initialValues);
@@ -64,7 +104,7 @@ export function RoastPlanForm({
   return (
     <form className={styles.form} onSubmit={(event) => void handleSubmit(submitForm)(event)}>
       <section className={styles.fieldGrid}>
-        <label className={styles.field}>
+        <label className={styles.field} data-field-path="name">
           {renderLabel('计划名称', true)}
           <Controller
             control={control}
@@ -73,7 +113,7 @@ export function RoastPlanForm({
           />
         </label>
 
-        <label className={styles.field}>
+        <label className={styles.field} data-field-path="beanId">
           {renderLabel('生豆', true)}
           <Controller
             control={control}
@@ -83,19 +123,16 @@ export function RoastPlanForm({
                 aria-label="生豆"
                 loading={beansLoading}
                 onChange={(beanId) => {
-                  const selectedBean = beans.find((bean) => bean.id === beanId);
+                  const selectedBean = beans.find((bean) => String(bean.id) === String(beanId));
 
                   field.onChange(beanId);
-                  setValue('beanName', selectedBean?.name ?? '');
+                  setValue('beanName', beanId === GENERIC_BEAN_ID ? GENERIC_BEAN_NAME : selectedBean?.name ?? '');
                 }}
                 optionFilterProp="label"
-                options={beans.map((bean) => ({
-                  label: bean.name,
-                  value: bean.id,
-                }))}
-                placeholder="从生豆库存选择"
+                options={beanOptions}
+                placeholder="从生豆库存选择，或使用通用计划"
                 showSearch
-                value={field.value}
+                value={field.value == null ? undefined : String(field.value)}
               />
             )}
           />
@@ -107,7 +144,7 @@ export function RoastPlanForm({
           render={({ field }) => <input {...field} type="hidden" />}
         />
 
-        <label className={styles.field}>
+        <label className={styles.field} data-field-path="batchWeightGrams">
           {renderLabel('批次重量', true)}
           <Controller
             control={control}
@@ -126,7 +163,7 @@ export function RoastPlanForm({
           />
         </label>
 
-        <label className={styles.field}>
+        <label className={styles.field} data-field-path="roastLevel">
           {renderLabel('烘焙目标', true)}
           <Controller
             control={control}
@@ -135,7 +172,7 @@ export function RoastPlanForm({
           />
         </label>
 
-        <label className={styles.field}>
+        <label className={styles.field} data-field-path="purpose">
           {renderLabel('用途')}
           <Controller
             control={control}
@@ -211,7 +248,7 @@ export function RoastPlanForm({
                     </div>
 
                     <div className={styles.stepFields}>
-                      <label className={styles.field}>
+                      <label className={styles.field} data-field-path={`steps.${stepIndex}.time`}>
                         {renderLabel('时间', true)}
                         <Controller
                           control={control}
@@ -219,7 +256,7 @@ export function RoastPlanForm({
                           render={({ field: itemField }) => <Input {...itemField} />}
                         />
                       </label>
-                      <label className={styles.field}>
+                      <label className={styles.field} data-field-path={`steps.${stepIndex}.event`}>
                         {renderLabel('事件', true)}
                         <Controller
                           control={control}
@@ -227,7 +264,7 @@ export function RoastPlanForm({
                           render={({ field: itemField }) => <Input {...itemField} />}
                         />
                       </label>
-                      <label className={styles.field}>
+                      <label className={styles.field} data-field-path={`steps.${stepIndex}.operation`}>
                         {renderLabel('操作', true)}
                         <Controller
                           control={control}
@@ -235,7 +272,7 @@ export function RoastPlanForm({
                           render={({ field: itemField }) => <Input {...itemField} />}
                         />
                       </label>
-                      <label className={styles.field}>
+                      <label className={styles.field} data-field-path={`steps.${stepIndex}.temperature`}>
                         {renderLabel('炉温', true)}
                         <Controller
                           control={control}
@@ -243,7 +280,7 @@ export function RoastPlanForm({
                           render={({ field: itemField }) => <Input {...itemField} />}
                         />
                       </label>
-                      <label className={styles.field}>
+                      <label className={styles.field} data-field-path={`steps.${stepIndex}.firePower`}>
                         {renderLabel('火力', true)}
                         <Controller
                           control={control}
@@ -260,11 +297,12 @@ export function RoastPlanForm({
         </div>
       </section>
 
-      <Space className={styles.actions} wrap>
+      <DrawerActionBar>
+        {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
         <Button aria-label={submitLabel} block icon={<SaveOutlined />} htmlType="submit">
           {submitLabel}
         </Button>
-      </Space>
+      </DrawerActionBar>
     </form>
   );
 }

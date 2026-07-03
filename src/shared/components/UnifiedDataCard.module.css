@@ -14,7 +14,8 @@
   background:
     linear-gradient(180deg, rgb(255 255 255 / 98%) 0%, rgb(248 248 250 / 96%) 100%);
   box-shadow:
-    0 16px 40px rgb(17 24 39 / 7%),
+    0 20px 46px rgb(17 24 39 / 4.5%),
+    0 6px 18px rgb(17 24 39 / 2.2%),
     inset 0 1px 0 rgb(255 255 255 / 92%);
   overflow: hidden;
   justify-self: stretch;
@@ -156,7 +157,7 @@
   color: #1d1d1f;
   font-weight: 600;
   box-shadow:
-    0 8px 18px rgb(29 29 31 / 5%),
+    0 10px 22px rgb(29 29 31 / 3.8%),
     inset 0 1px 0 rgb(255 255 255 / 92%);
   transition:
     background 180ms ease,
@@ -171,7 +172,7 @@
   background: #ffffff;
   color: #111113;
   box-shadow:
-    0 12px 26px rgb(29 29 31 / 8%),
+    0 12px 28px rgb(29 29 31 / 5.2%),
     inset 0 1px 0 rgb(255 255 255 / 96%);
   transform: translateY(-1px);
 }

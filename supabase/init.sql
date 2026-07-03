@@ -82,7 +82,7 @@ create table if not exists public.bean_sale_specs (
 
 create table if not exists public.roast_profiles (
   id uuid primary key default gen_random_uuid(),
-  green_bean_id uuid not null references public.green_beans(id) on delete cascade,
+  green_bean_id uuid references public.green_beans(id) on delete cascade,
   name text not null,
   target_roast_level text,
   roast_purpose text,
@@ -133,6 +133,7 @@ create table if not exists public.roast_batches (
   id uuid primary key default gen_random_uuid(),
   roast_date timestamptz not null default timezone('utc', now()),
   green_bean_id uuid not null references public.green_beans(id) on delete restrict,
+  roasted_bean_name text,
   roast_plan_id uuid references public.roast_profiles(id) on delete set null,
   input_weight_grams integer not null check (input_weight_grams > 0),
   output_weight_grams integer not null default 0 check (
@@ -181,6 +182,14 @@ create table if not exists public.cost_calculations (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.app_settings (
+  id uuid primary key default gen_random_uuid(),
+  key text not null unique,
+  value jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create index if not exists green_bean_purchase_batches_green_bean_id_idx
   on public.green_bean_purchase_batches(green_bean_id, received_at desc);
 
@@ -211,6 +220,9 @@ create index if not exists cost_calculations_bean_id_idx
 
 create index if not exists cost_calculations_updated_at_idx
   on public.cost_calculations(updated_at desc);
+
+create index if not exists app_settings_updated_at_idx
+  on public.app_settings(updated_at desc);
 
 drop trigger if exists set_green_beans_updated_at on public.green_beans;
 create trigger set_green_beans_updated_at
@@ -254,7 +266,42 @@ before update on public.cost_calculations
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists set_app_settings_updated_at on public.app_settings;
+create trigger set_app_settings_updated_at
+before update on public.app_settings
+for each row
+execute function public.set_updated_at();
+
 create or replace view public.green_bean_inventory_overview as
+with latest_purchase_batch as (
+  select distinct on (green_bean_id)
+    green_bean_id,
+    purchased_weight_grams as total_purchased_weight_grams,
+    remaining_weight_grams as total_remaining_weight_grams,
+    purchased_total_price as total_purchased_total_price,
+    supplier_name,
+    updated_at as latest_purchase_updated_at
+  from public.green_bean_purchase_batches
+  order by green_bean_id, received_at desc, created_at desc
+),
+default_sale_spec as (
+  select distinct on (green_bean_id)
+    green_bean_id,
+    unit_weight_grams as default_sale_unit_weight_grams,
+    unit_price as default_sale_unit_price,
+    updated_at as latest_sale_updated_at
+  from public.bean_sale_specs
+  where is_default = true
+  order by green_bean_id, updated_at desc, created_at desc
+),
+roast_batch_agg as (
+  select
+    green_bean_id,
+    count(*) as roast_record_count,
+    max(updated_at) as latest_batch_updated_at
+  from public.roast_batches
+  group by green_bean_id
+)
 select
   bean.id,
   bean.code,
@@ -267,48 +314,29 @@ select
   bean.harvest_season,
   bean.default_roast_input_grams,
   bean.created_at,
-  coalesce(sum(purchase.purchased_weight_grams), 0) as total_purchased_weight_grams,
-  coalesce(sum(purchase.remaining_weight_grams), 0) as total_remaining_weight_grams,
+  coalesce(latest_purchase_batch.total_purchased_weight_grams, 0) as total_purchased_weight_grams,
+  coalesce(latest_purchase_batch.total_remaining_weight_grams, 0) as total_remaining_weight_grams,
   coalesce(
     round(
-      (sum(purchase.purchased_total_price) / nullif(sum(purchase.purchased_weight_grams), 0)::numeric) * 1000,
+      (latest_purchase_batch.total_purchased_total_price / nullif(latest_purchase_batch.total_purchased_weight_grams, 0)::numeric) * 1000,
       2
     ),
     0
   ) as weighted_cost_per_kg,
-  (
-    select purchase_latest.supplier_name
-    from public.green_bean_purchase_batches as purchase_latest
-    where purchase_latest.green_bean_id = bean.id
-    order by purchase_latest.received_at desc, purchase_latest.created_at desc
-    limit 1
-  ) as latest_supplier_name,
-  max(sale.unit_weight_grams) filter (where sale.is_default) as default_sale_unit_weight_grams,
-  max(sale.unit_price) filter (where sale.is_default) as default_sale_unit_price,
-  count(distinct roast.id) as roast_record_count,
+  latest_purchase_batch.supplier_name as latest_supplier_name,
+  default_sale_spec.default_sale_unit_weight_grams,
+  default_sale_spec.default_sale_unit_price,
+  coalesce(roast_batch_agg.roast_record_count, 0) as roast_record_count,
   greatest(
     bean.updated_at,
-    coalesce(max(purchase.updated_at), bean.updated_at),
-    coalesce(max(sale.updated_at), bean.updated_at),
-    coalesce(max(roast.updated_at), bean.updated_at)
+    coalesce(latest_purchase_batch.latest_purchase_updated_at, bean.updated_at),
+    coalesce(default_sale_spec.latest_sale_updated_at, bean.updated_at),
+    coalesce(roast_batch_agg.latest_batch_updated_at, bean.updated_at)
   ) as updated_at
 from public.green_beans as bean
-left join public.green_bean_purchase_batches as purchase on purchase.green_bean_id = bean.id
-left join public.bean_sale_specs as sale on sale.green_bean_id = bean.id
-left join public.roast_records as roast on roast.green_bean_id = bean.id
-group by
-  bean.id,
-  bean.code,
-  bean.display_name,
-  bean.origin_country,
-  bean.origin_region,
-  bean.origin_area,
-  bean.variety,
-  bean.process_method,
-  bean.harvest_season,
-  bean.default_roast_input_grams,
-  bean.created_at,
-  bean.updated_at;
+left join latest_purchase_batch on latest_purchase_batch.green_bean_id = bean.id
+left join default_sale_spec on default_sale_spec.green_bean_id = bean.id
+left join roast_batch_agg on roast_batch_agg.green_bean_id = bean.id;
 
 create or replace view public.roast_plan_overview as
 select
@@ -325,7 +353,7 @@ select
   profile.created_at,
   profile.updated_at
 from public.roast_profiles as profile
-join public.green_beans as bean
+left join public.green_beans as bean
   on bean.id = profile.green_bean_id
 where profile.is_active = true;
 
@@ -335,6 +363,7 @@ select
   batch.roast_date,
   batch.green_bean_id,
   bean.display_name as green_bean_name,
+  batch.roasted_bean_name,
   batch.roast_plan_id,
   plan.name as roast_plan_name,
   batch.input_weight_grams,
@@ -362,7 +391,8 @@ declare
     'roast_profiles',
     'roast_records',
     'roast_batches',
-    'cost_calculations'
+    'cost_calculations',
+    'app_settings'
   ];
 begin
   foreach table_name in array target_tables
@@ -383,5 +413,71 @@ begin
   end loop;
 end
 $$;
+
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete on table
+  public.green_beans,
+  public.green_bean_purchase_batches,
+  public.bean_sale_specs,
+  public.roast_profiles,
+  public.roast_records,
+  public.roast_batches,
+  public.cost_calculations,
+  public.app_settings
+to anon, authenticated;
+
+grant select on table
+  public.green_bean_inventory_overview,
+  public.roast_plan_overview,
+  public.roast_batch_overview
+to anon, authenticated;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication where pubname = 'supabase_realtime'
+  ) then
+    create publication supabase_realtime;
+  end if;
+end $$;
+
+do $$
+declare
+  table_name text;
+  target_tables text[] := array[
+    'green_beans',
+    'green_bean_purchase_batches',
+    'bean_sale_specs',
+    'roast_profiles',
+    'roast_records',
+    'roast_batches',
+    'cost_calculations',
+    'app_settings'
+  ];
+begin
+  foreach table_name in array target_tables
+  loop
+    if not exists (
+      select 1
+      from pg_publication publication
+      join pg_publication_rel relation on publication.oid = relation.prpubid
+      join pg_class class_table on class_table.oid = relation.prrelid
+      where publication.pubname = 'supabase_realtime'
+        and class_table.relname = table_name
+    ) then
+      execute format('alter publication supabase_realtime add table %I', table_name);
+    end if;
+  end loop;
+end $$;
+
+alter table public.green_beans replica identity full;
+alter table public.green_bean_purchase_batches replica identity full;
+alter table public.bean_sale_specs replica identity full;
+alter table public.roast_profiles replica identity full;
+alter table public.roast_records replica identity full;
+alter table public.roast_batches replica identity full;
+alter table public.cost_calculations replica identity full;
+alter table public.app_settings replica identity full;
 
 commit;

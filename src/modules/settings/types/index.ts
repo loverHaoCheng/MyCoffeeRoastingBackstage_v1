@@ -48,6 +48,15 @@ export interface CostTemplateFormValues {
   targetProfitRate: number;
 }
 
+export interface AppDisplaySettings {
+  scale: number;
+  updatedAt: null | string;
+}
+
+export const appDisplayScaleMin = 0.85;
+export const appDisplayScaleMax = 1.2;
+export const appDisplayScaleStep = 0.05;
+
 export const createEmptySupabaseProjectConnection = (): SupabaseProjectConnection => ({
   projectUrl: '',
   publishableKey: '',
@@ -72,32 +81,15 @@ export const createEmptyCostTemplateFormValues = (): CostTemplateFormValues => (
   targetProfitRate: 30,
 });
 
-export const createDefaultCostTemplate = (): CostTemplate => {
-  const timestamp = new Date().toISOString();
-
-  return {
-    createdAt: timestamp,
-    dehydrationRate: 14,
-    energyCost: 0,
-    id: 'default-retail-100g',
-    laborCost: 0,
-    name: '默认零售 100g',
-    notes: '',
-    otherCost: 0,
-    packagingCost: 0,
-    roastInputWeightGrams: 200,
-    saleUnitWeightGrams: 100,
-    targetProfitRate: 30,
-    updatedAt: timestamp,
-  };
-};
-
 export const createDefaultCostTemplateSettings = (): CostTemplateSettings => {
-  const defaultTemplate = createDefaultCostTemplate();
-
   return {
-    defaultTemplateId: defaultTemplate.id,
-    templates: [defaultTemplate],
-    updatedAt: defaultTemplate.updatedAt,
+    defaultTemplateId: null,
+    templates: [],
+    updatedAt: null,
   };
 };
+
+export const createDefaultAppDisplaySettings = (): AppDisplaySettings => ({
+  scale: 1,
+  updatedAt: null,
+});

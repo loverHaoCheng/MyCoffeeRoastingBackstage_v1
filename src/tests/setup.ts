@@ -22,6 +22,16 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+Object.defineProperty(window, 'scrollTo', {
+  writable: true,
+  value: vi.fn(),
+});
+
+Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+  writable: true,
+  value: vi.fn(),
+});
+
 class ResizeObserverMock {
   observe = vi.fn();
   unobserve = vi.fn();

@@ -4,17 +4,20 @@
   align-items: start;
   width: 100%;
   max-width: 1180px;
+  min-height: 100%;
   margin: 0 auto;
   gap: 16px;
   padding: 16px;
-  padding-bottom: calc(16px + 56px + 16px);
-  min-height: 100dvh;
+  padding-bottom: 16px;
 }
 
 .list {
   width: 100%;
+  box-sizing: border-box;
+  padding-inline: 4px;
   display: grid;
   gap: 12px;
+  margin: 0 auto;
 }
 
 .loading {
@@ -25,65 +28,6 @@
 
 .empty {
   padding: 48px 0;
-}
-
-.fab {
-  position: fixed;
-  right: 22px;
-  bottom: calc(96px + env(safe-area-inset-bottom));
-  z-index: 18;
-  display: inline-grid;
-  place-items: center;
-  width: 56px;
-  min-width: 56px;
-  height: 56px;
-  border: 1px solid rgb(255 255 255 / 78%);
-  border-radius: 24px;
-  background: rgb(255 255 255 / 86%);
-  backdrop-filter: blur(18px) saturate(200%);
-  color: #1d1d1f;
-  box-shadow: 0 16px 40px rgb(20 25 32 / 9%), inset 0 1px 0 rgb(255 255 255 / 84%);
-  transition: transform 220ms ease, box-shadow 220ms ease, background 220ms ease, color 220ms ease;
-}
-
-.fab:global(.ant-btn.ant-btn-icon-only) {
-  width: 56px;
-  min-width: 56px;
-  height: 56px;
-  padding: 0;
-}
-
-.fab:global(.ant-btn) {
-  border-color: rgb(255 255 255 / 78%);
-  background: rgb(255 255 255 / 86%);
-  color: #1d1d1f;
-}
-
-.fab :global(.anticon) {
-  font-size: 22px;
-}
-
-.fab:hover,
-.fab:global(.ant-btn):hover {
-  border-color: rgb(255 255 255 / 88%);
-  background: rgb(255 255 255 / 94%);
-  color: #111113;
-  box-shadow: 0 22px 52px rgb(20 25 32 / 18%), inset 0 1px 0 rgb(255 255 255 / 90%);
-  transform: translateY(-2px);
-}
-
-.fab:active,
-.fab:global(.ant-btn):active {
-  background: rgb(242 242 247 / 94%);
-  color: #111113;
-  box-shadow: 0 12px 28px rgb(20 25 32 / 12%), inset 0 1px 0 rgb(255 255 255 / 72%);
-  transform: translateY(0) scale(0.98);
-}
-
-.fab:focus-visible,
-.fab:global(.ant-btn):focus-visible {
-  outline: 3px solid rgb(0 122 255 / 22%);
-  outline-offset: 3px;
 }
 
 .creationDrawer :global(.ant-drawer-body) {
@@ -102,11 +46,6 @@
 @media (max-width: 640px) {
   .page {
     padding: 12px;
-    padding-bottom: calc(12px + 56px + 12px);
-  }
-
-  .fab {
-    right: 20px;
-    bottom: calc(104px + env(safe-area-inset-bottom));
+    padding-bottom: 12px;
   }
 }

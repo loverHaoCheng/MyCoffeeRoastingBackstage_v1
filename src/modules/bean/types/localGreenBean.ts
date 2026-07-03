@@ -11,6 +11,7 @@ export interface GreenBeanFormInput {
   processMethod: string;
   purchasedTotalPrice: number;
   purchasedWeightGrams: number;
+  remainingWeightGrams: number;
   supplierName?: null | string;
   variety: string;
   altitudeMetersMax?: null | number;
@@ -29,7 +30,6 @@ export interface GreenBeanEditableDetail extends GreenBeanFormInput {
   beanId: string;
   defaultSaleSpecId?: null | string;
   purchaseBatchId?: null | string;
-  remainingWeightGrams?: null | number;
 }
 
 export interface LocalGreenBeanRecord extends GreenBeanCreateInput {

@@ -160,6 +160,10 @@ export const beanSyncService = {
       processMethod: String(record.processMethod ?? ''),
       purchasedTotalPrice: Number(record.purchasedTotalPrice) || 0,
       purchasedWeightGrams: Number(record.purchasedWeightGrams) || 0,
+      remainingWeightGrams:
+        record.remainingWeightGrams == null
+          ? Number(record.purchasedWeightGrams) || 0
+          : Number(record.remainingWeightGrams) || 0,
       supplierName: record.supplierName ? String(record.supplierName) : undefined,
       variety: String(record.variety ?? ''),
       altitudeMetersMax: record.altitudeMetersMax as number | null | undefined,

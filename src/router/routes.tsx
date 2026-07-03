@@ -1,6 +1,6 @@
 import { Spin } from 'antd';
 import { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, createBrowserRouter, type RouteObject } from 'react-router-dom';
+import { Navigate, createHashRouter, type RouteObject } from 'react-router-dom';
 
 import { MainLayout } from '@/layouts/MainLayout';
 
@@ -70,4 +70,4 @@ export const routes: RouteObject[] = [
   },
 ];
 
-export const router = createBrowserRouter(routes);
+export const router = createHashRouter(routes);

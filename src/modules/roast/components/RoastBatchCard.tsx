@@ -23,9 +23,7 @@ export function RoastBatchCard({ batch, onDelete, onEdit, onView }: RoastBatchCa
     { key: 'inputWeight', label: '入豆量', value: `${String(batch.inputWeightGrams)} g` },
     { key: 'outputWeight', label: '出豆量', value: `${String(batch.outputWeightGrams)} g` },
     { key: 'lossRate', label: '失水率', value: `${lossRate}%` },
-    batch.developmentRatio !== undefined
-      ? { key: 'developmentRatio', label: '发展比', value: `${String(batch.developmentRatio)}%` }
-      : { key: 'status', label: '状态', value: batch.status === 'completed' ? '已完成' : '草稿' },
+    { key: 'roastPlan', label: '烘焙计划', value: batch.roastPlanName?.trim() || '未关联' },
   ];
 
   return (

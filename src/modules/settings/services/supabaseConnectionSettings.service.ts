@@ -9,6 +9,8 @@ import { logger } from '@/shared/logger/logger';
 
 export const supabaseConnectionSettingsStorageKey =
   'coffee-roasting-backstage:supabase-connections';
+const legacySupabaseConnectionSettingsBackupStorageKey =
+  'coffee-roasting-backstage:supabase-connections:backup';
 
 const canUseStorage = (): boolean => {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -21,6 +23,7 @@ export const supabaseConnectionSettingsService = {
     }
 
     window.localStorage.removeItem(supabaseConnectionSettingsStorageKey);
+    window.localStorage.removeItem(legacySupabaseConnectionSettingsBackupStorageKey);
   },
   load(): SupabaseConnectionSettings {
     if (!canUseStorage()) {
@@ -30,6 +33,7 @@ export const supabaseConnectionSettingsService = {
     const rawValue = window.localStorage.getItem(supabaseConnectionSettingsStorageKey);
 
     if (!rawValue) {
+      window.localStorage.removeItem(legacySupabaseConnectionSettingsBackupStorageKey);
       return createDefaultSupabaseConnectionSettings();
     }
 
@@ -41,7 +45,6 @@ export const supabaseConnectionSettingsService = {
         logger.warn('supabase connection settings parse failed', {
           issues: result.error.issues,
         });
-
         return createDefaultSupabaseConnectionSettings();
       }
 
@@ -52,7 +55,6 @@ export const supabaseConnectionSettingsService = {
       };
     } catch (error) {
       logger.error('supabase connection settings load failed', { error });
-
       return createDefaultSupabaseConnectionSettings();
     }
   },
@@ -64,7 +66,10 @@ export const supabaseConnectionSettingsService = {
       return settings;
     }
 
-    window.localStorage.setItem(supabaseConnectionSettingsStorageKey, JSON.stringify(settings));
+    const serialized = JSON.stringify(settings);
+
+    window.localStorage.setItem(supabaseConnectionSettingsStorageKey, serialized);
+    window.localStorage.removeItem(legacySupabaseConnectionSettingsBackupStorageKey);
     logger.info('supabase connection settings saved', {
       updatedAt: settings.updatedAt,
     });

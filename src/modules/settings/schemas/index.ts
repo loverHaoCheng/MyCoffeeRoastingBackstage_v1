@@ -111,3 +111,8 @@ export const costTemplateFormSchema = z.object({
   saleUnitWeightGrams: z.number().int().positive('单份熟豆重量必须大于 0'),
   targetProfitRate: z.number().min(0, '目标利润率不能小于 0').max(1000, '目标利润率过高'),
 });
+
+export const appDisplaySettingsStorageSchema = z.object({
+  scale: z.number().min(0.85).max(1.2),
+  updatedAt: optionalIsoDatetimeSchema,
+});

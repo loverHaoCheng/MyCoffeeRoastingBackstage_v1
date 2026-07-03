@@ -1,29 +1,62 @@
 .page {
-  display: grid;
-  gap: 18px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   max-width: 1180px;
+  min-height: 100%;
   margin: 0 auto;
+  padding: 0 16px 16px;
+  box-sizing: border-box;
   color: #1d1d1f;
 }
 
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 4px 4px -2px;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top center, rgb(255 255 255 / 68%) 0%, rgb(255 255 255 / 22%) 38%, rgb(255 255 255 / 0%) 78%),
+    linear-gradient(180deg, rgb(255 255 255 / 26%) 0%, rgb(255 255 255 / 8%) 100%);
+  filter: blur(14px);
+  opacity: 0.88;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .form {
-  display: grid;
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 100%;
   gap: 18px;
+  z-index: 1;
 }
 
 .syncAlert:global(.ant-alert) {
   border-radius: 20px;
-  box-shadow: 0 14px 36px rgb(15 23 42 / 6%);
+  box-shadow:
+    0 6px 14px -10px rgb(15 23 42 / 10%),
+    0 18px 42px -30px rgb(15 23 42 / 12%);
 }
 
 .section {
   display: grid;
-  gap: 18px;
+  gap: 0;
   padding: 24px;
   border: 1px solid rgb(229 229 231 / 90%);
   border-radius: 24px;
   background: rgb(255 255 255 / 94%);
-  box-shadow: 0 14px 36px rgb(15 23 42 / 6%);
+  box-shadow:
+    0 8px 18px -14px rgb(15 23 42 / 10%),
+    0 24px 54px -36px rgb(15 23 42 / 14%);
+  transition: gap 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.section[data-collapsed='false'] {
+  gap: 18px;
 }
 
 .sectionHeader {
@@ -31,11 +64,24 @@
   gap: 8px;
 }
 
+.sectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .sectionHeaderRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.sectionHeaderTitleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
 }
 
 .sectionHeader h2 {
@@ -61,6 +107,10 @@
   gap: 8px;
 }
 
+.fieldCompact {
+  align-content: start;
+}
+
 .field :global(.ant-input),
 .field :global(.ant-input-number),
 .field :global(.ant-input-affix-wrapper) {
@@ -79,61 +129,141 @@
   line-height: 1.5;
 }
 
-.statusSection {
+.zoomPanel {
   display: grid;
-  gap: 18px;
-  padding: 24px;
-  border: 1px solid rgb(229 229 231 / 90%);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top right, rgb(233 243 238 / 74%), transparent 36%),
-    rgb(255 255 255 / 94%);
-  box-shadow: 0 14px 36px rgb(15 23 42 / 6%);
+  gap: 14px;
 }
 
-.statusGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+.zoomPanel :global(.ant-slider) {
+  padding-inline: 14px;
 }
 
-.statusCard {
-  display: grid;
-  gap: 8px;
-  min-height: 100px;
-  padding: 16px;
-  border: 1px solid rgb(221 232 227 / 88%);
-  border-radius: 18px;
-  background: rgb(255 255 255 / 90%);
+.zoomPanel :global(.ant-slider-mark) {
+  inset-inline: 14px;
+  width: calc(100% - 28px);
 }
 
-.statusCard span {
-  color: #6e6e73;
-  font-size: 12px;
-  font-weight: 700;
+.zoomPanel :global(.ant-slider-mark-text) {
+  white-space: nowrap;
 }
 
-.statusCard strong {
-  color: #1d1d1f;
-  font-size: 18px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.statusMeta {
+.zoomActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 14px;
-  align-items: center;
+  gap: 10px;
+}
+
+.collapseButton:global(.ant-btn) {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   color: #6e6e73;
+  font-weight: 500;
+}
+
+.collapseButton :global(.anticon) {
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms ease;
+}
+
+.collapseButton[data-expanded='true'] :global(.anticon) {
+  transform: rotate(180deg);
+}
+
+.statusInlineBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 10px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 14px 18px;
+  border: 1px solid rgb(229 229 231 / 90%);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow:
+    0 6px 14px -10px rgb(15 23 42 / 9%),
+    0 18px 38px -28px rgb(15 23 42 / 12%);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.statusInlineBar::-webkit-scrollbar {
+  display: none;
+}
+
+.statusInlineGroup {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.statusInlineValue {
+  flex: 0 0 auto;
+  color: #1d1d1f;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.2;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusInlineDivider {
+  width: 1px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0 4px;
+  background: rgb(221 221 225 / 92%);
+}
+
+.sectionCollapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  padding-top: 18px;
+  opacity: 1;
+  transition:
+    grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease,
+    padding-top 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sectionCollapse[data-collapsed='true'] {
+  grid-template-rows: 0fr;
+  padding-top: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sectionCollapseInner {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 18px;
+}
+
+.sectionActionButtonFull:global(.ant-btn) {
+  width: 100%;
 }
 
 .templateGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.templateEmptyState {
+  padding: 18px;
+  border: 1px dashed rgb(221 221 225 / 92%);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 84%);
+  color: #6e6e73;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .templateCard {
@@ -148,7 +278,9 @@
 
 .templateCard[data-active="true"] {
   border-color: rgb(29 29 31 / 28%);
-  box-shadow: 0 12px 28px rgb(15 23 42 / 7%);
+  box-shadow:
+    0 8px 18px -14px rgb(15 23 42 / 12%),
+    0 24px 44px -32px rgb(15 23 42 / 16%);
   transform: translateY(-1px);
 }
 
@@ -205,29 +337,35 @@
 
 .qrSection {
   display: grid;
-  gap: 18px;
+  gap: 0;
   padding: 24px;
   border: 1px solid rgb(229 229 231 / 90%);
   border-radius: 24px;
   background:
     linear-gradient(180deg, rgb(255 255 255 / 96%) 0%, rgb(249 249 251 / 94%) 100%);
-  box-shadow: 0 14px 36px rgb(15 23 42 / 6%);
+  box-shadow:
+    0 8px 18px -14px rgb(15 23 42 / 10%),
+    0 24px 54px -36px rgb(15 23 42 / 14%);
+}
+
+.qrSection[data-expanded='true'] {
+  gap: 18px;
 }
 
 .qrActions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
 }
 
 .qrButton {
-  min-width: 160px;
+  min-width: 0;
+  flex: 1 1 0;
 }
 
 .qrPanel {
   display: grid;
   justify-items: center;
-  padding: 6px 0 0;
 }
 
 .qrCard {
@@ -238,7 +376,10 @@
   border: 1px solid rgb(229 229 231 / 92%);
   border-radius: 20px;
   background: rgb(255 255 255 / 96%);
-  box-shadow: 0 10px 24px rgb(15 23 42 / 5%);
+  box-shadow:
+    0 6px 14px -10px rgb(15 23 42 / 9%),
+    0 18px 34px -26px rgb(15 23 42 / 12%);
+  animation: qrCardFadeIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .qrImage {
@@ -248,6 +389,16 @@
   object-fit: contain;
   border-radius: 16px;
   background: #fff;
+}
+
+.buildVersion {
+  margin: auto 0 0;
+  padding-top: 12px;
+  color: #9a9aa0;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  word-break: break-all;
 }
 
 .templateDrawer:global(.ant-drawer) :global(.ant-drawer-header) {
@@ -299,11 +450,45 @@
   gap: 10px;
 }
 
+.templateEditorActions :global(.ant-btn) {
+  border-color: rgb(229 229 231 / 92%);
+  background: rgb(255 255 255 / 92%);
+  color: #1d1d1f;
+}
+
 @media (max-width: 767px) {
-  .section,
-  .statusSection {
-    padding: 20px;
+  .page {
+    padding: 8px 18px 14px;
+  }
+
+  .page::before {
+    inset: 0 2px -2px;
+    border-radius: 26px;
+    filter: blur(12px);
+    opacity: 0.78;
+  }
+
+  .form {
+    gap: 12px;
+  }
+
+  .section {
+    padding: 18px;
     border-radius: 22px;
+  }
+
+  .section[data-collapsed='false'] {
+    gap: 14px;
+  }
+
+  .statusInlineBar {
+    min-height: 52px;
+    padding: 11px 15px;
+    border-radius: 16px;
+  }
+
+  .sectionCollapseInner {
+    gap: 14px;
   }
 
   .fieldGrid {
@@ -314,13 +499,27 @@
     grid-template-columns: 1fr;
   }
 
-  .sectionHeaderRow {
-    align-items: flex-start;
+  .sectionHeaderTitleGroup {
+    min-width: 0;
+  }
+
+  .zoomActions {
     flex-direction: column;
   }
 
-  .statusGrid {
-    grid-template-columns: 1fr;
+  .sectionHeaderRow {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .sectionHeaderRow :global(.ant-btn) {
+    margin-left: auto;
+  }
+
+  .fieldCompact :global(.ant-input-number),
+  .fieldCompact :global(.ant-input-number-affix-wrapper) {
+    width: max(50%, 10rem);
+    max-width: 100%;
   }
 
   .templateDrawer:global(.ant-drawer) :global(.ant-drawer-header) {
@@ -337,16 +536,32 @@
   }
 
   .qrSection {
-    padding: 20px;
+    gap: 0;
+    padding: 18px;
     border-radius: 22px;
   }
 
+  .qrSection[data-expanded='true'] {
+    gap: 14px;
+  }
+
   .qrButton {
-    min-width: 0;
-    flex: 1 1 100%;
+    flex: 1 1 0;
   }
 
   .qrCard {
     padding: 16px;
+  }
+}
+
+@keyframes qrCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

@@ -1,11 +1,15 @@
-import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
-import { App, Button, Drawer, Empty, Grid, Spin, Tabs } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { PlusOutlined } from '@ant-design/icons';
+import { App, Drawer, Empty, Grid, Spin, Tabs } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import { BeanAiRecognitionPlaceholder, BeanDetailDrawer, BeanInventoryCard, BeanManualCreator } from '@/modules/bean/components';
 import { beanQueryKeys, useBeans } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services';
+import { useCostTemplateSettings, useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
+import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
 import { logger } from '@/shared/logger/logger';
 import type { Bean } from '@/types/domain';
@@ -32,32 +36,36 @@ const matchesKeyword = (bean: Bean, keyword: string): boolean => {
     .includes(normalizedKeyword);
 };
 
+const sortBeansByUpdatedAt = (beans: Bean[]): Bean[] => {
+  return [...beans].sort((left, right) => {
+    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  });
+};
+
 export function BeanPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
+  const { costTemplateSettings } = useCostTemplateSettings();
+  const { supabaseConnections } = useSupabaseConnectionSettings();
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
-  const [pullDistance, setPullDistance] = useState(0);
   const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
   const [detailMode, setDetailMode] = useState<BeanDetailMode | null>(null);
   const { data: beans = [], isFetching, refetch } = useBeans();
-  const touchStartYRef = useRef<number | null>(null);
-  const pullTriggeredRef = useRef(false);
 
   const filteredBeans = useMemo(() => {
     return beans.filter((bean) => matchesKeyword(bean, keyword));
   }, [beans, keyword]);
 
   const summary = useMemo(() => {
-    const totalStockKg = beans.reduce((total, bean) => total + bean.stockKg, 0);
+    const totalRemainingStockKg = beans.reduce((total, bean) => total + bean.stockKg, 0);
     const averageCost =
       beans.length > 0 ? beans.reduce((total, bean) => total + bean.costPerKg, 0) / beans.length : 0;
 
     return {
       averageCost,
-      totalStockKg,
+      totalRemainingStockKg,
     };
   }, [beans]);
 
@@ -66,6 +74,9 @@ export function BeanPage() {
   }, [beans, selectedBeanId]);
 
   const isWide = screens.md ?? false;
+  const hasGreenBeanConnection =
+    supabaseConnections.greenBean.projectUrl.trim().length > 0 &&
+    supabaseConnections.greenBean.publishableKey.trim().length > 0;
 
   // 网络恢复时自动同步待处理操作
   useEffect(() => {
@@ -126,87 +137,47 @@ export function BeanPage() {
     });
   };
 
-  const canTriggerPullRefresh = (): boolean => {
-    return window.scrollY <= 0 && !isFetching && !isPullRefreshing;
-  };
-
-  const handlePullRefresh = async () => {
-    setIsPullRefreshing(true);
-
-    try {
-      await refetch();
-    } finally {
-      touchStartYRef.current = null;
-      setIsPullRefreshing(false);
-      setPullDistance(0);
-      pullTriggeredRef.current = false;
-    }
-  };
-
-  const handleTouchStart = (event: React.TouchEvent<HTMLElement>) => {
-    if (!canTriggerPullRefresh()) {
-      touchStartYRef.current = null;
-      return;
-    }
-
-    touchStartYRef.current = event.touches[0]?.clientY ?? null;
-  };
-
-  const handleTouchMove = (event: React.TouchEvent<HTMLElement>) => {
-    if (touchStartYRef.current == null || pullTriggeredRef.current || window.scrollY > 0) {
-      return;
-    }
-
-    const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
-    const deltaY = Math.max(0, currentY - touchStartYRef.current);
-
-    if (deltaY <= 0) {
-      setPullDistance(0);
-      return;
-    }
-
-    setPullDistance(Math.min(deltaY * 0.45, 84));
-  };
-
-  const handleTouchEnd = () => {
-    if (pullDistance >= 52 && !pullTriggeredRef.current) {
-      pullTriggeredRef.current = true;
-      void handlePullRefresh();
-      return;
-    }
-
-    touchStartYRef.current = null;
-    setPullDistance(0);
-  };
-
-  const handleCreateBean = async (input: GreenBeanCreateInput) => {
-    await beanService.createBean(input);
+  const handleCreateBean = (input: GreenBeanCreateInput) => {
     setCreationDrawerOpen(false);
-    await queryClient.invalidateQueries({
-      queryKey: beanQueryKeys.list(),
+    submissionBackupService.save('create', input, 'bean');
+    const optimisticBean = beanService.createOptimisticBean(input);
+
+    queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), (current = []) => {
+      return sortBeansByUpdatedAt([optimisticBean, ...current.filter((bean) => String(bean.id) !== String(optimisticBean.id))]);
     });
-    void message.success('生豆已加入库存列表');
+
+    void (async () => {
+      try {
+        const response = await beanService.createRemoteBean(input);
+        const nextBeans = beanService.finalizeOptimisticBean(String(optimisticBean.id), response.data);
+
+        queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
+        void refreshAllAppData(queryClient).catch(() => undefined);
+      } catch (error) {
+        const nextBeans = beanService.rollbackOptimisticBean(String(optimisticBean.id));
+        queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
+        const errorMessage = error instanceof Error ? error.message : '生豆同步失败，本地已备份。';
+        void message.error(errorMessage);
+      }
+    })();
+  };
+
+  const handleOpenCreateDrawer = () => {
+    if (!hasGreenBeanConnection) {
+      void message.warning('请先前往设置页创建并连接生豆数据库，完成后才能新增数据。');
+      return;
+    }
+
+    if (costTemplateSettings.templates.length === 0) {
+      void message.warning('请先前往设置页创建至少一个成本模板，再新增生豆。');
+      return;
+    }
+
+    setCreationDrawerOpen(true);
   };
 
   return (
-    <main
-      className={styles.page}
-      onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchMove}
-      onTouchStart={handleTouchStart}
-    >
-      <section
-        aria-hidden="true"
-        className={styles.pullRefreshDock}
-        data-active={pullDistance > 0 || isPullRefreshing}
-        data-ready={pullDistance >= 52}
-      >
-        <div className={styles.pullRefreshIndicator} style={{ transform: `translateY(${Math.max(pullDistance - 18, 0)}px)` }}>
-          {isPullRefreshing ? <LoadingOutlined spin /> : <span className={styles.pullRefreshArrow}>↓</span>}
-          <span>{isPullRefreshing ? '正在同步生豆数据' : pullDistance >= 52 ? '松开即可刷新' : '下拉刷新生豆数据'}</span>
-        </div>
-      </section>
-
+    <main className={styles.page}>
       <UnifiedSearchBar
         className={styles.searchBar}
         inputAriaLabel="搜索生豆"
@@ -214,14 +185,14 @@ export function BeanPage() {
           setKeyword(event.target.value);
         }}
         placeholder="搜索生豆、产地、处理法"
-        sectionAriaLabel="生豆库存搜索"
+        sectionAriaLabel="生豆库存筛选"
         value={keyword}
       />
 
       <section className={styles.summaryGrid} aria-label="生豆库存概览">
         <article>
-          <span>总库存</span>
-          <strong>{formatKg.format(summary.totalStockKg)} kg</strong>
+          <span>总剩余库存</span>
+          <strong>{formatKg.format(summary.totalRemainingStockKg)} kg</strong>
         </article>
         <article>
           <span>均价</span>
@@ -251,14 +222,10 @@ export function BeanPage() {
         ))}
       </section>
 
-      <Button
-        aria-label="新增生豆"
-        className={styles.fab}
+      <ViewportFloatingActionButton
+        ariaLabel="新增生豆"
         icon={<PlusOutlined />}
-        onClick={() => {
-          setCreationDrawerOpen(true);
-        }}
-        shape="circle"
+        onClick={handleOpenCreateDrawer}
       />
 
       <Drawer
@@ -277,7 +244,12 @@ export function BeanPage() {
             {
               key: 'manual',
               label: '界面创建',
-              children: <BeanManualCreator onCreate={(input) => void handleCreateBean(input)} />,
+              children: (
+                <BeanManualCreator
+                  onCancel={() => setCreationDrawerOpen(false)}
+                  onCreate={(input) => void handleCreateBean(input)}
+                />
+              ),
             },
             {
               key: 'ai',

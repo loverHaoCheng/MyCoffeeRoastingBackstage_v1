@@ -26,12 +26,13 @@ export function BeanInventoryCard({ bean, onDelete, onEdit, onView }: BeanInvent
       : bean.supplierId != null
         ? `#${String(bean.supplierId)}`
         : '待配置';
+  const descriptionText = [bean.variety?.trim(), bean.process?.trim()].filter(Boolean).join(' · ');
 
   const metaItems = [
     { key: 'stock', label: '库存', value: `${formatKg.format(bean.stockKg)} kg` },
     { key: 'cost', label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
     { key: 'supplier', label: '供应商', value: supplierText, multiline: true },
-    { key: 'updatedAt', label: '更新', value: new Date(bean.updatedAt).toLocaleDateString('zh-CN') },
+    { key: 'process', label: '处理法', value: bean.process?.trim() || '待补充' },
   ];
 
   return (
@@ -53,7 +54,7 @@ export function BeanInventoryCard({ bean, onDelete, onEdit, onView }: BeanInvent
         },
       ]}
       deleteLabel={`删除 ${bean.name}`}
-      description={[bean.origin, bean.process, bean.grade].filter(Boolean).join(' · ')}
+      description={descriptionText}
       metaItems={metaItems}
       onDelete={onDelete}
       title={bean.name}

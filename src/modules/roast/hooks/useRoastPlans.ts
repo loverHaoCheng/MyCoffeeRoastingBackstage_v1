@@ -23,8 +23,11 @@ const shouldRetry = (failureCount: number, error: unknown): boolean => {
 };
 
 export function useRoastPlans() {
+  const initialPlans =
+    import.meta.env.MODE === 'test' ? seedRoastPlans : roastPlanService.getBootstrappedPlans();
+
   return useQuery({
-    initialData: import.meta.env.MODE === 'test' ? seedRoastPlans : undefined,
+    initialData: initialPlans.length > 0 ? initialPlans : undefined,
     queryKey: roastPlanQueryKeys.list(),
     queryFn: async () => {
       const response = await roastPlanService.listPlans();

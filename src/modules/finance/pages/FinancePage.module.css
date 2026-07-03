@@ -1,6 +1,7 @@
 .page {
   display: grid;
   gap: 18px;
+  min-height: 100%;
   align-content: start;
 }
 

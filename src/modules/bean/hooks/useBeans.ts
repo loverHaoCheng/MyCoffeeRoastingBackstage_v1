@@ -9,7 +9,10 @@ export const beanQueryKeys = {
 };
 
 export function useBeans() {
+  const initialBeans = beanService.getBootstrappedBeans();
+
   return useQuery({
+    initialData: initialBeans.length > 0 ? initialBeans : undefined,
     queryKey: beanQueryKeys.list(),
     queryFn: async () => {
       const response = await beanService.listBeans();
