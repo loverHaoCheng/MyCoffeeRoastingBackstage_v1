@@ -1,0 +1,42 @@
+.pageBase {
+  --page-max-width: 1180px;
+  --page-gap: 16px;
+  --page-padding-top: 16px;
+  --page-padding-right: 16px;
+  --page-padding-bottom: 0;
+  --page-padding-left: 16px;
+  min-width: 0;
+  min-height: 100%;
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding:
+    var(--page-padding-top)
+    var(--page-padding-right)
+    var(--page-padding-bottom)
+    var(--page-padding-left);
+}
+
+.gridPage {
+  composes: pageBase;
+  display: grid;
+  align-content: start;
+  align-items: start;
+  gap: var(--page-gap);
+}
+
+.stackPage {
+  composes: pageBase;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+}
+
+@media (max-width: 767px) {
+  .pageBase {
+    --page-padding-top: 12px;
+    --page-padding-right: 12px;
+    --page-padding-left: 12px;
+  }
+}

@@ -1,11 +1,7 @@
 import {
-  AppstoreFilled,
   ApartmentOutlined,
-  DatabaseFilled,
   DatabaseOutlined,
-  FireFilled,
   FireOutlined,
-  SettingFilled,
   SettingOutlined,
 } from '@ant-design/icons';
 import { Button, Grid, Layout, Menu } from 'antd';
@@ -38,13 +34,6 @@ const iconByRoute: Record<AppRouteKey, ReactNode> = {
   roast: <FireOutlined />,
   production: <ApartmentOutlined />,
   settings: <SettingOutlined />,
-};
-
-const activeIconByRoute: Record<AppRouteKey, ReactNode> = {
-  bean: <DatabaseFilled />,
-  roast: <FireFilled />,
-  production: <AppstoreFilled />,
-  settings: <SettingFilled />,
 };
 
 export function MainLayout() {
@@ -316,7 +305,7 @@ export function MainLayout() {
 
   return (
     <ViewportScrollContext.Provider value={scrollViewportRef}>
-      <Layout className={styles.shell} data-standalone-pwa={isStandalonePwa}>
+      <Layout className={styles.shell} data-mobile={!isWide} data-standalone-pwa={isStandalonePwa}>
         {!isWide ? (
           <button className={styles.mobileBrand} onClick={scrollToTop} type="button">
             EasyBake
@@ -423,25 +412,27 @@ export function MainLayout() {
               } as CSSProperties
             }
           >
-            <div className={styles.bottomNavInner}>
-              <span aria-hidden="true" className={styles.bottomNavActivePill} />
-              {bottomNavItems.map((item) => (
-                <button
-                  aria-current={selectedKey === item.key ? 'page' : undefined}
-                  className={styles.bottomNavItem}
-                  data-active={selectedKey === item.key}
-                  key={item.key}
-                  onClick={() => {
-                    navigateByKey(item.key);
-                  }}
-                  type="button"
-                >
-                  <span className={styles.bottomNavIcon}>
-                    {selectedKey === item.key ? activeIconByRoute[item.key] : iconByRoute[item.key]}
-                  </span>
-                  <span className={styles.bottomNavLabel}>{item.shortLabel}</span>
-                </button>
-              ))}
+            <div className={styles.bottomNavFrame}>
+              <div className={styles.bottomNavSurface}>
+                <div className={styles.bottomNavInner}>
+                  <span aria-hidden="true" className={styles.bottomNavActivePill} />
+                  {bottomNavItems.map((item) => (
+                    <button
+                      aria-current={selectedKey === item.key ? 'page' : undefined}
+                      className={styles.bottomNavItem}
+                      data-active={selectedKey === item.key}
+                      key={item.key}
+                      onClick={() => {
+                        navigateByKey(item.key);
+                      }}
+                      type="button"
+                    >
+                      <span className={styles.bottomNavIcon}>{iconByRoute[item.key]}</span>
+                      <span className={styles.bottomNavLabel}>{item.shortLabel}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </nav>
         ) : null}

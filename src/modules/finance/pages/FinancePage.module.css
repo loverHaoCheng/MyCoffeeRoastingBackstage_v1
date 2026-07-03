@@ -1,8 +1,6 @@
 .page {
-  display: grid;
-  gap: 18px;
-  min-height: 100%;
-  align-content: start;
+  composes: stackPage from '../../../shared/styles/pageShell.module.css';
+  --page-gap: 18px;
 }
 
 .alertStack {
@@ -16,6 +14,6 @@
 
 @media (max-width: 767px) {
   .page {
-    gap: 16px;
+    --page-gap: 16px;
   }
 }

@@ -1,12 +1,19 @@
 .shell {
+  --shell-content-bottom-space: 28px;
+  --shell-floating-bottom-offset: 28px;
   width: 100%;
-  height: var(--app-viewport-height);
-  min-height: var(--app-viewport-height);
+  height: 100vh;
+  min-height: 100vh;
   overflow: hidden;
   padding: 12px;
   background:
     radial-gradient(circle at top left, rgb(255 255 255 / 92%) 0%, rgb(255 255 255 / 0%) 34%),
     linear-gradient(180deg, #fafafa 0%, #f3f3f5 100%);
+}
+
+.shell[data-mobile='true'] {
+  --shell-content-bottom-space: calc(var(--app-shell-bottom-nav-height) + 12px);
+  --shell-floating-bottom-offset: calc(var(--app-shell-bottom-nav-height) + 16px);
 }
 
 .shell::before {
@@ -65,7 +72,7 @@
 .sider {
   position: relative;
   top: auto;
-  height: calc(var(--app-viewport-height) - 24px);
+  height: calc(100vh - 24px);
   overflow: hidden;
   border-radius: 28px;
   background: rgb(255 255 255 / 94%);
@@ -224,18 +231,26 @@
 }
 
 .content {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 100%;
-  padding-bottom: var(--app-shell-content-bottom-space);
+  padding-bottom: var(--shell-content-bottom-space);
 }
 
 .routeScene {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   position: relative;
   min-height: 100%;
   overflow: hidden;
 }
 
 .routePanel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   min-height: 100%;
 }
 
@@ -252,40 +267,55 @@
   --bottom-nav-active-index: 0;
   position: fixed;
   z-index: 80;
-  right: auto;
-  bottom: var(--app-shell-bottom-nav-offset);
-  left: 50%;
-  width: min(calc(100dvw - 24px - var(--app-safe-left) - var(--app-safe-right)), 520px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: auto;
   margin: 0;
-  padding: 6px;
-  border: 1px solid rgb(229 231 235 / 82%);
-  border-radius: 24px;
-  background: rgb(255 255 255 / 94%);
-  box-shadow:
-    0 10px 28px rgb(15 23 42 / 9%),
-    0 1px 0 rgb(255 255 255 / 70%) inset;
-  backdrop-filter: blur(16px);
-  overflow: hidden;
+  padding: 8px 0 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
   isolation: isolate;
-  transform: translate3d(-50%, 0, 0);
+  transform: none;
   transition: box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.bottomNavFrame {
+  width: min(calc(100% - 24px - var(--app-safe-left) - var(--app-safe-right)), 560px);
+  margin: 0 auto;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+}
+
+.bottomNavSurface {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid rgb(229 229 231 / 88%);
+  border-radius: 28px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow:
+    0 14px 32px rgb(17 24 39 / 10%),
+    0 1px 0 rgb(255 255 255 / 84%) inset;
 }
 
 .bottomNavInner {
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--bottom-nav-columns), minmax(0, 1fr));
-  min-height: 56px;
-  padding: 2px;
+  min-height: var(--app-shell-bottom-nav-content-height);
+  padding: 1px;
 }
 
 .bottomNavActivePill {
   position: absolute;
-  inset: 2px auto 2px 2px;
-  width: calc((100% - 4px) / var(--bottom-nav-columns));
-  border-radius: 18px;
-  background: rgb(236 239 242 / 96%);
-  box-shadow: none;
+  inset: 1px auto 1px 1px;
+  width: calc((100% - 2px) / var(--bottom-nav-columns));
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgb(237 247 243 / 98%) 0%, rgb(231 244 239 / 94%) 100%);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 92%) inset,
+    0 0 0 1px rgb(205 228 220 / 72%);
   transform: translate3d(calc(var(--bottom-nav-active-index) * 100%), 0, 0);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
@@ -299,58 +329,56 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: 56px;
-  gap: 2px;
+  min-height: 58px;
+  gap: 4px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 24px;
   background: transparent;
-  color: #63666c;
+  color: #74777d;
   cursor: pointer;
   line-height: 1.1;
   transition: color 180ms ease, transform 180ms ease;
 }
 
 .bottomNavItem[data-active="true"] {
-  color: #17181b;
+  color: #2f7d6b;
   font-weight: 700;
   box-shadow: none;
   transform: translateY(0);
 }
 
 .bottomNavIcon {
-  font-size: 18px;
+  font-size: 21px;
   line-height: 1;
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .bottomNavLabel {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  font-size: 10px;
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1;
-  transform: translateY(-4px);
-  transition:
-    max-height 180ms ease,
-    opacity 180ms ease,
-    transform 180ms ease;
+  transform: none;
+  transition: color 180ms ease;
   white-space: nowrap;
 }
 
 .bottomNavItem[data-active="true"] .bottomNavIcon {
-  transform: scale(1.16);
+  transform: translateY(0);
 }
 
 .bottomNavItem[data-active="true"] .bottomNavLabel {
-  max-height: 14px;
+  max-height: none;
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 .floatingActionRoot {
   position: fixed;
   right: calc(var(--app-safe-right) + 18px);
-  bottom: var(--app-shell-floating-bottom-offset);
+  bottom: var(--shell-floating-bottom-offset);
   z-index: 90;
   display: grid;
   justify-items: end;
@@ -378,11 +406,8 @@
 .shell[data-standalone-pwa='true'] {
   --app-shell-header-height: calc(58px + var(--app-safe-top));
   --app-shell-content-top-space: calc(var(--app-shell-header-height) + 4px);
-  --app-shell-bottom-nav-offset: 0px;
-  --app-shell-content-bottom-space: calc(var(--app-shell-bottom-nav-height) + 12px);
-  --app-shell-floating-bottom-offset: calc(var(--app-shell-bottom-nav-height) + 16px);
-  height: var(--app-viewport-height);
-  min-height: var(--app-viewport-height);
+  height: 100vh;
+  min-height: 100vh;
   background: linear-gradient(180deg, #ffffff 0%, #f5f5f7 100%);
 }
 
@@ -427,48 +452,37 @@
   }
 
   .bottomNav {
-    right: 0;
-    bottom: var(--app-shell-bottom-nav-offset);
-    left: 0;
-    width: auto;
-    padding: 0;
-    border: 0;
-    border-radius: 28px 28px 0 0;
-    background:
-      linear-gradient(180deg, rgb(245 245 247 / 0%) 0%, rgb(245 245 247 / 72%) 22%, rgb(255 255 255 / 94%) 52%, #ffffff 100%);
-    box-shadow: 0 -1px 0 rgb(229 229 231 / 82%);
-    backdrop-filter: blur(16px);
-    overflow: visible;
-    isolation: isolate;
-    transform: none;
+    padding-top: 6px;
   }
 
   .bottomNav::before {
     content: none;
   }
 
+  .bottomNavFrame {
+    width: min(calc(100% - 24px - var(--app-safe-left) - var(--app-safe-right)), 560px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+  }
+
+  .bottomNavSurface {
+    width: 100%;
+    padding: 4px;
+  }
+
   .bottomNavInner {
-    min-height: 56px;
-    padding:
-      0
-      calc(18px + var(--app-safe-right))
-      calc(8px + var(--app-safe-bottom))
-      calc(18px + var(--app-safe-left));
-    border: 0;
-    border-radius: 28px 28px 0 0;
-    background: transparent;
-    box-shadow: none;
+    min-height: var(--app-shell-bottom-nav-content-height);
+    padding: 1px;
     z-index: 1;
   }
 
   .bottomNavActivePill {
-    display: none;
+    display: block;
   }
 
   .bottomNavItem {
-    min-height: 50px;
+    min-height: 56px;
     gap: 4px;
-    border-radius: 16px;
+    border-radius: 24px;
     transform: translateY(0);
   }
 
@@ -477,11 +491,11 @@
   }
 
   .bottomNavIcon {
-    font-size: 17px;
+    font-size: 19px;
   }
 
   .bottomNavLabel {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .viewportFrame {
@@ -504,7 +518,7 @@
 
   .floatingActionRoot {
     right: calc(var(--app-safe-right) + 20px);
-    bottom: calc(var(--app-safe-bottom) + 94px);
+    bottom: var(--shell-floating-bottom-offset);
   }
 
   .shell[data-standalone-pwa='true'] .viewportFrame {
@@ -516,32 +530,7 @@
   }
 
   .shell[data-standalone-pwa='true'] .content {
-    padding-bottom: var(--app-shell-content-bottom-space);
-  }
-
-  .shell[data-standalone-pwa='true'] .bottomNav {
-    right: 0;
-    bottom: var(--app-shell-bottom-nav-offset);
-    left: 0;
-    width: auto;
-    padding: 0;
-    border: 0;
-    border-radius: 28px 28px 0 0;
-    background:
-      linear-gradient(180deg, rgb(245 245 247 / 0%) 0%, rgb(245 245 247 / 72%) 22%, rgb(255 255 255 / 94%) 52%, #ffffff 100%);
-    box-shadow: 0 -1px 0 rgb(229 229 231 / 82%);
-    backdrop-filter: blur(16px);
-    overflow: visible;
-    isolation: isolate;
-    transform: none;
-  }
-
-  .shell[data-standalone-pwa='true'] .bottomNav::after {
-    content: none;
-  }
-
-  .shell[data-standalone-pwa='true'] .floatingActionRoot {
-    bottom: var(--app-shell-floating-bottom-offset);
+    padding-bottom: var(--shell-content-bottom-space);
   }
 }
 
@@ -549,11 +538,8 @@
   .shell {
     --app-shell-header-height: calc(58px + var(--app-safe-top));
     --app-shell-content-top-space: calc(var(--app-shell-header-height) + 4px);
-    --app-shell-bottom-nav-offset: 0px;
-    --app-shell-content-bottom-space: calc(var(--app-shell-bottom-nav-height) + 12px);
-    --app-shell-floating-bottom-offset: calc(var(--app-shell-bottom-nav-height) + 16px);
-    height: var(--app-viewport-height);
-    min-height: var(--app-viewport-height);
+    height: 100vh;
+    min-height: 100vh;
     background: linear-gradient(180deg, #ffffff 0%, #f5f5f7 100%);
   }
 
@@ -580,32 +566,11 @@
   }
 
   .content {
-    padding-bottom: var(--app-shell-content-bottom-space);
-  }
-
-  .bottomNav {
-    right: 0;
-    bottom: var(--app-shell-bottom-nav-offset);
-    left: 0;
-    width: auto;
-    padding: 0;
-    border: 0;
-    border-radius: 28px 28px 0 0;
-    background:
-      linear-gradient(180deg, rgb(245 245 247 / 0%) 0%, rgb(245 245 247 / 72%) 22%, rgb(255 255 255 / 94%) 52%, #ffffff 100%);
-    box-shadow: 0 -1px 0 rgb(229 229 231 / 82%);
-    backdrop-filter: blur(16px);
-    overflow: visible;
-    isolation: isolate;
-    transform: none;
-  }
-
-  .bottomNav::before {
-    content: none;
+    padding-bottom: var(--shell-content-bottom-space);
   }
 
   .floatingActionRoot {
-    bottom: var(--app-shell-floating-bottom-offset);
+    bottom: var(--shell-floating-bottom-offset);
   }
 }
 

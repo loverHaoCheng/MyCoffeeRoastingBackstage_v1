@@ -1,7 +1,8 @@
 :root {
   color-scheme: light;
-  --app-viewport-height: 100dvh;
-  --app-visual-viewport-height: 100dvh;
+  --app-viewport-height: 100vh;
+  --app-visual-viewport-height: 100vh;
+  --app-shell-bottom-nav-content-height: 64px;
   --app-safe-top: env(safe-area-inset-top, 0px);
   --app-safe-right: env(safe-area-inset-right, 0px);
   --app-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -10,7 +11,7 @@
   --app-device-safe-bottom: env(safe-area-inset-bottom, 0px);
   --app-shell-header-height: calc(58px + var(--app-safe-top));
   --app-shell-content-top-space: calc(var(--app-shell-header-height) + 4px);
-  --app-shell-bottom-nav-height: calc(66px + var(--app-safe-bottom));
+  --app-shell-bottom-nav-height: calc(var(--app-shell-bottom-nav-content-height) + var(--app-safe-bottom) + 14px);
   --app-shell-bottom-nav-offset: 0px;
   --app-shell-content-bottom-space: calc(var(--app-shell-bottom-nav-height) + 12px);
   --app-shell-floating-bottom-offset: calc(var(--app-shell-bottom-nav-height) + 16px);
@@ -31,18 +32,16 @@
 
 html {
   width: 100%;
-  height: 100%;
-  min-height: 100%;
-  min-height: -webkit-fill-available;
+  height: 100vh;
+  min-height: 100vh;
   min-width: 320px;
   background: #ffffff;
 }
 
 body {
   width: 100%;
-  height: 100%;
-  min-height: 100%;
-  min-height: -webkit-fill-available;
+  height: 100vh;
+  min-height: 100vh;
   min-width: 320px;
   margin: 0;
   padding: 0;
@@ -67,10 +66,8 @@ a {
 
 #root {
   width: 100%;
-  height: var(--app-viewport-height);
-  min-height: 100%;
-  min-height: var(--app-viewport-height);
-  min-height: -webkit-fill-available;
+  height: 100vh;
+  min-height: 100vh;
   background: #ffffff;
 }
 
@@ -99,17 +96,16 @@ select,
 :root[data-standalone-pwa="true"] body,
 :root[data-standalone-pwa="true"] #root {
   width: 100%;
-  height: 100%;
-  min-height: 100%;
-  min-height: -webkit-fill-available;
+  height: 100vh;
+  min-height: 100vh;
   padding: 0;
   margin: 0;
   background: #ffffff;
 }
 
 :root[data-standalone-pwa="true"] #root {
-  height: var(--app-viewport-height);
-  min-height: var(--app-viewport-height);
+  height: 100vh;
+  min-height: 100vh;
   background: #ffffff;
 }
 
@@ -118,17 +114,16 @@ select,
   body,
   #root {
     width: 100%;
-    height: 100%;
-    min-height: 100%;
-    min-height: -webkit-fill-available;
+    height: 100vh;
+    min-height: 100vh;
     padding: 0;
     margin: 0;
     background: #ffffff;
   }
 
   #root {
-    height: var(--app-viewport-height);
-    min-height: var(--app-viewport-height);
+    height: 100vh;
+    min-height: 100vh;
     background: #ffffff;
   }
 }

@@ -1,14 +1,6 @@
 .page {
-  display: grid;
-  align-content: start;
-  align-items: start;
-  width: 100%;
-  max-width: 1180px;
-  min-height: 100%;
-  margin: 0 auto;
-  gap: 16px;
-  padding: 16px;
-  padding-bottom: 16px;
+  composes: gridPage from '../../../shared/styles/pageShell.module.css';
+  --page-gap: 16px;
 }
 
 .list {
@@ -48,7 +40,8 @@
 
 @media (max-width: 640px) {
   .page {
-    padding: 12px;
-    padding-bottom: 12px;
+    --page-padding-top: 12px;
+    --page-padding-right: 12px;
+    --page-padding-left: 12px;
   }
 }

@@ -1,12 +1,10 @@
 .page {
+  composes: stackPage from '../../../shared/styles/pageShell.module.css';
+  --page-gap: 18px;
+  --page-padding-top: 0;
+  --page-padding-right: 16px;
+  --page-padding-left: 16px;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 1180px;
-  min-height: 100%;
-  margin: 0 auto;
-  padding: 0 16px 16px;
   box-sizing: border-box;
   color: #1d1d1f;
 }
