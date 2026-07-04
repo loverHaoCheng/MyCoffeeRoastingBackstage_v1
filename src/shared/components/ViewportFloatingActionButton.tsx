@@ -1,19 +1,9 @@
-import { createContext, useContext, useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 
-export interface ViewportFloatingActionButtonProps {
-  ariaLabel: string;
-  icon: ReactNode;
-  onClick: () => void;
-}
-
-interface FloatingActionRegistrationContextValue {
-  enabled: boolean;
-  register: (config: ViewportFloatingActionButtonProps) => () => void;
-}
-
-export const FloatingActionRegistrationContext =
-  createContext<FloatingActionRegistrationContextValue | null>(null);
+import {
+  FloatingActionRegistrationContext,
+  type ViewportFloatingActionButtonProps,
+} from './ViewportFloatingActionButton.context';
 
 export function ViewportFloatingActionButton({
   ariaLabel,
@@ -26,7 +16,7 @@ export function ViewportFloatingActionButton({
 
   latestOnClickRef.current = onClick;
 
-  if (!stableConfigRef.current || stableConfigRef.current.ariaLabel !== ariaLabel) {
+  if (stableConfigRef.current?.ariaLabel !== ariaLabel) {
     stableConfigRef.current = {
       ariaLabel,
       icon,
@@ -37,7 +27,7 @@ export function ViewportFloatingActionButton({
   }
 
   useEffect(() => {
-    if (!registrationContext || !registrationContext.enabled) {
+    if (!registrationContext?.enabled) {
       return;
     }
 

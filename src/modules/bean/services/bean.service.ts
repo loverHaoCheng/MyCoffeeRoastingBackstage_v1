@@ -1,6 +1,6 @@
 import { beanCacheService } from '@/modules/bean/services/beanCache.service';
 import { beanSyncService } from '@/modules/bean/services/beanSync.service';
-import { localGreenBeanService } from '@/modules/bean/services/localGreenBean.service';
+import { localGreenBeanService, mapLocalGreenBeanRecordToBean } from '@/modules/bean/services/localGreenBean.service';
 import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
 import { logger } from '@/shared/logger/logger';
 import { AppError } from '@/shared/errors/AppError';
@@ -8,7 +8,7 @@ import type { ApiResponse } from '@/services/api.types';
 import { SupabaseRestClient } from '@/services/supabaseRestClient';
 import type { Bean } from '@/types/domain';
 
-import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput, LocalGreenBeanRecord } from '../types';
+import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../types';
 
 interface GreenBeanTableUpdateInput {
   altitude_meters_max?: null | number;
@@ -33,11 +33,6 @@ interface EditablePurchaseBatchInput {
   purchased_weight_grams: number;
   remaining_weight_grams: number;
   supplier_name?: null | string;
-}
-
-interface EditableSaleSpecInput {
-  unit_price: number;
-  unit_weight_grams?: null | number;
 }
 
 export interface BeanRepository {
@@ -182,7 +177,7 @@ const normalizeText = (value: null | string | undefined): null | string => {
 };
 
 const toNullableNumber = (value: null | number | undefined): null | number => {
-  return value == null ? null : value;
+  return value ?? null;
 };
 
 const normalizeRemainingWeightGrams = (input: Pick<GreenBeanUpdateInput, 'purchasedWeightGrams' | 'remainingWeightGrams'>): number => {
@@ -277,7 +272,7 @@ export const mapSupabaseGreenBeanInventoryRecordToBean = (
   stockKg: Number((record.total_remaining_weight_grams / 1000).toFixed(1)),
   costPerKg: record.weighted_cost_per_kg,
   supplierName: record.latest_supplier_name ?? null,
-  createdAt: record.created_at ?? record.updated_at,
+  createdAt: record.created_at,
   updatedAt: record.updated_at,
   // 扩展字段：提供更多信息
   variety: record.variety,
@@ -447,7 +442,7 @@ export class MockBeanRepository implements BeanRepository {
     return Promise.resolve(ok(this.beans.find((bean) => String(bean.id) === String(beanId)) ?? null));
   }
 
-  async adjustRemainingWeight(beanId: string | number, deltaGrams: number): Promise<ApiResponse<Bean>> {
+  adjustRemainingWeight(beanId: string | number, deltaGrams: number): Promise<ApiResponse<Bean>> {
     const bean = this.beans.find((item) => String(item.id) === String(beanId));
 
     if (!bean) {
@@ -507,11 +502,11 @@ export class MockBeanRepository implements BeanRepository {
     return Promise.resolve(ok(this.beans));
   }
 
-  async syncBeans(): Promise<ApiResponse<Bean[]>> {
+  syncBeans(): Promise<ApiResponse<Bean[]>> {
     return this.listBeans();
   }
 
-  async updateBean(beanId: string | number, _input: GreenBeanUpdateInput): Promise<ApiResponse<Bean>> {
+  updateBean(beanId: string | number): Promise<ApiResponse<Bean>> {
     const bean = this.beans.find((b) => String(b.id) === String(beanId));
 
     if (!bean) {
@@ -519,21 +514,22 @@ export class MockBeanRepository implements BeanRepository {
     }
 
     // Mock 模式不支持真正更新，返回原记录
-    return ok(bean);
+    return Promise.resolve(ok(bean));
   }
 
-  async deleteBean(_beanId: string | number): Promise<void> {
+  deleteBean(): Promise<void> {
     // Mock 模式不支持删除
+    return Promise.resolve();
   }
-  async createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
+  createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
     const now = new Date().toISOString();
     const bean: Bean = {
-      id: `mock-bean-${Date.now()}`,
+      id: `mock-bean-${String(Date.now())}`,
       name: input.displayName.trim(),
       origin: [input.originCountry, input.originRegion, input.originArea].filter(Boolean).join(' · '),
       process: input.processMethod.trim(),
       grade: input.variety.trim(),
-      stockKg: Number((((input.remainingWeightGrams ?? input.purchasedWeightGrams) ?? 0) / 1000).toFixed(1)),
+      stockKg: Number((input.remainingWeightGrams / 1000).toFixed(1)),
       costPerKg:
         input.purchasedWeightGrams > 0
           ? Number(((input.purchasedTotalPrice / input.purchasedWeightGrams) * 1000).toFixed(2))
@@ -542,7 +538,7 @@ export class MockBeanRepository implements BeanRepository {
       createdAt: now,
       updatedAt: now,
       variety: input.variety.trim(),
-      harvestSeason: input.harvestSeason?.trim() || undefined,
+      harvestSeason: normalizeText(input.harvestSeason) ?? undefined,
       code: input.code.trim(),
       defaultRoastInputGrams: input.defaultRoastInputGrams,
       defaultSaleUnitPrice: input.defaultSaleUnitPrice,
@@ -552,7 +548,7 @@ export class MockBeanRepository implements BeanRepository {
     this.beans.unshift(bean);
     beanCacheService.save(this.beans, 'mock');
 
-    return ok(bean);
+    return Promise.resolve(ok(bean));
   }
 }
 
@@ -566,15 +562,15 @@ export function createSupabaseBeanRepository(
 
       return ok(beans.data.find((bean) => bean.id === beanId) ?? null);
     },
-    async getEditableBean() {
-      throw new AppError('此仓库不支持编辑详情，请使用 SupabaseRestClient 仓库。', {
+    getEditableBean() {
+      return Promise.reject(new AppError('此仓库不支持编辑详情，请使用 SupabaseRestClient 仓库。', {
         code: 'CONFIG',
-      });
+      }));
     },
-    async adjustRemainingWeight() {
-      throw new AppError('此仓库不支持库存调整，请使用 SupabaseRestClient 仓库。', {
+    adjustRemainingWeight() {
+      return Promise.reject(new AppError('此仓库不支持库存调整，请使用 SupabaseRestClient 仓库。', {
         code: 'CONFIG',
-      });
+      }));
     },
     async listBeans() {
       const result = await client.from(tableName).select('*').order('updated_at', { ascending: false });
@@ -588,23 +584,24 @@ export function createSupabaseBeanRepository(
 
       return ok((result.data ?? []).map(mapSupabaseBeanRecordToBean));
     },
-    async syncBeans() {
+    syncBeans() {
       return this.listBeans();
     },
-    async updateBean(_beanId: number, _input: GreenBeanUpdateInput): Promise<ApiResponse<Bean>> {
+    updateBean(): Promise<ApiResponse<Bean>> {
       // createSupabaseBeanRepository 使用 Supabase JS SDK，暂不支持 update
       // 实际更新通过 createSupabaseGreenBeanInventoryRepository 的 SupabaseRestClient 完成
-      throw new AppError('此仓库不支持更新，请使用 SupabaseRestClient 仓库。', {
+      return Promise.reject(new AppError('此仓库不支持更新，请使用 SupabaseRestClient 仓库。', {
         code: 'CONFIG',
-      });
+      }));
     },
-    async deleteBean(_beanId: string | number): Promise<void> {
+    deleteBean(): Promise<void> {
       // 此仓库暂不支持删除
+      return Promise.resolve();
     },
-    async createBean(_input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
-      throw new AppError('此仓库不支持创建，请使用 SupabaseRestClient 仓库。', {
+    createBean(): Promise<ApiResponse<Bean>> {
+      return Promise.reject(new AppError('此仓库不支持创建，请使用 SupabaseRestClient 仓库。', {
         code: 'CONFIG',
-      });
+      }));
     },
   };
 }
@@ -614,7 +611,7 @@ export function createSupabaseGreenBeanInventoryRepository(
   options: { tableName?: string; viewName?: string } = {},
 ): BeanRepository {
   const tableName = options.tableName ?? 'green_beans';
-  const viewName = options.viewName ?? 'green_bean_inventory_overview';
+  void options.viewName;
 
   const loadBeanSaleDefaultsRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
     const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
@@ -766,8 +763,14 @@ export function createSupabaseGreenBeanInventoryRepository(
     });
     const savedSaleDefaults = parseBeanSaleDefaultsSettingValue((await loadBeanSaleDefaultsRecord(beanId))?.value);
 
+    const beanRow = beanRows[0];
+
+    if (!beanRow) {
+      throw new AppError('未找到生豆主档。', { code: 'DATA' });
+    }
+
     return mapSupabaseEditableBeanToFormInput(
-      beanRows[0]!,
+      beanRow,
       getLatestPurchaseBatchRecord(purchaseRows),
       getDefaultSaleSpecRecord(saleSpecRows),
       savedSaleDefaults,
@@ -919,7 +922,7 @@ export function createSupabaseGreenBeanInventoryRepository(
         select: '*',
       });
 
-      if (!rows || rows.length === 0) {
+      if (rows.length === 0) {
         throw new AppError('更新失败：未找到记录。', { code: 'DATA' });
       }
 
@@ -978,13 +981,23 @@ export function createSupabaseGreenBeanInventoryRepository(
         greenBeanPayload.mill_name = normalizeText(input.millName);
       }
 
-      const insertedBeans = await client.insert(tableName, greenBeanPayload, { select: '*' });
+      const insertedBeans = await client.insert<Record<string, unknown>, { id: string }>(
+        tableName,
+        greenBeanPayload,
+        { select: '*' },
+      );
 
-      if (!insertedBeans || insertedBeans.length === 0) {
+      if (insertedBeans.length === 0) {
         throw new AppError('创建生豆失败：未返回数据。', { code: 'DATA' });
       }
 
-      const newBeanId = (insertedBeans[0] as { id: string }).id;
+      const insertedBean = insertedBeans[0];
+
+      if (!insertedBean || typeof insertedBean.id !== 'string') {
+        throw new AppError('创建生豆失败：缺少主键。', { code: 'DATA' });
+      }
+
+      const newBeanId = insertedBean.id;
 
       await upsertLatestPurchaseBatch(newBeanId, input);
       await upsertDefaultSaleSpec(newBeanId, input);
@@ -1001,10 +1014,6 @@ export function createSupabaseGreenBeanInventoryRepository(
 
 const hasSupabaseConnection = (): boolean => {
   const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
-
-  if (!connection) {
-    return false;
-  }
 
   const { projectUrl, publishableKey } = connection;
 
@@ -1038,32 +1047,7 @@ export const beanService = {
   getBootstrappedBeans,
   createOptimisticBean(input: GreenBeanCreateInput): Bean {
     const localRecord = localGreenBeanService.create(input);
-
-    const bean: Bean = {
-      id: localRecord.id,
-      name: localRecord.displayName,
-      origin: [localRecord.originCountry, localRecord.originRegion, localRecord.originArea]
-        .filter(Boolean)
-        .join(' · '),
-      process: localRecord.processMethod,
-      grade: localRecord.variety,
-      stockKg: parseFloat((((localRecord.remainingWeightGrams ?? localRecord.purchasedWeightGrams) ?? 0) / 1000).toFixed(1)),
-      costPerKg:
-        localRecord.purchasedWeightGrams > 0
-          ? parseFloat((((localRecord.purchasedTotalPrice ?? 0) / localRecord.purchasedWeightGrams) * 1000).toFixed(2))
-          : 0,
-      supplierName: localRecord.supplierName ?? null,
-      createdAt: localRecord.createdAt,
-      updatedAt: localRecord.updatedAt,
-      variety: localRecord.variety,
-      harvestSeason: localRecord.harvestSeason ?? undefined,
-      code: localRecord.code,
-      defaultRoastInputGrams: localRecord.defaultRoastInputGrams,
-      defaultSaleUnitPrice: localRecord.defaultSaleUnitPrice,
-      defaultSaleUnitWeightGrams: localRecord.defaultSaleUnitWeightGrams ?? null,
-    };
-
-    return bean;
+    return mapLocalGreenBeanRecordToBean(localRecord);
   },
   finalizeOptimisticBean(optimisticBeanId: string, remoteBean: Bean): Bean[] {
     localGreenBeanService.removeById(optimisticBeanId);
@@ -1106,35 +1090,12 @@ export const beanService = {
     const localRecord = localGreenBeanService.create(input);
     beanSyncService.recordPendingCreate(input);
 
-    // 将本地记录转换为 Bean 类型返回
-    const bean: Bean = {
-      id: localRecord.id,
-      name: localRecord.displayName,
-      origin: [localRecord.originCountry, localRecord.originRegion, localRecord.originArea]
-        .filter(Boolean)
-        .join(' · '),
-      process: localRecord.processMethod,
-      grade: localRecord.variety,
-      stockKg: parseFloat((((localRecord.remainingWeightGrams ?? localRecord.purchasedWeightGrams) ?? 0) / 1000).toFixed(1)),
-      costPerKg:
-        localRecord.purchasedWeightGrams > 0
-          ? parseFloat((((localRecord.purchasedTotalPrice ?? 0) / localRecord.purchasedWeightGrams) * 1000).toFixed(2))
-          : 0,
-      supplierName: localRecord.supplierName ?? null,
-      createdAt: localRecord.createdAt,
-      updatedAt: localRecord.updatedAt,
-      variety: localRecord.variety,
-      harvestSeason: localRecord.harvestSeason ?? undefined,
-      code: localRecord.code,
-    };
-
-    return ok(bean);
+    return ok(mapLocalGreenBeanRecordToBean(localRecord));
   },
   async adjustRemainingWeight(beanId: string | number, deltaGrams: number): Promise<ApiResponse<Bean>> {
     if (typeof beanId === 'string' && beanId.startsWith('local-')) {
       const updatedRecord = localGreenBeanService.adjustRemainingWeight(beanId, deltaGrams);
-
-      return ok(localGreenBeanService.listBeans().find((bean) => bean.id === updatedRecord.id)!);
+      return ok(mapLocalGreenBeanRecordToBean(updatedRecord));
     }
 
     if (!beanSyncService.isOnline()) {
@@ -1167,7 +1128,7 @@ export const beanService = {
         processMethod: localRecord.processMethod,
         purchasedTotalPrice: localRecord.purchasedTotalPrice,
         purchasedWeightGrams: localRecord.purchasedWeightGrams,
-        remainingWeightGrams: localRecord.remainingWeightGrams ?? localRecord.purchasedWeightGrams,
+        remainingWeightGrams: localRecord.remainingWeightGrams,
         supplierName: localRecord.supplierName ?? null,
         variety: localRecord.variety,
         altitudeMetersMax: localRecord.altitudeMetersMax ?? null,
@@ -1243,7 +1204,7 @@ export const beanService = {
           continue;
         }
 
-        await repository.createBean(beanSyncService.localRecordToCreateInput(record as unknown as Record<string, unknown>));
+        await repository.createBean(beanSyncService.localRecordToCreateInput(record));
         localGreenBeanService.removeByCode(normalizedCode);
         remoteCodes.add(normalizedCode);
         uploaded += 1;
@@ -1274,8 +1235,7 @@ export const beanService = {
   async updateBean(beanId: string | number, input: GreenBeanUpdateInput): Promise<ApiResponse<Bean>> {
     if (typeof beanId === 'string' && beanId.startsWith('local-')) {
       const updatedRecord = localGreenBeanService.update(beanId, input);
-
-      return ok(localGreenBeanService.listBeans().find((bean) => bean.id === updatedRecord.id)!);
+      return ok(mapLocalGreenBeanRecordToBean(updatedRecord));
     }
 
     // 在线且已配置 Supabase：直接同步到 Supabase
@@ -1288,7 +1248,7 @@ export const beanService = {
     }
 
     // 离线或在线更新失败：记录 pending update
-    beanSyncService.recordPendingUpdate(beanId, input as unknown as Record<string, unknown>);
+    beanSyncService.recordPendingUpdate(beanId, input);
 
     // 尝试从本地缓存更新（如果可能）
     throw new AppError('当前处于离线状态，更新已记录，将在联网后同步。', {
@@ -1331,7 +1291,7 @@ export const beanService = {
     for (const op of pendingOps) {
       try {
         if (op.type === 'create') {
-          const input = op.payload as unknown as GreenBeanCreateInput;
+          const input = beanSyncService.localRecordToCreateInput(op.payload);
           try {
             await repo.createBean(input);
           } catch (createError) {
@@ -1352,8 +1312,8 @@ export const beanService = {
           localGreenBeanService.removeByCode(input.code.trim());
         } else if (op.type === 'update') {
           const { beanId, ...input } = op.payload;
-          await repo.updateBean(beanId as string | number, input as unknown as GreenBeanUpdateInput);
-        } else if (op.type === 'delete') {
+          await repo.updateBean(beanId as string | number, beanSyncService.localRecordToCreateInput(input));
+        } else {
           const { beanId } = op.payload;
           await repo.deleteBean(beanId as string | number);
         }

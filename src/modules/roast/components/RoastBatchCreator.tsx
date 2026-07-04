@@ -1,6 +1,6 @@
 import { CoffeeOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Input, InputNumber, Select } from 'antd';
-import dayjs from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import { useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
@@ -89,15 +89,15 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
       greenBeanId: form.greenBeanId,
       greenBeanName: form.greenBeanName,
       roastedBeanName: form.roastedBeanName.trim() || form.greenBeanName,
-      roastPlanId: form.roastPlanId || undefined,
-      roastPlanName: form.roastPlanName || undefined,
+      roastPlanId: form.roastPlanId === '' ? undefined : form.roastPlanId,
+      roastPlanName: form.roastPlanName === '' ? undefined : form.roastPlanName,
       inputWeightGrams: form.inputWeightGrams,
       outputWeightGrams: form.outputWeightGrams,
       roastLevel: form.roastLevel,
       developmentRatio: form.developmentRatio,
       firstCrackTime: form.firstCrackTime,
       totalRoastTime: form.totalRoastTime,
-      notes: form.notes || undefined,
+      notes: form.notes === '' ? undefined : form.notes,
       imageUrls: [],
     });
   };
@@ -114,12 +114,12 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
               placeholder="选择烘焙日期与时间"
               showTime={{ format: 'HH:mm' }}
               value={toPickerValue(form.roastDate)}
-              onChange={(date) =>
+              onChange={(date: Dayjs | null) => {
                 setForm((f) => ({
                   ...f,
                   roastDate: date ? date.second(0).millisecond(0).toISOString() : '',
-                }))
-              }
+                }));
+              }}
               style={{ width: '100%' }}
             />
           </div>
@@ -127,7 +127,9 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
             <span className={styles.fieldLabel}>烘焙程度</span>
             <Select
               value={form.roastLevel}
-              onChange={(v) => setForm((f) => ({ ...f, roastLevel: v }))}
+              onChange={(v) => {
+                setForm((f) => ({ ...f, roastLevel: v }));
+              }}
               options={ROAST_LEVELS.map((l) => ({ label: l, value: l }))}
               style={{ width: '100%' }}
             />
@@ -138,13 +140,13 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
       <section className={styles.section} data-field-path="greenBeanId">
         <h4>生豆选择</h4>
         <Select
-          value={form.greenBeanId || undefined}
+          value={form.greenBeanId === '' ? undefined : form.greenBeanId}
           onChange={(beanId) => {
             const bean = beans.find((b) => String(b.id) === beanId);
             setForm((f) => ({
               ...f,
               greenBeanId: beanId,
-              greenBeanName: bean?.name || '',
+              greenBeanName: bean?.name ?? '',
               roastPlanId: '',
               roastPlanName: '',
             }));
@@ -162,21 +164,23 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
         <h4>熟豆名称（可选）</h4>
         <Input
           value={form.roastedBeanName}
-          onChange={(event) => setForm((f) => ({ ...f, roastedBeanName: event.target.value }))}
-          placeholder={form.greenBeanName || '未填写时默认继承生豆名称'}
+          onChange={(event) => {
+            setForm((f) => ({ ...f, roastedBeanName: event.target.value }));
+          }}
+          placeholder={form.greenBeanName === '' ? '未填写时默认继承生豆名称' : form.greenBeanName}
         />
       </section>
 
       <section className={styles.section} data-field-path="roastPlanId">
         <h4>烘焙计划（可选）</h4>
         <Select
-          value={form.roastPlanId || undefined}
+          value={form.roastPlanId === '' ? undefined : form.roastPlanId}
           onChange={(planId) => {
             const plan = availablePlans.find((p) => String(p.id) === planId);
             setForm((f) => ({
               ...f,
               roastPlanId: planId,
-              roastPlanName: plan?.name || '',
+              roastPlanName: plan?.name ?? '',
             }));
           }}
           placeholder={form.greenBeanId ? '选择通用计划或当前生豆对应计划' : '请先选择生豆'}
@@ -197,7 +201,9 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
             <span className={styles.fieldLabel}>入豆量 (g)</span>
             <InputNumber
               value={form.inputWeightGrams}
-              onChange={(v) => setForm((f) => ({ ...f, inputWeightGrams: v || 0 }))}
+              onChange={(v) => {
+                setForm((f) => ({ ...f, inputWeightGrams: v ?? 0 }));
+              }}
               min={0}
               style={{ width: '100%' }}
             />
@@ -206,7 +212,9 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
             <span className={styles.fieldLabel}>出豆量 (g)</span>
             <InputNumber
               value={form.outputWeightGrams}
-              onChange={(v) => setForm((f) => ({ ...f, outputWeightGrams: v || 0 }))}
+              onChange={(v) => {
+                setForm((f) => ({ ...f, outputWeightGrams: v ?? 0 }));
+              }}
               min={0}
               style={{ width: '100%' }}
             />
@@ -219,7 +227,9 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
             <span className={styles.fieldLabel}>发展比 (%)</span>
             <InputNumber
               value={form.developmentRatio}
-              onChange={(v) => setForm((f) => ({ ...f, developmentRatio: v ?? undefined }))}
+              onChange={(v) => {
+                setForm((f) => ({ ...f, developmentRatio: v ?? undefined }));
+              }}
               min={0}
               max={100}
               style={{ width: '100%' }}
@@ -229,7 +239,9 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
             <span className={styles.fieldLabel}>一爆时间 (s)</span>
             <InputNumber
               value={form.firstCrackTime}
-              onChange={(v) => setForm((f) => ({ ...f, firstCrackTime: v ?? undefined }))}
+              onChange={(v) => {
+                setForm((f) => ({ ...f, firstCrackTime: v ?? undefined }));
+              }}
               min={0}
               style={{ width: '100%' }}
             />
@@ -238,7 +250,9 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
             <span className={styles.fieldLabel}>总烘焙时间 (s)</span>
             <InputNumber
               value={form.totalRoastTime}
-              onChange={(v) => setForm((f) => ({ ...f, totalRoastTime: v ?? undefined }))}
+              onChange={(v) => {
+                setForm((f) => ({ ...f, totalRoastTime: v ?? undefined }));
+              }}
               min={0}
               style={{ width: '100%' }}
             />
@@ -250,7 +264,9 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
         <h4>备注</h4>
         <Input.TextArea
           value={form.notes}
-          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+          onChange={(e) => {
+            setForm((f) => ({ ...f, notes: e.target.value }));
+          }}
           placeholder="记录烘焙心得、调整建议等..."
           rows={3}
         />

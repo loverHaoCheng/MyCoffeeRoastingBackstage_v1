@@ -18,16 +18,21 @@ const expandSection = async (headingName: string): Promise<HTMLElement> => {
 
   expect(section).not.toBeNull();
 
-  const expandButton = within(section as HTMLElement).queryByRole('button', { name: '展开' });
+  if (section == null) {
+    throw new Error(`Section not found for heading: ${headingName}`);
+  }
+
+  const resolvedSection = section;
+  const expandButton = within(resolvedSection).queryByRole('button', { name: '展开' });
 
   if (expandButton) {
     fireEvent.click(expandButton);
     await waitFor(() => {
-      expect(section?.getAttribute('data-collapsed')).toBe('false');
+      expect(resolvedSection.getAttribute('data-collapsed')).toBe('false');
     });
   }
 
-  return section as HTMLElement;
+  return resolvedSection;
 };
 
 describe('SettingsPage', () => {
@@ -189,7 +194,7 @@ describe('SettingsPage', () => {
     expect(window.localStorage.getItem(supabaseConnectionSettingsStorageKey)).toBeNull();
   });
 
-  it('shows local cache sync status at the bottom of the page', async () => {
+  it('shows local cache sync status at the bottom of the page', () => {
     window.localStorage.setItem(
       supabaseConnectionSettingsStorageKey,
       JSON.stringify({
@@ -272,7 +277,7 @@ describe('SettingsPage', () => {
     expect(screen.getByText('网络连接异常，请检查当前网络或 Supabase 服务可达性。')).toBeInTheDocument();
   });
 
-  it('does not show a warning when the remote bean database is simply empty', async () => {
+  it('does not show a warning when the remote bean database is simply empty', () => {
     window.localStorage.setItem(
       supabaseConnectionSettingsStorageKey,
       JSON.stringify({
@@ -306,7 +311,7 @@ describe('SettingsPage', () => {
     expect(screen.getAllByText('已连接，当前库为空').length).toBeGreaterThan(0);
   });
 
-  it('shows unconnected status when there is old cache but no active green bean connection', async () => {
+  it('shows unconnected status when there is old cache but no active green bean connection', () => {
     window.localStorage.setItem(
       beanCacheStorageKey,
       JSON.stringify({

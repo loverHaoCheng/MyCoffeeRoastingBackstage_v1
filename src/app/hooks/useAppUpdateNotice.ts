@@ -33,7 +33,11 @@ const readVersionFromPayload = (payload: unknown): null | string => {
     return null;
   }
 
-  const version = Reflect.get(payload, 'version');
+  if (!('version' in payload)) {
+    return null;
+  }
+
+  const version = payload.version;
 
   return typeof version === 'string' && version.trim().length > 0 ? version.trim() : null;
 };
@@ -77,7 +81,10 @@ export function useAppUpdateNotice() {
 
     const checkForUpdate = async () => {
       try {
-        const response = await fetch(`${versionManifestUrl}?t=${Date.now()}`, {
+        const requestUrl = new URL(versionManifestUrl);
+        requestUrl.searchParams.set('t', String(Date.now()));
+
+        const response = await fetch(requestUrl.toString(), {
           cache: 'no-store',
         });
 
@@ -85,7 +92,7 @@ export function useAppUpdateNotice() {
           return;
         }
 
-        const payload = (await response.json()) as unknown;
+        const payload: unknown = await response.json();
         const remoteVersion = readVersionFromPayload(payload);
 
         if (!remoteVersion || remoteVersion === __APP_BUILD_VERSION__ || disposed) {

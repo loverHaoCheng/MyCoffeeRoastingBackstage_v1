@@ -12,10 +12,7 @@ import { GlobalPullToRefresh } from '@/app/components/GlobalPullToRefresh';
 import { isStandalonePwaRuntime, syncViewportMetrics } from '@/app/services/viewportMetrics.service';
 import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { appNavigationItems, type AppRouteKey } from '@/router/navigation';
-import {
-  FloatingActionRegistrationContext,
-  type ViewportFloatingActionButtonProps,
-} from '@/shared/components/ViewportFloatingActionButton';
+import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
 import { useAppStore } from '@/stores/useAppStore';
 
 import { ViewportScrollContext } from './ViewportContext';

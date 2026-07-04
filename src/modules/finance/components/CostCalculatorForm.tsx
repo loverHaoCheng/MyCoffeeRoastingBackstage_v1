@@ -18,6 +18,14 @@ interface CostCalculatorFormProps {
   onSubmit: (input: CostCalculationFormInput) => Promise<void>;
 }
 
+type CostFactorFieldName =
+  | 'energyCost'
+  | 'laborCost'
+  | 'otherCost'
+  | 'packagingCost'
+  | 'roastInputWeightGrams'
+  | 'targetProfitRate';
+
 const fieldPathMap: Record<string, FieldPath<CostCalculationFormInput>> = {
   beanId: 'beanId',
   beanName: 'beanName',
@@ -55,6 +63,29 @@ const defaultValues: CostCalculationFormInput = {
 const getHelpText = (message: string | undefined, fallback: string): string => {
   return message ?? fallback;
 };
+
+const joinClassNames = (...classNames: (false | null | string | undefined)[]): string => {
+  return classNames.filter((className): className is string => Boolean(className)).join(' ');
+};
+
+const getErrorMessage = (error: { message?: string } | undefined): string | undefined => {
+  return typeof error?.message === 'string' ? error.message : undefined;
+};
+
+const costFactorFields: {
+  label: string;
+  name: CostFactorFieldName;
+  precision?: number;
+  prefix?: string;
+  suffix?: string;
+}[] = [
+  { label: '单锅生豆重量', name: 'roastInputWeightGrams', suffix: 'g' },
+  { label: '包装费用', name: 'packagingCost', prefix: '¥', precision: 2 },
+  { label: '能耗费用', name: 'energyCost', prefix: '¥', precision: 2 },
+  { label: '人工费用', name: 'laborCost', prefix: '¥', precision: 2 },
+  { label: '其他费用', name: 'otherCost', prefix: '¥', precision: 2 },
+  { label: '目标利润率', name: 'targetProfitRate', suffix: '%', precision: 1 },
+];
 
 export function CostCalculatorForm({
   beans,
@@ -128,7 +159,7 @@ export function CostCalculatorForm({
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>生豆与核算基础</h3>
         <div className={styles.fieldGrid}>
-          <label className={`${styles.field} ${styles.fieldWide}`}>
+          <label className={joinClassNames(styles.field, styles.fieldWide)}>
             <span>选择生豆</span>
             <Controller
               control={control}
@@ -137,32 +168,32 @@ export function CostCalculatorForm({
                 <Select
                   aria-label="选择生豆"
                   options={beans.map((bean) => ({
-                    label: `${bean.name} · ${bean.origin || '待补产地'}`,
+                    label: `${bean.name} · ${bean.origin}`,
                     value: String(bean.id),
                   }))}
                   placeholder="从生豆库存选择一条记录"
                   showSearch
-                  value={field.value || undefined}
+                  value={field.value === '' ? undefined : field.value}
                   onChange={(value) => {
                     field.onChange(value);
                   }}
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.beanId ? styles.errorText : ''}`}>
-              {getHelpText(errors.beanId?.message, '自动带入成本和默认规格')}
+            <span className={joinClassNames(styles.helpText, errors.beanId && styles.errorText)}>
+              {getHelpText(getErrorMessage(errors.beanId), '自动带入成本和默认规格')}
             </span>
           </label>
 
-          <label className={`${styles.field} ${styles.fieldWide}`}>
+          <label className={joinClassNames(styles.field, styles.fieldWide)}>
             <span>核算名称</span>
             <Controller
               control={control}
               name="calculationName"
               render={({ field }) => <Input {...field} aria-label="核算名称" placeholder="例如 古吉水洗 100g 零售核算" />}
             />
-            <span className={`${styles.helpText} ${errors.calculationName ? styles.errorText : ''}`}>
-              {getHelpText(errors.calculationName?.message, '建议按用途或规格命名')}
+            <span className={joinClassNames(styles.helpText, errors.calculationName && styles.errorText)}>
+              {getHelpText(getErrorMessage(errors.calculationName), '建议按用途或规格命名')}
             </span>
           </label>
         </div>
@@ -174,11 +205,21 @@ export function CostCalculatorForm({
               control={control}
               name="purchaseCostPerKg"
               render={({ field }) => (
-                <InputNumber aria-label="生豆成本" min={0.01} precision={2} prefix="¥" suffix="/kg" value={field.value} onChange={(value) => field.onChange(value ?? 0)} />
+                <InputNumber
+                  aria-label="生豆成本"
+                  min={0.01}
+                  precision={2}
+                  prefix="¥"
+                  suffix="/kg"
+                  value={field.value}
+                  onChange={(value) => {
+                    field.onChange(value ?? 0);
+                  }}
+                />
               )}
             />
-            <span className={`${styles.helpText} ${errors.purchaseCostPerKg ? styles.errorText : ''}`}>
-              {getHelpText(errors.purchaseCostPerKg?.message, '默认带入，可改')}
+            <span className={joinClassNames(styles.helpText, errors.purchaseCostPerKg && styles.errorText)}>
+              {getHelpText(getErrorMessage(errors.purchaseCostPerKg), '默认带入，可改')}
             </span>
           </label>
 
@@ -188,11 +229,21 @@ export function CostCalculatorForm({
               control={control}
               name="dehydrationRate"
               render={({ field }) => (
-                <InputNumber aria-label="脱水率" min={0} max={100} precision={1} suffix="%" value={field.value} onChange={(value) => field.onChange(value ?? 0)} />
+                <InputNumber
+                  aria-label="脱水率"
+                  min={0}
+                  max={100}
+                  precision={1}
+                  suffix="%"
+                  value={field.value}
+                  onChange={(value) => {
+                    field.onChange(value ?? 0);
+                  }}
+                />
               )}
             />
-            <span className={`${styles.helpText} ${errors.dehydrationRate ? styles.errorText : ''}`}>
-              {getHelpText(errors.dehydrationRate?.message, '用于推算出豆量')}
+            <span className={joinClassNames(styles.helpText, errors.dehydrationRate && styles.errorText)}>
+              {getHelpText(getErrorMessage(errors.dehydrationRate), '用于推算出豆量')}
             </span>
           </label>
         </div>
@@ -201,19 +252,12 @@ export function CostCalculatorForm({
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>单锅成本因子</h3>
         <div className={styles.compactGrid}>
-          {[
-            { label: '单锅生豆重量', name: 'roastInputWeightGrams', suffix: 'g' },
-            { label: '包装费用', name: 'packagingCost', prefix: '¥', precision: 2 },
-            { label: '能耗费用', name: 'energyCost', prefix: '¥', precision: 2 },
-            { label: '人工费用', name: 'laborCost', prefix: '¥', precision: 2 },
-            { label: '其他费用', name: 'otherCost', prefix: '¥', precision: 2 },
-            { label: '目标利润率', name: 'targetProfitRate', suffix: '%', precision: 1 },
-          ].map((item) => (
+          {costFactorFields.map((item) => (
             <label className={styles.field} key={item.name}>
               <span>{item.label}</span>
               <Controller
                 control={control}
-                name={item.name as FieldPath<CostCalculationFormInput>}
+                name={item.name}
                 render={({ field }) => (
                   <InputNumber
                     aria-label={item.label}
@@ -221,14 +265,16 @@ export function CostCalculatorForm({
                     precision={item.precision ?? 0}
                     prefix={item.prefix}
                     suffix={item.suffix}
-                    value={field.value as number}
-                    onChange={(value) => field.onChange(value ?? 0)}
+                    value={field.value}
+                    onChange={(value) => {
+                      field.onChange(value ?? 0);
+                    }}
                   />
                 )}
               />
-              <span className={`${styles.helpText} ${errors[item.name as keyof typeof errors] ? styles.errorText : ''}`}>
+              <span className={joinClassNames(styles.helpText, errors[item.name] && styles.errorText)}>
                 {getHelpText(
-                  errors[item.name as keyof typeof errors]?.message as string | undefined,
+                  getErrorMessage(errors[item.name]),
                   item.name === 'roastInputWeightGrams' ? '建议与主档保持一致' : '实时计入总成本',
                 )}
               </span>
@@ -246,17 +292,26 @@ export function CostCalculatorForm({
               control={control}
               name="saleUnitWeightGrams"
               render={({ field }) => (
-                <InputNumber aria-label="单份熟豆重量" min={1} precision={0} suffix="g" value={field.value} onChange={(value) => field.onChange(value ?? 0)} />
+                <InputNumber
+                  aria-label="单份熟豆重量"
+                  min={1}
+                  precision={0}
+                  suffix="g"
+                  value={field.value}
+                  onChange={(value) => {
+                    field.onChange(value ?? 0);
+                  }}
+                />
               )}
             />
-            <span className={`${styles.helpText} ${errors.saleUnitWeightGrams ? styles.errorText : ''}`}>
-              {getHelpText(errors.saleUnitWeightGrams?.message, '默认带入规格')}
+            <span className={joinClassNames(styles.helpText, errors.saleUnitWeightGrams && styles.errorText)}>
+              {getHelpText(getErrorMessage(errors.saleUnitWeightGrams), '默认带入规格')}
             </span>
           </label>
         </div>
 
         <div className={styles.fieldGrid}>
-          <label className={`${styles.field} ${styles.fieldWide}`}>
+          <label className={joinClassNames(styles.field, styles.fieldWide)}>
             <span>备注</span>
             <Controller
               control={control}
@@ -265,8 +320,8 @@ export function CostCalculatorForm({
                 <TextArea {...field} aria-label="成本备注" autoSize={{ minRows: 3, maxRows: 6 }} placeholder="例如：袋材升级、节日礼盒、不同门店人工分摊规则" value={field.value ?? ''} />
               )}
             />
-            <span className={`${styles.helpText} ${errors.notes ? styles.errorText : ''}`}>
-              {getHelpText(errors.notes?.message, '保存本次核算说明')}
+            <span className={joinClassNames(styles.helpText, errors.notes && styles.errorText)}>
+              {getHelpText(getErrorMessage(errors.notes), '保存本次核算说明')}
             </span>
           </label>
         </div>

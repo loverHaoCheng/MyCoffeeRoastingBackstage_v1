@@ -10,7 +10,7 @@ interface FloatingTopNoticeProps extends PropsWithChildren {
   slot?: FloatingTopNoticeSlot;
 }
 
-const joinClassNames = (...classNames: Array<string | undefined>): string => {
+const joinClassNames = (...classNames: (string | undefined)[]): string => {
   return classNames.filter(Boolean).join(' ');
 };
 

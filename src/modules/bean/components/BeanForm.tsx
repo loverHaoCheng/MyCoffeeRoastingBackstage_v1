@@ -54,7 +54,11 @@ const getErrorMessage = (message: string | undefined, fallback: string): string 
 };
 
 const toNullableNumber = (value: null | number): null | number => {
-  return value == null ? null : value;
+  return value ?? null;
+};
+
+const joinClassNames = (...classNames: (string | undefined)[]): string => {
+  return classNames.filter(Boolean).join(' ');
 };
 
 const renderLabel = (label: string, required = false) => {
@@ -194,7 +198,7 @@ export function BeanForm({
 
     if (
       currentPurchasedWeightGrams !== previousPurchasedWeight &&
-      (currentRemainingWeightGrams == null || currentRemainingWeightGrams === previousPurchasedWeight)
+      currentRemainingWeightGrams === previousPurchasedWeight
     ) {
       setValue('remainingWeightGrams', currentPurchasedWeightGrams, { shouldDirty: true });
     }
@@ -259,7 +263,12 @@ export function BeanForm({
   };
 
   return (
-    <form className={styles.form} onSubmit={(event) => void handleSubmit(submitForm)(event)}>
+    <form
+      className={styles.form}
+      onSubmit={handleSubmit((values) => {
+        void submitForm(values);
+      })}
+    >
       <section className={styles.section}>
         <header className={styles.sectionHeader}>
           <h3>基础信息</h3>
@@ -273,7 +282,7 @@ export function BeanForm({
               name="code"
               render={({ field }) => <Input {...field} aria-label="生豆编号" placeholder="例如 GB-2026-001" />}
             />
-            <span className={`${styles.helpText} ${errors.code ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.code ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.code?.message, '建议使用稳定编号，便于后续采购与烘焙关联')}
             </span>
           </label>
@@ -287,7 +296,7 @@ export function BeanForm({
                 <Input {...field} aria-label="显示名称" placeholder="例如 埃塞俄比亚 古吉 G1 水洗" />
               )}
             />
-            <span className={`${styles.helpText} ${errors.displayName ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.displayName ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.displayName?.message, '用于库存卡片、烘焙计划和搜索结果展示')}
             </span>
           </label>
@@ -301,7 +310,7 @@ export function BeanForm({
                 <Input {...field} aria-label="生豆商" placeholder="例如 Nordic Approach" value={field.value ?? ''} />
               )}
             />
-            <span className={`${styles.helpText} ${errors.supplierName ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.supplierName ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.supplierName?.message, '用于卡片展示和采购追溯')}
             </span>
           </label>
@@ -313,7 +322,7 @@ export function BeanForm({
               name="variety"
               render={({ field }) => <Input {...field} aria-label="豆种" placeholder="例如 Heirloom / SL28 SL34" />}
             />
-            <span className={`${styles.helpText} ${errors.variety ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.variety ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.variety?.message, '可填写单一品种或多个拼接品种')}
             </span>
           </label>
@@ -327,7 +336,7 @@ export function BeanForm({
                 <Input {...field} aria-label="产季" placeholder="例如 2025/26" value={field.value ?? ''} />
               )}
             />
-            <span className={`${styles.helpText} ${errors.harvestSeason ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.harvestSeason ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.harvestSeason?.message, '建议保持统一格式，方便后续筛选')}
             </span>
           </label>
@@ -339,7 +348,7 @@ export function BeanForm({
               name="processMethod"
               render={({ field }) => <Input {...field} aria-label="处理法" placeholder="例如 水洗 / 日晒 / 厌氧" />}
             />
-            <span className={`${styles.helpText} ${errors.processMethod ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.processMethod ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.processMethod?.message, '这里会直接参与生豆页筛选')}
             </span>
           </label>
@@ -358,7 +367,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.millName ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.millName ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.millName?.message, '用于保留更完整的追溯信息')}
             </span>
           </label>
@@ -380,7 +389,7 @@ export function BeanForm({
                 <Input {...field} aria-label="产地国家" placeholder="例如 埃塞俄比亚" value={field.value ?? ''} />
               )}
             />
-            <span className={`${styles.helpText} ${errors.originCountry ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.originCountry ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.originCountry?.message, '建议使用完整国家名称')}
             </span>
           </label>
@@ -394,7 +403,7 @@ export function BeanForm({
                 <Input {...field} aria-label="产区" placeholder="例如 古吉 / 涅里" value={field.value ?? ''} />
               )}
             />
-            <span className={`${styles.helpText} ${errors.originRegion ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.originRegion ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.originRegion?.message, '主要展示在库存卡片的产地字段')}
             </span>
           </label>
@@ -413,7 +422,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.originArea ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.originArea ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.originArea?.message, '未来可作为更细颗粒度筛选条件')}
             </span>
           </label>
@@ -437,7 +446,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.moisturePercent ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.moisturePercent ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.moisturePercent?.message, '建议输入检测值')}
             </span>
           </label>
@@ -460,7 +469,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.altitudeMetersMin ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.altitudeMetersMin ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.altitudeMetersMin?.message, '海拔区间有助于后续风味分析')}
             </span>
           </label>
@@ -483,7 +492,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.altitudeMetersMax ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.altitudeMetersMax ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.altitudeMetersMax?.message, '若填写则需大于等于海拔下限')}
             </span>
           </label>
@@ -506,7 +515,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.densityGPerL ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.densityGPerL ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.densityGPerL?.message, '后续可用于 AI 推荐烘焙参数')}
             </span>
           </label>
@@ -520,12 +529,12 @@ export function BeanForm({
         </header>
         <div className={styles.fieldGrid}>
           {enableCostTemplateSelection ? (
-            <label className={`${styles.field} ${styles.fieldWide}`} data-field-path="costTemplate">
+            <label className={joinClassNames(styles.field, styles.fieldWide)} data-field-path="costTemplate">
               {renderLabel('成本模板')}
               <Select
                 aria-label="成本模板"
                 allowClear={!autoApplyDefaultCostTemplate}
-                onChange={(value) => {
+                onChange={(value: string | undefined) => {
                   templateSyncShouldDirtyRef.current = true;
                   setSelectedTemplateId(value ?? null);
                 }}
@@ -543,12 +552,12 @@ export function BeanForm({
                     ? '请先在设置中建立成本模板'
                     : '如需重算默认规格和售价，可在这里选择成本模板'}
               </span>
-              <div className={`${styles.linkedHint} ${styles.inlineHint}`}>
+              <div className={joinClassNames(styles.linkedHint, styles.inlineHint)}>
                 {selectedTemplate ? (
                   <>
                     模板“{selectedTemplate.name}”当前参考值：
-                    单次烘焙量 {currentRoastInputGrams}g，
-                    建议单份出售重量 {selectedTemplate.saleUnitWeightGrams}g，
+                    单次烘焙量 {String(currentRoastInputGrams)}g，
+                    建议单份出售重量 {String(selectedTemplate.saleUnitWeightGrams)}g，
                     建议定价 ¥{templatePreview?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}。
                   </>
                 ) : (
@@ -576,7 +585,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.purchasedWeightGrams ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.purchasedWeightGrams ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.purchasedWeightGrams?.message, '总库存，表示本批生豆累计购买重量')}
             </span>
           </label>
@@ -599,7 +608,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.remainingWeightGrams ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.remainingWeightGrams ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.remainingWeightGrams?.message, '剩余库存，可根据盘点结果后续手动修正')}
             </span>
           </label>
@@ -622,7 +631,7 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.purchasedTotalPrice ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.purchasedTotalPrice ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.purchasedTotalPrice?.message, '系统会据此换算当前每公斤成本')}
             </span>
           </label>
@@ -645,9 +654,10 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.defaultSaleUnitWeightGrams ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.defaultSaleUnitWeightGrams ? styles.helpTextError : undefined)}>
               {selectedTemplate
-                ? errors.defaultSaleUnitWeightGrams?.message ?? `请手动填写；可参考模板建议 ${selectedTemplate.saleUnitWeightGrams}g`
+                ? errors.defaultSaleUnitWeightGrams?.message ??
+                  `请手动填写；可参考模板建议 ${String(selectedTemplate.saleUnitWeightGrams)}g`
                 : formatOptionalHelp(errors.defaultSaleUnitWeightGrams?.message, '可手动填写最终零售容量')}
             </span>
           </label>
@@ -670,9 +680,10 @@ export function BeanForm({
                 />
               )}
             />
-            <span className={`${styles.helpText} ${errors.defaultSaleUnitPrice ? styles.helpTextError : ''}`}>
+            <span className={joinClassNames(styles.helpText, errors.defaultSaleUnitPrice ? styles.helpTextError : undefined)}>
               {selectedTemplate
-                ? errors.defaultSaleUnitPrice?.message ?? `请手动填写；当前模板建议 ¥${templatePreview?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}`
+                ? errors.defaultSaleUnitPrice?.message ??
+                  `请手动填写；当前模板建议 ¥${templatePreview?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}`
                 : getErrorMessage(errors.defaultSaleUnitPrice?.message, '可手动填写最终零售价')}
             </span>
           </label>

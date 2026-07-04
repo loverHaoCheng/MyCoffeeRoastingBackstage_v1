@@ -22,9 +22,9 @@ export interface GreenBeanFormInput {
   defaultSaleUnitPrice: number;
 }
 
-export interface GreenBeanCreateInput extends GreenBeanFormInput {}
+export type GreenBeanCreateInput = GreenBeanFormInput;
 
-export interface GreenBeanUpdateInput extends GreenBeanFormInput {}
+export type GreenBeanUpdateInput = GreenBeanFormInput;
 
 export interface GreenBeanEditableDetail extends GreenBeanFormInput {
   beanId: string;

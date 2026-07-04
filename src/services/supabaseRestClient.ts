@@ -68,7 +68,14 @@ const parseSupabaseErrorPayload = (payload: unknown): SupabaseErrorPayload => {
     return {};
   }
 
-  return payload as SupabaseErrorPayload;
+  const record = payload as Record<string, unknown>;
+
+  return {
+    code: typeof record.code === 'string' ? record.code : undefined,
+    details: typeof record.details === 'string' || record.details === null ? record.details : undefined,
+    hint: typeof record.hint === 'string' || record.hint === null ? record.hint : undefined,
+    message: typeof record.message === 'string' ? record.message : undefined,
+  };
 };
 
 const parseJsonResponse = async (response: Response): Promise<unknown> => {
@@ -91,7 +98,7 @@ const parseJsonResponse = async (response: Response): Promise<unknown> => {
 
 const toAppError = (response: Response, payload: unknown): AppError => {
   const supabaseError = parseSupabaseErrorPayload(payload);
-  const message = supabaseError.message ?? `Supabase 请求失败：${response.status}`;
+  const message = supabaseError.message ?? `Supabase 请求失败：${String(response.status)}`;
 
   if (response.status === 401 || response.status === 403) {
     return new AppError(message, {
@@ -158,7 +165,7 @@ export class SupabaseRestClient {
   constructor(options: SupabaseRestClientOptions) {
     const raw = options.fetcher ?? fetch;
     // 用箭头函数包装 fetch，避免 "Illegal invocation"
-    this.fetcher = typeof raw === 'function' ? (...args: Parameters<Fetcher>) => raw(...args) : raw;
+    this.fetcher = (...args: Parameters<Fetcher>) => raw(...args);
     this.projectUrl = options.projectUrl.trim();
     this.publishableKey = options.publishableKey.trim();
     this.schema = options.schema ?? 'public';
@@ -246,7 +253,7 @@ export class SupabaseRestClient {
         });
       }
 
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
         logger.error('supabase network unavailable', {
           tableName,
         });
@@ -269,9 +276,9 @@ export class SupabaseRestClient {
     }
   }
 
-  async insert<TInput extends Record<string, unknown>, TOutput>(
+  async insert<TOutput>(
     tableName: string,
-    payload: TInput,
+    payload: Record<string, unknown>,
     options: Pick<SupabaseRestListOptions, 'select'> = {},
   ): Promise<TOutput[]> {
     return this.mutate<TOutput>(tableName, {
@@ -284,9 +291,9 @@ export class SupabaseRestClient {
     }, options);
   }
 
-  async update<TInput extends Record<string, unknown>, TOutput>(
+  async update<TOutput>(
     tableName: string,
-    payload: TInput,
+    payload: Record<string, unknown>,
     options: Pick<SupabaseRestListOptions, 'match' | 'select'>,
   ): Promise<TOutput[]> {
     return this.mutate<TOutput>(tableName, {
@@ -328,6 +335,7 @@ export class SupabaseRestClient {
     }, this.timeoutMs);
 
     try {
+      const initHeaders = new Headers(init.headers);
       const requestInit: RequestInit = {
         ...init,
         headers: {
@@ -335,7 +343,7 @@ export class SupabaseRestClient {
           apikey: this.publishableKey,
           Authorization: `Bearer ${this.publishableKey}`,
           'Accept-Profile': this.schema,
-          ...init.headers,
+          ...Object.fromEntries(initHeaders.entries()),
         },
       };
 
@@ -376,7 +384,7 @@ export class SupabaseRestClient {
         });
       }
 
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
         throw new AppError('当前网络不可用。', {
           code: 'NETWORK',
           cause: error,

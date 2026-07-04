@@ -30,7 +30,7 @@ interface RoastPlanCardProps {
 function RoastPlanCard({ onDelete, onEdit, onView, plan }: RoastPlanCardProps) {
   const metaItems = useVisibleCardMetaItems('roastPlan', [
     { key: 'beanName', label: '生豆', value: plan.beanName || '待配置', multiline: true },
-    { key: 'batchWeight', label: '批次重量', value: plan.batchWeightGrams != null ? `${String(plan.batchWeightGrams)} g` : '-' },
+    { key: 'batchWeight', label: '批次重量', value: `${String(plan.batchWeightGrams)} g` },
     { key: 'roastLevel', label: '烘焙度', value: plan.targetRoastLevel || '-' },
     { key: 'status', label: '状态', value: statusLabel[plan.status] },
   ]);
@@ -43,20 +43,30 @@ function RoastPlanCard({ onDelete, onEdit, onView, plan }: RoastPlanCardProps) {
           label: '查看',
           icon: <EyeOutlined />,
           ariaLabel: `查看 ${plan.name}`,
-          onClick: () => onView(plan.id),
+          onClick: () => {
+            onView(plan.id);
+          },
         },
         {
           key: 'edit',
           label: '编辑',
           icon: <EditOutlined />,
           ariaLabel: `编辑 ${plan.name}`,
-          onClick: () => onEdit(plan.id),
+          onClick: () => {
+            onEdit(plan.id);
+          },
         },
       ]}
       deleteLabel={`删除 ${plan.name}`}
       description={plan.roastPurpose}
       metaItems={metaItems}
-      onDelete={onDelete ? () => onDelete(plan) : undefined}
+      onDelete={
+        onDelete
+          ? () => {
+              onDelete(plan);
+            }
+          : undefined
+      }
       title={plan.name}
     />
   );

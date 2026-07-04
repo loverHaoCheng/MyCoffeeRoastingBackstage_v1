@@ -115,9 +115,9 @@ const buildMirrorData = async (batch: RoastBatchRecord): Promise<string> => {
     capacity: saleUnitWeight,
     beanState: 'roasted',
     remaining: saleUnitWeight,
-    roastDate: batch.roastDate ?? '',
+    roastDate: batch.roastDate,
     timestamp: resolveTimestamp(batch),
-    roastLevel: batch.roastLevel ?? '',
+    roastLevel: batch.roastLevel,
     blendComponents: [blendComponent],
   });
 };

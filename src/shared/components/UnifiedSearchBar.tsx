@@ -13,6 +13,10 @@ interface UnifiedSearchBarProps {
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
+const joinClassNames = (...classNames: (string | undefined)[]): string => {
+  return classNames.filter(Boolean).join(' ');
+};
+
 export function UnifiedSearchBar({
   className,
   inputAriaLabel,
@@ -22,7 +26,7 @@ export function UnifiedSearchBar({
   onChange,
 }: UnifiedSearchBarProps) {
   return (
-    <section className={className ? `${styles.container} ${className}` : styles.container} aria-label={sectionAriaLabel}>
+    <section className={joinClassNames(styles.container, className)} aria-label={sectionAriaLabel}>
       <div className={styles.field}>
         <Input
           allowClear

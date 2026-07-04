@@ -7,11 +7,15 @@ interface DrawerActionBarProps {
   children: ReactNode;
 }
 
+const joinClassNames = (...classNames: (false | string | undefined)[]): string => {
+  return classNames.filter(Boolean).join(' ');
+};
+
 export function DrawerActionBar({ children }: DrawerActionBarProps) {
   const actionCount = Children.toArray(children).filter(Boolean).length;
 
   return (
-    <footer className={`${styles.bar} ${actionCount <= 1 ? styles.single : ''}`}>
+    <footer className={joinClassNames(styles.bar, actionCount <= 1 ? styles.single : undefined)}>
       {children}
     </footer>
   );

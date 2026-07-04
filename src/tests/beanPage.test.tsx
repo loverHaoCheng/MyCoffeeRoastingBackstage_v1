@@ -119,7 +119,7 @@ describe('BeanPage', () => {
     expect(screen.getByLabelText('生豆库存筛选')).toBeInTheDocument();
   });
 
-  it('puts zero-stock beans into a collapsed bottom section and removes them after stock changes', async () => {
+  it('puts zero-stock beans into a collapsed bottom section and removes them after stock changes', () => {
     saveBeanCache(0);
 
     const firstRender = renderWithQuery(<BeanPage />);

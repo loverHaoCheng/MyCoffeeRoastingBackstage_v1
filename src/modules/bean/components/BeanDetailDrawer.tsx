@@ -44,14 +44,20 @@ export function BeanDetailDrawer({ bean, mode, onClose, onUpdate }: BeanDetailDr
       { label: '总库存', value: `${formatKg.format(totalWeightGrams / 1000)} kg` },
       { label: '剩余库存', value: `${formatKg.format(remainingWeightGrams / 1000)} kg` },
       { label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
-      { label: '默认烘焙量', value: bean.defaultRoastInputGrams ? `${bean.defaultRoastInputGrams} g` : '待补充' },
+      {
+        label: '默认烘焙量',
+        value: bean.defaultRoastInputGrams ? `${String(bean.defaultRoastInputGrams)} g` : '待补充',
+      },
       {
         label: '默认单份售价',
         value: bean.defaultSaleUnitPrice != null ? formatCurrency.format(bean.defaultSaleUnitPrice) : '待补充',
       },
       {
         label: '默认单份重量',
-        value: bean.defaultSaleUnitWeightGrams != null ? `${bean.defaultSaleUnitWeightGrams} g` : '待补充',
+        value:
+          bean.defaultSaleUnitWeightGrams != null
+            ? `${String(bean.defaultSaleUnitWeightGrams)} g`
+            : '待补充',
       },
       { label: '供应商', value: bean.supplierName ?? '待补充' },
       {
@@ -128,7 +134,7 @@ export function BeanDetailDrawer({ bean, mode, onClose, onUpdate }: BeanDetailDr
           onClose();
           submissionBackupService.save('update', { beanId: bean.id, input }, 'bean');
 
-          void (async () => {
+          const updateTask = (async () => {
             try {
               await beanService.updateBean(bean.id, input);
               await refreshAllAppData(queryClient);
@@ -138,6 +144,8 @@ export function BeanDetailDrawer({ bean, mode, onClose, onUpdate }: BeanDetailDr
               void message.error(errorMessage);
             }
           })();
+
+          void updateTask;
         }}
         submitLabel="保存生豆"
       />

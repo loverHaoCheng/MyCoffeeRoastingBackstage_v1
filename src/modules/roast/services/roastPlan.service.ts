@@ -113,22 +113,6 @@ const createOptimisticLocalPlanId = (): string => {
   return `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
-const getPlanSignature = (plan: RoastPlan): string => {
-  return JSON.stringify({
-    batchWeightGrams: plan.batchWeightGrams,
-    beanName: plan.beanName.trim(),
-    name: plan.name.trim(),
-    roastPurpose: plan.roastPurpose.trim(),
-    steps: plan.steps.map((step) => ({
-      eventName: step.eventName.trim(),
-      firePower: step.firePower.trim(),
-      operation: step.operation.trim(),
-      timeLabel: step.timeLabel.trim(),
-    })),
-    targetRoastLevel: plan.targetRoastLevel.trim(),
-  });
-};
-
 const getPlanSyncSnapshot = (plans: RoastPlan[]): string => {
   return JSON.stringify(
     [...plans]
@@ -279,35 +263,35 @@ const getRoastPlanById = async (
 };
 
 class LocalRoastPlanRepository implements RoastPlanRepository {
-  async createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
+  createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     const nextId = Math.max(0, ...localRoastPlans.map((plan) => (typeof plan.id === 'number' ? plan.id : 0))) + 1;
     const plan = createRoastPlan(input, nextId);
 
     localRoastPlans = saveLocalPlans([plan, ...localRoastPlans]);
 
-    return ok(plan);
+    return Promise.resolve(ok(plan));
   }
 
-  async createPlanFromJson(jsonText: string): Promise<ApiResponse<RoastPlan>> {
+  createPlanFromJson(jsonText: string): Promise<ApiResponse<RoastPlan>> {
     const nextId = Math.max(0, ...localRoastPlans.map((plan) => (typeof plan.id === 'number' ? plan.id : 0))) + 1;
     const plan = createRoastPlanFromJson(jsonText, nextId);
 
     localRoastPlans = saveLocalPlans([plan, ...localRoastPlans]);
 
-    return ok(plan);
+    return Promise.resolve(ok(plan));
   }
 
-  async deletePlan(planId: RoastPlan['id']): Promise<ApiResponse<null>> {
+  deletePlan(planId: RoastPlan['id']): Promise<ApiResponse<null>> {
     localRoastPlans = saveLocalPlans(localRoastPlans.filter((plan) => String(plan.id) !== String(planId)));
 
-    return ok(null);
+    return Promise.resolve(ok(null));
   }
 
-  async listPlans(): Promise<ApiResponse<RoastPlan[]>> {
-    return ok(sortPlans(localRoastPlans));
+  listPlans(): Promise<ApiResponse<RoastPlan[]>> {
+    return Promise.resolve(ok(sortPlans(localRoastPlans)));
   }
 
-  async updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
+  updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     const currentPlan = localRoastPlans.find((plan) => String(plan.id) === String(planId));
 
     if (!currentPlan) {
@@ -322,7 +306,7 @@ class LocalRoastPlanRepository implements RoastPlanRepository {
       localRoastPlans.map((plan) => (String(plan.id) === String(planId) ? nextPlan : plan)),
     );
 
-    return ok(nextPlan);
+    return Promise.resolve(ok(nextPlan));
   }
 }
 
@@ -472,13 +456,13 @@ export const roastPlanService = {
 
     return sortPlans(localRoastPlans);
   },
-  async createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
+  createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     return resolveRoastPlanRepository().createPlan(input);
   },
-  async createPlanFromJson(jsonText: string): Promise<ApiResponse<RoastPlan>> {
+  createPlanFromJson(jsonText: string): Promise<ApiResponse<RoastPlan>> {
     return resolveRoastPlanRepository().createPlanFromJson(jsonText);
   },
-  async deletePlan(planId: RoastPlan['id']): Promise<ApiResponse<null>> {
+  deletePlan(planId: RoastPlan['id']): Promise<ApiResponse<null>> {
     return resolveRoastPlanRepository().deletePlan(planId);
   },
   async listPlans(): Promise<ApiResponse<RoastPlan[]>> {
@@ -488,11 +472,11 @@ export const roastPlanService = {
 
     return response;
   },
-  async updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
+  updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     return resolveRoastPlanRepository().updatePlan(planId, input);
   },
   async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
-    if (!hasSupabaseConnection() || typeof navigator === 'undefined' || navigator.onLine === false) {
+    if (!hasSupabaseConnection() || typeof navigator === 'undefined' || !navigator.onLine) {
       return { downloaded: 0, uploaded: 0 };
     }
 

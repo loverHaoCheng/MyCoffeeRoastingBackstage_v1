@@ -1,6 +1,5 @@
-import { localGreenBeanService } from '@/modules/bean/services/localGreenBean.service';
 import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
-import type { GreenBeanCreateInput } from '../types/localGreenBean';
+import type { GreenBeanCreateInput, GreenBeanUpdateInput, LocalGreenBeanRecord } from '../types/localGreenBean';
 
 const PENDING_OPS_KEY = 'coffee-roasting-backstage:pending-ops';
 
@@ -14,6 +13,42 @@ interface PendingOperation {
   type: PendingOperationType;
 }
 
+const isPendingOperation = (value: unknown): value is PendingOperation => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  return (
+    'entity' in value &&
+    value.entity === 'bean' &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'payload' in value &&
+    typeof value.payload === 'object' &&
+    value.payload !== null &&
+    'timestamp' in value &&
+    typeof value.timestamp === 'string' &&
+    'type' in value &&
+    (value.type === 'create' || value.type === 'delete' || value.type === 'update')
+  );
+};
+
+const toOptionalNumber = (value: unknown): null | number | undefined => {
+  if (value == null) {
+    return value;
+  }
+
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+};
+
+const toOptionalString = (value: unknown): string | undefined => {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+};
+
+const toRequiredString = (value: unknown): string => {
+  return typeof value === 'string' ? value : '';
+};
+
 const generatePendingId = (): string => {
   return `pending-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 };
@@ -23,19 +58,8 @@ const loadPendingOps = (): PendingOperation[] => {
     const raw = window.localStorage.getItem(PENDING_OPS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    if (
-      Array.isArray(parsed) &&
-      parsed.every(
-        (op) =>
-          typeof op === 'object' &&
-          op !== null &&
-          typeof op.id === 'string' &&
-          typeof op.entity === 'string' &&
-          typeof op.type === 'string' &&
-          typeof op.timestamp === 'string',
-      )
-    ) {
-      return parsed as PendingOperation[];
+    if (Array.isArray(parsed) && parsed.every(isPendingOperation)) {
+      return parsed;
     }
     return [];
   } catch {
@@ -56,7 +80,6 @@ export const beanSyncService = {
     if (!navigator.onLine) return false;
 
     const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
-    if (!connection) return false;
 
     return connection.projectUrl.trim().length > 0 && connection.publishableKey.trim().length > 0;
   },
@@ -75,7 +98,7 @@ export const beanSyncService = {
     const op: PendingOperation = {
       entity: 'bean',
       id: generatePendingId(),
-      payload: input as unknown as Record<string, unknown>,
+      payload: { ...input },
       timestamp: new Date().toISOString(),
       type: 'create',
     };
@@ -90,7 +113,7 @@ export const beanSyncService = {
   /**
    * 记录一个待更新操作（离线时调用）
    */
-  recordPendingUpdate(beanId: string | number, input: Record<string, unknown>): PendingOperation {
+  recordPendingUpdate(beanId: string | number, input: GreenBeanUpdateInput): PendingOperation {
     const op: PendingOperation = {
       entity: 'bean',
       id: generatePendingId(),
@@ -143,33 +166,33 @@ export const beanSyncService = {
   /**
    * 将本地创建的生豆记录转换为 GreenBeanCreateInput 格式
    */
-  localRecordToCreateInput(record: Record<string, unknown>): GreenBeanCreateInput {
+  localRecordToCreateInput(record: LocalGreenBeanRecord | Record<string, unknown>): GreenBeanCreateInput {
     return {
-      code: String(record.code ?? ''),
+      code: toRequiredString(record.code),
       defaultRoastInputGrams: Number(record.defaultRoastInputGrams) || 200,
       defaultSaleUnitPrice: Number(record.defaultSaleUnitPrice) || 0,
       defaultSaleUnitWeightGrams:
         record.defaultSaleUnitWeightGrams == null ? null : Number(record.defaultSaleUnitWeightGrams) || 0,
-      displayName: String(record.displayName ?? ''),
-      harvestSeason: record.harvestSeason ? String(record.harvestSeason) : undefined,
-      millName: record.millName ? String(record.millName) : undefined,
-      notes: record.notes ? String(record.notes) : undefined,
-      originArea: record.originArea ? String(record.originArea) : undefined,
-      originCountry: record.originCountry ? String(record.originCountry) : undefined,
-      originRegion: record.originRegion ? String(record.originRegion) : undefined,
-      processMethod: String(record.processMethod ?? ''),
+      displayName: toRequiredString(record.displayName),
+      harvestSeason: toOptionalString(record.harvestSeason),
+      millName: toOptionalString(record.millName),
+      notes: toOptionalString(record.notes),
+      originArea: toOptionalString(record.originArea),
+      originCountry: toOptionalString(record.originCountry),
+      originRegion: toOptionalString(record.originRegion),
+      processMethod: toRequiredString(record.processMethod),
       purchasedTotalPrice: Number(record.purchasedTotalPrice) || 0,
       purchasedWeightGrams: Number(record.purchasedWeightGrams) || 0,
       remainingWeightGrams:
         record.remainingWeightGrams == null
           ? Number(record.purchasedWeightGrams) || 0
           : Number(record.remainingWeightGrams) || 0,
-      supplierName: record.supplierName ? String(record.supplierName) : undefined,
-      variety: String(record.variety ?? ''),
-      altitudeMetersMax: record.altitudeMetersMax as number | null | undefined,
-      altitudeMetersMin: record.altitudeMetersMin as number | null | undefined,
-      densityGPerL: record.densityGPerL as number | null | undefined,
-      moisturePercent: record.moisturePercent as number | null | undefined,
+      supplierName: toOptionalString(record.supplierName),
+      variety: toRequiredString(record.variety),
+      altitudeMetersMax: toOptionalNumber(record.altitudeMetersMax),
+      altitudeMetersMin: toOptionalNumber(record.altitudeMetersMin),
+      densityGPerL: toOptionalNumber(record.densityGPerL),
+      moisturePercent: toOptionalNumber(record.moisturePercent),
     };
   },
 };

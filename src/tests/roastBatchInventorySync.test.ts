@@ -8,8 +8,8 @@ const readRemainingWeight = (): number => {
 
   expect(raw).not.toBeNull();
 
-  const parsed = JSON.parse(raw!) as {
-    records: Array<{ remainingWeightGrams?: number }>;
+  const parsed = JSON.parse(raw ?? '{}') as {
+    records: { remainingWeightGrams?: number }[];
   };
 
   return parsed.records[0]?.remainingWeightGrams ?? 0;

@@ -224,7 +224,11 @@ export const localGreenBeanService = {
       throw new AppError('未找到本地生豆记录。', { code: 'DATA' });
     }
 
-    const currentRecord = records[index]!;
+    const currentRecord = records[index];
+
+    if (!currentRecord) {
+      throw new AppError('未找到本地生豆记录。', { code: 'DATA' });
+    }
     const currentRemainingWeight = normalizeRemainingWeightGrams(
       currentRecord.purchasedWeightGrams,
       currentRecord.remainingWeightGrams,
@@ -291,7 +295,11 @@ export const localGreenBeanService = {
       throw new AppError('未找到本地生豆记录。', { code: 'DATA' });
     }
 
-    const currentRecord = records[index]!;
+    const currentRecord = records[index];
+
+    if (!currentRecord) {
+      throw new AppError('未找到本地生豆记录。', { code: 'DATA' });
+    }
     const updatedRecord = normalizeLocalGreenBeanRecord({
       ...currentRecord,
       ...input,

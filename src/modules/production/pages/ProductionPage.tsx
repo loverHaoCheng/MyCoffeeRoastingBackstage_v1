@@ -75,7 +75,7 @@ export function ProductionPage() {
   };
 
   const handleDelete = (batch: RoastBatchRecord) => {
-    const displayName = batch.roastedBeanName || batch.greenBeanName;
+    const displayName = batch.roastedBeanName ?? batch.greenBeanName;
 
     modal.confirm({
       centered: true,
@@ -109,13 +109,13 @@ export function ProductionPage() {
       ]);
     });
 
-    void (async () => {
+    const createTask = (async () => {
       try {
         const response = await roastBatchService.createBatch(input);
         const nextBatches = roastBatchService.finalizeOptimisticBatch(optimisticBatch.id, response.data);
 
         queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
-        void refreshAllAppData(queryClient).catch(() => undefined);
+        refreshAllAppData(queryClient).catch(() => undefined);
       } catch (error: unknown) {
         const nextBatches = roastBatchService.rollbackOptimisticBatch(optimisticBatch.id);
         queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
@@ -123,6 +123,8 @@ export function ProductionPage() {
         void message.error(errorMessage);
       }
     })();
+
+    void createTask;
   };
 
   const handleOpenCreateDrawer = () => {
@@ -144,7 +146,9 @@ export function ProductionPage() {
       {/* 搜索栏 */}
       <UnifiedSearchBar
         inputAriaLabel="搜索烘焙历史"
-        onChange={(e) => setKeyword(e.target.value)}
+        onChange={(event) => {
+          setKeyword(event.target.value);
+        }}
         placeholder="搜索生豆、烘焙程度、计划..."
         sectionAriaLabel="烘焙历史搜索"
         value={keyword}
@@ -153,7 +157,9 @@ export function ProductionPage() {
       {/* 列表 */}
       <section className={styles.list} aria-label="烘焙历史列表">
         {isFetching && batches.length === 0 ? (
-          <div className={styles.loading}><Spin /></div>
+          <div className={styles.loading}>
+            <Spin />
+          </div>
         ) : null}
 
         {!isFetching && filteredBatches.length === 0 ? (
@@ -164,7 +170,9 @@ export function ProductionPage() {
           <RoastBatchCard
             batch={batch}
             key={batch.id}
-            onDelete={() => handleDelete(batch)}
+            onDelete={() => {
+              handleDelete(batch);
+            }}
             onEdit={handleEdit}
             onView={handleView}
           />
@@ -182,14 +190,20 @@ export function ProductionPage() {
       <Drawer
         className={styles.creationDrawer}
         height="86dvh"
-        onClose={() => setCreationDrawerOpen(false)}
+        onClose={() => {
+          setCreationDrawerOpen(false);
+        }}
         open={creationDrawerOpen}
         placement="bottom"
         title="新增烘焙记录"
       >
         <RoastBatchCreator
-          onCancel={() => setCreationDrawerOpen(false)}
-          onCreate={(input) => void handleCreate(input)}
+          onCancel={() => {
+            setCreationDrawerOpen(false);
+          }}
+          onCreate={(input) => {
+            handleCreate(input);
+          }}
         />
       </Drawer>
 
@@ -217,10 +231,10 @@ export function ProductionPage() {
             }}
             onDelete={handleDelete}
             onModeChange={setDetailMode}
-            onUpdate={async (batchId, input) => {
+            onUpdate={(batchId, input) => {
               submissionBackupService.save('update', { batchId, input }, 'roastBatch');
 
-              void (async () => {
+              const updateTask = (async () => {
                 try {
                   await updateMutation.mutateAsync({ batchId, input });
                   await refreshAllAppData(queryClient);
@@ -230,6 +244,8 @@ export function ProductionPage() {
                   void message.error(errorMessage);
                 }
               })();
+
+              void updateTask;
             }}
           />
         ) : null}

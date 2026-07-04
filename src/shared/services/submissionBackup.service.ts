@@ -9,11 +9,12 @@ const canUseStorage = (): boolean => {
 };
 
 export const submissionBackupService = {
-  save(_operation: SubmissionBackupOperation, _payload: unknown, _scope: SubmissionBackupScope): void {
+  save(operation: SubmissionBackupOperation, payload: unknown, scope: SubmissionBackupScope): void {
     if (!canUseStorage()) {
       return;
     }
 
+    void { operation, payload, scope };
     window.localStorage.removeItem(submissionBackupStorageKey);
   },
 };

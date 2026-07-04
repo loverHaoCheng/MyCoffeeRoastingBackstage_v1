@@ -60,45 +60,6 @@ const normalizeText = (value: null | string | undefined): null | string => {
   return nextValue.length > 0 ? nextValue : null;
 };
 
-const getCalculationSignature = (
-  record: Pick<
-    CostCalculationRecord,
-    | 'beanId'
-    | 'beanName'
-    | 'calculationName'
-    | 'purchaseCostPerKg'
-    | 'dehydrationRate'
-    | 'roastInputWeightGrams'
-    | 'packagingCost'
-    | 'energyCost'
-    | 'laborCost'
-    | 'otherCost'
-    | 'saleUnitWeightGrams'
-    | 'saleUnitPrice'
-    | 'targetProfitRate'
-    | 'notes'
-    | 'dataSource'
-  >,
-): string => {
-  return JSON.stringify({
-    beanId: record.beanId,
-    beanName: record.beanName.trim(),
-    calculationName: record.calculationName.trim(),
-    dataSource: record.dataSource,
-    dehydrationRate: record.dehydrationRate,
-    energyCost: record.energyCost,
-    laborCost: record.laborCost,
-    notes: normalizeText(record.notes),
-    otherCost: record.otherCost,
-    packagingCost: record.packagingCost,
-    purchaseCostPerKg: record.purchaseCostPerKg,
-    roastInputWeightGrams: record.roastInputWeightGrams,
-    saleUnitPrice: record.saleUnitPrice,
-    saleUnitWeightGrams: record.saleUnitWeightGrams,
-    targetProfitRate: record.targetProfitRate,
-  });
-};
-
 const getCalculationSyncSnapshot = (records: CostCalculationRecord[]): string => {
   return JSON.stringify(
     [...records]
@@ -284,21 +245,15 @@ const createSupabaseFinanceRepository = (
       throw new AppError('成本核算保存失败：未返回数据。', { code: 'DATA' });
     }
 
-    return ok(mapSupabaseRecordToCostCalculation(rows[0]!));
+    const savedRow = rows[0];
+
+    if (!savedRow) {
+      throw new AppError('成本核算保存失败：结果缺失。', { code: 'DATA' });
+    }
+
+    return ok(mapSupabaseRecordToCostCalculation(savedRow));
   },
 });
-
-const resolveFinanceRepository = (): FinanceRepository => {
-  const resolved = resolveFinanceConnection();
-
-  if (!resolved) {
-    throw new AppError('未配置可用的 Supabase 数据库连接。请先在设置中填写熟豆库或生豆库连接。', {
-      code: 'CONFIG',
-    });
-  }
-
-  return createSupabaseFinanceRepository(resolved.client, resolved.dataSource);
-};
 
 export const financeService = {
   getBootstrappedCalculations(): CostCalculationRecord[] {
@@ -331,7 +286,7 @@ export const financeService = {
   async saveCalculation(input: CostCalculationFormInput): Promise<ApiResponse<CostCalculationRecord>> {
     const resolved = resolveFinanceConnection();
 
-    if (resolved && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+    if (resolved && (typeof navigator === 'undefined' || navigator.onLine)) {
       try {
         const response = await createSupabaseFinanceRepository(resolved.client, resolved.dataSource).saveCalculation(input);
         localCostCalculationService.upsert(response.data);
@@ -347,7 +302,7 @@ export const financeService = {
     return ok(localRecord);
   },
   async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return { downloaded: 0, uploaded: 0 };
     }
 

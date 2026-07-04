@@ -205,41 +205,30 @@ const mapCostTemplateToFormValues = (template: CostTemplate): CostTemplateFormVa
   targetProfitRate: template.targetProfitRate,
 });
 
+const joinClassNames = (...classNames: (string | undefined)[]): string => {
+  return classNames.filter(Boolean).join(' ');
+};
+
+const formatPercentLabel = (value: number): string => {
+  return `${String(Math.round(value * 100))}%`;
+};
+
 const copyTextToClipboard = async (text: string): Promise<void> => {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+  if (typeof navigator !== 'undefined' && 'clipboard' in navigator) {
     await navigator.clipboard.writeText(text);
     return;
   }
 
-  if (typeof document === 'undefined') {
-    throw new Error('当前环境不支持复制');
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.setAttribute('readonly', 'true');
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  textarea.style.pointerEvents = 'none';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-
-  const copied = document.execCommand('copy');
-  document.body.removeChild(textarea);
-
-  if (!copied) {
-    throw new Error('复制失败');
-  }
+  throw new Error('当前环境不支持复制');
 };
 
-const cardDisplayCountOptions: Array<{ label: string; value: 0 | 2 | 4 }> = [
+const cardDisplayCountOptions: { label: string; value: 0 | 2 | 4 }[] = [
   { label: '0 项', value: 0 },
   { label: '2 项', value: 2 },
   { label: '4 项', value: 4 },
 ];
 
-const themeModeOptions: Array<{ label: string; value: AppThemeMode }> = [
+const themeModeOptions: { label: string; value: AppThemeMode }[] = [
   { label: '浅色', value: 'light' },
   { label: '深色', value: 'dark' },
 ];
@@ -312,10 +301,10 @@ export function SettingsPage() {
     supabaseConnections.roastedBean.projectUrl,
     supabaseConnections.roastedBean.publishableKey,
   );
-  const greenBeanDraftConnection = watchedValues?.greenBean ?? supabaseConnections.greenBean;
+  const greenBeanDraftConnection = watchedValues.greenBean;
   const canRunAdvancedRefresh = isValidProjectConnection(
-    greenBeanDraftConnection.projectUrl ?? '',
-    greenBeanDraftConnection.publishableKey ?? '',
+    greenBeanDraftConnection.projectUrl,
+    greenBeanDraftConnection.publishableKey,
   );
   const shouldShowSyncAlert =
     hasBootstrapConnection &&
@@ -345,17 +334,17 @@ export function SettingsPage() {
   }, [appDisplaySettings, costTemplateSettings, loadAppDisplaySettings, loadCostTemplates, queryClient]);
 
   const snapshotSupabaseConnectionDraft = useCallback(() => {
-    const nextValues = getValues();
-    const draftValues: SupabaseConnectionFormValues = {
-      greenBean: {
-        projectUrl: nextValues.greenBean.projectUrl ?? '',
-        publishableKey: nextValues.greenBean.publishableKey ?? '',
-      },
-      roastedBean: {
-        projectUrl: nextValues.roastedBean.projectUrl ?? '',
-        publishableKey: nextValues.roastedBean.publishableKey ?? '',
-      },
-    };
+      const nextValues = getValues();
+      const draftValues: SupabaseConnectionFormValues = {
+        greenBean: {
+          projectUrl: nextValues.greenBean.projectUrl,
+          publishableKey: nextValues.greenBean.publishableKey,
+        },
+        roastedBean: {
+          projectUrl: nextValues.roastedBean.projectUrl,
+          publishableKey: nextValues.roastedBean.publishableKey,
+        },
+      };
     const serializedValues = JSON.stringify(draftValues);
 
     if (serializedValues !== lastSavedValuesRef.current) {
@@ -745,7 +734,7 @@ export function SettingsPage() {
         .find((field): field is keyof CostTemplateFormValues => field != null);
 
       if (firstField) {
-        scrollToField(String(firstField));
+        scrollToField(firstField);
       }
       return;
     }
@@ -1012,15 +1001,15 @@ export function SettingsPage() {
                   <div className={styles.zoomPanel}>
                     <Slider
                       marks={{
-                        [appDisplayScaleMin]: `${Math.round(appDisplayScaleMin * 100)}%`,
+                        [appDisplayScaleMin]: formatPercentLabel(appDisplayScaleMin),
                         1: '100%',
-                        [appDisplayScaleMax]: `${Math.round(appDisplayScaleMax * 100)}%`,
+                        [appDisplayScaleMax]: formatPercentLabel(appDisplayScaleMax),
                       }}
                       max={appDisplayScaleMax}
                       min={appDisplayScaleMin}
                       onChange={handleDisplayScaleChange}
                       step={appDisplayScaleStep}
-                      tooltip={{ formatter: (value) => `${Math.round((value ?? 1) * 100)}%` }}
+                      tooltip={{ formatter: (value) => formatPercentLabel(value ?? 1) }}
                       value={appDisplaySettings.scale}
                     />
                     <div className={styles.zoomActions}>
@@ -1094,7 +1083,7 @@ export function SettingsPage() {
                                   </span>
                                   <Select
                                     className={styles.cardDisplaySelect}
-                                    aria-label={`第 ${slotIndex + 1} 项卡片信息选择`}
+                                    aria-label={`第 ${String(slotIndex + 1)} 项卡片信息选择`}
                                     options={module.metaOptions.map((option) => ({
                                       disabled:
                                         option.key !== currentValue &&
@@ -1108,7 +1097,7 @@ export function SettingsPage() {
                                     onChange={(value) => {
                                       handleCardVisibleMetaKeyChange(module.key, slotIndex, value);
                                     }}
-                                    placeholder={`请选择第 ${slotIndex + 1} 项`}
+                                    placeholder={`请选择第 ${String(slotIndex + 1)} 项`}
                                     value={currentValue}
                                   />
                                 </div>
@@ -1225,12 +1214,14 @@ export function SettingsPage() {
 
         <section className={styles.qrSection} data-expanded={visibleCode ? 'true' : 'false'}>
           <div className={styles.qrActions}>
-            {(Object.entries(qrCodeEntries) as Array<[QrCodeKey, (typeof qrCodeEntries)[QrCodeKey]]>).map(([code, entry]) => (
+            {(Object.entries(qrCodeEntries) as [QrCodeKey, (typeof qrCodeEntries)[QrCodeKey]][]).map(([code, entry]) => (
               <Button
                 aria-pressed={visibleCode === code}
                 className={styles.qrButton}
                 key={code}
-                onClick={() => handleToggleCode(code)}
+                onClick={() => {
+                  handleToggleCode(code);
+                }}
                 type={visibleCode === code ? 'primary' : 'default'}
               >
                 {entry.buttonLabel}
@@ -1251,7 +1242,10 @@ export function SettingsPage() {
           </div>
         </section>
 
-        <p className={styles.buildVersion}>{`当前 Web 上传版本：${appBuildVersion}`}</p>
+        <p className={styles.buildVersion}>
+          当前 Web 上传版本：
+          {appBuildVersion}
+        </p>
       </form>
 
       <Drawer
@@ -1283,7 +1277,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.name ?? '用于生豆创建时快速选择模板'}</span>
             </div>
 
-            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="roastInputWeightGrams">
+            <div className={joinClassNames(styles.field, styles.fieldCompact)} data-field-path="roastInputWeightGrams">
               <label htmlFor="template-roast-input-weight">生豆重量</label>
               <InputNumber
                 id="template-roast-input-weight"
@@ -1301,7 +1295,7 @@ export function SettingsPage() {
               </span>
             </div>
 
-            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="saleUnitWeightGrams">
+            <div className={joinClassNames(styles.field, styles.fieldCompact)} data-field-path="saleUnitWeightGrams">
               <label htmlFor="template-sale-unit-weight">出售单份熟豆重量</label>
               <InputNumber
                 id="template-sale-unit-weight"
@@ -1319,7 +1313,7 @@ export function SettingsPage() {
               </span>
             </div>
 
-            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="dehydrationRate">
+            <div className={joinClassNames(styles.field, styles.fieldCompact)} data-field-path="dehydrationRate">
               <label htmlFor="template-dehydration-rate">脱水率</label>
               <InputNumber
                 id="template-dehydration-rate"
@@ -1336,7 +1330,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.dehydrationRate ?? '用于推算单锅出豆量'}</span>
             </div>
 
-            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="targetProfitRate">
+            <div className={joinClassNames(styles.field, styles.fieldCompact)} data-field-path="targetProfitRate">
               <label htmlFor="template-target-profit-rate">目标利润率</label>
               <InputNumber
                 id="template-target-profit-rate"
@@ -1354,7 +1348,7 @@ export function SettingsPage() {
               </span>
             </div>
 
-            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="packagingCost">
+            <div className={joinClassNames(styles.field, styles.fieldCompact)} data-field-path="packagingCost">
               <label htmlFor="template-packaging-cost">包装费用</label>
               <InputNumber
                 id="template-packaging-cost"
@@ -1370,7 +1364,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.packagingCost ?? '按单锅计入总成本'}</span>
             </div>
 
-            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="energyCost">
+            <div className={joinClassNames(styles.field, styles.fieldCompact)} data-field-path="energyCost">
               <label htmlFor="template-energy-cost">能耗费用</label>
               <InputNumber
                 id="template-energy-cost"
@@ -1386,7 +1380,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.energyCost ?? '按单锅计入总成本'}</span>
             </div>
 
-            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="laborCost">
+            <div className={joinClassNames(styles.field, styles.fieldCompact)} data-field-path="laborCost">
               <label htmlFor="template-labor-cost">人工费用</label>
               <InputNumber
                 id="template-labor-cost"
@@ -1402,7 +1396,7 @@ export function SettingsPage() {
               <span className={styles.helpText}>{templateErrors.laborCost ?? '按单锅计入总成本'}</span>
             </div>
 
-            <div className={`${styles.field} ${styles.fieldCompact}`} data-field-path="otherCost">
+            <div className={joinClassNames(styles.field, styles.fieldCompact)} data-field-path="otherCost">
               <label htmlFor="template-other-cost">其他费用</label>
               <InputNumber
                 id="template-other-cost"

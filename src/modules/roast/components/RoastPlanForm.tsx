@@ -123,7 +123,7 @@ export function RoastPlanForm({
                 aria-label="生豆"
                 loading={beansLoading}
                 onChange={(beanId) => {
-                  const selectedBean = beans.find((bean) => String(bean.id) === String(beanId));
+                  const selectedBean = beans.find((bean) => String(bean.id) === beanId);
 
                   field.onChange(beanId);
                   setValue('beanName', beanId === GENERIC_BEAN_ID ? GENERIC_BEAN_NAME : selectedBean?.name ?? '');

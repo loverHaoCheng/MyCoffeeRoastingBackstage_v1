@@ -25,7 +25,6 @@ export interface RoastBatchRepository {
 // ============ 本地存储键 ============
 
 const STORAGE_KEY = 'coffee-roasting-backstage:roast-batches';
-const ROAST_BATCHES_SUPPORTS_ROASTED_BEAN_NAME = true;
 
 const loadLocalBatches = (): RoastBatchRecord[] => {
   try {
@@ -63,23 +62,11 @@ const sortBatches = (batches: RoastBatchRecord[]): RoastBatchRecord[] => {
   });
 };
 
-const getBatchSignature = (batch: RoastBatchRecord): string => {
-  return JSON.stringify({
-    greenBeanId: batch.greenBeanId,
-    inputWeightGrams: batch.inputWeightGrams,
-    outputWeightGrams: batch.outputWeightGrams,
-    roastDate: batch.roastDate,
-    roastLevel: batch.roastLevel.trim(),
-    roastedBeanName: (batch.roastedBeanName ?? '').trim(),
-    status: batch.status,
-  });
-};
-
 const getBatchSyncSnapshot = (batches: RoastBatchRecord[]): string => {
   return JSON.stringify(
     [...batches]
-      .sort((left, right) => String(left.id).localeCompare(String(right.id)))
-      .map((batch) => `${String(batch.id)}:${batch.updatedAt}`),
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map((batch) => `${batch.id}:${batch.updatedAt}`),
   );
 };
 
@@ -135,15 +122,37 @@ const removeStoredBatch = (batchId: string): void => {
   saveLocalBatches(loadLocalBatches().filter((batch) => batch.id !== batchId));
 };
 
+const toNullableStringValue = (value: string | undefined): null | string => {
+  if (value == null || value === '') {
+    return null;
+  }
+
+  return value;
+};
+
+const resolveRoastedBeanName = (roastedBeanName: string | undefined, greenBeanName: string): string => {
+  if (roastedBeanName == null || roastedBeanName === '') {
+    return greenBeanName;
+  }
+
+  return roastedBeanName;
+};
+
 const rollbackInventoryAdjustments = async (
-  rollbacks: Array<() => Promise<unknown>>,
+  rollbacks: (() => Promise<unknown>)[],
   context: Record<string, unknown>,
 ): Promise<void> => {
   const rollbackErrors: unknown[] = [];
 
   for (let index = rollbacks.length - 1; index >= 0; index -= 1) {
+    const rollback = rollbacks[index];
+
+    if (!rollback) {
+      continue;
+    }
+
     try {
-      await rollbacks[index]!();
+      await rollback();
     } catch (rollbackError) {
       rollbackErrors.push(rollbackError);
     }
@@ -181,18 +190,18 @@ const toSupabaseRoastBatchPayload = (input: RoastBatchCreateInput | RoastBatchUp
 
   if (input.roastDate !== undefined) payload.roast_date = input.roastDate;
   if (input.greenBeanId !== undefined) payload.green_bean_id = input.greenBeanId;
-  if (ROAST_BATCHES_SUPPORTS_ROASTED_BEAN_NAME && input.roastedBeanName !== undefined) {
-    payload.roasted_bean_name = input.roastedBeanName || null;
+  if (input.roastedBeanName !== undefined) {
+    payload.roasted_bean_name = toNullableStringValue(input.roastedBeanName);
   }
-  if (input.roastPlanId !== undefined) payload.roast_plan_id = input.roastPlanId || null;
+  if (input.roastPlanId !== undefined) payload.roast_plan_id = toNullableStringValue(input.roastPlanId);
   if (input.inputWeightGrams !== undefined) payload.input_weight_grams = input.inputWeightGrams;
   if (input.outputWeightGrams !== undefined) payload.output_weight_grams = input.outputWeightGrams;
   if (input.roastLevel !== undefined) payload.roast_level = input.roastLevel;
   if (input.developmentRatio !== undefined) payload.development_ratio = input.developmentRatio;
   if (input.firstCrackTime !== undefined) payload.first_crack_time = input.firstCrackTime;
   if (input.totalRoastTime !== undefined) payload.total_roast_time = input.totalRoastTime;
-  if (input.notes !== undefined) payload.notes = input.notes || null;
-  if (input.imageUrls !== undefined) payload.image_urls = input.imageUrls || [];
+  if (input.notes !== undefined) payload.notes = toNullableStringValue(input.notes);
+  if (input.imageUrls !== undefined) payload.image_urls = input.imageUrls ?? [];
   if (input.status !== undefined) payload.status = input.status;
 
   return payload;
@@ -206,32 +215,69 @@ const omitRoastedBeanNamePayload = (payload: Record<string, unknown>): Record<st
   return nextPayload;
 };
 
+const getStringField = (value: unknown, fallback = ''): string => {
+  return typeof value === 'string' ? value : fallback;
+};
+
+const getOptionalStringField = (value: unknown): string | undefined => {
+  return typeof value === 'string' ? value : undefined;
+};
+
+const getNumberField = (value: unknown, fallback = 0): number => {
+  return typeof value === 'number' ? value : fallback;
+};
+
+const getOptionalNumberField = (value: unknown): number | undefined => {
+  return typeof value === 'number' ? value : undefined;
+};
+
+const getStringArrayField = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const items: string[] = [];
+
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      return [];
+    }
+
+    items.push(item);
+  }
+
+  return items;
+};
+
+const getBatchStatusField = (value: unknown): RoastBatchRecord['status'] => {
+  return value === 'draft' || value === 'completed' ? value : 'completed';
+};
+
 const mapSupabaseRoastBatchRecord = (record: Record<string, unknown>): RoastBatchRecord => ({
-  id: record.id as string,
-  roastDate: (record.roast_date as string) || '',
-  greenBeanId: (record.green_bean_id as string) || '',
-  greenBeanName: (record.green_bean_name as string) || '',
-  roastedBeanName: (record.roasted_bean_name as string) || undefined,
-  roastPlanId: (record.roast_plan_id as string) || undefined,
-  roastPlanName: (record.roast_plan_name as string) || undefined,
-  inputWeightGrams: (record.input_weight_grams as number) || 0,
-  outputWeightGrams: (record.output_weight_grams as number) || 0,
-  roastLevel: (record.roast_level as string) || '',
-  developmentRatio: (record.development_ratio as number) || undefined,
-  firstCrackTime: (record.first_crack_time as number) || undefined,
-  totalRoastTime: (record.total_roast_time as number) || undefined,
-  notes: (record.notes as string) || undefined,
-  imageUrls: (record.image_urls as string[]) || [],
-  status: (record.status as 'completed' | 'draft') || 'completed',
-  createdAt: (record.created_at as string) || '',
-  updatedAt: (record.updated_at as string) || '',
+  id: getStringField(record.id),
+  roastDate: getStringField(record.roast_date),
+  greenBeanId: getStringField(record.green_bean_id),
+  greenBeanName: getStringField(record.green_bean_name),
+  roastedBeanName: getOptionalStringField(record.roasted_bean_name),
+  roastPlanId: getOptionalStringField(record.roast_plan_id),
+  roastPlanName: getOptionalStringField(record.roast_plan_name),
+  inputWeightGrams: getNumberField(record.input_weight_grams),
+  outputWeightGrams: getNumberField(record.output_weight_grams),
+  roastLevel: getStringField(record.roast_level),
+  developmentRatio: getOptionalNumberField(record.development_ratio),
+  firstCrackTime: getOptionalNumberField(record.first_crack_time),
+  totalRoastTime: getOptionalNumberField(record.total_roast_time),
+  notes: getOptionalStringField(record.notes),
+  imageUrls: getStringArrayField(record.image_urls),
+  status: getBatchStatusField(record.status),
+  createdAt: getStringField(record.created_at),
+  updatedAt: getStringField(record.updated_at),
 });
 
 // ============ 连接检测 ============
 
 const hasSupabaseConnection = (): boolean => {
   const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
-  if (!connection) return false;
   return connection.projectUrl.trim().length > 0 && connection.publishableKey.trim().length > 0;
 };
 
@@ -246,36 +292,37 @@ const getSupabaseClient = (): SupabaseRestClient => {
 // ============ Mock Repository ============
 
 class MockRoastBatchRepository implements RoastBatchRepository {
-  async createBatch(input: RoastBatchCreateInput): Promise<ApiResponse<RoastBatchRecord>> {
+  createBatch(input: RoastBatchCreateInput): Promise<ApiResponse<RoastBatchRecord>> {
     const batches = loadLocalBatches();
     const now = new Date().toISOString();
     const record: RoastBatchRecord = {
       ...input,
-      roastedBeanName: input.roastedBeanName || input.greenBeanName,
-      id: `local-${Date.now()}`,
-      status: input.status || 'completed',
-      imageUrls: input.imageUrls || [],
+      roastedBeanName: resolveRoastedBeanName(input.roastedBeanName, input.greenBeanName),
+      id: `local-${Date.now().toString()}`,
+      status: input.status ?? 'completed',
+      imageUrls: input.imageUrls ?? [],
       createdAt: now,
       updatedAt: now,
     };
     saveLocalBatches(sortBatches([record, ...batches]));
-    return ok(record);
+    return Promise.resolve(ok(record));
   }
 
-  async deleteBatch(batchId: string): Promise<void> {
+  deleteBatch(batchId: string): Promise<void> {
     const batches = loadLocalBatches();
     saveLocalBatches(batches.filter((b) => b.id !== batchId));
+    return Promise.resolve();
   }
 
-  async getBatchById(batchId: string): Promise<null | RoastBatchRecord> {
-    return loadLocalBatches().find((batch) => batch.id === batchId) ?? null;
+  getBatchById(batchId: string): Promise<null | RoastBatchRecord> {
+    return Promise.resolve(loadLocalBatches().find((batch) => batch.id === batchId) ?? null);
   }
 
-  async listBatches(): Promise<ApiResponse<RoastBatchRecord[]>> {
-    return ok(sortBatches(loadLocalBatches()));
+  listBatches(): Promise<ApiResponse<RoastBatchRecord[]>> {
+    return Promise.resolve(ok(sortBatches(loadLocalBatches())));
   }
 
-  async updateBatch(batchId: string, input: RoastBatchUpdateInput): Promise<ApiResponse<RoastBatchRecord>> {
+  updateBatch(batchId: string, input: RoastBatchUpdateInput): Promise<ApiResponse<RoastBatchRecord>> {
     const batches = loadLocalBatches();
     const index = batches.findIndex((b) => b.id === batchId);
     if (index === -1) {
@@ -291,7 +338,7 @@ class MockRoastBatchRepository implements RoastBatchRepository {
     };
     batches[index] = updated;
     saveLocalBatches(batches);
-    return ok(updated);
+    return Promise.resolve(ok(updated));
   }
 }
 
@@ -317,10 +364,13 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
       rows = await this.client.insert('roast_batches', omitRoastedBeanNamePayload(payload), { select: '*' });
     }
 
-    if (!rows || rows.length === 0) {
+    const createdRow = rows[0];
+
+    if (!createdRow) {
       throw new AppError('创建烘焙记录失败：未返回数据。', { code: 'DATA' });
     }
-    return ok(mapUnknownSupabaseRecord(rows[0]));
+
+    return ok(mapUnknownSupabaseRecord(createdRow));
   }
 
   async deleteBatch(batchId: string): Promise<void> {
@@ -334,8 +384,10 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
         match: { id: batchId },
       });
 
-      if (overviewRows.length > 0) {
-        return mapUnknownSupabaseRecord(overviewRows[0]!);
+      const overviewRow = overviewRows[0];
+
+      if (overviewRow) {
+        return mapUnknownSupabaseRecord(overviewRow);
       }
     } catch (overviewError) {
       if (!isMissingSupabaseResourceError(overviewError)) {
@@ -348,13 +400,15 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
       match: { id: batchId },
     });
 
-    return rows.length > 0 ? mapUnknownSupabaseRecord(rows[0]!) : null;
+    const batchRow = rows[0];
+
+    return batchRow ? mapUnknownSupabaseRecord(batchRow) : null;
   }
 
   async listBatches(): Promise<ApiResponse<RoastBatchRecord[]>> {
     // 优先从视图查询（如有），否则查表；两者都缺失时安静降级为空列表。
     try {
-      const rows = await this.client.list<any>('roast_batch_overview', {
+      const rows = await this.client.list<Record<string, unknown>>('roast_batch_overview', {
         orderBy: { ascending: false, column: 'roast_date' },
       });
       return ok(rows.map(mapUnknownSupabaseRecord));
@@ -364,7 +418,7 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
       }
 
       try {
-        const rows = await this.client.list<any>('roast_batches', {
+        const rows = await this.client.list<Record<string, unknown>>('roast_batches', {
           orderBy: { ascending: false, column: 'roast_date' },
         });
         return ok(rows.map(mapUnknownSupabaseRecord));
@@ -401,10 +455,13 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
       });
     }
 
-    if (!rows || rows.length === 0) {
+    const updatedRow = rows[0];
+
+    if (!updatedRow) {
       throw new AppError('更新失败：未找到记录。', { code: 'DATA' });
     }
-    return ok(mapUnknownSupabaseRecord(rows[0]));
+
+    return ok(mapUnknownSupabaseRecord(updatedRow));
   }
 }
 
@@ -427,10 +484,10 @@ export const roastBatchService = {
     const now = new Date().toISOString();
     const record: RoastBatchRecord = {
       ...input,
-      roastedBeanName: input.roastedBeanName || input.greenBeanName,
+      roastedBeanName: resolveRoastedBeanName(input.roastedBeanName, input.greenBeanName),
       id: createOptimisticLocalBatchId(),
-      status: input.status || 'completed',
-      imageUrls: input.imageUrls || [],
+      status: input.status ?? 'completed',
+      imageUrls: input.imageUrls ?? [],
       createdAt: now,
       updatedAt: now,
     };
@@ -532,7 +589,7 @@ export const roastBatchService = {
       }
 
       const currentImpactWeight = getInventoryImpactWeight(currentBatch);
-      const rollbacks: Array<() => Promise<unknown>> = [];
+      const rollbacks: (() => Promise<unknown>)[] = [];
 
       if (currentImpactWeight > 0) {
         await beanService.adjustRemainingWeight(currentBatch.greenBeanId, -currentImpactWeight);
@@ -578,7 +635,7 @@ export const roastBatchService = {
       const nextBatch = getNextBatchState(currentBatch, input);
       const currentImpactWeight = getInventoryImpactWeight(currentBatch);
       const nextImpactWeight = getInventoryImpactWeight(nextBatch);
-      const rollbacks: Array<() => Promise<unknown>> = [];
+      const rollbacks: (() => Promise<unknown>)[] = [];
 
       if (currentBatch.greenBeanId === nextBatch.greenBeanId) {
         const deltaWeight = nextImpactWeight - currentImpactWeight;
@@ -618,18 +675,18 @@ export const roastBatchService = {
     }
   },
   async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
-    if (!hasSupabaseConnection() || typeof navigator === 'undefined' || navigator.onLine === false) {
+    if (!hasSupabaseConnection() || typeof navigator === 'undefined' || !navigator.onLine) {
       return { downloaded: 0, uploaded: 0 };
     }
 
     const repository = new SupabaseRoastBatchRepository(getSupabaseClient());
     const localBatchesBeforeSync = sortBatches(loadLocalBatches());
     const remoteBeforeSync = await repository.listBatches();
-    const remoteIds = new Set(remoteBeforeSync.data.map((batch) => String(batch.id)));
+    const remoteIds = new Set(remoteBeforeSync.data.map((batch) => batch.id));
     let uploaded = 0;
 
     for (const batch of localBatchesBeforeSync) {
-      if (remoteIds.has(String(batch.id))) {
+      if (remoteIds.has(batch.id)) {
         continue;
       }
 

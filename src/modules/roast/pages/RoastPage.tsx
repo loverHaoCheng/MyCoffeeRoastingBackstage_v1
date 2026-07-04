@@ -121,7 +121,7 @@ export function RoastPage() {
   const handleUpdate = (planId: RoastPlan['id'], input: RoastPlanJsonInput) => {
     submissionBackupService.save('update', { input, planId }, 'roastPlan');
 
-    void (async () => {
+    const updateTask = (async () => {
       try {
         await updateMutation.mutateAsync({ planId, input });
         await refreshAllAppData(queryClient);
@@ -131,6 +131,8 @@ export function RoastPage() {
         void message.error(errorMessage);
       }
     })();
+
+    void updateTask;
   };
 
   // 手动创建
@@ -146,7 +148,7 @@ export function RoastPage() {
       ]);
     });
 
-    void (async () => {
+    const createTask = (async () => {
       try {
         const response = await roastPlanService.createPlan(input);
         const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
@@ -160,6 +162,8 @@ export function RoastPage() {
         void message.error(errorMessage);
       }
     })();
+
+    void createTask;
   };
 
   // JSON 导入创建
@@ -175,7 +179,7 @@ export function RoastPage() {
       ]);
     });
 
-    void (async () => {
+    const createTask = (async () => {
       try {
         const response = await roastPlanService.createPlanFromJson(jsonText);
         const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
@@ -189,6 +193,8 @@ export function RoastPage() {
         void message.error(errorMessage);
       }
     })();
+
+    void createTask;
   };
 
   // 关闭详情
@@ -211,7 +217,9 @@ export function RoastPage() {
       {/* 搜索栏 */}
       <UnifiedSearchBar
         inputAriaLabel="搜索烘焙计划"
-        onChange={(e) => setKeyword(e.target.value)}
+        onChange={(event) => {
+          setKeyword(event.target.value);
+        }}
         placeholder="搜索计划名称、生豆、烘焙程度..."
         sectionAriaLabel="烘焙计划搜索"
         value={keyword}
@@ -220,14 +228,21 @@ export function RoastPage() {
       {/* 计划列表 */}
       <section className={styles.list} aria-label="烘焙计划卡片区域">
         {isFetching && plans.length === 0 ? (
-          <div className={styles.loading}><Spin /></div>
+          <div className={styles.loading}>
+            <Spin />
+          </div>
         ) : null}
 
         {!isFetching && filteredPlans.length === 0 ? (
           <Empty className={styles.empty} description="没有匹配的烘焙计划" />
         ) : null}
 
-        <RoastPlanList plans={filteredPlans} onDelete={handleDelete} onEdit={handleEdit} onView={handleView} />
+        <RoastPlanList
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+          onView={handleView}
+          plans={filteredPlans}
+        />
       </section>
 
       {/* FAB */}
@@ -241,21 +256,27 @@ export function RoastPage() {
       <Drawer
         className={styles.creationDrawer}
         height="86dvh"
-        onClose={() => setCreationDrawerOpen(false)}
+        onClose={() => {
+          setCreationDrawerOpen(false);
+        }}
         open={creationDrawerOpen}
         placement="bottom"
         title="新增烘焙计划"
       >
         <Tabs
           activeKey={creationTab}
-          onChange={(key) => setCreationTab(key as 'manual' | 'json')}
+          onChange={(key) => {
+            setCreationTab(key as 'manual' | 'json');
+          }}
           items={[
             {
               key: 'manual',
               label: '手动创建',
               children: (
                 <RoastPlanManualCreator
-                  onCancel={() => setCreationDrawerOpen(false)}
+                  onCancel={() => {
+                    setCreationDrawerOpen(false);
+                  }}
                   onCreate={handleCreateManual}
                 />
               ),
@@ -265,7 +286,9 @@ export function RoastPage() {
               label: 'JSON 导入',
               children: (
                 <RoastPlanJsonImporter
-                  onCancel={() => setCreationDrawerOpen(false)}
+                  onCancel={() => {
+                    setCreationDrawerOpen(false);
+                  }}
                   onImport={handleCreateFromJson}
                 />
               ),

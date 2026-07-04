@@ -88,32 +88,35 @@ export function BeanPage() {
 
   // 网络恢复时自动同步待处理操作
   useEffect(() => {
-    const handleOnline = async () => {
+    const syncPendingOperations = async () => {
       try {
         const result = await beanService.syncPendingOperations();
         if (result.success > 0) {
-          void message.success(`已同步 ${result.success} 条待处理操作`);
+          void message.success(`已同步 ${String(result.success)} 条待处理操作`);
           await refetch();
         }
         if (result.failed > 0) {
-          void message.warning(`${result.failed} 条操作同步失败，将在下次联网时重试`);
+          void message.warning(`${String(result.failed)} 条操作同步失败，将在下次联网时重试`);
         }
       } catch (error) {
         logger.error('bean page pending sync failed', { error });
       }
+    };
+    const handleOnline = () => {
+      void syncPendingOperations();
     };
 
     window.addEventListener('online', handleOnline);
 
     // 组件加载时如果有网络，也尝试同步一次
     if (typeof navigator !== 'undefined' && navigator.onLine) {
-      void handleOnline();
+      handleOnline();
     }
 
     return () => {
       window.removeEventListener('online', handleOnline);
     };
-  }, [refetch]);
+  }, [message, refetch]);
 
   const handleViewBean = (beanId: Bean['id']) => {
     setSelectedBeanId(beanId);
@@ -151,16 +154,19 @@ export function BeanPage() {
     const optimisticBean = beanService.createOptimisticBean(input);
 
     queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), (current = []) => {
-      return sortBeansByUpdatedAt([optimisticBean, ...current.filter((bean) => String(bean.id) !== String(optimisticBean.id))]);
+      return sortBeansByUpdatedAt([
+        optimisticBean,
+        ...current.filter((bean) => String(bean.id) !== String(optimisticBean.id)),
+      ]);
     });
 
-    void (async () => {
+    const createTask = (async () => {
       try {
         const response = await beanService.createRemoteBean(input);
         const nextBeans = beanService.finalizeOptimisticBean(String(optimisticBean.id), response.data);
 
         queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
-        void refreshAllAppData(queryClient).catch(() => undefined);
+        refreshAllAppData(queryClient).catch(() => undefined);
       } catch (error) {
         const nextBeans = beanService.rollbackOptimisticBean(String(optimisticBean.id));
         queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
@@ -168,6 +174,8 @@ export function BeanPage() {
         void message.error(errorMessage);
       }
     })();
+
+    void createTask;
   };
 
   const handleOpenCreateDrawer = () => {
@@ -223,7 +231,9 @@ export function BeanPage() {
           <BeanInventoryCard
             bean={bean}
             key={bean.id}
-            onDelete={() => handleDeleteBean(bean)}
+            onDelete={() => {
+              handleDeleteBean(bean);
+            }}
             onEdit={handleEditBean}
             onView={handleViewBean}
           />
@@ -263,7 +273,9 @@ export function BeanPage() {
                     <BeanInventoryCard
                       bean={bean}
                       key={bean.id}
-                      onDelete={() => handleDeleteBean(bean)}
+                      onDelete={() => {
+                        handleDeleteBean(bean);
+                      }}
                       onEdit={handleEditBean}
                       onView={handleViewBean}
                     />
@@ -299,8 +311,12 @@ export function BeanPage() {
               label: '界面创建',
               children: (
                 <BeanManualCreator
-                  onCancel={() => setCreationDrawerOpen(false)}
-                  onCreate={(input) => void handleCreateBean(input)}
+                  onCancel={() => {
+                    setCreationDrawerOpen(false);
+                  }}
+                  onCreate={(input) => {
+                    handleCreateBean(input);
+                  }}
                 />
               ),
             },

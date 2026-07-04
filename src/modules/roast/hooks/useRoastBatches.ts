@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { roastBatchService } from '../services/roastBatch.service';
-import type { RoastBatchCreateInput, RoastBatchRecord, RoastBatchUpdateInput } from '../types/roastBatch';
+import type { RoastBatchCreateInput, RoastBatchUpdateInput } from '../types/roastBatch';
 
 export const roastBatchQueryKeys = {
   all: ['roast-batches'] as const,
