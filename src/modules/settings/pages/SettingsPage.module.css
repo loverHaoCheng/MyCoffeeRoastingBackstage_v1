@@ -4,9 +4,18 @@
   --page-padding-top: 0;
   --page-padding-right: 16px;
   --page-padding-left: 16px;
+  --settings-page-glow-core: rgb(255 255 255 / 18%);
+  --settings-page-glow-veil: rgb(255 255 255 / 7%);
+  --settings-page-glow-sheen: rgb(255 255 255 / 4%);
   position: relative;
   box-sizing: border-box;
   color: var(--app-text);
+}
+
+:global(:root[data-app-theme='dark']) .page {
+  --settings-page-glow-core: rgb(255 255 255 / 4%);
+  --settings-page-glow-veil: rgb(255 255 255 / 1.5%);
+  --settings-page-glow-sheen: rgb(255 255 255 / 1%);
 }
 
 .page::before {
@@ -15,10 +24,10 @@
   inset: 4px 4px -2px;
   border-radius: 30px;
   background:
-    radial-gradient(circle at top center, var(--app-card-glow-start) 0%, rgb(255 255 255 / 14%) 38%, var(--app-card-glow-end) 78%),
-    linear-gradient(180deg, rgb(255 255 255 / 14%) 0%, rgb(255 255 255 / 4%) 100%);
-  filter: blur(14px);
-  opacity: 0.88;
+    radial-gradient(circle at top center, var(--settings-page-glow-core) 0%, var(--settings-page-glow-veil) 40%, var(--app-card-glow-end) 78%),
+    linear-gradient(180deg, var(--settings-page-glow-sheen) 0%, rgb(255 255 255 / 0%) 100%);
+  filter: blur(10px);
+  opacity: 0.5;
   pointer-events: none;
   z-index: 0;
 }
@@ -556,8 +565,8 @@
   .page::before {
     inset: 0 2px -2px;
     border-radius: 26px;
-    filter: blur(12px);
-    opacity: 0.78;
+    filter: blur(8px);
+    opacity: 0.38;
   }
 
   .form {

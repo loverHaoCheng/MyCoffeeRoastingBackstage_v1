@@ -269,7 +269,10 @@ export function SettingsPage() {
       roastedBean: supabaseConnections.roastedBean,
     },
   });
-  const watchedValues = useWatch({ control });
+  const watchedValues = useWatch<SupabaseConnectionFormValues>({
+    control,
+    defaultValue: getValues(),
+  });
   const lastSavedValuesRef = useRef(JSON.stringify(supabaseConnections));
   const lastGreenBeanRefreshSignatureRef = useRef('');
   const [connectionProbeState, setConnectionProbeState] = useState<Record<SupabaseDataSource, ConnectionProbeStatus>>({
@@ -301,7 +304,10 @@ export function SettingsPage() {
     supabaseConnections.roastedBean.projectUrl,
     supabaseConnections.roastedBean.publishableKey,
   );
-  const greenBeanDraftConnection = watchedValues.greenBean;
+  const greenBeanDraftConnection: SupabaseProjectConnection = {
+    projectUrl: watchedValues.greenBean?.projectUrl ?? '',
+    publishableKey: watchedValues.greenBean?.publishableKey ?? '',
+  };
   const canRunAdvancedRefresh = isValidProjectConnection(
     greenBeanDraftConnection.projectUrl,
     greenBeanDraftConnection.publishableKey,
