@@ -1,5 +1,5 @@
-import { PlusOutlined } from '@ant-design/icons';
-import { App, Drawer, Empty, Grid, Spin, Tabs } from 'antd';
+import { DownOutlined, PlusOutlined } from '@ant-design/icons';
+import { App, Button, Drawer, Empty, Grid, Spin, Tabs } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -50,6 +50,7 @@ export function BeanPage() {
   const { supabaseConnections } = useSupabaseConnectionSettings();
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const [isZeroStockCollapsed, setIsZeroStockCollapsed] = useState(true);
   const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
   const [detailMode, setDetailMode] = useState<BeanDetailMode | null>(null);
   const { data: beans = [], isFetching, refetch } = useBeans();
@@ -57,6 +58,13 @@ export function BeanPage() {
   const filteredBeans = useMemo(() => {
     return beans.filter((bean) => matchesKeyword(bean, keyword));
   }, [beans, keyword]);
+  const activeBeans = useMemo(() => {
+    return filteredBeans.filter((bean) => bean.stockKg > 0);
+  }, [filteredBeans]);
+  const zeroStockBeans = useMemo(() => {
+    return filteredBeans.filter((bean) => bean.stockKg === 0);
+  }, [filteredBeans]);
+  const shouldShowEmptyState = activeBeans.length === 0 && zeroStockBeans.length === 0;
 
   const summary = useMemo(() => {
     const totalRemainingStockKg = beans.reduce((total, bean) => total + bean.stockKg, 0);
@@ -207,11 +215,11 @@ export function BeanPage() {
           </div>
         ) : null}
 
-        {!isFetching && filteredBeans.length === 0 ? (
+        {!isFetching && shouldShowEmptyState ? (
           <Empty className={styles.empty} description="没有匹配的生豆批次" />
         ) : null}
 
-        {filteredBeans.map((bean) => (
+        {activeBeans.map((bean) => (
           <BeanInventoryCard
             bean={bean}
             key={bean.id}
@@ -220,6 +228,51 @@ export function BeanPage() {
             onView={handleViewBean}
           />
         ))}
+
+        {zeroStockBeans.length > 0 ? (
+          <section
+            className={styles.zeroStockSection}
+            aria-label="零库存生豆折叠区"
+            data-collapsed={isZeroStockCollapsed}
+          >
+            <Button
+              className={styles.zeroStockToggleButton}
+              aria-expanded={!isZeroStockCollapsed}
+              aria-label="零库存生豆"
+              onClick={() => {
+                setIsZeroStockCollapsed((current) => !current);
+              }}
+              type="text"
+            >
+              <span className={styles.zeroStockToggleLabel}>零库存生豆</span>
+              <span aria-hidden="true" className={styles.zeroStockToggleIcon}>
+                <DownOutlined />
+              </span>
+            </Button>
+
+            <div className={styles.zeroStockBody}>
+              <div className={styles.zeroStockDivider} />
+
+              <div
+                className={styles.zeroStockPanel}
+                aria-hidden={isZeroStockCollapsed}
+                aria-label="零库存生豆列表"
+              >
+                <div className={styles.list}>
+                  {zeroStockBeans.map((bean) => (
+                    <BeanInventoryCard
+                      bean={bean}
+                      key={bean.id}
+                      onDelete={() => handleDeleteBean(bean)}
+                      onEdit={handleEditBean}
+                      onView={handleViewBean}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
       </section>
 
       <ViewportFloatingActionButton

@@ -2,6 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { BeanPage } from '@/modules/bean';
+import { beanCacheStorageKey } from '@/modules/bean/services';
 import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
 import { supabaseConnectionSettingsStorageKey } from '@/modules/settings/services/supabaseConnectionSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
@@ -21,6 +22,33 @@ describe('BeanPage', () => {
       supabaseConnections: createDefaultSupabaseConnectionSettings(),
     });
   });
+
+  const saveBeanCache = (stockKg: number): void => {
+    window.localStorage.setItem(
+      beanCacheStorageKey,
+      JSON.stringify({
+        beans: [
+          {
+            costPerKg: 86,
+            createdAt: '2026-07-03T00:00:00.000Z',
+            grade: 'G1',
+            id: 'bean-zero-stock',
+            name: '零库存测试豆',
+            origin: '埃塞俄比亚 · 古吉',
+            process: '水洗',
+            stockKg,
+            updatedAt: '2026-07-03T00:00:00.000Z',
+          },
+        ],
+        errorCode: null,
+        lastReadAt: '2026-07-03T00:00:00.000Z',
+        source: 'mock',
+        status: stockKg > 0 ? 'cached' : 'empty',
+        syncedAt: '2026-07-03T00:00:00.000Z',
+        version: 1,
+      }),
+    );
+  };
 
   it('renders the bean inventory workspace with the current simplified search layout', async () => {
     renderWithQuery(<BeanPage />);
@@ -89,5 +117,43 @@ describe('BeanPage', () => {
 
     expect(await screen.findByText('没有匹配的生豆批次')).toBeInTheDocument();
     expect(screen.getByLabelText('生豆库存筛选')).toBeInTheDocument();
+  });
+
+  it('puts zero-stock beans into a collapsed bottom section and removes them after stock changes', async () => {
+    saveBeanCache(0);
+
+    const firstRender = renderWithQuery(<BeanPage />);
+
+    const collapsedSection = screen.getByLabelText('零库存生豆折叠区');
+    expect(within(collapsedSection).getByText('零库存生豆')).toBeInTheDocument();
+    expect(within(collapsedSection).getByRole('button', { name: '零库存生豆' })).toBeInTheDocument();
+    expect(within(collapsedSection).queryByText(/重量为 0 的记录/)).not.toBeInTheDocument();
+    expect(within(collapsedSection).queryByText('1 条')).not.toBeInTheDocument();
+    expect(within(collapsedSection).getByLabelText('零库存生豆列表')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+
+    fireEvent.click(within(collapsedSection).getByRole('button', { name: '零库存生豆' }));
+
+    expect(within(collapsedSection).getByLabelText('零库存生豆列表')).toHaveAttribute(
+      'aria-hidden',
+      'false',
+    );
+
+    firstRender.unmount();
+
+    window.localStorage.clear();
+    useSettingsStore.setState({
+      appDisplaySettings: createDefaultAppDisplaySettings(),
+      costTemplateSettings: createDefaultCostTemplateSettings(),
+      supabaseConnections: createDefaultSupabaseConnectionSettings(),
+    });
+    saveBeanCache(12.5);
+
+    renderWithQuery(<BeanPage />);
+
+    expect(screen.queryByLabelText('零库存生豆折叠区')).not.toBeInTheDocument();
+    expect(screen.getByText('零库存测试豆')).toBeInTheDocument();
   });
 });

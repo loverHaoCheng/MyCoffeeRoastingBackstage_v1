@@ -31,8 +31,8 @@ type RouteTransitionDirection = 'backward' | 'forward';
 
 const iconByRoute: Record<AppRouteKey, ReactNode> = {
   bean: <DatabaseOutlined />,
-  roast: <FireOutlined />,
-  production: <ApartmentOutlined />,
+  roast: <ApartmentOutlined />,
+  production: <FireOutlined />,
   settings: <SettingOutlined />,
 };
 

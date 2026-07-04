@@ -62,6 +62,85 @@
   margin: 0 auto;
 }
 
+.zeroStockSection {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 16px 4px 8px;
+  border-top: 1px solid var(--app-border-soft);
+  background: transparent;
+}
+
+.zeroStockBody {
+  display: grid;
+  gap: 8px;
+  overflow: hidden;
+  transition: max-height 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, transform 220ms ease;
+}
+
+.zeroStockSection[data-collapsed='true'] .zeroStockBody {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+.zeroStockSection[data-collapsed='false'] .zeroStockBody {
+  max-height: 2400px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.zeroStockToggleButton:global(.ant-btn) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent !important;
+  box-shadow: none;
+  color: var(--app-text-tertiary);
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.zeroStockToggleButton:global(.ant-btn:hover),
+.zeroStockToggleButton:global(.ant-btn:focus-visible),
+.zeroStockToggleButton:global(.ant-btn:active) {
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.zeroStockToggleLabel {
+  flex: 0 0 auto;
+}
+
+.zeroStockToggleIcon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  transition: transform 180ms ease;
+}
+
+.zeroStockToggleIcon :global(.anticon) {
+  font-size: 8px;
+}
+
+.zeroStockToggleButton[aria-expanded='true'] .zeroStockToggleIcon {
+  transform: rotate(180deg);
+}
+
+.zeroStockDivider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--app-border-soft) 10%, var(--app-border-soft) 90%, transparent 100%);
+}
+
 .loading,
 .empty,
 .error {
@@ -133,6 +212,11 @@
 
   .list {
     grid-template-columns: 1fr;
+  }
+
+  .zeroStockSection {
+    margin-top: 4px;
+    padding: 14px 0 6px;
   }
 
   .creationDrawer :global(.ant-drawer-header) {
