@@ -1,5 +1,5 @@
 import { CopyOutlined, DownOutlined, SyncOutlined } from '@ant-design/icons';
-import { App, Alert, Button, Checkbox, Drawer, Grid, Input, InputNumber, Popconfirm, Radio, Slider, Tag } from 'antd';
+import { App, Alert, Button, Drawer, Grid, Input, InputNumber, Popconfirm, Radio, Select, Slider, Tag } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -552,7 +552,7 @@ export function SettingsPage() {
     return getCardDisplayModuleDefinition(moduleKey)?.metaOptions.map((item) => item.key) ?? [];
   }, []);
 
-  const normalizeSelectedMetaKeys = useCallback(
+  const normalizeCardDisplayMetaKeys = useCallback(
     (moduleKey: AppCardModuleKey, selectedKeys: string[], displayCount: 0 | 2 | 4): string[] => {
       if (displayCount === 0) {
         return [];
@@ -650,14 +650,20 @@ export function SettingsPage() {
         ...appDisplaySettings.cardDisplaySettings,
         [moduleKey]: {
           displayCount,
-          visibleMetaKeys: normalizeSelectedMetaKeys(moduleKey, moduleSettings.visibleMetaKeys, displayCount),
+          visibleMetaKeys: normalizeCardDisplayMetaKeys(moduleKey, moduleSettings.visibleMetaKeys, displayCount),
         },
       },
     });
   };
 
-  const handleCardVisibleMetaKeysChange = (moduleKey: AppCardModuleKey, selectedKeys: string[]) => {
+  const handleCardVisibleMetaKeyChange = (
+    moduleKey: AppCardModuleKey,
+    slotIndex: number,
+    selectedKey: string,
+  ) => {
     const moduleSettings = appDisplaySettings.cardDisplaySettings[moduleKey];
+    const nextSelectedKeys = [...moduleSettings.visibleMetaKeys];
+    nextSelectedKeys[slotIndex] = selectedKey;
 
     persistAppDisplaySettings({
       ...appDisplaySettings,
@@ -665,7 +671,11 @@ export function SettingsPage() {
         ...appDisplaySettings.cardDisplaySettings,
         [moduleKey]: {
           ...moduleSettings,
-          visibleMetaKeys: normalizeSelectedMetaKeys(moduleKey, selectedKeys, moduleSettings.displayCount),
+          visibleMetaKeys: normalizeCardDisplayMetaKeys(
+            moduleKey,
+            nextSelectedKeys,
+            moduleSettings.displayCount,
+          ),
         },
       },
     });
@@ -1038,7 +1048,7 @@ export function SettingsPage() {
                 <div className={styles.cardDisplayHeader}>
                   <div>
                     <strong>卡片信息展示</strong>
-                    <p>每个模块都可以选择 0 / 2 / 4 项信息，并单独指定展示内容。</p>
+                    <p>每个模块都可以选择 0 / 2 / 4 项信息，并按位置指定展示内容。</p>
                   </div>
                   <Tag color="default">共 {cardDisplayModules.length} 个模块</Tag>
                 </div>
@@ -1046,10 +1056,10 @@ export function SettingsPage() {
                 <div className={styles.cardDisplayGrid}>
                   {cardDisplayModules.map((module) => {
                     const moduleSettings = appDisplaySettings.cardDisplaySettings[module.key];
-                    const selectedValueSet = new Set(moduleSettings.visibleMetaKeys);
-                    const isSelectionLocked =
-                      moduleSettings.displayCount !== 0 &&
-                      moduleSettings.visibleMetaKeys.length >= moduleSettings.displayCount;
+                    const visibleSlots = Array.from(
+                      { length: moduleSettings.displayCount },
+                      (_, index) => index,
+                    );
 
                     return (
                       <article className={styles.cardDisplayModule} key={module.key}>
@@ -1072,20 +1082,40 @@ export function SettingsPage() {
                           value={moduleSettings.displayCount}
                         />
 
-                        <Checkbox.Group
-                          className={styles.cardDisplayCheckboxGroup}
-                          onChange={(checkedValues) => {
-                            handleCardVisibleMetaKeysChange(module.key, checkedValues as string[]);
-                          }}
-                          options={module.metaOptions.map((option) => ({
-                            disabled:
-                              moduleSettings.displayCount === 0 ||
-                              (isSelectionLocked && !selectedValueSet.has(option.key)),
-                            label: option.label,
-                            value: option.key,
-                          }))}
-                          value={moduleSettings.visibleMetaKeys}
-                        />
+                        {visibleSlots.length > 0 ? (
+                          <div className={styles.cardDisplaySlotGrid}>
+                            {visibleSlots.map((slotIndex) => {
+                              const currentValue = moduleSettings.visibleMetaKeys[slotIndex];
+
+                              return (
+                                <div className={styles.cardDisplaySlot} key={slotIndex}>
+                                  <span className={styles.cardDisplaySlotLabel}>
+                                    第 {slotIndex + 1} 项
+                                  </span>
+                                  <Select
+                                    className={styles.cardDisplaySelect}
+                                    aria-label={`第 ${slotIndex + 1} 项卡片信息选择`}
+                                    options={module.metaOptions.map((option) => ({
+                                      disabled:
+                                        option.key !== currentValue &&
+                                        moduleSettings.visibleMetaKeys.some(
+                                          (selectedKey, selectedIndex) =>
+                                            selectedIndex !== slotIndex && selectedKey === option.key,
+                                        ),
+                                      label: option.label,
+                                      value: option.key,
+                                    }))}
+                                    onChange={(value) => {
+                                      handleCardVisibleMetaKeyChange(module.key, slotIndex, value);
+                                    }}
+                                    placeholder={`请选择第 ${slotIndex + 1} 项`}
+                                    value={currentValue}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </article>
                     );
                   })}

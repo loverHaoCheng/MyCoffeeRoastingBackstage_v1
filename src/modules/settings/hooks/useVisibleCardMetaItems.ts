@@ -22,7 +22,10 @@ export function useVisibleCardMetaItems(moduleKey: AppCardModuleKey, metaItems: 
 
     const allowedKeys = getVisibleMetaKeys(moduleKey);
     const preferredKeys = moduleSettings.visibleMetaKeys.filter((key) => allowedKeys.includes(key));
-    const selectedItems = metaItems.filter((item) => preferredKeys.includes(item.key));
+    const metaItemByKey = new Map(metaItems.map((item) => [item.key, item] as const));
+    const selectedItems = preferredKeys
+      .map((key) => metaItemByKey.get(key))
+      .filter((item): item is UnifiedDataCardMetaItem => item != null);
 
     if (selectedItems.length >= displayCount) {
       return selectedItems.slice(0, displayCount);

@@ -190,15 +190,31 @@
   width: fit-content;
 }
 
-.cardDisplayCheckboxGroup {
+.cardDisplaySlotGrid {
   display: grid;
-  gap: 8px;
-  color: var(--app-text);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.cardDisplayCheckboxGroup :global(.ant-checkbox-wrapper) {
-  margin-inline-start: 0;
-  color: var(--app-text);
+.cardDisplaySlot {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cardDisplaySlotLabel {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cardDisplaySelect:global(.ant-select) {
+  width: 100%;
+}
+
+.cardDisplaySelect :global(.ant-select-selector) {
+  min-height: 42px;
+  border-radius: 14px !important;
 }
 
 .zoomPanel {
@@ -576,6 +592,10 @@
   }
 
   .cardDisplayGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardDisplaySlotGrid {
     grid-template-columns: 1fr;
   }
 
