@@ -270,7 +270,14 @@
   }
 
   .actionBtn:global(.ant-btn):active,
-  .deleteBtn:global(.ant-btn):active {
+  .actionBtn:global(.ant-btn):focus,
+  .actionBtn:global(.ant-btn):focus-visible,
+  .deleteBtn:global(.ant-btn):active,
+  .deleteBtn:global(.ant-btn):focus,
+  .deleteBtn:global(.ant-btn):focus-visible {
     transform: none;
+    box-shadow:
+      var(--app-card-button-shadow),
+      inset 0 1px 0 var(--app-card-inset-highlight);
   }
 }

@@ -4,9 +4,9 @@
   min-height: 100%;
   gap: 14px;
   padding: 16px;
-  border: 1px solid #e5e5ea;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: rgb(255 255 255 / 92%);
+  background: var(--app-bg-elevated);
   box-shadow: 0 12px 32px rgb(29 29 31 / 6%);
 }
 
@@ -33,13 +33,14 @@
   gap: 6px;
   padding: 12px;
   border-radius: 14px;
-  background: #f5f5f7;
+  background: var(--app-bg-soft);
+  border: 1px solid var(--app-border-soft);
 }
 
 .summaryItem span,
 .stepHeading span,
 .stepItem dt {
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 12px;
   font-weight: 700;
 }
@@ -47,7 +48,7 @@
 .summaryItem strong,
 .stepHeading strong {
   min-width: 0;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 15px;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -60,7 +61,7 @@
 
 .readOnlySteps h3 {
   margin: 0;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 17px;
   line-height: 1.2;
 }
@@ -74,7 +75,7 @@
   display: grid;
   gap: 10px;
   padding: 12px 0;
-  border-top: 1px solid #e5e5ea;
+  border-top: 1px solid var(--app-border-soft);
 }
 
 .stepHeading {
@@ -102,7 +103,7 @@
 .stepItem dd {
   min-width: 0;
   margin: 0;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 14px;
   line-height: 1.35;
   overflow-wrap: anywhere;

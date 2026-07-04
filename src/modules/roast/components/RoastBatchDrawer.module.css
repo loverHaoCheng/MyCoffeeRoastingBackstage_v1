@@ -10,14 +10,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid rgb(221 232 227 / 60%);
+  border-bottom: 1px solid var(--app-border-soft);
   flex-shrink: 0;
 }
 
 .headerTitle strong {
   font-size: 16px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--app-text);
 }
 
 .headerActions {
@@ -26,9 +26,9 @@
 }
 
 .headerActions :global(.ant-btn) {
-  border-color: rgb(229 229 231 / 92%);
-  background: rgb(255 255 255 / 92%);
-  color: #1d1d1f;
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
 }
 
 .body {
@@ -43,7 +43,7 @@
   margin: 0 0 12px;
   font-size: 13px;
   font-weight: 500;
-  color: #86868b;
+  color: var(--app-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -70,7 +70,7 @@
 
 .fieldLabel {
   font-size: 12px;
-  color: #86868b;
+  color: var(--app-text-secondary);
 }
 
 .field :global(.ant-input),
@@ -88,14 +88,14 @@
 
 .fieldValue {
   font-size: 14px;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-weight: 500;
 }
 
 .notes {
   margin: 0;
   font-size: 14px;
-  color: #1d1d1f;
+  color: var(--app-text);
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -103,7 +103,7 @@
 .emptyText {
   margin: 0;
   font-size: 13px;
-  color: #86868b;
+  color: var(--app-text-secondary);
 }
 
 .imageGrid {
@@ -116,7 +116,7 @@
   aspect-ratio: 1;
   border-radius: 12px;
   overflow: hidden;
-  background: #f5f5f7;
+  background: var(--app-bg-soft);
 }
 
 .imagePlaceholder img {
@@ -130,9 +130,9 @@
   align-items: center;
   justify-content: center;
   min-height: 120px;
-  border: 2px dashed rgb(221 232 227);
+  border: 2px dashed var(--app-border-soft);
   border-radius: 12px;
-  color: #86868b;
+  color: var(--app-text-secondary);
   font-size: 13px;
 }
 
@@ -140,14 +140,14 @@
   display: flex;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid rgb(221 232 227 / 60%);
+  border-top: 1px solid var(--app-border-soft);
   flex-shrink: 0;
 }
 
 .footer :global(.ant-btn) {
-  border-color: rgb(229 229 231 / 92%);
-  background: rgb(255 255 255 / 92%);
-  color: #1d1d1f;
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
 }
 
 @media (max-width: 767px) {

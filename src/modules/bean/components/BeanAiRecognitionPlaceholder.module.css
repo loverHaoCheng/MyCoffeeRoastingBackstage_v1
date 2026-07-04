@@ -8,14 +8,14 @@
   display: grid;
   gap: 8px;
   padding: 18px;
-  border: 1px solid #e5e5ea;
+  border: 1px solid var(--app-border);
   border-radius: 22px;
-  background: linear-gradient(180deg, rgb(255 255 255 / 98%), rgb(245 245 247 / 96%));
+  background: linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
 }
 
 .hero h3 {
   margin: 0;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 18px;
 }
 
@@ -23,7 +23,7 @@
 .list li,
 .hint {
   margin: 0;
-  color: #3a3a3c;
+  color: var(--app-text-secondary);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -38,5 +38,5 @@
 .hint {
   padding: 14px 16px;
   border-radius: 18px;
-  background: #f5f5f7;
+  background: var(--app-bg-soft);
 }

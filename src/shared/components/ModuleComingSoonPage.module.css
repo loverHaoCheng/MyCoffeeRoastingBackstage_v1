@@ -11,14 +11,14 @@
   justify-content: space-between;
   gap: 16px;
   padding: 20px;
-  border: 1px solid #dde7e2;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-bg-elevated);
 }
 
 .header h1 {
   margin: 10px 0 6px;
-  color: #17211d;
+  color: var(--app-text);
   font-size: 24px;
   line-height: 1.2;
 }
@@ -26,7 +26,7 @@
 .header p {
   max-width: 720px;
   margin: 0;
-  color: #5d6d66;
+  color: var(--app-text-secondary);
 }
 
 .statGrid {
@@ -40,18 +40,18 @@
   min-height: 112px;
   align-content: space-between;
   padding: 16px;
-  border: 1px solid #e1e8e5;
+  border: 1px solid var(--app-border-soft);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-bg-elevated);
 }
 
 .statCard span {
-  color: #64736d;
+  color: var(--app-text-secondary);
   font-size: 13px;
 }
 
 .statCard strong {
-  color: #17211d;
+  color: var(--app-text);
   font-size: 24px;
   line-height: 1.1;
 }
@@ -74,9 +74,9 @@
 
 .focusPanel {
   padding: 18px;
-  border: 1px solid #e1e8e5;
+  border: 1px solid var(--app-border-soft);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-bg-elevated);
 }
 
 .focusPanel h2 {
@@ -93,10 +93,10 @@
 .focusItem {
   min-height: 76px;
   padding: 14px;
-  border: 1px solid #e8eeeb;
+  border: 1px solid var(--app-border-soft);
   border-radius: 8px;
-  background: #f8faf9;
-  color: #34443e;
+  background: var(--app-bg-soft);
+  color: var(--app-text-secondary);
 }
 
 @media (max-width: 767px) {
@@ -125,4 +125,3 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-

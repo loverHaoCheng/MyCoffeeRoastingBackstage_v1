@@ -4,9 +4,9 @@
 
 .banner :global(.ant-alert) {
   align-items: flex-start;
-  border: 1px solid rgb(0 122 255 / 14%);
+  border: 1px solid var(--app-border-soft);
   border-radius: 22px;
-  background: rgb(255 255 255 / 96%);
+  background: var(--app-bg-elevated);
   box-shadow: 0 18px 42px rgb(15 23 42 / 12%);
   backdrop-filter: blur(18px);
 }

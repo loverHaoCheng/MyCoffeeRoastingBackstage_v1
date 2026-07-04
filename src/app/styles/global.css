@@ -212,18 +212,44 @@ select,
 @media (hover: none), (pointer: coarse) {
   .ant-btn:hover,
   .ant-btn:active,
+  .ant-btn:focus,
+  .ant-btn:focus-visible,
   .ant-menu-item:hover,
   .ant-menu-item:active,
+  .ant-menu-item:focus,
+  .ant-menu-item:focus-visible,
   .ant-menu-submenu-title:hover,
   .ant-menu-submenu-title:active,
+  .ant-menu-submenu-title:focus,
+  .ant-menu-submenu-title:focus-visible,
   .ant-pagination-item:hover,
   .ant-pagination-item:active,
+  .ant-pagination-item:focus,
+  .ant-pagination-item:focus-visible,
   .ant-tabs-tab:hover,
   .ant-tabs-tab:active,
+  .ant-tabs-tab:focus,
+  .ant-tabs-tab:focus-visible,
   .ant-radio-button-wrapper:hover,
   .ant-radio-button-wrapper:active,
+  .ant-radio-button-wrapper:focus,
+  .ant-radio-button-wrapper:focus-visible,
   .ant-segmented-item:hover,
-  .ant-segmented-item:active {
+  .ant-segmented-item:active,
+  .ant-segmented-item:focus,
+  .ant-segmented-item:focus-visible,
+  .ant-select-selector:hover,
+  .ant-select-selector:active,
+  .ant-select-selector:focus,
+  .ant-select-selector:focus-visible,
+  .ant-picker:hover,
+  .ant-picker:active,
+  .ant-picker:focus,
+  .ant-picker:focus-visible,
+  .ant-input-affix-wrapper:hover,
+  .ant-input-affix-wrapper:active,
+  .ant-input-affix-wrapper:focus,
+  .ant-input-affix-wrapper:focus-visible {
     transition: none !important;
     transform: none !important;
   }
@@ -234,17 +260,47 @@ select,
   .ant-pagination-item,
   .ant-tabs-tab,
   .ant-radio-button-wrapper,
-  .ant-segmented-item {
+  .ant-segmented-item,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-input-affix-wrapper {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
     transition: none !important;
   }
 
   .ant-btn:active,
+  .ant-btn:focus,
+  .ant-btn:focus-visible,
   .ant-menu-item:active,
+  .ant-menu-item:focus,
+  .ant-menu-item:focus-visible,
   .ant-menu-submenu-title:active,
+  .ant-menu-submenu-title:focus,
+  .ant-menu-submenu-title:focus-visible,
   .ant-pagination-item:active,
+  .ant-pagination-item:focus,
+  .ant-pagination-item:focus-visible,
   .ant-tabs-tab:active,
+  .ant-tabs-tab:focus,
+  .ant-tabs-tab:focus-visible,
   .ant-radio-button-wrapper:active,
-  .ant-segmented-item:active {
+  .ant-radio-button-wrapper:focus,
+  .ant-radio-button-wrapper:focus-visible,
+  .ant-segmented-item:active,
+  .ant-segmented-item:focus,
+  .ant-segmented-item:focus-visible,
+  .ant-select-selector:active,
+  .ant-select-selector:focus,
+  .ant-select-selector:focus-visible,
+  .ant-picker:active,
+  .ant-picker:focus,
+  .ant-picker:focus-visible,
+  .ant-input-affix-wrapper:active,
+  .ant-input-affix-wrapper:focus,
+  .ant-input-affix-wrapper:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
     transform: none !important;
   }
 }

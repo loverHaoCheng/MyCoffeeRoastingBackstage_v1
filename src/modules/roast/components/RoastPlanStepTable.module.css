@@ -3,19 +3,20 @@
   min-width: 0;
   overflow: hidden;
   border-radius: 8px;
-  background: #1d1d1f;
+  background: var(--app-bg-elevated);
+  border: 1px solid var(--app-border);
 }
 
 .table {
   min-width: 0;
-  color: #f6f8f7;
+  color: var(--app-text);
 }
 
 .row {
   display: grid;
   grid-template-columns: minmax(72px, 0.9fr) minmax(92px, 1.1fr) minmax(76px, 0.9fr) minmax(116px, 1.35fr) minmax(64px, 0.72fr);
   min-height: 68px;
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .row:last-child {
@@ -34,7 +35,7 @@
 
 .row:first-child {
   min-height: 54px;
-  color: #cfd5d2;
+  color: var(--app-text-secondary);
   font-weight: 800;
 }
 
@@ -50,7 +51,7 @@
   .table {
     display: grid;
     gap: 10px;
-    color: #1d1d1f;
+    color: var(--app-text);
   }
 
   .row:first-child {
@@ -62,9 +63,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     min-height: 0;
     overflow: hidden;
-    border: 1px solid #e5e5ea;
+    border: 1px solid var(--app-border);
     border-radius: 8px;
-    background: rgb(255 255 255 / 92%);
+    background: var(--app-bg-elevated);
     box-shadow: 0 8px 24px rgb(29 29 31 / 6%);
   }
 
@@ -74,8 +75,8 @@
     min-height: 66px;
     gap: 5px;
     padding: 12px;
-    border-bottom: 1px solid #f0f0f2;
-    color: #1d1d1f;
+    border-bottom: 1px solid var(--app-border-soft);
+    color: var(--app-text);
     font-size: 15px;
   }
 
@@ -85,7 +86,7 @@
 
   .row > div::before {
     content: attr(data-label);
-    color: #86868b;
+    color: var(--app-text-secondary);
     font-size: 12px;
     font-weight: 700;
   }
@@ -93,7 +94,7 @@
   .row > div:first-child {
     grid-column: span 2;
     min-height: 58px;
-    background: #f5f5f7;
+    background: var(--app-bg-soft);
     font-weight: 800;
   }
 }

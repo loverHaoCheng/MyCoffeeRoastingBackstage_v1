@@ -36,7 +36,7 @@
 .button:global(.ant-btn):active {
   background: var(--app-card-button-active-surface);
   color: var(--app-text);
-  box-shadow: 0 12px 28px rgb(20 25 32 / 12%), inset 0 1px 0 rgb(255 255 255 / 76%);
+  box-shadow: 0 12px 28px rgb(20 25 32 / 12%), inset 0 1px 0 var(--app-card-inset-highlight);
   transform: translateY(0) scale(0.98);
 }
 
@@ -77,7 +77,11 @@
   }
 
   .button:active,
-  .button:global(.ant-btn):active {
+  .button:global(.ant-btn):active,
+  .button:focus,
+  .button:global(.ant-btn):focus,
+  .button:focus-visible,
+  .button:global(.ant-btn):focus-visible {
     box-shadow: 0 18px 44px rgb(20 25 32 / 14%), inset 0 1px 0 var(--app-card-inset-highlight);
     transform: none;
   }

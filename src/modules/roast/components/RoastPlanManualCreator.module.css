@@ -25,7 +25,7 @@
 
 .labelText {
   overflow: hidden;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 13px;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -34,7 +34,7 @@
 
 .requiredMark {
   margin-left: 4px;
-  color: #d13d32;
+  color: var(--app-danger);
   font-style: normal;
 }
 
@@ -64,7 +64,7 @@
 
 .stepsHeader h3 {
   margin: 0;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 17px;
   line-height: 1.2;
 }
@@ -78,9 +78,9 @@
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px solid #e5e5ea;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-bg-elevated);
 }
 
 .stepCardHeader {
@@ -91,7 +91,7 @@
 }
 
 .stepCardHeader strong {
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 15px;
 }
 
@@ -103,7 +103,7 @@
 }
 
 .stepActions :global(.ant-btn) {
-  color: #6e6e73;
+  color: var(--app-text-secondary);
 }
 
 .stepFields {
@@ -120,9 +120,9 @@
 .actions :global(.ant-btn) {
   min-height: 44px;
   border-radius: 8px;
-  border-color: rgb(229 229 231 / 92%);
-  background: rgb(255 255 255 / 92%);
-  color: #1d1d1f;
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
 }
 
 @media (max-width: 767px) {
