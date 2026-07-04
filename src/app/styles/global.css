@@ -211,10 +211,40 @@ select,
 
 @media (hover: none), (pointer: coarse) {
   .ant-btn:hover,
+  .ant-btn:active,
   .ant-menu-item:hover,
+  .ant-menu-item:active,
   .ant-menu-submenu-title:hover,
+  .ant-menu-submenu-title:active,
   .ant-pagination-item:hover,
-  .ant-tabs-tab:hover {
+  .ant-pagination-item:active,
+  .ant-tabs-tab:hover,
+  .ant-tabs-tab:active,
+  .ant-radio-button-wrapper:hover,
+  .ant-radio-button-wrapper:active,
+  .ant-segmented-item:hover,
+  .ant-segmented-item:active {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .ant-btn,
+  .ant-menu-item,
+  .ant-menu-submenu-title,
+  .ant-pagination-item,
+  .ant-tabs-tab,
+  .ant-radio-button-wrapper,
+  .ant-segmented-item {
+    transition: none !important;
+  }
+
+  .ant-btn:active,
+  .ant-menu-item:active,
+  .ant-menu-submenu-title:active,
+  .ant-pagination-item:active,
+  .ant-tabs-tab:active,
+  .ant-radio-button-wrapper:active,
+  .ant-segmented-item:active {
     transform: none !important;
   }
 }

@@ -1,11 +1,12 @@
 import { appDisplaySettingsStorageSchema } from '@/modules/settings/schemas';
 import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { appSettingsSyncService, type AppSettingRecord } from '@/modules/settings/services/appSettingsSync.service';
-import { normalizeAppDisplaySettings, type AppDisplaySettings } from '@/modules/settings/types';
+import { normalizeAppDisplaySettings, type AppDisplaySettings, type AppThemeMode } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
 const appDisplaySettingsKey = 'app_display_settings';
+type AppDisplaySettingsSyncPayload = Omit<AppDisplaySettings, 'themeMode'>;
 
 const toUpdatedAtTimestamp = (value: null | string): number => {
   if (!value) {
@@ -17,7 +18,26 @@ const toUpdatedAtTimestamp = (value: null | string): number => {
   return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
 };
 
-const parseRemoteSettings = (record: AppSettingRecord): AppDisplaySettings => {
+const toSyncPayload = (settings: AppDisplaySettings): AppDisplaySettingsSyncPayload => {
+  return {
+    cardDisplaySettings: settings.cardDisplaySettings,
+    scale: settings.scale,
+    updatedAt: settings.updatedAt,
+  };
+};
+
+const mergeLocalThemeMode = (
+  settings: AppDisplaySettingsSyncPayload,
+  themeMode: AppThemeMode,
+): AppDisplaySettings => {
+  return normalizeAppDisplaySettings({
+    ...settings,
+    themeMode,
+    updatedAt: settings.updatedAt ?? null,
+  });
+};
+
+const parseRemoteSettings = (record: AppSettingRecord): AppDisplaySettingsSyncPayload => {
   const result = appDisplaySettingsStorageSchema.safeParse(record.value);
 
   if (!result.success) {
@@ -27,22 +47,22 @@ const parseRemoteSettings = (record: AppSettingRecord): AppDisplaySettings => {
     });
   }
 
-  return {
-    ...normalizeAppDisplaySettings({
-      ...result.data,
-      updatedAt: result.data.updatedAt ?? record.updated_at ?? null,
-    }),
-  };
+  const normalized = normalizeAppDisplaySettings({
+    ...result.data,
+    updatedAt: result.data.updatedAt ?? record.updated_at ?? null,
+  });
+
+  return toSyncPayload(normalized);
 };
 
 export const appDisplaySettingsSyncService = {
-  async loadRemote(): Promise<AppDisplaySettings | null> {
+  async loadRemote(): Promise<AppDisplaySettingsSyncPayload | null> {
     const record = await appSettingsSyncService.loadRecord(appDisplaySettingsKey);
 
     return record ? parseRemoteSettings(record) : null;
   },
   async saveRemote(settings: AppDisplaySettings): Promise<void> {
-    await appSettingsSyncService.saveRecord(appDisplaySettingsKey, settings);
+    await appSettingsSyncService.saveRecord(appDisplaySettingsKey, toSyncPayload(settings));
   },
   async sync(localSettings = appDisplaySettingsService.load()): Promise<AppDisplaySettings> {
     const remoteSettings = await this.loadRemote();
@@ -65,7 +85,7 @@ export const appDisplaySettingsSyncService = {
       return appDisplaySettingsService.save(localSettings);
     }
 
-    return appDisplaySettingsService.save(remoteSettings);
+    return appDisplaySettingsService.save(mergeLocalThemeMode(remoteSettings, localSettings.themeMode));
   },
   async syncSafely(localSettings = appDisplaySettingsService.load()): Promise<AppDisplaySettings> {
     try {

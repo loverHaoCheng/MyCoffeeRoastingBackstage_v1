@@ -22,20 +22,21 @@
   flex-direction: column;
   gap: 4px;
   padding: 14px 16px;
-  background: #f5f5f7;
+  background: var(--app-bg-soft);
+  border: 1px solid var(--app-border-soft);
   border-radius: 12px;
 }
 
 .summaryItem span {
   font-size: 12px;
-  color: #86868b;
+  color: var(--app-text-secondary);
   letter-spacing: 0.02em;
 }
 
 .summaryItem strong {
   font-size: 15px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--app-text);
 }
 
 .detailSection {
@@ -47,7 +48,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #f0f0f2;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .detailRow:last-child {
@@ -56,5 +57,5 @@
 
 .detailLabel {
   font-size: 13px;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
 }

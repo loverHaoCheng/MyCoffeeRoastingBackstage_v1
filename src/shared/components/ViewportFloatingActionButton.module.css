@@ -69,3 +69,16 @@
     transform: translateY(-2px);
   }
 }
+
+@media (hover: none), (pointer: coarse) {
+  .button,
+  .button:global(.ant-btn) {
+    transition: none;
+  }
+
+  .button:active,
+  .button:global(.ant-btn):active {
+    box-shadow: 0 18px 44px rgb(20 25 32 / 14%), inset 0 1px 0 var(--app-card-inset-highlight);
+    transform: none;
+  }
+}
