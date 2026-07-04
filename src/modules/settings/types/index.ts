@@ -1,4 +1,7 @@
 export type SupabaseDataSource = 'greenBean' | 'roastedBean';
+export type AppThemeMode = 'dark' | 'light';
+export type AppCardModuleKey = 'beanInventory' | 'roastBatch' | 'roastPlan';
+export type CardDisplayCount = 0 | 2 | 4;
 
 export interface SupabaseProjectConnection {
   projectUrl: string;
@@ -49,13 +52,119 @@ export interface CostTemplateFormValues {
 }
 
 export interface AppDisplaySettings {
+  cardDisplaySettings: Record<AppCardModuleKey, CardMetaDisplaySettings>;
   scale: number;
+  themeMode: AppThemeMode;
   updatedAt: null | string;
+}
+
+export interface CardMetaDisplaySettings {
+  displayCount: CardDisplayCount;
+  visibleMetaKeys: string[];
+}
+
+export interface AppDisplaySettingsInput {
+  cardDisplaySettings?: Partial<{
+    beanInventory?: Partial<CardMetaDisplaySettings>;
+    roastBatch?: Partial<CardMetaDisplaySettings>;
+    roastPlan?: Partial<CardMetaDisplaySettings>;
+  }>;
+  scale?: number;
+  themeMode?: AppThemeMode;
+  updatedAt?: null | string;
 }
 
 export const appDisplayScaleMin = 0.85;
 export const appDisplayScaleMax = 1.2;
 export const appDisplayScaleStep = 0.05;
+
+const defaultCardMetaVisibleKeys: Record<AppCardModuleKey, string[]> = {
+  beanInventory: ['stock', 'cost', 'supplier', 'process'],
+  roastBatch: ['inputWeight', 'outputWeight', 'lossRate', 'roastPlan'],
+  roastPlan: ['beanName', 'batchWeight', 'roastLevel', 'status'],
+};
+
+const normalizeVisibleMetaKeys = (
+  visibleMetaKeys: unknown,
+  defaultKeys: string[],
+  displayCount: CardDisplayCount,
+): string[] => {
+  if (!Array.isArray(visibleMetaKeys)) {
+    return defaultKeys.slice(0, displayCount);
+  }
+
+  const normalized = Array.from(
+    new Set(
+      visibleMetaKeys.filter((key): key is string => typeof key === 'string' && defaultKeys.includes(key)),
+    ),
+  );
+
+  if (normalized.length === 0) {
+    return defaultKeys.slice(0, displayCount);
+  }
+
+  const nextValue = normalized.slice(0, displayCount);
+
+  while (nextValue.length < displayCount) {
+    const fallbackKey = defaultKeys.find((key) => !nextValue.includes(key));
+
+    if (!fallbackKey) {
+      break;
+    }
+
+    nextValue.push(fallbackKey);
+  }
+
+  return nextValue;
+};
+
+const normalizeCardMetaDisplaySettings = (
+  value: Partial<CardMetaDisplaySettings> | null | undefined,
+  defaultKeys: string[],
+): CardMetaDisplaySettings => {
+  const displayCount: CardDisplayCount =
+    value?.displayCount === 0 || value?.displayCount === 2 || value?.displayCount === 4
+      ? value.displayCount
+      : 4;
+
+  return {
+    displayCount,
+    visibleMetaKeys: normalizeVisibleMetaKeys(value?.visibleMetaKeys, defaultKeys, displayCount),
+  };
+};
+
+export const normalizeAppDisplaySettings = (
+  value: AppDisplaySettingsInput | null | undefined,
+): AppDisplaySettings => {
+  const defaultSettings = createDefaultAppDisplaySettings();
+  const source = value ?? {};
+
+  return {
+    cardDisplaySettings: {
+      beanInventory: normalizeCardMetaDisplaySettings(
+        source.cardDisplaySettings?.beanInventory,
+        defaultCardMetaVisibleKeys.beanInventory,
+      ),
+      roastBatch: normalizeCardMetaDisplaySettings(
+        source.cardDisplaySettings?.roastBatch,
+        defaultCardMetaVisibleKeys.roastBatch,
+      ),
+      roastPlan: normalizeCardMetaDisplaySettings(
+        source.cardDisplaySettings?.roastPlan,
+        defaultCardMetaVisibleKeys.roastPlan,
+      ),
+    },
+    scale:
+      typeof source.scale === 'number' &&
+      Number.isFinite(source.scale) &&
+      source.scale >= appDisplayScaleMin &&
+      source.scale <= appDisplayScaleMax
+        ? source.scale
+        : defaultSettings.scale,
+    themeMode: source.themeMode === 'dark' ? 'dark' : 'light',
+    updatedAt: source.updatedAt ?? null,
+  };
+};
 
 export const createEmptySupabaseProjectConnection = (): SupabaseProjectConnection => ({
   projectUrl: '',
@@ -90,6 +199,21 @@ export const createDefaultCostTemplateSettings = (): CostTemplateSettings => {
 };
 
 export const createDefaultAppDisplaySettings = (): AppDisplaySettings => ({
+  cardDisplaySettings: {
+    beanInventory: {
+      displayCount: 4,
+      visibleMetaKeys: defaultCardMetaVisibleKeys.beanInventory.slice(0, 4),
+    },
+    roastBatch: {
+      displayCount: 4,
+      visibleMetaKeys: defaultCardMetaVisibleKeys.roastBatch.slice(0, 4),
+    },
+    roastPlan: {
+      displayCount: 4,
+      visibleMetaKeys: defaultCardMetaVisibleKeys.roastPlan.slice(0, 4),
+    },
+  },
   scale: 1,
+  themeMode: 'light',
   updatedAt: null,
 });

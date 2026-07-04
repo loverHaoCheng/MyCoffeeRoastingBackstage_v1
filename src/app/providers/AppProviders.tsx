@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { App as AntApp, ConfigProvider } from 'antd';
+import { App as AntApp, ConfigProvider, theme as antdTheme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
-import { type PropsWithChildren, useState } from 'react';
+import { type PropsWithChildren, useEffect, useMemo, useState } from 'react';
 
+import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { ErrorBoundary } from '@/shared/errors/ErrorBoundary';
 
 export function AppProviders({ children }: PropsWithChildren) {
@@ -15,43 +16,60 @@ export function AppProviders({ children }: PropsWithChildren) {
             retry: 1,
             staleTime: 60_000,
           },
-        },
-      }),
+      },
+    }),
   );
+  const { appDisplaySettings } = useAppDisplaySettings();
+
+  const themeConfig = useMemo(() => {
+    const isDarkMode = appDisplaySettings.themeMode === 'dark';
+
+    return {
+      algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+      token: {
+        borderRadius: 8,
+        colorBgBase: isDarkMode ? '#111113' : '#ffffff',
+        colorBgLayout: isDarkMode ? '#0b0b0c' : '#f5f5f7',
+        colorInfo: '#007aff',
+        colorPrimary: '#007aff',
+        colorSuccess: '#34c759',
+        colorWarning: '#ff9500',
+        colorError: '#ff3b30',
+        colorText: isDarkMode ? '#f5f5f7' : '#1d1d1f',
+        colorTextSecondary: isDarkMode ? '#a1a1aa' : '#6e6e73',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+      },
+      components: {
+        Button: {
+          controlHeight: 40,
+        },
+        Card: {
+          headerFontSize: 15,
+        },
+        Layout: {
+          bodyBg: isDarkMode ? '#0b0b0c' : '#f5f5f7',
+          headerBg: isDarkMode ? '#111113' : '#ffffff',
+          siderBg: isDarkMode ? '#111113' : '#1d1d1f',
+        },
+      },
+    };
+  }, [appDisplaySettings.themeMode]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    document.documentElement.dataset.appTheme = appDisplaySettings.themeMode;
+
+    return () => {
+      delete document.documentElement.dataset.appTheme;
+    };
+  }, [appDisplaySettings.themeMode]);
 
   return (
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        token: {
-          borderRadius: 8,
-          colorBgBase: '#ffffff',
-          colorBgLayout: '#f5f5f7',
-          colorPrimary: '#007aff',
-          colorInfo: '#007aff',
-          colorSuccess: '#34c759',
-          colorWarning: '#ff9500',
-          colorError: '#ff3b30',
-          colorText: '#1d1d1f',
-          colorTextSecondary: '#6e6e73',
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
-        },
-        components: {
-          Button: {
-            controlHeight: 40,
-          },
-          Card: {
-            headerFontSize: 15,
-          },
-          Layout: {
-            bodyBg: '#f5f5f7',
-            headerBg: '#ffffff',
-            siderBg: '#1d1d1f',
-          },
-        },
-      }}
-    >
+    <ConfigProvider locale={zhCN} theme={themeConfig}>
       <AntApp>
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

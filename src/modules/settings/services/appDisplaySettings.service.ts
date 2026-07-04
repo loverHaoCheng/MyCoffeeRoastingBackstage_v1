@@ -1,5 +1,9 @@
 import { appDisplaySettingsStorageSchema } from '@/modules/settings/schemas';
-import { createDefaultAppDisplaySettings, type AppDisplaySettings } from '@/modules/settings/types';
+import {
+  createDefaultAppDisplaySettings,
+  normalizeAppDisplaySettings,
+  type AppDisplaySettings,
+} from '@/modules/settings/types';
 import { logger } from '@/shared/logger/logger';
 
 export const appDisplaySettingsStorageKey = 'coffee-roasting-backstage:app-display-settings';
@@ -39,10 +43,10 @@ export const appDisplaySettingsService = {
         return createDefaultAppDisplaySettings();
       }
 
-      return {
-        scale: result.data.scale,
+      return normalizeAppDisplaySettings({
+        ...result.data,
         updatedAt: result.data.updatedAt ?? null,
-      };
+      });
     } catch (error) {
       logger.error('app display settings load failed', { error });
 
@@ -51,15 +55,18 @@ export const appDisplaySettingsService = {
   },
   save(settings: AppDisplaySettings): AppDisplaySettings {
     if (!canUseStorage()) {
-      return settings;
+      return normalizeAppDisplaySettings(settings);
     }
 
-    window.localStorage.setItem(appDisplaySettingsStorageKey, JSON.stringify(settings));
+    const normalizedSettings = normalizeAppDisplaySettings(settings);
+
+    window.localStorage.setItem(appDisplaySettingsStorageKey, JSON.stringify(normalizedSettings));
     logger.info('app display settings saved', {
-      scale: settings.scale,
-      updatedAt: settings.updatedAt,
+      scale: normalizedSettings.scale,
+      themeMode: normalizedSettings.themeMode,
+      updatedAt: normalizedSettings.updatedAt,
     });
 
-    return settings;
+    return normalizedSettings;
   },
 };

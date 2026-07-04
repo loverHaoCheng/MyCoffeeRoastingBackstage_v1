@@ -333,6 +333,7 @@ describe('SettingsPage', () => {
     const roastedBeanSection = await expandSection('熟豆数据库');
 
     expect(within(greenBeanSection).getByText('未连接')).toBeInTheDocument();
+    expect(within(greenBeanSection).getByRole('button', { name: /高级刷新/ })).toBeDisabled();
     expect(within(roastedBeanSection).getByText('未连接')).toBeInTheDocument();
     expect(
       within(roastedBeanSection).getByRole('button', { name: /复制熟豆建库 SQL/ }),

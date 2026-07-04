@@ -2,6 +2,7 @@ import { EditOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import { useVisibleCardMetaItems } from '@/modules/settings/hooks';
 import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 
 interface RoastBatchCardProps {
@@ -19,12 +20,12 @@ export function RoastBatchCard({ batch, onDelete, onEdit, onView }: RoastBatchCa
 
   const roastDate = dayjs(batch.roastDate);
   const formattedDate = roastDate.isValid() ? roastDate.format('YYYY/MM/DD HH:mm') : batch.roastDate;
-  const metaItems = [
+  const metaItems = useVisibleCardMetaItems('roastBatch', [
     { key: 'inputWeight', label: '入豆量', value: `${String(batch.inputWeightGrams)} g` },
     { key: 'outputWeight', label: '出豆量', value: `${String(batch.outputWeightGrams)} g` },
     { key: 'lossRate', label: '失水率', value: `${lossRate}%` },
     { key: 'roastPlan', label: '烘焙计划', value: batch.roastPlanName?.trim() || '未关联' },
-  ];
+  ]);
 
   return (
     <UnifiedDataCard

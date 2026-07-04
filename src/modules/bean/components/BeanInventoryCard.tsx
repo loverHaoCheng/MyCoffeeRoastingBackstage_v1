@@ -1,5 +1,6 @@
 import { EditOutlined, EyeOutlined } from '@ant-design/icons';
 
+import { useVisibleCardMetaItems } from '@/modules/settings/hooks';
 import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 import type { Bean } from '@/types/domain';
 
@@ -28,12 +29,12 @@ export function BeanInventoryCard({ bean, onDelete, onEdit, onView }: BeanInvent
         : '待配置';
   const descriptionText = [bean.variety?.trim(), bean.process?.trim()].filter(Boolean).join(' · ');
 
-  const metaItems = [
+  const metaItems = useVisibleCardMetaItems('beanInventory', [
     { key: 'stock', label: '库存', value: `${formatKg.format(bean.stockKg)} kg` },
     { key: 'cost', label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
     { key: 'supplier', label: '供应商', value: supplierText, multiline: true },
     { key: 'process', label: '处理法', value: bean.process?.trim() || '待补充' },
-  ];
+  ]);
 
   return (
     <UnifiedDataCard

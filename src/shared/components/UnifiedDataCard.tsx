@@ -68,16 +68,18 @@ export function UnifiedDataCard({
       <div className={styles.body}>
         {description ? <p className={styles.description}>{description}</p> : null}
 
-        <dl className={styles.metaGrid}>
-          {metaItems.map((item) => (
-            <div className={styles.metaCell} key={item.key}>
-              <dt>{item.label}</dt>
-              <dd className={item.multiline ? styles.metaValueMultiline : styles.metaValue}>
-                {item.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        {metaItems.length > 0 ? (
+          <dl className={styles.metaGrid}>
+            {metaItems.map((item) => (
+              <div className={styles.metaCell} key={item.key}>
+                <dt>{item.label}</dt>
+                <dd className={item.multiline ? styles.metaValueMultiline : styles.metaValue}>
+                  {item.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
 
         {bodyFooter ? <div className={styles.bodyFooter}>{bodyFooter}</div> : null}
       </div>

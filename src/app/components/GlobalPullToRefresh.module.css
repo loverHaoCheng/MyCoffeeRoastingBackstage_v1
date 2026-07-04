@@ -1,11 +1,20 @@
 .pullRefreshDock {
-  position: sticky;
-  top: 0;
-  z-index: 6;
+  position: fixed;
+  top: calc(var(--app-safe-top) + 14px);
+  left: 50%;
+  z-index: 1100;
   display: grid;
   justify-items: center;
-  height: 0;
+  width: min(calc(100vw - 24px - var(--app-safe-left) - var(--app-safe-right)), 860px);
   pointer-events: none;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 767px) {
+  .pullRefreshDock {
+    top: calc(var(--app-shell-header-height) + 8px);
+    width: min(calc(100vw - 20px - var(--app-safe-left) - var(--app-safe-right)), 100%);
+  }
 }
 
 .pullRefreshIndicator {

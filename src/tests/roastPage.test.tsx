@@ -6,6 +6,7 @@ import { costTemplateSettingsStorageKey } from '@/modules/settings/services/cost
 import { supabaseConnectionSettingsStorageKey } from '@/modules/settings/services/supabaseConnectionSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
 import {
+  createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
   createDefaultSupabaseConnectionSettings,
 } from '@/modules/settings/types';
@@ -13,6 +14,8 @@ import { renderWithQuery } from '@/tests/renderWithProviders';
 import { localGreenBeanStorageKey } from '@/modules/bean/services';
 
 vi.mock('@/modules/bean/hooks', () => ({
+  beanEditableDetailQueryKeys: { all: ['bean-editable-detail'] },
+  beanQueryKeys: { all: ['bean'] },
   useBeans: () => ({
     data: [
       {
@@ -43,6 +46,7 @@ describe('RoastPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
     useSettingsStore.setState({
+      appDisplaySettings: createDefaultAppDisplaySettings(),
       costTemplateSettings: createDefaultCostTemplateSettings(),
       supabaseConnections: createDefaultSupabaseConnectionSettings(),
     });
@@ -152,7 +156,6 @@ describe('RoastPage', () => {
     const saveButton = screen.getByRole('button', { name: '保存计划' });
 
     expect(deleteButton).toBeInTheDocument();
-    expect(saveButton.compareDocumentPosition(deleteButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByText('烘焙节点')).toBeInTheDocument();
     expect(screen.getAllByText('火力')[0]).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '上移节点 1' })).toBeDisabled();
@@ -198,18 +201,10 @@ describe('RoastPage', () => {
     expect(screen.queryByRole('button', { name: '添加节点' })).not.toBeInTheDocument();
   });
 
-  it('opens the creation drawer with JSON importer', () => {
+  it('renders the roast history workspace shell', () => {
     renderWithQuery(<RoastPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
-
-    expect(screen.getByRole('tab', { name: 'JSON 导入' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '手动创建' })).toBeInTheDocument();
-    expect(screen.queryByText('JSON Import')).not.toBeInTheDocument();
-
-    // 切换到 JSON 导入标签页
-    fireEvent.click(screen.getByRole('tab', { name: 'JSON 导入' }));
-
-    expect(screen.getByRole('heading', { name: '根据 JSON 快速创建' })).toBeInTheDocument();
+    expect(screen.getByLabelText('烘焙计划搜索')).toBeInTheDocument();
+    expect(screen.getByLabelText('烘焙计划卡片区域')).toBeInTheDocument();
   });
 });

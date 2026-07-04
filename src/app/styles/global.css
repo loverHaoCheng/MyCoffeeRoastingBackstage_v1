@@ -1,5 +1,38 @@
 :root {
   color-scheme: light;
+  --app-theme-mode: light;
+  --app-bg: #ffffff;
+  --app-bg-elevated: rgb(255 255 255 / 96%);
+  --app-bg-surface: #f5f5f7;
+  --app-bg-soft: #fafafa;
+  --app-card-top-surface: rgb(255 255 255 / 98%);
+  --app-card-bottom-surface: rgb(248 248 250 / 96%);
+  --app-card-cell-top-surface: rgb(255 255 255 / 90%);
+  --app-card-cell-bottom-surface: rgb(244 244 247 / 96%);
+  --app-card-button-surface: rgb(255 255 255 / 90%);
+  --app-card-button-hover-surface: #ffffff;
+  --app-card-button-active-surface: #f2f2f5;
+  --app-card-shadow:
+    0 20px 46px rgb(17 24 39 / 4.5%),
+    0 6px 18px rgb(17 24 39 / 2.2%);
+  --app-card-button-shadow: 0 10px 22px rgb(29 29 31 / 3.8%);
+  --app-card-button-hover-shadow: 0 12px 28px rgb(29 29 31 / 5.2%);
+  --app-card-inset-highlight: rgb(255 255 255 / 92%);
+  --app-card-glow-start: rgb(255 255 255 / 72%);
+  --app-card-glow-end: rgb(255 255 255 / 0%);
+  --app-border: rgb(229 229 231 / 90%);
+  --app-border-soft: rgb(230 230 235 / 92%);
+  --app-border-hover: rgb(216 216 222 / 96%);
+  --app-danger: #ff3b30;
+  --app-danger-surface: rgb(255 59 48 / 9%);
+  --app-danger-border: rgb(255 59 48 / 16%);
+  --app-text: #1d1d1f;
+  --app-text-secondary: #6e6e73;
+  --app-text-tertiary: #8e8e93;
+  --app-muted-surface: #f5f5f7;
+  --app-selected-surface: rgb(232 232 236 / 98%);
+  --app-selected-surface-strong: rgb(222 222 227 / 96%);
+  --app-hover-surface: rgb(17 24 39 / 4%);
   --app-viewport-height: 100vh;
   --app-visual-viewport-height: 100vh;
   --app-shell-bottom-nav-content-height: 64px;
@@ -15,8 +48,8 @@
   --app-shell-bottom-nav-offset: 0px;
   --app-shell-content-bottom-space: calc(var(--app-shell-bottom-nav-height) + 12px);
   --app-shell-floating-bottom-offset: calc(var(--app-shell-bottom-nav-height) + 16px);
-  color: #1d1d1f;
-  background: #ffffff;
+  color: var(--app-text);
+  background: var(--app-bg);
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-synthesis: none;
@@ -35,7 +68,7 @@ html {
   height: 100vh;
   min-height: 100vh;
   min-width: 320px;
-  background: #ffffff;
+  background: var(--app-bg);
 }
 
 body {
@@ -45,7 +78,7 @@ body {
   min-width: 320px;
   margin: 0;
   padding: 0;
-  background: #ffffff;
+  background: var(--app-bg);
   overflow: hidden;
   overflow-x: hidden;
   user-select: none;
@@ -68,7 +101,7 @@ a {
   width: 100%;
   height: 100vh;
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--app-bg);
 }
 
 input,
@@ -100,13 +133,13 @@ select,
   min-height: 100vh;
   padding: 0;
   margin: 0;
-  background: #ffffff;
+  background: var(--app-bg);
 }
 
 :root[data-standalone-pwa="true"] #root {
   height: 100vh;
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--app-bg);
 }
 
 @media (display-mode: standalone) {
@@ -118,18 +151,70 @@ select,
     min-height: 100vh;
     padding: 0;
     margin: 0;
-    background: #ffffff;
+    background: var(--app-bg);
   }
 
   #root {
     height: 100vh;
     min-height: 100vh;
-    background: #ffffff;
+    background: var(--app-bg);
   }
 }
 
 @media (max-width: 767px) {
   .ant-message {
     top: calc(var(--app-shell-header-height) + 10px);
+  }
+}
+
+:root[data-app-theme='dark'] {
+  color-scheme: dark;
+  --app-theme-mode: dark;
+  --app-bg: #0b0b0c;
+  --app-bg-elevated: rgb(22 22 25 / 96%);
+  --app-bg-surface: #121214;
+  --app-bg-soft: #17171a;
+  --app-card-top-surface: rgb(28 28 31 / 98%);
+  --app-card-bottom-surface: rgb(20 20 23 / 96%);
+  --app-card-cell-top-surface: rgb(33 33 36 / 94%);
+  --app-card-cell-bottom-surface: rgb(24 24 27 / 96%);
+  --app-card-button-surface: rgb(33 33 36 / 96%);
+  --app-card-button-hover-surface: rgb(40 40 44 / 100%);
+  --app-card-button-active-surface: rgb(44 44 48 / 100%);
+  --app-card-shadow:
+    0 20px 46px rgb(0 0 0 / 32%),
+    0 6px 18px rgb(0 0 0 / 20%);
+  --app-card-button-shadow: 0 10px 22px rgb(0 0 0 / 20%);
+  --app-card-button-hover-shadow: 0 12px 28px rgb(0 0 0 / 24%);
+  --app-card-inset-highlight: rgb(255 255 255 / 6%);
+  --app-card-glow-start: rgb(255 255 255 / 6%);
+  --app-card-glow-end: rgb(255 255 255 / 0%);
+  --app-border: rgb(64 64 70 / 72%);
+  --app-border-soft: rgb(58 58 64 / 84%);
+  --app-border-hover: rgb(88 88 94 / 96%);
+  --app-danger: #ff6b64;
+  --app-danger-surface: rgb(255 107 100 / 12%);
+  --app-danger-border: rgb(255 107 100 / 22%);
+  --app-text: #f5f5f7;
+  --app-text-secondary: #a1a1aa;
+  --app-text-tertiary: #8b8b93;
+  --app-muted-surface: #18181b;
+  --app-selected-surface: rgb(33 33 36 / 100%);
+  --app-selected-surface-strong: rgb(41 41 44 / 100%);
+  --app-hover-surface: rgb(255 255 255 / 6%);
+}
+
+:root[data-app-theme='dark'] body,
+:root[data-app-theme='dark'] #root {
+  background: var(--app-bg);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .ant-btn:hover,
+  .ant-menu-item:hover,
+  .ant-menu-submenu-title:hover,
+  .ant-pagination-item:hover,
+  .ant-tabs-tab:hover {
+    transform: none !important;
   }
 }

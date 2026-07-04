@@ -46,19 +46,29 @@
 .bar :global(.ant-btn) {
   min-height: 48px;
   border-radius: 16px;
-  border-color: rgb(229 229 231 / 92%);
-  background: rgb(255 255 255 / 92%);
-  color: #1d1d1f;
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
   box-shadow:
     0 10px 24px rgb(17 24 39 / 4%),
-    inset 0 1px 0 rgb(255 255 255 / 72%);
+    inset 0 1px 0 var(--app-card-inset-highlight);
   font-weight: 700;
 }
 
 .bar :global(.ant-btn-primary),
 .bar :global(.ant-btn-primary:hover),
 .bar :global(.ant-btn-primary:focus) {
-  border-color: rgb(229 229 231 / 92%);
-  background: rgb(255 255 255 / 92%);
-  color: #1d1d1f;
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bar :global(.ant-btn:hover) {
+    background: var(--app-card-button-hover-surface);
+    box-shadow:
+      0 12px 28px rgb(17 24 39 / 6%),
+      inset 0 1px 0 var(--app-card-inset-highlight);
+    transform: translateY(-1px);
+  }
 }

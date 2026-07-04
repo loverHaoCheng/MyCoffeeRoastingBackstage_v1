@@ -5,11 +5,11 @@
   min-width: 64px;
   height: 64px;
   padding: 0;
-  border: 1px solid rgb(255 255 255 / 82%);
+  border: 1px solid var(--app-border);
   border-radius: 50%;
-  background: rgb(255 255 255 / 90%);
-  color: #1d1d1f;
-  box-shadow: 0 18px 44px rgb(20 25 32 / 14%), inset 0 1px 0 rgb(255 255 255 / 80%);
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
+  box-shadow: 0 18px 44px rgb(20 25 32 / 14%), inset 0 1px 0 var(--app-card-inset-highlight);
   backdrop-filter: blur(20px) saturate(180%);
   transition: box-shadow 180ms ease, transform 180ms ease, background 180ms ease, color 180ms ease;
   pointer-events: auto;
@@ -23,28 +23,19 @@
 }
 
 .button:global(.ant-btn) {
-  border-color: rgb(255 255 255 / 82%);
-  background: rgb(255 255 255 / 90%);
-  color: #1d1d1f;
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
 }
 
 .button :global(.anticon) {
   font-size: 24px;
 }
 
-.button:hover,
-.button:global(.ant-btn):hover {
-  border-color: rgb(255 255 255 / 92%);
-  background: rgb(255 255 255 / 96%);
-  color: #111113;
-  box-shadow: 0 22px 52px rgb(20 25 32 / 18%), inset 0 1px 0 rgb(255 255 255 / 92%);
-  transform: translateY(-2px);
-}
-
 .button:active,
 .button:global(.ant-btn):active {
-  background: rgb(242 242 247 / 96%);
-  color: #111113;
+  background: var(--app-card-button-active-surface);
+  color: var(--app-text);
   box-shadow: 0 12px 28px rgb(20 25 32 / 12%), inset 0 1px 0 rgb(255 255 255 / 76%);
   transform: translateY(0) scale(0.98);
 }
@@ -65,5 +56,16 @@
 
   .button :global(.anticon) {
     font-size: 22px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover,
+  .button:global(.ant-btn):hover {
+    border-color: var(--app-border-hover);
+    background: var(--app-card-button-hover-surface);
+    color: var(--app-text);
+    box-shadow: 0 22px 52px rgb(20 25 32 / 18%), inset 0 1px 0 var(--app-card-inset-highlight);
+    transform: translateY(-2px);
   }
 }

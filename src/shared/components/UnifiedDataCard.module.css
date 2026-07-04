@@ -7,16 +7,15 @@
   min-height: 320px;
   max-height: 345px;
   height: auto;
-  gap: 14px;
+  gap: 12px;
   padding: 18px;
-  border: 1px solid rgb(224 224 229 / 88%);
+  border: 1px solid var(--app-border);
   border-radius: 24px;
   background:
-    linear-gradient(180deg, rgb(255 255 255 / 98%) 0%, rgb(248 248 250 / 96%) 100%);
+    linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
   box-shadow:
-    0 20px 46px rgb(17 24 39 / 4.5%),
-    0 6px 18px rgb(17 24 39 / 2.2%),
-    inset 0 1px 0 rgb(255 255 255 / 92%);
+    var(--app-card-shadow),
+    inset 0 1px 0 var(--app-card-inset-highlight);
   overflow: hidden;
   justify-self: stretch;
 }
@@ -26,7 +25,7 @@
   position: absolute;
   inset: 0 0 auto;
   height: 72px;
-  background: linear-gradient(180deg, rgb(255 255 255 / 72%), rgb(255 255 255 / 0%));
+  background: linear-gradient(180deg, var(--app-card-glow-start), var(--app-card-glow-end));
   pointer-events: none;
 }
 
@@ -45,7 +44,7 @@
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 18px;
   font-weight: 700;
   line-height: 1.3;
@@ -66,7 +65,7 @@
   z-index: 1;
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -75,7 +74,7 @@
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 14px;
   line-height: 1.45;
   -webkit-box-orient: vertical;
@@ -85,24 +84,23 @@
 .metaGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
   margin: 0;
 }
 
 .metaCell {
   min-width: 0;
-  min-height: 72px;
-  padding: 12px;
-  border: 1px solid rgb(238 238 242 / 92%);
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border-soft);
   border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 88%) 0%, rgb(244 244 247 / 96%) 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 88%);
+  background: linear-gradient(180deg, var(--app-card-cell-top-surface) 0%, var(--app-card-cell-bottom-surface) 100%);
+  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
 }
 
 .metaCell dt {
   margin-bottom: 6px;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 12px;
   font-weight: 700;
 }
@@ -111,7 +109,7 @@
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 1.35;
@@ -123,7 +121,7 @@
   min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 1.35;
@@ -151,14 +149,14 @@
   width: 100%;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid rgb(230 230 235 / 92%);
+  border: 1px solid var(--app-border-soft);
   border-radius: 16px;
-  background: rgb(255 255 255 / 90%);
-  color: #1d1d1f;
+  background: var(--app-card-button-surface);
+  color: var(--app-text);
   font-weight: 600;
   box-shadow:
-    0 10px 22px rgb(29 29 31 / 3.8%),
-    inset 0 1px 0 rgb(255 255 255 / 92%);
+    var(--app-card-button-shadow),
+    inset 0 1px 0 var(--app-card-inset-highlight);
   transition:
     background 180ms ease,
     border-color 180ms ease,
@@ -167,18 +165,8 @@
     color 180ms ease;
 }
 
-.actionBtn:global(.ant-btn):hover {
-  border-color: rgb(216 216 222 / 96%);
-  background: #ffffff;
-  color: #111113;
-  box-shadow:
-    0 12px 28px rgb(29 29 31 / 5.2%),
-    inset 0 1px 0 rgb(255 255 255 / 96%);
-  transform: translateY(-1px);
-}
-
 .actionBtn:global(.ant-btn):active {
-  background: #f2f2f5;
+  background: var(--app-card-button-active-surface);
   transform: translateY(0) scale(0.99);
 }
 
@@ -187,22 +175,15 @@
   width: 34px;
   height: 34px;
   min-width: 34px;
-  border-color: rgb(242 221 220 / 72%);
-  background: rgb(255 255 255 / 78%);
-  color: #8e8e93;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 88%);
+  border-color: var(--app-border-soft);
+  background: var(--app-card-button-surface);
+  color: var(--app-text-secondary);
+  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
   transition:
     color 160ms ease,
     background-color 160ms ease,
     border-color 160ms ease,
     transform 160ms ease;
-}
-
-.deleteBtn:global(.ant-btn):hover {
-  color: #ff3b30;
-  background: rgb(255 59 48 / 9%);
-  border-color: rgb(255 59 48 / 16%);
-  transform: translateY(-1px);
 }
 
 @media (max-width: 1024px) {
@@ -260,5 +241,24 @@
 @media (max-width: 390px) {
   .metaGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .actionBtn:global(.ant-btn):hover {
+    border-color: var(--app-border-hover);
+    background: var(--app-card-button-hover-surface);
+    color: var(--app-text);
+    box-shadow:
+      var(--app-card-button-hover-shadow),
+      inset 0 1px 0 var(--app-card-inset-highlight);
+    transform: translateY(-1px);
+  }
+
+  .deleteBtn:global(.ant-btn):hover {
+    color: var(--app-danger);
+    background: var(--app-danger-surface);
+    border-color: var(--app-danger-border);
+    transform: translateY(-1px);
   }
 }

@@ -6,7 +6,7 @@
   --page-padding-left: 16px;
   position: relative;
   box-sizing: border-box;
-  color: #1d1d1f;
+  color: var(--app-text);
 }
 
 .page::before {
@@ -15,8 +15,8 @@
   inset: 4px 4px -2px;
   border-radius: 30px;
   background:
-    radial-gradient(circle at top center, rgb(255 255 255 / 68%) 0%, rgb(255 255 255 / 22%) 38%, rgb(255 255 255 / 0%) 78%),
-    linear-gradient(180deg, rgb(255 255 255 / 26%) 0%, rgb(255 255 255 / 8%) 100%);
+    radial-gradient(circle at top center, var(--app-card-glow-start) 0%, rgb(255 255 255 / 14%) 38%, var(--app-card-glow-end) 78%),
+    linear-gradient(180deg, rgb(255 255 255 / 14%) 0%, rgb(255 255 255 / 4%) 100%);
   filter: blur(14px);
   opacity: 0.88;
   pointer-events: none;
@@ -44,9 +44,9 @@
   display: grid;
   gap: 0;
   padding: 24px;
-  border: 1px solid rgb(229 229 231 / 90%);
+  border: 1px solid var(--app-border);
   border-radius: 24px;
-  background: rgb(255 255 255 / 94%);
+  background: var(--app-bg-elevated);
   box-shadow:
     0 8px 18px -14px rgb(15 23 42 / 10%),
     0 24px 54px -36px rgb(15 23 42 / 14%);
@@ -89,7 +89,7 @@
 
 .sectionStatusCopy {
   margin: 0;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -116,15 +116,89 @@
 }
 
 .field label {
-  color: #3a3a3c;
+  color: var(--app-text);
   font-size: 13px;
   font-weight: 600;
 }
 
 .helpText {
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.appearanceGrid {
+  display: grid;
+  gap: 16px;
+}
+
+.appearanceBlock,
+.cardDisplayPanel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
+  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
+}
+
+.appearanceBlockHeader,
+.cardDisplayHeader,
+.cardDisplayModuleHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.appearanceBlockHeader strong,
+.cardDisplayHeader strong,
+.cardDisplayModuleHeader strong {
+  display: block;
+  color: var(--app-text);
+  font-size: 15px;
+}
+
+.appearanceBlockHeader p,
+.cardDisplayHeader p,
+.cardDisplayModuleHeader p {
+  margin: 4px 0 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cardDisplayGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cardDisplayModule {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 18px;
+  background: var(--app-bg-elevated);
+}
+
+.cardDisplayCountGroup,
+.themeModeGroup {
+  width: fit-content;
+}
+
+.cardDisplayCheckboxGroup {
+  display: grid;
+  gap: 8px;
+  color: var(--app-text);
+}
+
+.cardDisplayCheckboxGroup :global(.ant-checkbox-wrapper) {
+  margin-inline-start: 0;
+  color: var(--app-text);
 }
 
 .zoomPanel {
@@ -158,8 +232,12 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-weight: 500;
+  border-radius: 999px;
+  border: 1px solid var(--app-border-soft);
+  background: var(--app-card-button-surface);
+  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
 }
 
 .collapseButton :global(.anticon) {
@@ -178,9 +256,9 @@
   min-width: 0;
   min-height: 58px;
   padding: 14px 18px;
-  border: 1px solid rgb(229 229 231 / 90%);
+  border: 1px solid var(--app-border);
   border-radius: 18px;
-  background: rgb(255 255 255 / 92%);
+  background: var(--app-bg-elevated);
   box-shadow:
     0 6px 14px -10px rgb(15 23 42 / 9%),
     0 18px 38px -28px rgb(15 23 42 / 12%);
@@ -204,7 +282,7 @@
 
 .statusInlineValue {
   flex: 0 0 auto;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 13px;
   line-height: 1.2;
   font-weight: 700;
@@ -216,7 +294,7 @@
   height: 14px;
   flex: 0 0 auto;
   margin: 0 4px;
-  background: rgb(221 221 225 / 92%);
+  background: var(--app-border-soft);
 }
 
 .sectionCollapse {
@@ -256,10 +334,10 @@
 
 .templateEmptyState {
   padding: 18px;
-  border: 1px dashed rgb(221 221 225 / 92%);
+  border: 1px dashed var(--app-border-soft);
   border-radius: 20px;
-  background: rgb(255 255 255 / 84%);
-  color: #6e6e73;
+  background: var(--app-bg-soft);
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -268,14 +346,14 @@
   display: grid;
   gap: 12px;
   padding: 18px;
-  border: 1px solid rgb(229 229 231 / 92%);
+  border: 1px solid var(--app-border);
   border-radius: 20px;
-  background: linear-gradient(180deg, rgb(255 255 255 / 96%) 0%, rgb(248 248 250 / 94%) 100%);
+  background: linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .templateCard[data-active="true"] {
-  border-color: rgb(29 29 31 / 28%);
+  border-color: rgb(29 29 31 / 18%);
   box-shadow:
     0 8px 18px -14px rgb(15 23 42 / 12%),
     0 24px 44px -32px rgb(15 23 42 / 16%);
@@ -295,12 +373,12 @@
 }
 
 .templateTitleBlock strong {
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 16px;
 }
 
 .templateMeta {
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -314,15 +392,15 @@
 .templateStats span {
   padding: 6px 10px;
   border-radius: 999px;
-  background: #f5f5f7;
-  color: #3a3a3c;
+  background: var(--app-muted-surface);
+  color: var(--app-text);
   font-size: 12px;
   line-height: 1.4;
 }
 
 .templateNotes {
   margin: 0;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -337,10 +415,10 @@
   display: grid;
   gap: 0;
   padding: 24px;
-  border: 1px solid rgb(229 229 231 / 90%);
+  border: 1px solid var(--app-border);
   border-radius: 24px;
   background:
-    linear-gradient(180deg, rgb(255 255 255 / 96%) 0%, rgb(249 249 251 / 94%) 100%);
+    linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
   box-shadow:
     0 8px 18px -14px rgb(15 23 42 / 10%),
     0 24px 54px -36px rgb(15 23 42 / 14%);
@@ -371,9 +449,9 @@
   gap: 0;
   width: min(100%, 420px);
   padding: 18px;
-  border: 1px solid rgb(229 229 231 / 92%);
+  border: 1px solid var(--app-border);
   border-radius: 20px;
-  background: rgb(255 255 255 / 96%);
+  background: var(--app-bg-elevated);
   box-shadow:
     0 6px 14px -10px rgb(15 23 42 / 9%),
     0 18px 34px -26px rgb(15 23 42 / 12%);
@@ -386,13 +464,13 @@
   aspect-ratio: 1 / 1;
   object-fit: contain;
   border-radius: 16px;
-  background: #fff;
+  background: var(--app-bg);
 }
 
 .buildVersion {
   margin: auto 0 0;
   padding-top: 12px;
-  color: #9a9aa0;
+  color: var(--app-text-tertiary);
   font-size: 11px;
   line-height: 1.5;
   text-align: center;
@@ -405,7 +483,7 @@
 }
 
 .templateDrawer:global(.ant-drawer) :global(.ant-drawer-title) {
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 20px;
   font-weight: 700;
 }
@@ -418,11 +496,11 @@
   display: grid;
   gap: 16px;
   padding: 20px;
-  border: 1px solid rgb(229 229 231 / 92%);
+  border: 1px solid var(--app-border);
   border-radius: 24px;
   background:
-    linear-gradient(180deg, rgb(255 255 255 / 98%) 0%, rgb(247 247 249 / 94%) 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 88%);
+    linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
+  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
 }
 
 .templateEditorHeader {
@@ -432,12 +510,12 @@
 
 .templateEditorHeader h3 {
   margin: 0;
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 18px;
 }
 
 .templateEditorHint {
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -449,9 +527,9 @@
 }
 
 .templateEditorActions :global(.ant-btn) {
-  border-color: rgb(229 229 231 / 92%);
-  background: rgb(255 255 255 / 92%);
-  color: #1d1d1f;
+  border-color: var(--app-border);
+  background: var(--app-card-button-surface);
+  color: var(--app-text);
 }
 
 @media (max-width: 767px) {
@@ -494,6 +572,10 @@
   }
 
   .templateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardDisplayGrid {
     grid-template-columns: 1fr;
   }
 

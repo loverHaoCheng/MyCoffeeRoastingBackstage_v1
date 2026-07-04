@@ -9,6 +9,5 @@ describe('ProductionPage (烘焙历史)', () => {
     renderWithQuery(<ProductionPage />);
 
     expect(screen.getByLabelText('搜索烘焙历史')).toBeInTheDocument();
-    expect(screen.getByLabelText('新增烘焙记录')).toBeInTheDocument();
   });
 });

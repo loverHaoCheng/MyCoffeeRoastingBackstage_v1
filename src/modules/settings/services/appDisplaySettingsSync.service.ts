@@ -1,7 +1,7 @@
 import { appDisplaySettingsStorageSchema } from '@/modules/settings/schemas';
 import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { appSettingsSyncService, type AppSettingRecord } from '@/modules/settings/services/appSettingsSync.service';
-import type { AppDisplaySettings } from '@/modules/settings/types';
+import { normalizeAppDisplaySettings, type AppDisplaySettings } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
@@ -28,8 +28,10 @@ const parseRemoteSettings = (record: AppSettingRecord): AppDisplaySettings => {
   }
 
   return {
-    scale: result.data.scale,
-    updatedAt: result.data.updatedAt ?? record.updated_at ?? null,
+    ...normalizeAppDisplaySettings({
+      ...result.data,
+      updatedAt: result.data.updatedAt ?? record.updated_at ?? null,
+    }),
   };
 };
 

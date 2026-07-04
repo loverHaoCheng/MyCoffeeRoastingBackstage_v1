@@ -2,14 +2,24 @@ import { CheckOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
+import { refreshQuickAppData } from '@/app/services/appDataRefresh.service';
 import { useViewportScrollContainer } from '@/layouts/ViewportContext';
 
 import styles from './GlobalPullToRefresh.module.css';
 
-const PULL_TRIGGER_DISTANCE = 52;
-const PULL_MAX_DISTANCE = 84;
+const PULL_TRIGGER_RATIO = 0.15;
+const PULL_VISUAL_MAX_DISTANCE = 72;
 const REFRESH_FEEDBACK_DURATION_MS = 720;
+
+const getPullTriggerDistance = (): number => {
+  if (typeof window === 'undefined') {
+    return 0;
+  }
+
+  const viewportHeight = Math.round(window.innerHeight);
+
+  return Math.max(1, Math.round(viewportHeight * PULL_TRIGGER_RATIO));
+};
 
 const isInteractiveOverlayTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) {
@@ -17,9 +27,9 @@ const isInteractiveOverlayTarget = (target: EventTarget | null): boolean => {
   }
 
   return Boolean(
-    target.closest('.ant-drawer') ||
-      target.closest('.ant-picker-dropdown') ||
-      target.closest('.ant-select-dropdown') ||
+    target.closest('.ant-drawer') ??
+      target.closest('.ant-picker-dropdown') ??
+      target.closest('.ant-select-dropdown') ??
       target.closest('[data-prevent-pull-refresh="true"]'),
   );
 };
@@ -29,6 +39,7 @@ export function GlobalPullToRefresh() {
   const scrollContainerRef = useViewportScrollContainer();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
+  const [pullTriggerDistance, setPullTriggerDistance] = useState(() => getPullTriggerDistance());
   const [refreshFeedback, setRefreshFeedback] = useState<null | 'success' | 'warning'>(
     null,
   );
@@ -47,6 +58,22 @@ export function GlobalPullToRefresh() {
   }, [pullDistance]);
 
   useEffect(() => {
+    const syncPullTriggerDistance = () => {
+      setPullTriggerDistance(getPullTriggerDistance());
+    };
+
+    syncPullTriggerDistance();
+
+    window.addEventListener('resize', syncPullTriggerDistance);
+    window.addEventListener('orientationchange', syncPullTriggerDistance);
+
+    return () => {
+      window.removeEventListener('resize', syncPullTriggerDistance);
+      window.removeEventListener('orientationchange', syncPullTriggerDistance);
+    };
+  }, []);
+
+  useEffect(() => {
     const scrollContainer = scrollContainerRef?.current;
 
     if (!scrollContainer) {
@@ -61,7 +88,7 @@ export function GlobalPullToRefresh() {
       setIsRefreshing(true);
 
       try {
-        const result = await refreshAllAppData(queryClient);
+        const result = await refreshQuickAppData(queryClient);
 
         if (result.failed > 0) {
           setRefreshFeedback('warning');
@@ -69,9 +96,9 @@ export function GlobalPullToRefresh() {
         } else {
           setRefreshFeedback('success');
           setRefreshFeedbackText(
-            result.downloaded > 0 || result.uploaded > 0 || result.success > 0
-              ? '刷新完成，数据同步成功'
-              : '刷新完成，当前已是最新数据',
+            result.success > 0
+              ? '快速刷新完成，待处理操作已同步'
+              : '快速刷新完成，已完成当前数据对比',
           );
         }
       } catch (error) {
@@ -121,13 +148,11 @@ export function GlobalPullToRefresh() {
         return;
       }
 
-      const easedDistance = Math.min(PULL_MAX_DISTANCE, deltaY * 0.34 + Math.sqrt(deltaY) * 3.6);
-
-      setPullDistance(easedDistance);
+      setPullDistance(Math.min(pullTriggerDistance, deltaY));
     };
 
     const handleTouchEnd = () => {
-      if (pullDistanceRef.current >= PULL_TRIGGER_DISTANCE && !pullTriggeredRef.current) {
+      if (pullDistanceRef.current >= pullTriggerDistance && !pullTriggeredRef.current) {
         pullTriggeredRef.current = true;
         void handlePullRefresh();
         return;
@@ -149,7 +174,7 @@ export function GlobalPullToRefresh() {
       scrollContainer.removeEventListener('touchend', handleTouchEnd);
       scrollContainer.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [queryClient, scrollContainerRef]);
+  }, [pullTriggerDistance, queryClient, scrollContainerRef]);
 
   return (
     <section
@@ -157,29 +182,34 @@ export function GlobalPullToRefresh() {
       className={styles.pullRefreshDock}
       data-active={pullDistance > 0 || isRefreshing || refreshFeedback != null}
       data-feedback={refreshFeedback ?? 'idle'}
-      data-ready={pullDistance >= PULL_TRIGGER_DISTANCE}
+      data-ready={pullDistance >= pullTriggerDistance}
     >
       <div
         className={styles.pullRefreshIndicator}
-        style={{ transform: `translateY(${Math.max(pullDistance - 18, 0)}px)` }}
+        style={{
+          transform:
+            'translateY(' +
+            String(Math.max(Math.min(pullDistance, PULL_VISUAL_MAX_DISTANCE) - 18, 0)) +
+            'px)',
+        }}
       >
         {isRefreshing ? (
-          <LoadingOutlined spin />
-        ) : refreshFeedback === 'success' ? (
+              <LoadingOutlined spin />
+            ) : refreshFeedback === 'success' ? (
           <CheckOutlined />
         ) : (
           <span className={styles.pullRefreshArrow}>↓</span>
         )}
         <span>
           {isRefreshing
-            ? '正在刷新全部数据'
+            ? '正在快速刷新'
             : refreshFeedback === 'success'
               ? refreshFeedbackText || '刷新完成'
               : refreshFeedback === 'warning'
                 ? refreshFeedbackText || '刷新异常，请稍后重试'
-                : pullDistance >= PULL_TRIGGER_DISTANCE
-                  ? '松开即可刷新'
-                  : '下拉刷新全部数据'}
+                : pullDistance >= pullTriggerDistance
+                  ? '松开即可快速刷新'
+                  : '下拉快速刷新当前数据'}
         </span>
       </div>
     </section>

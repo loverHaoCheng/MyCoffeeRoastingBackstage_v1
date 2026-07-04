@@ -112,7 +112,20 @@ export const costTemplateFormSchema = z.object({
   targetProfitRate: z.number().min(0, '目标利润率不能小于 0').max(1000, '目标利润率过高'),
 });
 
+const cardDisplaySettingsStorageSchema = z.object({
+  displayCount: z.union([z.literal(0), z.literal(2), z.literal(4)]),
+  visibleMetaKeys: z.array(z.string()),
+});
+
 export const appDisplaySettingsStorageSchema = z.object({
+  cardDisplaySettings: z
+    .object({
+      beanInventory: cardDisplaySettingsStorageSchema.optional(),
+      roastBatch: cardDisplaySettingsStorageSchema.optional(),
+      roastPlan: cardDisplaySettingsStorageSchema.optional(),
+    })
+    .optional(),
   scale: z.number().min(0.85).max(1.2),
+  themeMode: z.enum(['dark', 'light']).optional(),
   updatedAt: optionalIsoDatetimeSchema,
 });

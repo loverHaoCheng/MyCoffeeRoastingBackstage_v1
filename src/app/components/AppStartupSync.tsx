@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { App } from 'antd';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
+import { refreshQuickAppData } from '@/app/services/appDataRefresh.service';
 import { AppError } from '@/shared/errors/AppError';
 
 const scheduleWhenIdle = (callback: () => void): (() => void) => {
@@ -54,15 +54,20 @@ export function AppStartupSync() {
     const cancelSchedule = scheduleWhenIdle(() => {
       void (async () => {
         try {
-          const result = await refreshAllAppData(queryClient);
+          const result = await refreshQuickAppData(queryClient);
 
           if (result.failed > 0) {
             void message.warning('部分数据刷新失败，将在稍后自动重试。');
             return;
           }
 
-          if (result.success + result.uploaded + result.downloaded > 0) {
-            void message.info('已在后台完成本地与云端数据同步。');
+          if (result.success > 0) {
+            void message.info('已在后台同步待处理操作并完成当前数据对比。');
+            return;
+          }
+
+          if (result.downloaded + result.uploaded > 0) {
+            void message.info('已在后台完成当前数据对比刷新。');
           }
         } catch (error) {
           void message.warning(getErrorMessage(error));

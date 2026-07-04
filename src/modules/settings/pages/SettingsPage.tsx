@@ -1,5 +1,5 @@
-import { CopyOutlined, DownOutlined } from '@ant-design/icons';
-import { App, Alert, Button, Drawer, Grid, Input, InputNumber, Popconfirm, Slider, Tag } from 'antd';
+import { CopyOutlined, DownOutlined, SyncOutlined } from '@ant-design/icons';
+import { App, Alert, Button, Checkbox, Drawer, Grid, Input, InputNumber, Popconfirm, Radio, Slider, Tag } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,16 +7,21 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useBeanCacheStatus } from '@/modules/bean/hooks';
 import { beanQueryKeys } from '@/modules/bean/hooks';
 import { roastBatchQueryKeys, roastPlanQueryKeys } from '@/modules/roast/hooks';
+import { cardDisplayModules } from '@/modules/settings/constants/cardDisplayModules';
 import { costTemplateFormSchema, supabaseConnectionFormSchema } from '@/modules/settings/schemas';
 import { useAppDisplaySettings, useCostTemplateSettings, useSupabaseConnectionSettings } from '@/modules/settings/hooks';
 import { appDisplaySettingsSyncService } from '@/modules/settings/services/appDisplaySettingsSync.service';
 import { supabaseConnectionProbeService } from '@/modules/settings/services/supabaseConnectionProbe.service';
 import { costTemplateSyncService } from '@/modules/settings/services/costTemplateSync.service';
+import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import {
   appDisplayScaleMax,
   appDisplayScaleMin,
   appDisplayScaleStep,
   createEmptyCostTemplateFormValues,
+  type AppCardModuleKey,
+  type AppDisplaySettings,
+  type AppThemeMode,
   type CostTemplate,
   type CostTemplateFormValues,
   type SupabaseDataSource,
@@ -100,18 +105,6 @@ const getLastSyncLabel = (value: null | string, hasConnection: boolean): string 
   }
 
   return formatStatusTime(value);
-};
-
-const getSourceLabel = (source: 'mock' | 'supabase' | null): string => {
-  if (source === 'supabase') {
-    return 'Supabase 实时同步';
-  }
-
-  if (source === 'mock') {
-    return '本地离线数据';
-  }
-
-  return '未初始化';
 };
 
 const isValidProjectConnection = (projectUrl: string, publishableKey: string): boolean => {
@@ -241,6 +234,21 @@ const copyTextToClipboard = async (text: string): Promise<void> => {
   }
 };
 
+const cardDisplayCountOptions: Array<{ label: string; value: 0 | 2 | 4 }> = [
+  { label: '0 项', value: 0 },
+  { label: '2 项', value: 2 },
+  { label: '4 项', value: 4 },
+];
+
+const themeModeOptions: Array<{ label: string; value: AppThemeMode }> = [
+  { label: '浅色', value: 'light' },
+  { label: '深色', value: 'dark' },
+];
+
+const getCardDisplayModuleDefinition = (moduleKey: AppCardModuleKey) => {
+  return cardDisplayModules.find((module) => module.key === moduleKey);
+};
+
 export function SettingsPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
@@ -282,6 +290,7 @@ export function SettingsPage() {
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
   const [isTemplateDrawerOpen, setIsTemplateDrawerOpen] = useState(false);
+  const [isAdvancedRefreshing, setIsAdvancedRefreshing] = useState(false);
   const [visibleCode, setVisibleCode] = useState<null | QrCodeKey>(null);
   const [templateDraft, setTemplateDraft] = useState<CostTemplateFormValues>(createEmptyCostTemplateFormValues());
   const [templateErrors, setTemplateErrors] = useState<Partial<Record<keyof CostTemplateFormValues, string>>>({});
@@ -302,6 +311,11 @@ export function SettingsPage() {
   const hasRoastedBeanConnection = isValidProjectConnection(
     supabaseConnections.roastedBean.projectUrl,
     supabaseConnections.roastedBean.publishableKey,
+  );
+  const greenBeanDraftConnection = watchedValues?.greenBean ?? supabaseConnections.greenBean;
+  const canRunAdvancedRefresh = isValidProjectConnection(
+    greenBeanDraftConnection.projectUrl ?? '',
+    greenBeanDraftConnection.publishableKey ?? '',
   );
   const shouldShowSyncAlert =
     hasBootstrapConnection &&
@@ -330,6 +344,28 @@ export function SettingsPage() {
     ]);
   }, [appDisplaySettings, costTemplateSettings, loadAppDisplaySettings, loadCostTemplates, queryClient]);
 
+  const snapshotSupabaseConnectionDraft = useCallback(() => {
+    const nextValues = getValues();
+    const draftValues: SupabaseConnectionFormValues = {
+      greenBean: {
+        projectUrl: nextValues.greenBean.projectUrl ?? '',
+        publishableKey: nextValues.greenBean.publishableKey ?? '',
+      },
+      roastedBean: {
+        projectUrl: nextValues.roastedBean.projectUrl ?? '',
+        publishableKey: nextValues.roastedBean.publishableKey ?? '',
+      },
+    };
+    const serializedValues = JSON.stringify(draftValues);
+
+    if (serializedValues !== lastSavedValuesRef.current) {
+      saveSupabaseConnections(draftValues);
+      lastSavedValuesRef.current = serializedValues;
+    }
+
+    return draftValues;
+  }, [getValues, saveSupabaseConnections]);
+
   const verifyConnection = useCallback(
     async (dataSource: SupabaseDataSource, connection: SupabaseProjectConnection) => {
       setConnectionProbeState((current) => ({
@@ -357,23 +393,7 @@ export function SettingsPage() {
 
   const persistSupabaseConnectionDraft = useCallback(
     async (dataSource: SupabaseDataSource) => {
-      const nextValues = getValues();
-      const draftValues: SupabaseConnectionFormValues = {
-        greenBean: {
-          projectUrl: nextValues.greenBean.projectUrl ?? '',
-          publishableKey: nextValues.greenBean.publishableKey ?? '',
-        },
-        roastedBean: {
-          projectUrl: nextValues.roastedBean.projectUrl ?? '',
-          publishableKey: nextValues.roastedBean.publishableKey ?? '',
-        },
-      };
-      const serializedValues = JSON.stringify(draftValues);
-
-      if (serializedValues !== lastSavedValuesRef.current) {
-        saveSupabaseConnections(draftValues);
-        lastSavedValuesRef.current = serializedValues;
-      }
+      const draftValues = snapshotSupabaseConnectionDraft();
 
       const connection = draftValues[dataSource];
       const isValidConnection = isValidProjectConnection(
@@ -402,8 +422,41 @@ export function SettingsPage() {
 
       void refreshGreenBeanDependencies(signature);
     },
-    [getValues, refreshGreenBeanDependencies, saveSupabaseConnections, verifyConnection],
+    [refreshGreenBeanDependencies, snapshotSupabaseConnectionDraft, verifyConnection],
   );
+
+  const handleAdvancedRefresh = useCallback(async () => {
+    const draftValues = snapshotSupabaseConnectionDraft();
+    const greenBeanConnection = draftValues.greenBean;
+
+    if (!isValidProjectConnection(greenBeanConnection.projectUrl, greenBeanConnection.publishableKey)) {
+      void message.warning('请先填写有效的生豆数据库连接，再使用高级刷新。');
+      return;
+    }
+
+    setIsAdvancedRefreshing(true);
+
+    try {
+      const result = await refreshAllAppData(queryClient);
+
+      if (result.failed > 0) {
+        void message.warning('高级刷新部分失败，已尽量完成双向同步。');
+        return;
+      }
+
+      if (result.downloaded > 0 || result.uploaded > 0 || result.success > 0) {
+        void message.success('高级刷新完成，已完成双向同步。');
+        return;
+      }
+
+      void message.info('高级刷新完成，当前已是最新数据。');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '高级刷新失败，请稍后重试。';
+      void message.error(errorMessage);
+    } finally {
+      setIsAdvancedRefreshing(false);
+    }
+  }, [message, queryClient, snapshotSupabaseConnectionDraft]);
 
   useEffect(() => {
     loadAppDisplaySettings();
@@ -484,6 +537,47 @@ export function SettingsPage() {
     }
   }, [clearErrors, setError, watchedValues]);
 
+  const persistAppDisplaySettings = useCallback(
+    (nextSettings: AppDisplaySettings) => {
+      const savedSettings = saveAppDisplaySettings(nextSettings);
+
+      void appDisplaySettingsSyncService.syncSafely(savedSettings);
+
+      return savedSettings;
+    },
+    [saveAppDisplaySettings],
+  );
+
+  const getDefaultVisibleKeys = useCallback((moduleKey: AppCardModuleKey): string[] => {
+    return getCardDisplayModuleDefinition(moduleKey)?.metaOptions.map((item) => item.key) ?? [];
+  }, []);
+
+  const normalizeSelectedMetaKeys = useCallback(
+    (moduleKey: AppCardModuleKey, selectedKeys: string[], displayCount: 0 | 2 | 4): string[] => {
+      if (displayCount === 0) {
+        return [];
+      }
+
+      const defaultKeys = getDefaultVisibleKeys(moduleKey);
+      const nextKeys = Array.from(
+        new Set(selectedKeys.filter((key) => defaultKeys.includes(key))),
+      ).slice(0, displayCount);
+
+      while (nextKeys.length < displayCount) {
+        const fallbackKey = defaultKeys.find((key) => !nextKeys.includes(key));
+
+        if (!fallbackKey) {
+          break;
+        }
+
+        nextKeys.push(fallbackKey);
+      }
+
+      return nextKeys;
+    },
+    [getDefaultVisibleKeys],
+  );
+
   const handleTemplateFieldChange = <K extends keyof CostTemplateFormValues>(
     key: K,
     value: CostTemplateFormValues[K],
@@ -534,8 +628,47 @@ export function SettingsPage() {
   };
 
   const handleDisplayScaleChange = (value: number) => {
-    const nextSettings = saveAppDisplaySettings(Number(value.toFixed(2)));
-    void appDisplaySettingsSyncService.syncSafely(nextSettings);
+    persistAppDisplaySettings({
+      ...appDisplaySettings,
+      scale: Number(value.toFixed(2)),
+    });
+  };
+
+  const handleThemeModeChange = (themeMode: AppThemeMode) => {
+    persistAppDisplaySettings({
+      ...appDisplaySettings,
+      themeMode,
+    });
+  };
+
+  const handleCardDisplayCountChange = (moduleKey: AppCardModuleKey, displayCount: 0 | 2 | 4) => {
+    const moduleSettings = appDisplaySettings.cardDisplaySettings[moduleKey];
+
+    persistAppDisplaySettings({
+      ...appDisplaySettings,
+      cardDisplaySettings: {
+        ...appDisplaySettings.cardDisplaySettings,
+        [moduleKey]: {
+          displayCount,
+          visibleMetaKeys: normalizeSelectedMetaKeys(moduleKey, moduleSettings.visibleMetaKeys, displayCount),
+        },
+      },
+    });
+  };
+
+  const handleCardVisibleMetaKeysChange = (moduleKey: AppCardModuleKey, selectedKeys: string[]) => {
+    const moduleSettings = appDisplaySettings.cardDisplaySettings[moduleKey];
+
+    persistAppDisplaySettings({
+      ...appDisplaySettings,
+      cardDisplaySettings: {
+        ...appDisplaySettings.cardDisplaySettings,
+        [moduleKey]: {
+          ...moduleSettings,
+          visibleMetaKeys: normalizeSelectedMetaKeys(moduleKey, selectedKeys, moduleSettings.displayCount),
+        },
+      },
+    });
   };
 
   const handleCopyGreenBeanInitSql = async () => {
@@ -677,6 +810,14 @@ export function SettingsPage() {
                 <Button icon={<CopyOutlined />} onClick={() => void handleCopyGreenBeanInitSql()}>
                   复制最新生豆建库 SQL
                 </Button>
+                <Button
+                  disabled={!canRunAdvancedRefresh}
+                  icon={<SyncOutlined />}
+                  loading={isAdvancedRefreshing}
+                  onClick={() => void handleAdvancedRefresh()}
+                >
+                  高级刷新
+                </Button>
               </div>
               <div className={styles.fieldGrid}>
                 <div className={styles.field}>
@@ -808,7 +949,10 @@ export function SettingsPage() {
           <header className={styles.sectionHeader}>
             <div className={styles.sectionHeaderRow}>
               <div className={styles.sectionHeaderTitleGroup}>
-                <h2>显示缩放</h2>
+                <h2>界面外观</h2>
+                <Tag color={appDisplaySettings.themeMode === 'dark' ? 'default' : 'blue'}>
+                  {appDisplaySettings.themeMode === 'dark' ? '深色' : '浅色'}
+                </Tag>
                 <Tag color="blue">{Math.round(appDisplaySettings.scale * 100)}%</Tag>
               </div>
               <Button
@@ -825,38 +969,128 @@ export function SettingsPage() {
           </header>
           <div aria-hidden={collapsedSections.displayScale} className={styles.sectionCollapse} data-collapsed={collapsedSections.displayScale}>
             <div className={styles.sectionCollapseInner}>
-              <div className={styles.zoomPanel}>
-                <Slider
-                  marks={{
-                    [appDisplayScaleMin]: `${Math.round(appDisplayScaleMin * 100)}%`,
-                    1: '100%',
-                    [appDisplayScaleMax]: `${Math.round(appDisplayScaleMax * 100)}%`,
-                  }}
-                  max={appDisplayScaleMax}
-                  min={appDisplayScaleMin}
-                  onChange={handleDisplayScaleChange}
-                  step={appDisplayScaleStep}
-                  tooltip={{ formatter: (value) => `${Math.round((value ?? 1) * 100)}%` }}
-                  value={appDisplaySettings.scale}
-                />
-                <div className={styles.zoomActions}>
-                  <Button
-                    onClick={() => {
-                      handleDisplayScaleChange(1);
+              <div className={styles.appearanceGrid}>
+                <article className={styles.appearanceBlock}>
+                  <div className={styles.appearanceBlockHeader}>
+                    <div>
+                      <strong>主题模式</strong>
+                      <p>在浅色和深色之间切换，布局与卡片会保持统一风格。</p>
+                    </div>
+                    <Tag color={appDisplaySettings.themeMode === 'dark' ? 'default' : 'blue'}>
+                      {appDisplaySettings.themeMode === 'dark' ? '深色' : '浅色'}
+                    </Tag>
+                  </div>
+                  <Radio.Group
+                    buttonStyle="solid"
+                    className={styles.themeModeGroup}
+                    options={themeModeOptions}
+                    optionType="button"
+                    onChange={(event) => {
+                      handleThemeModeChange(event.target.value as AppThemeMode);
                     }}
-                  >
-                    恢复 100%
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      handleDisplayScaleChange(1);
-                      void message.success('显示缩放已恢复默认');
-                    }}
-                  >
-                    重置缩放设置
-                  </Button>
-                </div>
+                    value={appDisplaySettings.themeMode}
+                  />
+                </article>
+
+                <article className={styles.appearanceBlock}>
+                  <div className={styles.appearanceBlockHeader}>
+                    <div>
+                      <strong>显示缩放</strong>
+                      <p>按需调整内容整体缩放，保留桌面与移动端一致的节奏感。</p>
+                    </div>
+                  </div>
+                  <div className={styles.zoomPanel}>
+                    <Slider
+                      marks={{
+                        [appDisplayScaleMin]: `${Math.round(appDisplayScaleMin * 100)}%`,
+                        1: '100%',
+                        [appDisplayScaleMax]: `${Math.round(appDisplayScaleMax * 100)}%`,
+                      }}
+                      max={appDisplayScaleMax}
+                      min={appDisplayScaleMin}
+                      onChange={handleDisplayScaleChange}
+                      step={appDisplayScaleStep}
+                      tooltip={{ formatter: (value) => `${Math.round((value ?? 1) * 100)}%` }}
+                      value={appDisplaySettings.scale}
+                    />
+                    <div className={styles.zoomActions}>
+                      <Button
+                        onClick={() => {
+                          handleDisplayScaleChange(1);
+                        }}
+                      >
+                        恢复 100%
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          handleDisplayScaleChange(1);
+                          void message.success('显示缩放已恢复默认');
+                        }}
+                      >
+                        重置缩放设置
+                      </Button>
+                    </div>
+                  </div>
+                </article>
               </div>
+
+              <article className={styles.cardDisplayPanel}>
+                <div className={styles.cardDisplayHeader}>
+                  <div>
+                    <strong>卡片信息展示</strong>
+                    <p>每个模块都可以选择 0 / 2 / 4 项信息，并单独指定展示内容。</p>
+                  </div>
+                  <Tag color="default">共 {cardDisplayModules.length} 个模块</Tag>
+                </div>
+
+                <div className={styles.cardDisplayGrid}>
+                  {cardDisplayModules.map((module) => {
+                    const moduleSettings = appDisplaySettings.cardDisplaySettings[module.key];
+                    const selectedValueSet = new Set(moduleSettings.visibleMetaKeys);
+                    const isSelectionLocked =
+                      moduleSettings.displayCount !== 0 &&
+                      moduleSettings.visibleMetaKeys.length >= moduleSettings.displayCount;
+
+                    return (
+                      <article className={styles.cardDisplayModule} key={module.key}>
+                        <div className={styles.cardDisplayModuleHeader}>
+                          <div>
+                            <strong>{module.label}</strong>
+                            <p>{module.description}</p>
+                          </div>
+                          <Tag>{moduleSettings.displayCount} 项</Tag>
+                        </div>
+
+                        <Radio.Group
+                          buttonStyle="solid"
+                          className={styles.cardDisplayCountGroup}
+                          options={cardDisplayCountOptions}
+                          optionType="button"
+                          onChange={(event) => {
+                            handleCardDisplayCountChange(module.key, event.target.value as 0 | 2 | 4);
+                          }}
+                          value={moduleSettings.displayCount}
+                        />
+
+                        <Checkbox.Group
+                          className={styles.cardDisplayCheckboxGroup}
+                          onChange={(checkedValues) => {
+                            handleCardVisibleMetaKeysChange(module.key, checkedValues as string[]);
+                          }}
+                          options={module.metaOptions.map((option) => ({
+                            disabled:
+                              moduleSettings.displayCount === 0 ||
+                              (isSelectionLocked && !selectedValueSet.has(option.key)),
+                            label: option.label,
+                            value: option.key,
+                          }))}
+                          value={moduleSettings.visibleMetaKeys}
+                        />
+                      </article>
+                    );
+                  })}
+                </div>
+              </article>
             </div>
           </div>
         </section>

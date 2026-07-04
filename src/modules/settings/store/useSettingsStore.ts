@@ -7,6 +7,7 @@ import {
   createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
   createDefaultSupabaseConnectionSettings,
+  normalizeAppDisplaySettings,
   type AppDisplaySettings,
   type CostTemplate,
   type CostTemplateFormValues,
@@ -24,7 +25,7 @@ interface SettingsState {
   loadSupabaseConnections: () => void;
   resetAppDisplaySettings: () => void;
   saveCostTemplate: (values: CostTemplateFormValues, templateId?: string) => CostTemplate;
-  saveAppDisplaySettings: (scale: number) => AppDisplaySettings;
+  saveAppDisplaySettings: (settings: AppDisplaySettings) => AppDisplaySettings;
   setDefaultCostTemplate: (templateId: string) => void;
   supabaseConnections: SupabaseConnectionSettings;
   resetCostTemplates: () => void;
@@ -138,11 +139,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     supabaseConnectionSettingsService.save(nextValue);
     set({ supabaseConnections: nextValue });
   },
-  saveAppDisplaySettings: (scale) => {
-    const nextValue: AppDisplaySettings = {
-      scale,
+  saveAppDisplaySettings: (settings) => {
+    const nextValue = normalizeAppDisplaySettings({
+      ...settings,
       updatedAt: new Date().toISOString(),
-    };
+    });
 
     appDisplaySettingsService.save(nextValue);
     set({ appDisplaySettings: nextValue });
