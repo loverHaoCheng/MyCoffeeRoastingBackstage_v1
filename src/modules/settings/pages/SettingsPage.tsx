@@ -430,7 +430,7 @@ export function SettingsPage() {
     const greenBeanConnection = draftValues.greenBean;
 
     if (!isValidProjectConnection(greenBeanConnection.projectUrl, greenBeanConnection.publishableKey)) {
-      void message.warning('请先填写有效的生豆数据库连接，再使用高级刷新。');
+      void message.warning('请先填写有效的生豆数据库连接，再使用完全同步。');
       return;
     }
 
@@ -440,18 +440,18 @@ export function SettingsPage() {
       const result = await refreshAllAppData(queryClient);
 
       if (result.failed > 0) {
-        void message.warning('高级刷新部分失败，已尽量完成双向同步。');
+        void message.warning('完全同步部分失败，已尽量完成双向同步。');
         return;
       }
 
       if (result.downloaded > 0 || result.uploaded > 0 || result.success > 0) {
-        void message.success('高级刷新完成，已完成双向同步。');
+        void message.success('完全同步完成，已完成双向同步。');
         return;
       }
 
-      void message.info('高级刷新完成，当前已是最新数据。');
+      void message.info('完全同步完成，当前已是最新数据。');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '高级刷新失败，请稍后重试。';
+      const errorMessage = error instanceof Error ? error.message : '完全同步失败，请稍后重试。';
       void message.error(errorMessage);
     } finally {
       setIsAdvancedRefreshing(false);
@@ -816,7 +816,7 @@ export function SettingsPage() {
                   loading={isAdvancedRefreshing}
                   onClick={() => void handleAdvancedRefresh()}
                 >
-                  高级刷新
+                  完全同步
                 </Button>
               </div>
               <div className={styles.fieldGrid}>
