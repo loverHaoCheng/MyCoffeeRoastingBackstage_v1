@@ -1,5 +1,5 @@
 import { DownOutlined, PlusOutlined } from '@ant-design/icons';
-import { App, Button, Drawer, Empty, Grid, Spin, Tabs } from 'antd';
+import { App, Button, Empty, Grid, Spin, Tabs } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -8,6 +8,7 @@ import { BeanAiRecognitionPlaceholder, BeanDetailDrawer, BeanInventoryCard, Bean
 import { beanQueryKeys, useBeans } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services';
 import { useCostTemplateSettings, useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
@@ -293,7 +294,7 @@ export function BeanPage() {
         onClick={handleOpenCreateDrawer}
       />
 
-      <Drawer
+      <AppDrawer
         className={styles.creationDrawer}
         height="84dvh"
         onClose={() => {
@@ -327,9 +328,9 @@ export function BeanPage() {
             },
           ]}
         />
-      </Drawer>
+      </AppDrawer>
 
-      <Drawer
+      <AppDrawer
         className={styles.detailDrawer}
         data-placement={isWide ? 'right' : 'bottom'}
         height={isWide ? undefined : '86dvh'}
@@ -355,7 +356,7 @@ export function BeanPage() {
             }}
           />
         ) : null}
-      </Drawer>
+      </AppDrawer>
     </main>
   );
 }

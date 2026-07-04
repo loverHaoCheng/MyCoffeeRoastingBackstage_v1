@@ -1,5 +1,5 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { App, Drawer, Empty, Grid, Spin, Tabs } from 'antd';
+import { App, Empty, Grid, Spin, Tabs } from 'antd';
 import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -18,6 +18,7 @@ import {
 } from '@/modules/roast/hooks';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
@@ -253,7 +254,7 @@ export function RoastPage() {
       />
 
       {/* 创建抽屉 */}
-      <Drawer
+      <AppDrawer
         className={styles.creationDrawer}
         height="86dvh"
         onClose={() => {
@@ -295,10 +296,10 @@ export function RoastPage() {
             },
           ]}
         />
-      </Drawer>
+      </AppDrawer>
 
       {/* 详情/编辑抽屉 */}
-      <Drawer
+      <AppDrawer
         className={styles.detailDrawer}
         data-placement={isWide ? 'right' : 'bottom'}
         height={isWide ? undefined : '86dvh'}
@@ -321,7 +322,7 @@ export function RoastPage() {
             plan={selectedPlan}
           />
         ) : null}
-      </Drawer>
+      </AppDrawer>
     </main>
   );
 }

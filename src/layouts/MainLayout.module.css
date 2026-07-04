@@ -230,6 +230,7 @@
   position: relative;
   min-height: 100%;
   overflow: hidden;
+  contain: layout paint style;
 }
 
 .routePanel {
@@ -237,6 +238,9 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 100%;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  contain: layout paint style;
 }
 
 .routeTrack {
@@ -245,6 +249,8 @@
   width: 200%;
   min-height: 100%;
   pointer-events: none;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .bottomNav {
@@ -539,20 +545,20 @@
   }
 
   .routeScene[data-transitioning="true"] .routeTrack[data-direction="forward"] {
-    animation: route-track-forward 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    animation: route-track-forward 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
   }
 
   .routeScene[data-transitioning="true"] .routeTrack[data-direction="backward"] {
     transform: translate3d(-50%, 0, 0);
-    animation: route-track-backward 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    animation: route-track-backward 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
   }
 
   .routeScene[data-transitioning="true"] .routeTrack .routePanel[data-role="previous"] {
-    animation: route-panel-fade-out 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    animation: route-panel-fade-out 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
   }
 
   .routeScene[data-transitioning="true"] .routeTrack .routePanel[data-role="current"] {
-    animation: route-panel-fade-in 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    animation: route-panel-fade-in 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
   }
 }
 
@@ -584,7 +590,7 @@
 
 @keyframes route-panel-fade-in {
   from {
-    opacity: 0.56;
+    opacity: 0.64;
   }
 
   to {

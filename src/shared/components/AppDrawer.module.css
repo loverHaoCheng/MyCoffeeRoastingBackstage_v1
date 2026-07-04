@@ -1,0 +1,32 @@
+.drawer {
+  backface-visibility: hidden;
+}
+
+.drawer :global(.ant-drawer-content-wrapper) {
+  contain: layout paint style;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+}
+
+.drawer :global(.ant-drawer-content) {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.drawer :global(.ant-drawer-mask) {
+  backface-visibility: hidden;
+}
+
+.drawer :global(.ant-drawer-body),
+.drawer :global(.ant-drawer-header),
+.drawer :global(.ant-drawer-footer) {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer :global(.ant-drawer-content-wrapper),
+  .drawer :global(.ant-drawer-mask) {
+    transition-duration: 1ms !important;
+  }
+}

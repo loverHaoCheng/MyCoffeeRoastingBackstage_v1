@@ -314,7 +314,7 @@ class SupabaseRoastPlanRepository implements RoastPlanRepository {
   constructor(private readonly client: SupabaseRestClient) {}
 
   async createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
-    const insertedRows = await this.client.insert<Record<string, unknown>, SupabaseRoastProfileMutationRecord>(
+    const insertedRows = await this.client.insert<SupabaseRoastProfileMutationRecord>(
       'roast_profiles',
       await toSupabaseRoastPlanPayload(this.client, input),
       {
@@ -378,7 +378,7 @@ class SupabaseRoastPlanRepository implements RoastPlanRepository {
   async updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     const currentPlan = await getRoastPlanById(this.client, planId);
 
-    const updatedRows = await this.client.update<Record<string, unknown>, SupabaseRoastProfileMutationRecord>(
+    const updatedRows = await this.client.update<SupabaseRoastProfileMutationRecord>(
       'roast_profiles',
       await toSupabaseRoastPlanPayload(this.client, input, currentPlan.status),
       {

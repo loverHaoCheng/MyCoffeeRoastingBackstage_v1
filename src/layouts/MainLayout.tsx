@@ -5,7 +5,7 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import { Button, Grid, Layout, Menu } from 'antd';
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type ReactNode, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 
 import { GlobalPullToRefresh } from '@/app/components/GlobalPullToRefresh';
@@ -250,7 +250,9 @@ export function MainLayout() {
       return;
     }
 
-    void navigate(target.path);
+    startTransition(() => {
+      void navigate(target.path);
+    });
   };
 
   const registerFloatingAction = useCallback((config: ViewportFloatingActionButtonProps) => {

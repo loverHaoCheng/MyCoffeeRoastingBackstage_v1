@@ -458,7 +458,7 @@ export class MockBeanRepository implements BeanRepository {
     bean.stockKg = Number(nextStockKg.toFixed(1));
     bean.updatedAt = new Date().toISOString();
 
-    return ok(bean);
+    return Promise.resolve(ok(bean));
   }
 
   getEditableBean(beanId: string | number): Promise<ApiResponse<GreenBeanEditableDetail>> {
@@ -981,7 +981,7 @@ export function createSupabaseGreenBeanInventoryRepository(
         greenBeanPayload.mill_name = normalizeText(input.millName);
       }
 
-      const insertedBeans = await client.insert<Record<string, unknown>, { id: string }>(
+      const insertedBeans = await client.insert<{ id: string }>(
         tableName,
         greenBeanPayload,
         { select: '*' },

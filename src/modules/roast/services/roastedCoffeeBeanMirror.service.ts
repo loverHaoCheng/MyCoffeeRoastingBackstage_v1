@@ -165,7 +165,7 @@ export const roastedCoffeeBeanMirrorService = {
     const client = getRoastedBeanClient();
 
     try {
-      await client.insert<Record<string, unknown>, RoastedCoffeeBeanMirrorRow>(
+      await client.insert<RoastedCoffeeBeanMirrorRow>(
         ROASTED_COFFEE_BEANS_TABLE,
         await buildMirrorPayload(batch),
         { select: 'id,user_id' },

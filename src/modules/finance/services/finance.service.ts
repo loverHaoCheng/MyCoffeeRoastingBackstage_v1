@@ -211,7 +211,7 @@ const createSupabaseFinanceRepository = (
   async saveCalculation(input) {
     const metrics = calculateCostMetrics(input);
     const resolvedSaleUnitPrice = metrics.suggestedSalePrice;
-    const rows = await client.insert<Record<string, unknown>, SupabaseCostCalculationRecord>(
+    const rows = await client.insert<SupabaseCostCalculationRecord>(
       COST_CALCULATIONS_TABLE,
       {
         bean_id: input.beanId,

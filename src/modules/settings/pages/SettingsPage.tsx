@@ -1,5 +1,5 @@
 import { CopyOutlined, DownOutlined, SyncOutlined } from '@ant-design/icons';
-import { App, Alert, Button, Drawer, Grid, Input, InputNumber, Popconfirm, Radio, Select, Slider, Tag } from 'antd';
+import { App, Alert, Button, Grid, Input, InputNumber, Popconfirm, Radio, Select, Slider, Tag } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -30,6 +30,7 @@ import {
 } from '@/modules/settings/types';
 import { AppError, type AppErrorCode } from '@/shared/errors/AppError';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
+import { AppDrawer } from '@/shared/components/AppDrawer';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 import authorCodeImage from '@/assets/settings-codes/author-code.png';
@@ -1254,7 +1255,7 @@ export function SettingsPage() {
         </p>
       </form>
 
-      <Drawer
+      <AppDrawer
         className={styles.templateDrawer}
         onClose={handleCloseTemplateDrawer}
         open={isTemplateDrawerOpen}
@@ -1441,7 +1442,7 @@ export function SettingsPage() {
             </Button>
           </DrawerActionBar>
         </section>
-      </Drawer>
+      </AppDrawer>
     </main>
   );
 }
