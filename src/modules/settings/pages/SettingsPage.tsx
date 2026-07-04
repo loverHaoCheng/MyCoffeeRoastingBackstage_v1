@@ -34,13 +34,12 @@ import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 import authorCodeImage from '@/assets/settings-codes/author-code.png';
 import sponsorCodeImage from '@/assets/settings-codes/sponsor-code.png';
+import { useAppBuildVersion } from '@/app/hooks/useAppBuildVersion';
 
 import styles from './SettingsPage.module.css';
 
 const { useBreakpoint } = Grid;
 type QrCodeKey = 'author' | 'sponsor';
-const appBuildVersionLabel = `当前 Web 上传版本：${__APP_BUILD_VERSION__}`;
-
 const qrCodeEntries: Record<
   QrCodeKey,
   {
@@ -253,6 +252,7 @@ export function SettingsPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const screens = useBreakpoint();
+  const appBuildVersion = useAppBuildVersion();
   const beanCacheStatus = useBeanCacheStatus();
   const {
     appDisplaySettings,
@@ -1251,7 +1251,7 @@ export function SettingsPage() {
           </div>
         </section>
 
-        <p className={styles.buildVersion}>{appBuildVersionLabel}</p>
+        <p className={styles.buildVersion}>{`当前 Web 上传版本：${appBuildVersion}`}</p>
       </form>
 
       <Drawer

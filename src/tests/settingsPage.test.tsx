@@ -1,6 +1,7 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { appBuildVersionStorageKey, appBuildVersionUpdatedEventName } from '@/app/services/appBuildVersion.service';
 import { SettingsPage } from '@/modules/settings';
 import { beanCacheStorageKey } from '@/modules/bean/services';
 import { supabaseConnectionSettingsStorageKey } from '@/modules/settings/services/supabaseConnectionSettings.service';
@@ -340,5 +341,23 @@ describe('SettingsPage', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '保存设置' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '清空配置' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the build version label in sync with localStorage updates', async () => {
+    window.localStorage.setItem(
+      appBuildVersionStorageKey,
+      '0.1.0-initial',
+    );
+
+    renderWithQuery(<SettingsPage />);
+
+    expect(screen.getByText('当前 Web 上传版本：0.1.0-initial')).toBeInTheDocument();
+
+    act(() => {
+      window.localStorage.setItem(appBuildVersionStorageKey, '0.1.0-updated');
+      window.dispatchEvent(new CustomEvent(appBuildVersionUpdatedEventName));
+    });
+
+    expect(await screen.findByText('当前 Web 上传版本：0.1.0-updated')).toBeInTheDocument();
   });
 });

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import { appBuildVersionService } from '@/app/services/appBuildVersion.service';
 import { logger } from '@/shared/logger/logger';
-
-const appBuildVersionStorageKey = 'coffee-roasting-backstage:last-seen-build-version';
 const versionCheckIntervalMs = 60_000;
 
 type AppUpdateNotice =
@@ -48,7 +47,7 @@ export function useAppUpdateNotice() {
     }
 
     try {
-      const lastSeenVersion = window.localStorage.getItem(appBuildVersionStorageKey);
+      const lastSeenVersion = appBuildVersionService.get();
 
       if (lastSeenVersion && lastSeenVersion !== __APP_BUILD_VERSION__) {
         setNotice({
@@ -57,7 +56,7 @@ export function useAppUpdateNotice() {
         });
       }
 
-      window.localStorage.setItem(appBuildVersionStorageKey, __APP_BUILD_VERSION__);
+      appBuildVersionService.save(__APP_BUILD_VERSION__);
     } catch (error) {
       logger.warn('app build version persistence failed', { error });
     }
