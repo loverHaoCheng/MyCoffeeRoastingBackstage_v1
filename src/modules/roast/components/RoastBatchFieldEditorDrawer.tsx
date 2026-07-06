@@ -1,12 +1,10 @@
 import { App, DatePicker, Input, InputNumber, Select, Spin } from 'antd';
-import { useQueryClient } from '@tanstack/react-query';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import { useBeans } from '@/modules/bean/hooks';
 import { useRoastPlans } from '@/modules/roast/hooks';
-import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
+import { useUpdateRoastBatch } from '@/modules/roast/hooks/useRoastBatches';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
 import { FieldEditorDrawer } from '@/shared/components/FieldEditorDrawer';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -31,7 +29,6 @@ interface RoastBatchFieldEditorDrawerProps {
   fieldPath?: RoastBatchEditableFieldPath;
   height?: string;
   onClose: () => void;
-  onUpdated: () => void;
   open: boolean;
   placement?: 'bottom' | 'right';
   width?: number;
@@ -78,15 +75,14 @@ export function RoastBatchFieldEditorDrawer({
   fieldPath,
   height,
   onClose,
-  onUpdated,
   open,
   placement,
   width,
 }: RoastBatchFieldEditorDrawerProps) {
   const { message } = App.useApp();
-  const queryClient = useQueryClient();
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
+  const updateBatchMutation = useUpdateRoastBatch();
   const [draft, setDraft] = useState<RoastBatchUpdateInput | null>(null);
 
   const editableFieldPath = fieldPath;
@@ -229,16 +225,12 @@ export function RoastBatchFieldEditorDrawer({
     onClose();
     submissionBackupService.save('update', { batchId: batch.id, input: updateInput }, 'roastBatch');
 
-    const updateTask = roastBatchService
-      .updateBatch(batch.id, updateInput)
-      .then(async () => {
-        await refreshAllAppData(queryClient);
-        onUpdated();
-      })
-      .catch((error: unknown) => {
+    const updateTask = updateBatchMutation.mutateAsync({ batchId: batch.id, input: updateInput }).catch(
+      (error: unknown) => {
         const errorMessage = error instanceof Error ? error.message : '烘焙记录同步失败，本地已备份。';
         void message.error(errorMessage);
-      });
+      },
+    );
 
     void updateTask;
   };

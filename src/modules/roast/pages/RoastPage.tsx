@@ -3,7 +3,6 @@ import { App, Empty, Grid, Spin, Tabs } from 'antd';
 import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import {
   RoastPlanDetail,
   RoastPlanFieldEditorDrawer,
@@ -71,7 +70,7 @@ export function RoastPage() {
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [creationTab, setCreationTab] = useState<'manual' | 'json'>('manual');
 
-  const { data: plans = [], isFetching, refetch } = useRoastPlans();
+  const { data: plans = [], isFetching } = useRoastPlans();
   const updateMutation = useUpdateRoastPlan();
   const deleteMutation = useDeleteRoastPlan();
 
@@ -131,8 +130,6 @@ export function RoastPage() {
     const updateTask = (async () => {
       try {
         await updateMutation.mutateAsync({ planId, input });
-        await refreshAllAppData(queryClient);
-        await refetch();
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
         void message.error(errorMessage);
@@ -336,9 +333,6 @@ export function RoastPage() {
           fieldPath={selectedPlanFieldPath}
           height={isWide ? undefined : '360px'}
           onClose={closeDetail}
-          onUpdated={() => {
-            void refetch();
-          }}
           open
           plan={selectedPlan}
           placement={isWide ? 'right' : 'bottom'}

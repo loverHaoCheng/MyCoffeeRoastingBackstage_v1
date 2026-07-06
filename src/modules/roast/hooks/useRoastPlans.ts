@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { seedRoastPlans } from '@/modules/roast/constants/roastPlan.mock';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
+import { updateRoastPlanFromInput } from '@/modules/roast/services/roastPlanJson.service';
 import { AppError } from '@/shared/errors/AppError';
 import type { RoastPlan } from '@/types/domain';
 
@@ -20,6 +21,12 @@ const shouldRetry = (failureCount: number, error: unknown): boolean => {
   }
 
   return failureCount < 2;
+};
+
+const sortPlansByUpdatedAt = (plans: RoastPlan[]): RoastPlan[] => {
+  return [...plans].sort((left, right) => {
+    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  });
 };
 
 export function useRoastPlans() {
@@ -82,10 +89,35 @@ export function useUpdateRoastPlan() {
 
       return response.data;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: roastPlanQueryKeys.all,
-      });
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: roastPlanQueryKeys.list() });
+
+      const previousPlans = queryClient.getQueryData<RoastPlan[]>(roastPlanQueryKeys.list());
+      const currentPlan = previousPlans?.find((plan) => String(plan.id) === String(variables.planId));
+
+      if (currentPlan) {
+        const nextPlan = updateRoastPlanFromInput(currentPlan, variables.input);
+
+        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) =>
+          sortPlansByUpdatedAt(
+            current.map((plan) => (String(plan.id) === String(variables.planId) ? nextPlan : plan)),
+          ),
+        );
+      }
+
+      return { previousPlans };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousPlans) {
+        queryClient.setQueryData(roastPlanQueryKeys.list(), context.previousPlans);
+      }
+    },
+    onSuccess: (nextPlan, variables) => {
+      queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) =>
+        sortPlansByUpdatedAt(
+          current.map((plan) => (String(plan.id) === String(variables.planId) ? nextPlan : plan)),
+        ),
+      );
     },
   });
 }

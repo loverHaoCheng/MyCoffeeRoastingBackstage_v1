@@ -4,7 +4,7 @@
 
 ## 拆表原则
 
-- `green_beans`：保存稳定的生豆档案信息，如产地、处理法、豆种、产季、含水率、海拔、密度、处理厂。
+- `green_beans`：保存稳定的生豆档案信息，如产地、处理法、等级、豆种、产季、含水率、海拔、密度、处理厂。
 - `green_bean_purchase_batches`：保存每次采购重量与采购总价，用于成本核算和剩余库存追踪。
 - `bean_sale_specs`：保存单份重量和单份售价，后续可扩展不同包装规格。
 - `roast_profiles`：保存烘焙方案，使用 `jsonb` 记录节点步骤。
@@ -23,6 +23,7 @@
 | 烘焙记录 | `roast_records` | 一次实际烘焙一条 |
 | 烘焙方案 | `roast_profiles` | 与生豆一对多 |
 | 产地 | `green_beans.origin_country` | 国家级来源 |
+| 等级 | `green_beans.grade` | 供应商等级、杯测等级或贸易分级 |
 | 豆种 | `green_beans.variety` | 当前按文本存储，后续可拆字典表 |
 | 产季 | `green_beans.harvest_season` | 如 `2025/2026` |
 | 含水率 | `green_beans.moisture_percent` | 百分比 |
@@ -48,6 +49,7 @@
 
 - `supabase/migrations/20260628_create_green_bean_core.sql`
 - `supabase/migrations/20260629_update_green_beans_and_create_cost_calculations.sql`
+- `supabase/migrations/20260706_add_green_bean_grade.sql`
 
 ## 2026-06-29 调整
 

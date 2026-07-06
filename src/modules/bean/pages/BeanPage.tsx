@@ -46,9 +46,9 @@ const matchesKeyword = (bean: Bean, keyword: string): boolean => {
     .includes(normalizedKeyword);
 };
 
-const sortBeansByUpdatedAt = (beans: Bean[]): Bean[] => {
+const sortBeansByCreatedAt = (beans: Bean[]): Bean[] => {
   return [...beans].sort((left, right) => {
-    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
 };
 
@@ -79,8 +79,8 @@ export function BeanPage() {
 
   const summary = useMemo(() => {
     const totalRemainingStockKg = beans.reduce((total, bean) => total + bean.stockKg, 0);
-    const averageCost =
-      beans.length > 0 ? beans.reduce((total, bean) => total + bean.costPerKg, 0) / beans.length : 0;
+    const weightedCostTotal = beans.reduce((total, bean) => total + bean.costPerKg * bean.stockKg, 0);
+    const averageCost = totalRemainingStockKg > 0 ? weightedCostTotal / totalRemainingStockKg : 0;
 
     return {
       averageCost,
@@ -167,7 +167,7 @@ export function BeanPage() {
     const optimisticBean = beanService.createOptimisticBean(input);
 
     queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), (current = []) => {
-      return sortBeansByUpdatedAt([
+      return sortBeansByCreatedAt([
         optimisticBean,
         ...current.filter((bean) => String(bean.id) !== String(optimisticBean.id)),
       ]);
@@ -365,9 +365,6 @@ export function BeanPage() {
               setSelectedBeanFieldPath(undefined);
               setDetailMode(null);
             }}
-            onUpdate={() => {
-              void refetch();
-            }}
           />
         ) : null}
       </AppDrawer>
@@ -381,9 +378,6 @@ export function BeanPage() {
             setSelectedBeanId(null);
             setSelectedBeanFieldPath(undefined);
             setDetailMode(null);
-          }}
-          onUpdated={() => {
-            void refetch();
           }}
           open
           placement={isWide ? 'right' : 'bottom'}

@@ -1,9 +1,6 @@
 import { App, Button, Result, Spin } from 'antd';
-import { useQueryClient } from '@tanstack/react-query';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
-import { useBeanEditableDetail } from '@/modules/bean/hooks';
-import { beanService } from '@/modules/bean/services';
+import { useBeanEditableDetail, useUpdateBean } from '@/modules/bean/hooks';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import type { Bean } from '@/types/domain';
 import type { FieldPath } from 'react-hook-form';
@@ -20,7 +17,6 @@ interface BeanDetailDrawerProps {
   focusFieldPath?: FieldPath<GreenBeanFormInput>;
   mode: DetailMode;
   onClose: () => void;
-  onUpdate: () => void;
 }
 
 const formatKg = new Intl.NumberFormat('zh-CN', {
@@ -33,10 +29,10 @@ const formatCurrency = new Intl.NumberFormat('zh-CN', {
   style: 'currency',
 });
 
-export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose, onUpdate }: BeanDetailDrawerProps) {
+export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDetailDrawerProps) {
   const { message } = App.useApp();
-  const queryClient = useQueryClient();
   const editableDetailQuery = useBeanEditableDetail(bean.id);
+  const updateBeanMutation = useUpdateBean();
   const totalWeightGrams = editableDetailQuery.data?.purchasedWeightGrams ?? Math.round(bean.stockKg * 1000);
   const remainingWeightGrams = editableDetailQuery.data?.remainingWeightGrams ?? Math.round(bean.stockKg * 1000);
 
@@ -45,6 +41,7 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose, onUpdate
       { label: '名称', value: bean.name },
       { label: '产地', value: bean.origin || '待补充' },
       { label: '处理法', value: bean.process },
+      { label: '等级', value: bean.grade || '待补充' },
       { label: '总库存', value: `${formatKg.format(totalWeightGrams / 1000)} kg` },
       { label: '剩余库存', value: `${formatKg.format(remainingWeightGrams / 1000)} kg` },
       { label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
@@ -141,9 +138,7 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose, onUpdate
 
           const updateTask = (async () => {
             try {
-              await beanService.updateBean(bean.id, input);
-              await refreshAllAppData(queryClient);
-              onUpdate();
+              await updateBeanMutation.mutateAsync({ beanId: bean.id, input });
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : '生豆同步失败，本地已备份。';
               void message.error(errorMessage);

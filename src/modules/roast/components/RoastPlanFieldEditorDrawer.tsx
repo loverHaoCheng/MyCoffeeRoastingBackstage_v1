@@ -1,12 +1,10 @@
 import { App, Input, InputNumber, Select, Spin } from 'antd';
-import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import { useBeans } from '@/modules/bean/hooks';
-import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
 import { roastPlanToJsonInput } from '@/modules/roast/services/roastPlanJson.service';
+import { useUpdateRoastPlan } from '@/modules/roast/hooks/useRoastPlans';
 import type { RoastPlan } from '@/types/domain';
 
 import type { RoastPlanJsonInput } from '../types';
@@ -23,7 +21,6 @@ export type RoastPlanEditableFieldPath = 'batchWeightGrams' | 'beanId' | 'purpos
 interface RoastPlanFieldEditorDrawerProps {
   fieldPath?: RoastPlanEditableFieldPath;
   onClose: () => void;
-  onUpdated: () => void;
   open: boolean;
   plan: RoastPlan | null;
   placement?: 'bottom' | 'right';
@@ -49,15 +46,14 @@ export function RoastPlanFieldEditorDrawer({
   fieldPath,
   height,
   onClose,
-  onUpdated,
   open,
   plan,
   placement,
   width,
 }: RoastPlanFieldEditorDrawerProps) {
   const { message } = App.useApp();
-  const queryClient = useQueryClient();
   const { data: beans = [], isLoading: beansLoading } = useBeans();
+  const updatePlanMutation = useUpdateRoastPlan();
   const [draft, setDraft] = useState<RoastPlanJsonInput | null>(null);
 
   const editableFieldPath = fieldPath;
@@ -126,16 +122,12 @@ export function RoastPlanFieldEditorDrawer({
     onClose();
     submissionBackupService.save('update', { input: parsed.data, planId: plan.id }, 'roastPlan');
 
-    const updateTask = roastPlanService
-      .updatePlan(plan.id, parsed.data)
-      .then(async () => {
-        await refreshAllAppData(queryClient);
-        onUpdated();
-      })
-      .catch((error: unknown) => {
+    const updateTask = updatePlanMutation.mutateAsync({ planId: plan.id, input: parsed.data }).catch(
+      (error: unknown) => {
         const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
         void message.error(errorMessage);
-      });
+      },
+    );
 
     void updateTask;
   };

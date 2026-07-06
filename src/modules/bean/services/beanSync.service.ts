@@ -174,6 +174,7 @@ export const beanSyncService = {
       defaultSaleUnitWeightGrams:
         record.defaultSaleUnitWeightGrams == null ? null : Number(record.defaultSaleUnitWeightGrams) || 0,
       displayName: toRequiredString(record.displayName),
+      grade: toOptionalString(record.grade),
       harvestSeason: toOptionalString(record.harvestSeason),
       millName: toOptionalString(record.millName),
       notes: toOptionalString(record.notes),

@@ -2,6 +2,7 @@ export interface GreenBeanLotProfile {
   id: string;
   code: string;
   displayName: string;
+  grade?: string | null;
   originCountry: string;
   originRegion: string;
   originArea?: string | null;

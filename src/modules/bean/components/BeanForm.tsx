@@ -36,6 +36,7 @@ const fieldPathMap: Record<string, FieldPath<GreenBeanFormInput>> = {
   defaultSaleUnitWeightGrams: 'defaultSaleUnitWeightGrams',
   densityGPerL: 'densityGPerL',
   displayName: 'displayName',
+  grade: 'grade',
   harvestSeason: 'harvestSeason',
   millName: 'millName',
   moisturePercent: 'moisturePercent',
@@ -338,6 +339,20 @@ export function BeanForm({
             />
             <span className={joinClassNames(styles.helpText, errors.variety ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.variety?.message, '可填写单一品种或多个拼接品种')}
+            </span>
+          </label>
+
+          <label className={styles.field} data-field-path="grade">
+            {renderLabel('等级')}
+            <Controller
+              control={control}
+              name="grade"
+              render={({ field }) => (
+                <Input {...field} aria-label="等级" placeholder="例如 G1 / SHB / AA" value={field.value ?? ''} />
+              )}
+            />
+            <span className={joinClassNames(styles.helpText, errors.grade ? styles.helpTextError : undefined)}>
+              {formatOptionalHelp(errors.grade?.message, '可填写供应商等级、杯测等级或贸易分级')}
             </span>
           </label>
 

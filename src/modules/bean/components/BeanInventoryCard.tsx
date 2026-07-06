@@ -43,6 +43,7 @@ const beanCardEditFieldPathMap: Record<string, FieldPath<GreenBeanFormInput> | u
   process: 'processMethod',
   stock: 'remainingWeightGrams',
   supplier: 'supplierName',
+  grade: 'grade',
   variety: 'variety',
 };
 

@@ -18,6 +18,7 @@ const defaultBeanFormValues: GreenBeanCreateInput = {
   defaultSaleUnitPrice: 0,
   defaultSaleUnitWeightGrams: null,
   displayName: '',
+  grade: '',
   harvestSeason: '',
   millName: '',
   notes: '',

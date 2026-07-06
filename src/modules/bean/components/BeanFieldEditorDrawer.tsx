@@ -1,10 +1,10 @@
 import { App, Input, InputNumber } from 'antd';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { type FieldPath } from 'react-hook-form';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import { beanEditableDetailQueryKeys } from '@/modules/bean/hooks';
+import { useUpdateBean } from '@/modules/bean/hooks/useBeans';
 import { beanService } from '@/modules/bean/services';
 import { greenBeanCreateFormSchema } from '@/modules/bean/schemas';
 import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';
@@ -17,6 +17,7 @@ type BeanEditableFieldPath =
   | 'defaultRoastInputGrams'
   | 'defaultSaleUnitPrice'
   | 'defaultSaleUnitWeightGrams'
+  | 'grade'
   | 'harvestSeason'
   | 'originCountry'
   | 'processMethod'
@@ -29,7 +30,6 @@ interface BeanFieldEditorDrawerProps {
   bean: Bean | null;
   fieldPath?: FieldPath<GreenBeanFormInput>;
   onClose: () => void;
-  onUpdated: () => void;
   open: boolean;
   placement?: 'bottom' | 'right';
   width?: number;
@@ -47,6 +47,7 @@ const fieldMeta: Record<
   defaultRoastInputGrams: { label: '默认烘焙量', placeholder: '例如 200' },
   defaultSaleUnitPrice: { label: '默认单份售价', placeholder: '例如 48' },
   defaultSaleUnitWeightGrams: { label: '默认单份重量', placeholder: '例如 250' },
+  grade: { label: '等级', placeholder: '例如 G1 / SHB / AA' },
   harvestSeason: { label: '产季', placeholder: '例如 2025/26' },
   originCountry: { label: '产地', placeholder: '例如 埃塞俄比亚' },
   processMethod: { label: '处理法', placeholder: '例如 水洗 / 日晒 / 厌氧' },
@@ -70,7 +71,7 @@ const parseOriginCountry = (origin: string): string => {
 
 const createFallbackEditableDetail = (bean: Bean): GreenBeanFormInput => {
   const stockWeightGrams = Math.max(0, Math.round(bean.stockKg * 1000));
-  const totalPurchasedPrice = Math.max(0, Math.round(bean.costPerKg * bean.stockKg * 1000));
+  const totalPurchasedPrice = Math.max(0, Number((bean.costPerKg * bean.stockKg).toFixed(2)));
 
   return {
     altitudeMetersMax: null,
@@ -81,6 +82,7 @@ const createFallbackEditableDetail = (bean: Bean): GreenBeanFormInput => {
     defaultSaleUnitWeightGrams: bean.defaultSaleUnitWeightGrams ?? null,
     densityGPerL: null,
     displayName: bean.name,
+    grade: bean.grade,
     harvestSeason: bean.harvestSeason ?? '',
     millName: '',
     moisturePercent: null,
@@ -93,8 +95,8 @@ const createFallbackEditableDetail = (bean: Bean): GreenBeanFormInput => {
     purchasedWeightGrams: stockWeightGrams,
     remainingWeightGrams: stockWeightGrams,
     supplierName: bean.supplierName ?? '',
-    variety: bean.variety ?? '',
-  };
+  variety: bean.variety ?? '',
+};
 };
 
 export function BeanFieldEditorDrawer({
@@ -102,13 +104,12 @@ export function BeanFieldEditorDrawer({
   fieldPath,
   height,
   onClose,
-  onUpdated,
   open,
   placement,
   width,
 }: BeanFieldEditorDrawerProps) {
   const { message } = App.useApp();
-  const queryClient = useQueryClient();
+  const updateBeanMutation = useUpdateBean();
   const editableFieldPath = fieldPath as BeanEditableFieldPath | undefined;
   const fieldConfig = editableFieldPath ? fieldMeta[editableFieldPath] : undefined;
   const fallbackDraft = useMemo(() => (bean ? createFallbackEditableDetail(bean) : null), [bean]);
@@ -169,16 +170,12 @@ export function BeanFieldEditorDrawer({
     onClose();
     submissionBackupService.save('update', { beanId: bean.id, input: parsed.data }, 'bean');
 
-    const updateTask = beanService
-      .updateBean(bean.id, parsed.data)
-      .then(async () => {
-        await refreshAllAppData(queryClient);
-        onUpdated();
-      })
-      .catch((error: unknown) => {
+    const updateTask = updateBeanMutation.mutateAsync({ beanId: bean.id, input: parsed.data }).catch(
+      (error: unknown) => {
         const errorMessage = error instanceof Error ? error.message : '生豆同步失败，本地已备份。';
         void message.error(errorMessage);
-      });
+      },
+    );
 
     void updateTask;
   };

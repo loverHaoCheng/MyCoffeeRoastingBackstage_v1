@@ -2,6 +2,7 @@ export interface GreenBeanFormInput {
   code: string;
   defaultRoastInputGrams: number;
   displayName: string;
+  grade?: null | string;
   harvestSeason?: null | string;
   millName?: null | string;
   notes?: null | string;

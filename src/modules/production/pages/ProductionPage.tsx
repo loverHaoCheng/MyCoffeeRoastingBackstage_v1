@@ -55,7 +55,7 @@ export function ProductionPage() {
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [selectedBatchFieldPath, setSelectedBatchFieldPath] = useState<RoastBatchEditableFieldPath | undefined>();
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
-  const { data: batches = [], isFetching, refetch } = useRoastBatches();
+  const { data: batches = [], isFetching } = useRoastBatches();
   const { data: beans = [] } = useBeans();
   const deleteMutation = useDeleteRoastBatch();
   const isWide = screens.md ?? false;
@@ -245,9 +245,6 @@ export function ProductionPage() {
           fieldPath={selectedBatchFieldPath}
           height={isWide ? undefined : '360px'}
           onClose={closeDetail}
-          onUpdated={() => {
-            void refetch();
-          }}
           open
           placement={isWide ? 'right' : 'bottom'}
           width={720}

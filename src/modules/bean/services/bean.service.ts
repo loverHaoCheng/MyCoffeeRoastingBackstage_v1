@@ -67,6 +67,7 @@ interface SupabaseGreenBeanInventoryRecord {
   default_sale_unit_price: null | number;
   default_sale_unit_weight_grams: null | number;
   display_name: string;
+  grade: null | string;
   harvest_season: string;
   latest_supplier_name?: null | string;
   origin_area: null | string;
@@ -89,6 +90,7 @@ interface SupabaseGreenBeanRecord {
   default_roast_input_grams: number;
   density_g_per_l: null | number;
   display_name: string;
+  grade: null | string;
   harvest_season: null | string;
   id: string;
   mill_name: null | string;
@@ -140,6 +142,11 @@ interface SupabaseAppSettingRecord {
 interface BeanSaleDefaultsSettingValue {
   defaultSaleUnitPrice: number;
   defaultSaleUnitWeightGrams: null | number;
+  updatedAt?: null | string;
+}
+
+interface BeanGradeSettingValue {
+  grade: null | string;
   updatedAt?: null | string;
 }
 
@@ -238,7 +245,7 @@ const mergeBeans = (beans: Bean[]): Bean[] => {
   }
 
   return [...mergedMap.values()].sort((left, right) => {
-    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
 };
 
@@ -266,9 +273,7 @@ export const mapSupabaseGreenBeanInventoryRecordToBean = (
   name: record.display_name,
   origin: [record.origin_country, record.origin_region, record.origin_area].filter(Boolean).join(' · '),
   process: record.process_method,
-  // TODO: 数据库缺少 grade 字段，暂时使用默认值
-  // 应该在 green_beans 表中添加 grade 字段
-  grade: 'A',
+  grade: normalizeText(record.grade) ?? '',
   stockKg: Number((record.total_remaining_weight_grams / 1000).toFixed(1)),
   costPerKg: record.weighted_cost_per_kg,
   supplierName: record.latest_supplier_name ?? null,
@@ -288,6 +293,7 @@ const mapSupabaseEditableBeanToFormInput = (
   latestPurchaseBatch: null | SupabasePurchaseBatchRecord,
   defaultSaleSpec: null | SupabaseSaleSpecRecord,
   savedSaleDefaults: null | BeanSaleDefaultsSettingValue,
+  savedGrade: null | BeanGradeSettingValue,
 ): GreenBeanEditableDetail => ({
   beanId: bean.id,
   code: bean.code,
@@ -297,6 +303,7 @@ const mapSupabaseEditableBeanToFormInput = (
   defaultSaleUnitWeightGrams:
     savedSaleDefaults?.defaultSaleUnitWeightGrams ?? defaultSaleSpec?.unit_weight_grams ?? null,
   displayName: bean.display_name,
+  grade: savedGrade?.grade ?? bean.grade,
   harvestSeason: bean.harvest_season,
   millName: bean.mill_name,
   notes: bean.notes,
@@ -338,6 +345,29 @@ const getLatestPurchaseBatchRecord = (
   })[0] ?? null;
 };
 
+const getPurchaseBatchTotals = (
+  purchaseBatches: SupabasePurchaseBatchRecord[],
+): {
+  totalPurchasedPrice: number;
+  totalPurchasedWeightGrams: number;
+  totalRemainingWeightGrams: number;
+  weightedCostPerKg: number;
+} => {
+  const totalPurchasedPrice = purchaseBatches.reduce((total, batch) => total + batch.purchased_total_price, 0);
+  const totalPurchasedWeightGrams = purchaseBatches.reduce((total, batch) => total + batch.purchased_weight_grams, 0);
+  const totalRemainingWeightGrams = purchaseBatches.reduce((total, batch) => total + batch.remaining_weight_grams, 0);
+
+  return {
+    totalPurchasedPrice,
+    totalPurchasedWeightGrams,
+    totalRemainingWeightGrams,
+    weightedCostPerKg:
+      totalPurchasedWeightGrams > 0
+        ? Number(((totalPurchasedPrice / totalPurchasedWeightGrams) * 1000).toFixed(2))
+        : 0,
+  };
+};
+
 const getDefaultSaleSpecRecord = (
   saleSpecs: SupabaseSaleSpecRecord[],
 ): null | SupabaseSaleSpecRecord => {
@@ -358,6 +388,10 @@ const getDefaultSaleSpecRecord = (
 
 const getBeanSaleDefaultsSettingKey = (beanId: string): string => {
   return `green_bean_sale_defaults:${beanId}`;
+};
+
+const getBeanGradeSettingKey = (beanId: string): string => {
+  return `green_bean_grade:${beanId}`;
 };
 
 const parseBeanSaleDefaultsSettingValue = (value: unknown): null | BeanSaleDefaultsSettingValue => {
@@ -385,18 +419,37 @@ const parseBeanSaleDefaultsSettingValue = (value: unknown): null | BeanSaleDefau
   };
 };
 
+const parseBeanGradeSettingValue = (value: unknown): null | BeanGradeSettingValue => {
+  if (typeof value !== 'object' || value == null) {
+    return null;
+  }
+
+  const record = value as Partial<BeanGradeSettingValue>;
+
+  if (
+    record.grade != null &&
+    typeof record.grade !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    grade: normalizeText(record.grade),
+    updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : null,
+  };
+};
+
 const buildInventoryOverviewRecordFromTables = (
   bean: SupabaseGreenBeanRecord,
   purchaseBatches: SupabasePurchaseBatchRecord[],
   saleSpecs: SupabaseSaleSpecRecord[],
   roastBatchCount: number,
   savedSaleDefaults: null | BeanSaleDefaultsSettingValue,
+  savedGrade: null | BeanGradeSettingValue,
 ): SupabaseGreenBeanInventoryRecord => {
   const latestPurchaseBatch = getLatestPurchaseBatchRecord(purchaseBatches);
   const defaultSaleSpec = getDefaultSaleSpecRecord(saleSpecs);
-  const totalPurchasedWeightGrams = latestPurchaseBatch?.purchased_weight_grams ?? 0;
-  const totalRemainingWeightGrams = latestPurchaseBatch?.remaining_weight_grams ?? 0;
-  const totalPurchasedPrice = latestPurchaseBatch?.purchased_total_price ?? 0;
+  const purchaseBatchTotals = getPurchaseBatchTotals(purchaseBatches);
 
   return {
     id: bean.id,
@@ -407,6 +460,7 @@ const buildInventoryOverviewRecordFromTables = (
     default_sale_unit_weight_grams:
       savedSaleDefaults?.defaultSaleUnitWeightGrams ?? defaultSaleSpec?.unit_weight_grams ?? null,
     display_name: bean.display_name,
+    grade: savedGrade?.grade ?? bean.grade,
     harvest_season: bean.harvest_season ?? '',
     latest_supplier_name: latestPurchaseBatch?.supplier_name ?? null,
     origin_area: bean.origin_area,
@@ -414,8 +468,8 @@ const buildInventoryOverviewRecordFromTables = (
     origin_region: bean.origin_region ?? '',
     process_method: bean.process_method,
     roast_record_count: roastBatchCount,
-    total_purchased_weight_grams: totalPurchasedWeightGrams,
-    total_remaining_weight_grams: totalRemainingWeightGrams,
+    total_purchased_weight_grams: purchaseBatchTotals.totalPurchasedWeightGrams,
+    total_remaining_weight_grams: purchaseBatchTotals.totalRemainingWeightGrams,
     updated_at: [
       bean.updated_at,
       latestPurchaseBatch?.updated_at,
@@ -424,10 +478,7 @@ const buildInventoryOverviewRecordFromTables = (
       .filter((value): value is string => Boolean(value))
       .sort((left, right) => compareIsoDateDesc(left, right))[0] ?? bean.updated_at,
     variety: bean.variety,
-    weighted_cost_per_kg:
-      totalPurchasedWeightGrams > 0
-        ? Number(((totalPurchasedPrice / totalPurchasedWeightGrams) * 1000).toFixed(2))
-        : 0,
+    weighted_cost_per_kg: purchaseBatchTotals.weightedCostPerKg,
   };
 };
 
@@ -476,6 +527,7 @@ export class MockBeanRepository implements BeanRepository {
         defaultSaleUnitPrice: bean.defaultSaleUnitPrice ?? 0,
         defaultSaleUnitWeightGrams: bean.defaultSaleUnitWeightGrams ?? 100,
         displayName: bean.name,
+        grade: bean.grade,
         harvestSeason: bean.harvestSeason ?? '',
         millName: null,
         notes: null,
@@ -528,7 +580,7 @@ export class MockBeanRepository implements BeanRepository {
       name: input.displayName.trim(),
       origin: [input.originCountry, input.originRegion, input.originArea].filter(Boolean).join(' · '),
       process: input.processMethod.trim(),
-      grade: input.variety.trim(),
+      grade: normalizeText(input.grade) ?? '',
       stockKg: Number((input.remainingWeightGrams / 1000).toFixed(1)),
       costPerKg:
         input.purchasedWeightGrams > 0
@@ -573,7 +625,7 @@ export function createSupabaseBeanRepository(
       }));
     },
     async listBeans() {
-      const result = await client.from(tableName).select('*').order('updated_at', { ascending: false });
+      const result = await client.from(tableName).select('*').order('created_at', { ascending: false });
 
       if (result.error) {
         throw new AppError(result.error.message, {
@@ -626,6 +678,19 @@ export function createSupabaseGreenBeanInventoryRepository(
     return rows[0] ?? null;
   };
 
+  const loadBeanGradeRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+      limit: 1,
+      match: { key: getBeanGradeSettingKey(String(beanId)) },
+      orderBy: {
+        ascending: false,
+        column: 'updated_at',
+      },
+    });
+
+    return rows[0] ?? null;
+  };
+
   const loadBeanSaleDefaultsMap = async (): Promise<Map<string, BeanSaleDefaultsSettingValue>> => {
     const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
       orderBy: {
@@ -642,6 +707,33 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       const beanId = row.key.replace('green_bean_sale_defaults:', '');
       const parsedValue = parseBeanSaleDefaultsSettingValue(row.value);
+
+      if (!beanId || !parsedValue || result.has(beanId)) {
+        return;
+      }
+
+      result.set(beanId, parsedValue);
+    });
+
+    return result;
+  };
+
+  const loadBeanGradeMap = async (): Promise<Map<string, BeanGradeSettingValue>> => {
+    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+      orderBy: {
+        ascending: false,
+        column: 'updated_at',
+      },
+    });
+    const result = new Map<string, BeanGradeSettingValue>();
+
+    rows.forEach((row) => {
+      if (!row.key.startsWith('green_bean_grade:')) {
+        return;
+      }
+
+      const beanId = row.key.replace('green_bean_grade:', '');
+      const parsedValue = parseBeanGradeSettingValue(row.value);
 
       if (!beanId || !parsedValue || result.has(beanId)) {
         return;
@@ -678,18 +770,43 @@ export function createSupabaseGreenBeanInventoryRepository(
     });
   };
 
+  const saveBeanGrade = async (
+    beanId: string | number,
+    grade: null | string | undefined,
+  ): Promise<void> => {
+    const currentRecord = await loadBeanGradeRecord(beanId);
+    const payload = {
+      key: getBeanGradeSettingKey(String(beanId)),
+      value: {
+        grade: normalizeText(grade),
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    if (!currentRecord) {
+      await client.insert('app_settings', payload);
+      return;
+    }
+
+    await client.update('app_settings', payload, {
+      match: { id: currentRecord.id },
+      select: '*',
+    });
+  };
+
   const loadInventoryOverviewRecordsFromTables = async (): Promise<SupabaseGreenBeanInventoryRecord[]> => {
-    const [beans, purchaseBatches, saleSpecs, roastBatches, savedSaleDefaultsMap] = await Promise.all([
+    const [beans, purchaseBatches, saleSpecs, roastBatches, savedSaleDefaultsMap, savedGradeMap] = await Promise.all([
       client.list<SupabaseGreenBeanRecord>(tableName, {
         orderBy: {
           ascending: false,
-          column: 'updated_at',
+          column: 'created_at',
         },
       }),
       client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches'),
       client.list<SupabaseSaleSpecRecord>('bean_sale_specs'),
       client.list<SupabaseRoastBatchOverviewRecord>('roast_batches'),
       loadBeanSaleDefaultsMap(),
+      loadBeanGradeMap(),
     ]);
 
     const purchaseBatchMap = new Map<string, SupabasePurchaseBatchRecord[]>();
@@ -729,6 +846,7 @@ export function createSupabaseGreenBeanInventoryRepository(
         saleSpecMap.get(bean.id) ?? [],
         (roastBatchMap.get(bean.id) ?? []).length,
         savedSaleDefaultsMap.get(bean.id) ?? null,
+        savedGradeMap.get(bean.id) ?? null,
       ),
     );
   };
@@ -762,6 +880,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       match: { green_bean_id: beanId, is_default: true },
     });
     const savedSaleDefaults = parseBeanSaleDefaultsSettingValue((await loadBeanSaleDefaultsRecord(beanId))?.value);
+    const savedGrade = parseBeanGradeSettingValue((await loadBeanGradeRecord(beanId))?.value);
 
     const beanRow = beanRows[0];
 
@@ -774,6 +893,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       getLatestPurchaseBatchRecord(purchaseRows),
       getDefaultSaleSpecRecord(saleSpecRows),
       savedSaleDefaults,
+      savedGrade,
     );
   };
 
@@ -906,7 +1026,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       const rows = await loadInventoryOverviewRecordsFromTables();
 
       const beans = rows
-        .sort((left, right) => compareIsoDateDesc(left.updated_at, right.updated_at))
+        .sort((left, right) => compareIsoDateDesc(left.created_at, right.created_at))
         .map((record) => mapSupabaseGreenBeanInventoryRecordToBean(record));
 
       beanCacheService.save(beans, 'supabase');
@@ -926,6 +1046,7 @@ export function createSupabaseGreenBeanInventoryRepository(
         throw new AppError('更新失败：未找到记录。', { code: 'DATA' });
       }
 
+      await saveBeanGrade(beanId, input.grade);
       await upsertLatestPurchaseBatch(beanId, input);
       await upsertDefaultSaleSpec(beanId, input);
       await saveBeanSaleDefaults(beanId, input);
@@ -999,6 +1120,7 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       const newBeanId = insertedBean.id;
 
+      await saveBeanGrade(newBeanId, input.grade);
       await upsertLatestPurchaseBatch(newBeanId, input);
       await upsertDefaultSaleSpec(newBeanId, input);
       await saveBeanSaleDefaults(newBeanId, input);
@@ -1119,6 +1241,7 @@ export const beanService = {
         defaultSaleUnitPrice: localRecord.defaultSaleUnitPrice,
         defaultSaleUnitWeightGrams: localRecord.defaultSaleUnitWeightGrams ?? null,
         displayName: localRecord.displayName,
+        grade: localRecord.grade ?? null,
         harvestSeason: localRecord.harvestSeason ?? '',
         millName: localRecord.millName ?? null,
         notes: localRecord.notes ?? null,

@@ -50,6 +50,44 @@ describe('BeanPage', () => {
     );
   };
 
+  const saveBeanSummaryCache = (): void => {
+    window.localStorage.setItem(
+      beanCacheStorageKey,
+      JSON.stringify({
+        beans: [
+          {
+            costPerKg: 100,
+            createdAt: '2026-07-03T00:00:00.000Z',
+            grade: 'G1',
+            id: 'bean-a',
+            name: '测试豆 A',
+            origin: '埃塞俄比亚 · 古吉',
+            process: '水洗',
+            stockKg: 1,
+            updatedAt: '2026-07-03T00:00:00.000Z',
+          },
+          {
+            costPerKg: 200,
+            createdAt: '2026-07-03T00:00:00.000Z',
+            grade: 'G1',
+            id: 'bean-b',
+            name: '测试豆 B',
+            origin: '哥伦比亚 · 慧兰',
+            process: '日晒',
+            stockKg: 9,
+            updatedAt: '2026-07-03T00:00:00.000Z',
+          },
+        ],
+        errorCode: null,
+        lastReadAt: '2026-07-03T00:00:00.000Z',
+        source: 'mock',
+        status: 'cached',
+        syncedAt: '2026-07-03T00:00:00.000Z',
+        version: 1,
+      }),
+    );
+  };
+
   it('renders the bean inventory workspace with the current simplified search layout', async () => {
     renderWithQuery(<BeanPage />);
 
@@ -155,5 +193,16 @@ describe('BeanPage', () => {
 
     expect(screen.queryByLabelText('零库存生豆折叠区')).not.toBeInTheDocument();
     expect(screen.getByText('零库存测试豆')).toBeInTheDocument();
+  });
+
+  it('calculates the summary average cost with remaining stock weighting', () => {
+    saveBeanSummaryCache();
+
+    renderWithQuery(<BeanPage />);
+
+    const summary = screen.getByLabelText('生豆库存概览');
+
+    expect(within(summary).getByText('10 kg')).toBeInTheDocument();
+    expect(within(summary).getByText('¥190 / kg')).toBeInTheDocument();
   });
 });

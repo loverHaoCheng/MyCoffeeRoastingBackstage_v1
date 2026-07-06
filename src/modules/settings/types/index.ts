@@ -78,8 +78,11 @@ export const appDisplayScaleMin = 0.85;
 export const appDisplayScaleMax = 1.2;
 export const appDisplayScaleStep = 0.05;
 
+const defaultBeanInventoryVisibleKeys = ['stock', 'cost', 'supplier', 'grade'] as const;
+const legacyDefaultBeanInventoryVisibleKeys = ['stock', 'cost', 'supplier', 'process'] as const;
+
 const defaultCardMetaVisibleKeys: Record<AppCardModuleKey, string[]> = {
-  beanInventory: ['stock', 'cost', 'supplier', 'process'],
+  beanInventory: [...defaultBeanInventoryVisibleKeys],
   roastBatch: ['inputWeight', 'outputWeight', 'lossRate', 'roastPlan'],
   roastPlan: ['beanName', 'batchWeight', 'roastLevel', 'status'],
 };
@@ -133,6 +136,16 @@ const normalizeCardMetaDisplaySettings = (
   };
 };
 
+const shouldUpgradeLegacyBeanInventoryKeys = (
+  value: Partial<CardMetaDisplaySettings> | null | undefined,
+): boolean => {
+  if (value?.displayCount !== 4 || !Array.isArray(value.visibleMetaKeys)) {
+    return false;
+  }
+
+  return legacyDefaultBeanInventoryVisibleKeys.every((key, index) => value.visibleMetaKeys?.[index] === key);
+};
+
 export const normalizeAppDisplaySettings = (
   value: AppDisplaySettingsInput | null | undefined,
 ): AppDisplaySettings => {
@@ -142,7 +155,12 @@ export const normalizeAppDisplaySettings = (
   return {
     cardDisplaySettings: {
       beanInventory: normalizeCardMetaDisplaySettings(
-        source.cardDisplaySettings?.beanInventory,
+        shouldUpgradeLegacyBeanInventoryKeys(source.cardDisplaySettings?.beanInventory)
+          ? {
+              ...source.cardDisplaySettings?.beanInventory,
+              visibleMetaKeys: [...defaultBeanInventoryVisibleKeys],
+            }
+          : source.cardDisplaySettings?.beanInventory,
         defaultCardMetaVisibleKeys.beanInventory,
       ),
       roastBatch: normalizeCardMetaDisplaySettings(

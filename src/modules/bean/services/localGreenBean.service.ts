@@ -68,6 +68,7 @@ const normalizeRemainingWeightGrams = (
 const normalizeLocalGreenBeanRecord = (record: LocalGreenBeanRecord): LocalGreenBeanRecord => {
   return {
     ...record,
+    grade: normalizeText(record.grade),
     remainingWeightGrams: normalizeRemainingWeightGrams(
       record.purchasedWeightGrams,
       record.remainingWeightGrams,
@@ -162,7 +163,7 @@ export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bea
   name: record.displayName,
   origin: buildOriginLabel(record),
   process: record.processMethod,
-  grade: record.variety,
+  grade: normalizeText(record.grade) ?? '',
   stockKg: calculateStockKg(record),
   costPerKg: calculateCostPerKg(record),
   supplierName: normalizeText(record.supplierName),
@@ -193,6 +194,7 @@ export const localGreenBeanService = {
       code: input.code.trim(),
       defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
       displayName: input.displayName.trim(),
+      grade: normalizeText(input.grade),
       harvestSeason: normalizeText(input.harvestSeason),
       millName: normalizeText(input.millName),
       notes: normalizeText(input.notes),
@@ -305,6 +307,7 @@ export const localGreenBeanService = {
       ...input,
       code: input.code.trim(),
       displayName: input.displayName.trim(),
+      grade: normalizeText(input.grade),
       harvestSeason: normalizeText(input.harvestSeason),
       millName: normalizeText(input.millName),
       notes: normalizeText(input.notes),

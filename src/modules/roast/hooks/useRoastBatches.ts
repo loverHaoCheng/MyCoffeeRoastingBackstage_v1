@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { roastBatchService } from '../services/roastBatch.service';
 import type { RoastBatchCreateInput, RoastBatchUpdateInput } from '../types/roastBatch';
+import type { RoastBatchRecord } from '../types/roastBatch';
 
 export const roastBatchQueryKeys = {
   all: ['roast-batches'] as const,
@@ -14,6 +15,12 @@ const shouldRetry = (failureCount: number, error: unknown): boolean => {
     if (code === 'AUTH' || code === 'CONFIG' || code === 'DATA') return false;
   }
   return failureCount < 2;
+};
+
+const sortBatchesByRoastDate = (batches: RoastBatchRecord[]): RoastBatchRecord[] => {
+  return [...batches].sort((left, right) => {
+    return new Date(right.roastDate).getTime() - new Date(left.roastDate).getTime();
+  });
 };
 
 export function useRoastBatches() {
@@ -50,8 +57,40 @@ export function useUpdateRoastBatch() {
       const response = await roastBatchService.updateBatch(batchId, input);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: roastBatchQueryKeys.all });
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: roastBatchQueryKeys.list() });
+
+      const previousBatches = queryClient.getQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list());
+      const currentBatch = previousBatches?.find((batch) => batch.id === variables.batchId);
+
+      if (currentBatch) {
+        const nextBatch: RoastBatchRecord = {
+          ...currentBatch,
+          ...variables.input,
+          roastedBeanName:
+            variables.input.roastedBeanName ?? currentBatch.roastedBeanName ?? currentBatch.greenBeanName,
+          status: variables.input.status ?? currentBatch.status,
+          updatedAt: new Date().toISOString(),
+        };
+
+        queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), (current = []) =>
+          sortBatchesByRoastDate(
+            current.map((batch) => (batch.id === variables.batchId ? nextBatch : batch)),
+          ),
+        );
+      }
+
+      return { previousBatches };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousBatches) {
+        queryClient.setQueryData(roastBatchQueryKeys.list(), context.previousBatches);
+      }
+    },
+    onSuccess: (nextBatch, variables) => {
+      queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), (current = []) =>
+        sortBatchesByRoastDate(current.map((batch) => (batch.id === variables.batchId ? nextBatch : batch))),
+      );
     },
   });
 }
