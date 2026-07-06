@@ -11,6 +11,11 @@
   background: transparent;
 }
 
+.compact {
+  gap: 8px;
+  padding: 6px 0 calc(10px + var(--app-safe-bottom));
+}
+
 .single {
   grid-template-columns: 1fr;
 }
@@ -53,6 +58,12 @@
     0 10px 24px rgb(17 24 39 / 4%),
     inset 0 1px 0 var(--app-card-inset-highlight);
   font-weight: 700;
+}
+
+.compact :global(.ant-btn) {
+  min-height: 40px;
+  border-radius: 14px;
+  font-size: 14px;
 }
 
 .bar :global(.ant-btn-primary),

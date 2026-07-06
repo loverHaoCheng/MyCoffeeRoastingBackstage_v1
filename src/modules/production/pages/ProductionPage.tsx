@@ -7,13 +7,14 @@ import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import { useBeans } from '@/modules/bean/hooks';
 import {
   RoastBatchCard,
+  RoastBatchFieldEditorDrawer,
   RoastBatchCreator,
   RoastBatchDrawer,
 } from '@/modules/roast/components';
+import type { RoastBatchEditableFieldPath } from '@/modules/roast/components/RoastBatchFieldEditorDrawer';
 import {
   useDeleteRoastBatch,
   useRoastBatches,
-  useUpdateRoastBatch,
 } from '@/modules/roast/hooks';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
@@ -52,10 +53,10 @@ export function ProductionPage() {
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [selectedBatchFieldPath, setSelectedBatchFieldPath] = useState<RoastBatchEditableFieldPath | undefined>();
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
   const { data: batches = [], isFetching, refetch } = useRoastBatches();
   const { data: beans = [] } = useBeans();
-  const updateMutation = useUpdateRoastBatch();
   const deleteMutation = useDeleteRoastBatch();
   const isWide = screens.md ?? false;
   const hasGreenBeanConnection =
@@ -67,11 +68,13 @@ export function ProductionPage() {
 
   const handleView = (batchId: string) => {
     setSelectedBatchId(batchId);
+    setSelectedBatchFieldPath(undefined);
     setDetailMode('view');
   };
 
-  const handleEdit = (batchId: string) => {
+  const handleEdit = (batchId: string, fieldPath?: RoastBatchEditableFieldPath) => {
     setSelectedBatchId(batchId);
+    setSelectedBatchFieldPath(fieldPath);
     setDetailMode('edit');
   };
 
@@ -88,6 +91,7 @@ export function ProductionPage() {
         try {
           await deleteMutation.mutateAsync(batch.id);
           setSelectedBatchId(null);
+          setSelectedBatchFieldPath(undefined);
           setDetailMode(null);
           void message.success('烘焙记录已删除');
         } catch (error: unknown) {
@@ -140,6 +144,12 @@ export function ProductionPage() {
     }
 
     setCreationDrawerOpen(true);
+  };
+
+  const closeDetail = () => {
+    setSelectedBatchId(null);
+    setSelectedBatchFieldPath(undefined);
+    setDetailMode(null);
   };
 
   return (
@@ -209,48 +219,40 @@ export function ProductionPage() {
       </AppDrawer>
 
       {/* 详情/编辑抽屉 */}
-      <AppDrawer
-        className={styles.detailDrawer}
-        data-placement={isWide ? 'right' : 'bottom'}
-        height={isWide ? undefined : '86dvh'}
-        onClose={() => {
-          setSelectedBatchId(null);
-          setDetailMode(null);
-        }}
-        open={selectedBatch !== null && detailMode !== null}
-        placement={isWide ? 'right' : 'bottom'}
-        title={detailMode === 'view' ? '烘焙记录详情' : '编辑烘焙记录'}
-        width={720}
-      >
-        {selectedBatch && detailMode ? (
+      {selectedBatch && detailMode === 'view' ? (
+        <AppDrawer
+          className={styles.detailDrawer}
+          data-placement={isWide ? 'right' : 'bottom'}
+          height={isWide ? undefined : '86dvh'}
+          onClose={closeDetail}
+          open
+          placement={isWide ? 'right' : 'bottom'}
+          title="烘焙记录详情"
+          width={720}
+        >
           <RoastBatchDrawer
             batch={selectedBatch}
-            mode={detailMode}
-            onClose={() => {
-              setSelectedBatchId(null);
-              setDetailMode(null);
-            }}
+            mode="view"
+            onClose={closeDetail}
             onDelete={handleDelete}
-            onModeChange={setDetailMode}
-            onUpdate={(batchId, input) => {
-              submissionBackupService.save('update', { batchId, input }, 'roastBatch');
-
-              const updateTask = (async () => {
-                try {
-                  await updateMutation.mutateAsync({ batchId, input });
-                  await refreshAllAppData(queryClient);
-                  await refetch();
-                } catch (error: unknown) {
-                  const errorMessage = error instanceof Error ? error.message : '烘焙记录同步失败，本地已备份。';
-                  void message.error(errorMessage);
-                }
-              })();
-
-              void updateTask;
-            }}
           />
-        ) : null}
-      </AppDrawer>
+        </AppDrawer>
+      ) : null}
+
+      {selectedBatch && detailMode === 'edit' && selectedBatchFieldPath != null ? (
+        <RoastBatchFieldEditorDrawer
+          batch={selectedBatch}
+          fieldPath={selectedBatchFieldPath}
+          height={isWide ? undefined : '360px'}
+          onClose={closeDetail}
+          onUpdated={() => {
+            void refetch();
+          }}
+          open
+          placement={isWide ? 'right' : 'bottom'}
+          width={720}
+        />
+      ) : null}
     </main>
   );
 }

@@ -279,7 +279,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
         </div>
       </section>
 
-      <DrawerActionBar>
+      <DrawerActionBar compact>
         {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
         <Button
           block

@@ -1,14 +1,11 @@
 .card {
   position: relative;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  gap: 4px;
   width: 100%;
+  align-self: start;
   min-width: 320px;
-  min-height: 320px;
-  max-height: 345px;
-  height: auto;
-  gap: 12px;
-  padding: 18px;
+  padding: 16px 16px 11px;
   border: 1px solid var(--app-border);
   border-radius: 24px;
   background:
@@ -17,14 +14,17 @@
     var(--app-card-shadow),
     inset 0 1px 0 var(--app-card-inset-highlight);
   overflow: hidden;
-  justify-self: stretch;
+}
+
+.cardClickable {
+  cursor: pointer;
 }
 
 .card::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
-  height: 72px;
+  height: 56px;
   background: linear-gradient(180deg, var(--app-card-glow-start), var(--app-card-glow-end));
   pointer-events: none;
 }
@@ -35,249 +35,320 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
+}
+
+.titleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.headerActions {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 7px;
 }
 
 .title {
-  display: -webkit-box;
-  min-width: 0;
   margin: 0;
-  overflow: hidden;
   color: var(--app-text);
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 700;
-  line-height: 1.3;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  line-height: 1.15;
+  word-break: break-word;
 }
 
-.headerAside {
-  display: inline-flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 8px;
+.subtitle {
   flex-shrink: 0;
+  color: var(--app-text-tertiary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.headerActionBtn:global(.ant-btn) {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border: 0;
+  background: var(--app-card-button-surface);
+  box-shadow:
+    var(--app-card-button-shadow),
+    inset 0 1px 0 var(--app-card-inset-highlight);
+}
+
+.viewBtn:global(.ant-btn) {
+  color: var(--app-text-secondary);
+}
+
+.deleteBtn:global(.ant-btn) {
+  color: var(--app-text-secondary);
 }
 
 .body {
   position: relative;
   z-index: 1;
   display: grid;
-  align-content: start;
-  gap: 8px;
+  gap: 0;
   min-width: 0;
 }
 
-.description {
-  display: -webkit-box;
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  color: var(--app-text-secondary);
-  font-size: 14px;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.metaGrid {
+.rowList {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.metaCell {
-  min-width: 0;
-  min-height: 68px;
-  padding: 10px 12px;
+  overflow: hidden;
   border: 1px solid var(--app-border-soft);
-  border-radius: 18px;
-  background: linear-gradient(180deg, var(--app-card-cell-top-surface) 0%, var(--app-card-cell-bottom-surface) 100%);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--app-bg-elevated) 92%, transparent);
   box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
 }
 
-.metaCell dt {
-  margin-bottom: 6px;
-  color: var(--app-text-secondary);
-  font-size: 12px;
-  font-weight: 700;
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 10px 14px;
+  background: transparent;
 }
 
-.metaValue {
+.rowClickable {
+  cursor: pointer;
+}
+
+.row + .row {
+  border-top: 1px solid var(--app-border-soft);
+}
+
+.rowLabel {
+  flex: 1 1 auto;
   min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  color: var(--app-text);
+  color: var(--app-text-secondary);
   font-size: 15px;
   font-weight: 600;
-  line-height: 1.35;
-  text-overflow: ellipsis;
+  line-height: 1.15;
+}
+
+.rowValueArea {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rowValue {
+  min-width: 0;
+  color: var(--app-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: right;
   white-space: nowrap;
 }
 
-.metaValueMultiline {
-  min-width: 0;
-  margin: 0;
+.rowValueMultiline {
+  white-space: normal;
   overflow-wrap: anywhere;
-  color: var(--app-text);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.35;
 }
 
-.bodyFooter {
-  min-width: 0;
+.rowEditIcon {
+  display: inline-flex;
+  color: var(--app-text-tertiary);
+}
+
+.rowEditIcon :global(.anticon) {
+  font-size: 12px;
 }
 
 .footer {
   position: relative;
   z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: auto;
-  padding-top: 2px;
+  justify-content: center;
+  margin-top: -4px;
 }
 
-.actionBtn:global(.ant-btn) {
+.expandButton:global(.ant-btn) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   width: 100%;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: 16px;
-  background: var(--app-card-button-surface);
-  color: var(--app-text);
-  font-weight: 600;
-  box-shadow:
-    var(--app-card-button-shadow),
-    inset 0 1px 0 var(--app-card-inset-highlight);
-  transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease,
-    color 180ms ease;
-}
-
-.actionBtn:global(.ant-btn):active {
-  background: var(--app-card-button-active-surface);
-  transform: translateY(0) scale(0.99);
-}
-
-.deleteBtn:global(.ant-btn) {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  border-color: var(--app-border-soft);
-  background: var(--app-card-button-surface);
+  min-height: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
   color: var(--app-text-secondary);
-  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
+  box-shadow: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.expandIcon {
+  display: inline-flex;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.expandIcon :global(.anticon) {
+  font-size: 8px;
+}
+
+.expandButton[aria-expanded='true'] .expandIcon {
+  transform: rotate(180deg);
+}
+
+.expandRegion {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  overflow: hidden;
   transition:
-    color 160ms ease,
-    background-color 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease;
+    grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease,
+    padding-top 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.expandRegion[data-expanded='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  padding-top: 0;
+}
+
+.expandRegionInner {
+  display: grid;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--app-border-soft);
 }
 
 @media (max-width: 1024px) {
   .card {
-    grid-template-rows: auto auto auto;
     min-width: 0;
-    min-height: 0;
-    max-width: none;
-    max-height: none;
-    height: auto;
-    gap: 12px;
-    padding: 16px;
-    border-radius: 22px;
+    padding: 14px 14px 9px;
+    border-radius: 20px;
+    gap: 4px;
   }
 
   .card::before {
-    height: 56px;
+    height: 48px;
   }
 
   .title {
-    font-size: 17px;
+    font-size: 21px;
   }
 
-  .description {
-    font-size: 13px;
+  .row {
+    min-height: 46px;
+    padding: 8px 12px;
   }
 
-  .metaCell {
-    min-height: 68px;
-    padding: 11px;
-    border-radius: 16px;
-  }
-
-  .metaValue,
-  .metaValueMultiline {
-    font-size: 14px;
-  }
-
-  .actionBtn:global(.ant-btn) {
-    min-height: 42px;
-    border-radius: 15px;
+  .rowValue {
+    font-size: 15px;
   }
 
   .footer {
-    margin-top: 0;
+    margin-top: -4px;
+  }
+}
+
+@media (max-width: 767px) {
+  .row {
+    min-height: 44px;
+    padding: 8px 12px;
   }
 
-  .deleteBtn:global(.ant-btn) {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
+  .rowLabel {
+    font-size: 13px;
+  }
+
+  .rowValue {
+    font-size: 14px;
+  }
+
+  .expandButton:global(.ant-btn) {
+    min-height: 22px;
+    height: 22px;
+    font-size: 8px;
   }
 }
 
 @media (max-width: 390px) {
-  .metaGrid {
-    grid-template-columns: 1fr;
+  .subtitle {
+    white-space: normal;
+  }
+
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .rowValueArea {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .rowValue {
+    text-align: left;
   }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .actionBtn:global(.ant-btn):hover {
-    border-color: var(--app-border-hover);
-    background: var(--app-card-button-hover-surface);
+  .rowClickable:hover {
+    background: color-mix(in srgb, var(--app-bg-elevated) 94%, var(--app-text) 6%);
+  }
+
+  .rowClickable:active {
+    background: color-mix(in srgb, var(--app-bg-elevated) 90%, var(--app-text) 10%);
+  }
+
+  .headerActionBtn:global(.ant-btn):hover {
     color: var(--app-text);
-    box-shadow:
-      var(--app-card-button-hover-shadow),
-      inset 0 1px 0 var(--app-card-inset-highlight);
-    transform: translateY(-1px);
+    background: var(--app-card-button-hover-surface);
   }
 
   .deleteBtn:global(.ant-btn):hover {
     color: var(--app-danger);
     background: var(--app-danger-surface);
     border-color: var(--app-danger-border);
-    transform: translateY(-1px);
+  }
+
+  .expandButton:global(.ant-btn):hover {
+    color: var(--app-text);
   }
 }
 
 @media (hover: none), (pointer: coarse) {
-  .actionBtn:global(.ant-btn),
-  .deleteBtn:global(.ant-btn) {
+  .headerActionBtn:global(.ant-btn),
+  .expandButton:global(.ant-btn) {
     transition: none;
   }
 
-  .actionBtn:global(.ant-btn):active,
-  .actionBtn:global(.ant-btn):focus,
-  .actionBtn:global(.ant-btn):focus-visible,
-  .deleteBtn:global(.ant-btn):active,
-  .deleteBtn:global(.ant-btn):focus,
-  .deleteBtn:global(.ant-btn):focus-visible {
+  .headerActionBtn:global(.ant-btn):active,
+  .headerActionBtn:global(.ant-btn):focus,
+  .headerActionBtn:global(.ant-btn):focus-visible,
+  .expandButton:global(.ant-btn):active,
+  .expandButton:global(.ant-btn):focus,
+  .expandButton:global(.ant-btn):focus-visible {
     transform: none;
-    box-shadow:
-      var(--app-card-button-shadow),
-      inset 0 1px 0 var(--app-card-inset-highlight);
+    box-shadow: none;
+  }
+
+  .rowClickable:hover {
+    background: transparent;
   }
 }

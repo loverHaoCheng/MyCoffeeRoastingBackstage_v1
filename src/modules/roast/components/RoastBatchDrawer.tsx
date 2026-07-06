@@ -371,7 +371,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
 
       {/* 底部操作栏（编辑模式） */}
       {!isView && (
-        <DrawerActionBar>
+        <DrawerActionBar compact>
           <Button onClick={onClose} block>取消</Button>
           <Button type="primary" onClick={handleSave} block>完成</Button>
         </DrawerActionBar>
@@ -379,7 +379,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
 
       {/* 查看模式的删除按钮 */}
       {isView && onDelete && (
-        <DrawerActionBar>
+        <DrawerActionBar compact>
           <Button
             danger
             icon={<DeleteOutlined />}

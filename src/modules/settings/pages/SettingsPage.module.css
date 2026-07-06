@@ -260,17 +260,26 @@
   color: var(--app-text-secondary);
   font-weight: 500;
   border-radius: 999px;
-  border: 1px solid var(--app-border-soft);
-  background: var(--app-card-button-surface);
-  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .collapseButton :global(.anticon) {
   transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms ease;
+  font-size: 10px;
 }
 
 .collapseButton[data-expanded='true'] :global(.anticon) {
   transform: rotate(180deg);
+}
+
+.collapseButton:global(.ant-btn:hover),
+.collapseButton:global(.ant-btn:focus-visible),
+.collapseButton:global(.ant-btn:active) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none;
 }
 
 .statusInlineBar {

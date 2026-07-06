@@ -12,38 +12,64 @@ export interface CardDisplayModuleDefinition {
   metaOptions: CardDisplayMetaOption[];
 }
 
+export const beanInventoryCardMetaOptions: CardDisplayMetaOption[] = [
+  { key: 'stock', label: '库存' },
+  { key: 'cost', label: '成本' },
+  { key: 'supplier', label: '供应商' },
+  { key: 'process', label: '处理法' },
+  { key: 'origin', label: '产地' },
+  { key: 'variety', label: '品种' },
+  { key: 'grade', label: '等级' },
+  { key: 'harvestSeason', label: '产季' },
+  { key: 'code', label: '编号' },
+  { key: 'defaultRoastInput', label: '默认烘焙量' },
+  { key: 'defaultSaleUnitPrice', label: '默认单份售价' },
+  { key: 'defaultSaleUnitWeight', label: '默认单份重量' },
+];
+
+export const roastBatchCardMetaOptions: CardDisplayMetaOption[] = [
+  { key: 'roastDate', label: '烘焙日期' },
+  { key: 'greenBean', label: '生豆' },
+  { key: 'roastedBean', label: '熟豆' },
+  { key: 'roastPlan', label: '烘焙计划' },
+  { key: 'inputWeight', label: '入豆量' },
+  { key: 'outputWeight', label: '出豆量' },
+  { key: 'lossRate', label: '失水率' },
+  { key: 'roastLevel', label: '烘焙程度' },
+  { key: 'developmentRatio', label: '发展比' },
+  { key: 'firstCrackTime', label: '一爆时间' },
+  { key: 'totalRoastTime', label: '总烘焙时间' },
+  { key: 'notes', label: '备注' },
+  { key: 'status', label: '状态' },
+];
+
+export const roastPlanCardMetaOptions: CardDisplayMetaOption[] = [
+  { key: 'beanName', label: '生豆' },
+  { key: 'batchWeight', label: '批次重量' },
+  { key: 'plannedBatchWeight', label: '计划重量' },
+  { key: 'roastPurpose', label: '用途' },
+  { key: 'roastLevel', label: '烘焙度' },
+  { key: 'status', label: '状态' },
+  { key: 'stepCount', label: '节点数' },
+];
+
 export const cardDisplayModules: CardDisplayModuleDefinition[] = [
   {
     description: '生豆库存卡片',
     key: 'beanInventory',
     label: '生豆库存',
-    metaOptions: [
-      { key: 'stock', label: '库存' },
-      { key: 'cost', label: '成本' },
-      { key: 'supplier', label: '供应商' },
-      { key: 'process', label: '处理法' },
-    ],
+    metaOptions: beanInventoryCardMetaOptions,
   },
   {
     description: '烘焙批次卡片',
     key: 'roastBatch',
     label: '烘焙批次',
-    metaOptions: [
-      { key: 'inputWeight', label: '入豆量' },
-      { key: 'outputWeight', label: '出豆量' },
-      { key: 'lossRate', label: '失水率' },
-      { key: 'roastPlan', label: '烘焙计划' },
-    ],
+    metaOptions: roastBatchCardMetaOptions,
   },
   {
     description: '烘焙计划卡片',
     key: 'roastPlan',
     label: '烘焙计划',
-    metaOptions: [
-      { key: 'beanName', label: '生豆' },
-      { key: 'batchWeight', label: '批次重量' },
-      { key: 'roastLevel', label: '烘焙度' },
-      { key: 'status', label: '状态' },
-    ],
+    metaOptions: roastPlanCardMetaOptions,
   },
 ];

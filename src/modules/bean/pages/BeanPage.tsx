@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
-import { BeanAiRecognitionPlaceholder, BeanDetailDrawer, BeanInventoryCard, BeanManualCreator } from '@/modules/bean/components';
+import {
+  BeanAiRecognitionPlaceholder,
+  BeanDetailDrawer,
+  BeanFieldEditorDrawer,
+  BeanInventoryCard,
+  BeanManualCreator,
+} from '@/modules/bean/components';
 import { beanQueryKeys, useBeans } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services';
 import { useCostTemplateSettings, useSupabaseConnectionSettings } from '@/modules/settings/hooks';
@@ -15,6 +21,9 @@ import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
 import { logger } from '@/shared/logger/logger';
 import type { Bean } from '@/types/domain';
 import type { GreenBeanCreateInput } from '@/modules/bean/types';
+import type { FieldPath } from 'react-hook-form';
+
+import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';
 
 import styles from './BeanPage.module.css';
 
@@ -53,6 +62,7 @@ export function BeanPage() {
   const [keyword, setKeyword] = useState('');
   const [isZeroStockCollapsed, setIsZeroStockCollapsed] = useState(true);
   const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
+  const [selectedBeanFieldPath, setSelectedBeanFieldPath] = useState<FieldPath<GreenBeanFormInput> | undefined>();
   const [detailMode, setDetailMode] = useState<BeanDetailMode | null>(null);
   const { data: beans = [], isFetching, refetch } = useBeans();
 
@@ -121,11 +131,13 @@ export function BeanPage() {
 
   const handleViewBean = (beanId: Bean['id']) => {
     setSelectedBeanId(beanId);
+    setSelectedBeanFieldPath(undefined);
     setDetailMode('view');
   };
 
-  const handleEditBean = (beanId: Bean['id']) => {
+  const handleEditBean = (beanId: Bean['id'], fieldPath?: FieldPath<GreenBeanFormInput>) => {
     setSelectedBeanId(beanId);
+    setSelectedBeanFieldPath(fieldPath);
     setDetailMode('edit');
   };
 
@@ -336,19 +348,21 @@ export function BeanPage() {
         height={isWide ? undefined : '86dvh'}
         onClose={() => {
           setSelectedBeanId(null);
+          setSelectedBeanFieldPath(undefined);
           setDetailMode(null);
         }}
-        open={selectedBean !== null && detailMode !== null}
+        open={selectedBean !== null && detailMode === 'view'}
         placement={isWide ? 'right' : 'bottom'}
-        title={detailMode === 'view' ? '查看生豆详情' : '编辑生豆'}
+        title="查看生豆详情"
         width={720}
       >
-        {selectedBean && detailMode ? (
+        {selectedBean && detailMode === 'view' ? (
           <BeanDetailDrawer
             bean={selectedBean}
             mode={detailMode}
             onClose={() => {
               setSelectedBeanId(null);
+              setSelectedBeanFieldPath(undefined);
               setDetailMode(null);
             }}
             onUpdate={() => {
@@ -357,6 +371,25 @@ export function BeanPage() {
           />
         ) : null}
       </AppDrawer>
+
+      {selectedBean && detailMode === 'edit' && selectedBeanFieldPath != null ? (
+        <BeanFieldEditorDrawer
+          bean={selectedBean}
+          fieldPath={selectedBeanFieldPath}
+          height={isWide ? undefined : '360px'}
+          onClose={() => {
+            setSelectedBeanId(null);
+            setSelectedBeanFieldPath(undefined);
+            setDetailMode(null);
+          }}
+          onUpdated={() => {
+            void refetch();
+          }}
+          open
+          placement={isWide ? 'right' : 'bottom'}
+          width={720}
+        />
+      ) : null}
     </main>
   );
 }

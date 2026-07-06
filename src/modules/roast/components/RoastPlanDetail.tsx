@@ -14,7 +14,7 @@ interface RoastPlanDetailProps {
   mode: 'view' | 'edit';
   onClose: () => void;
   onDelete: (planId: RoastPlan['id']) => Promise<void> | void;
-  onUpdate: (planId: RoastPlan['id'], input: RoastPlanJsonInput) => Promise<void> | void;
+  onUpdate?: (planId: RoastPlan['id'], input: RoastPlanJsonInput) => Promise<void> | void;
   plan: RoastPlan;
 }
 
@@ -23,7 +23,7 @@ export function RoastPlanDetail({ mode, onClose, onDelete, onUpdate, plan }: Roa
 
   const handleSubmit = (input: RoastPlanJsonInput) => {
     onClose();
-    void onUpdate(plan.id, input);
+    void onUpdate?.(plan.id, input);
   };
 
   if (mode === 'view') {
@@ -82,6 +82,12 @@ export function RoastPlanDetail({ mode, onClose, onDelete, onUpdate, plan }: Roa
 
   return (
     <section className={styles.panel}>
+      <RoastPlanForm
+        initialValues={initialValues}
+        onCancel={onClose}
+        onSubmit={handleSubmit}
+        submitLabel="保存计划"
+      />
       <div className={styles.dangerZone}>
         <Popconfirm
           cancelText="取消"
@@ -97,12 +103,6 @@ export function RoastPlanDetail({ mode, onClose, onDelete, onUpdate, plan }: Roa
           </Button>
         </Popconfirm>
       </div>
-      <RoastPlanForm
-        initialValues={initialValues}
-        onCancel={onClose}
-        onSubmit={handleSubmit}
-        submitLabel="保存计划"
-      />
     </section>
   );
 }

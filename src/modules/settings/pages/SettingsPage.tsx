@@ -1435,7 +1435,7 @@ export function SettingsPage() {
             <span className={styles.helpText}>{templateErrors.notes ?? '便于团队区分不同销售场景'}</span>
           </div>
 
-          <DrawerActionBar>
+          <DrawerActionBar compact>
             <Button onClick={handleCloseTemplateDrawer}>取消</Button>
             <Button onClick={handleSaveTemplate} type="primary">
               {isCreatingTemplate ? '创建模板' : '保存模板'}

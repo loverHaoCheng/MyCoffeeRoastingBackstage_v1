@@ -8,6 +8,7 @@ import { calculateCostMetrics } from '@/modules/finance/services';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import type { CostTemplate } from '@/modules/settings/types';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
+import { scrollToField } from '@/shared/forms/scrollToField';
 
 import type { GreenBeanFormInput } from '../types/localGreenBean';
 
@@ -18,6 +19,7 @@ const { TextArea } = Input;
 interface BeanFormProps {
   autoApplyDefaultCostTemplate?: boolean;
   enableCostTemplateSelection?: boolean;
+  focusFieldPath?: FieldPath<GreenBeanFormInput>;
   initialValues: GreenBeanFormInput;
   onCancel?: () => void;
   onSubmit: (input: GreenBeanFormInput) => Promise<void> | void;
@@ -108,6 +110,7 @@ const calculateTemplateDrivenSaleDefaults = (
 export function BeanForm({
   autoApplyDefaultCostTemplate = false,
   enableCostTemplateSelection = false,
+  focusFieldPath,
   initialValues,
   onCancel,
   onSubmit,
@@ -166,6 +169,17 @@ export function BeanForm({
     initialValues,
     reset,
   ]);
+
+  useEffect(() => {
+    if (!focusFieldPath) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      scrollToField(focusFieldPath);
+      setFocus(focusFieldPath);
+    });
+  }, [focusFieldPath, setFocus]);
 
   useEffect(() => {
     if (!enableCostTemplateSelection) {
@@ -715,7 +729,7 @@ export function BeanForm({
         <div className={styles.linkedHint}>烘焙方案、烘焙记录不会在这里手动填写，创建生豆后会在烘焙模块继续关联。</div>
       </section>
 
-      <DrawerActionBar>
+      <DrawerActionBar compact>
         {onCancel ? (
           <Button block onClick={onCancel}>
             取消

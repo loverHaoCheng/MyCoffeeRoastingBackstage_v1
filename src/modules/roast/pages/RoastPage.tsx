@@ -6,10 +6,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import {
   RoastPlanDetail,
+  RoastPlanFieldEditorDrawer,
   RoastPlanList,
   RoastPlanManualCreator,
   RoastPlanJsonImporter,
 } from '@/modules/roast/components';
+import type { RoastPlanEditableFieldPath } from '@/modules/roast/components/RoastPlanFieldEditorDrawer';
 import {
   roastPlanQueryKeys,
   useDeleteRoastPlan,
@@ -64,6 +66,7 @@ export function RoastPage() {
   const { supabaseConnections } = useSupabaseConnectionSettings();
   const [keyword, setKeyword] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState<RoastPlan['id'] | null>(null);
+  const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | undefined>();
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [creationTab, setCreationTab] = useState<'manual' | 'json'>('manual');
@@ -87,12 +90,14 @@ export function RoastPage() {
   // 查看
   const handleView = (planId: RoastPlan['id']) => {
     setSelectedPlanId(planId);
+    setSelectedPlanFieldPath(undefined);
     setDetailMode('view');
   };
 
   // 编辑
-  const handleEdit = (planId: RoastPlan['id']) => {
+  const handleEdit = (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath) => {
     setSelectedPlanId(planId);
+    setSelectedPlanFieldPath(fieldPath);
     setDetailMode('edit');
   };
 
@@ -108,6 +113,7 @@ export function RoastPage() {
         try {
           await deleteMutation.mutateAsync(plan.id);
           setSelectedPlanId(null);
+          setSelectedPlanFieldPath(undefined);
           setDetailMode(null);
           void message.success('烘焙计划已删除');
         } catch (error: unknown) {
@@ -201,6 +207,7 @@ export function RoastPage() {
   // 关闭详情
   const closeDetail = () => {
     setSelectedPlanId(null);
+    setSelectedPlanFieldPath(undefined);
     setDetailMode(null);
   };
 
@@ -299,19 +306,19 @@ export function RoastPage() {
       </AppDrawer>
 
       {/* 详情/编辑抽屉 */}
-      <AppDrawer
-        className={styles.detailDrawer}
-        data-placement={isWide ? 'right' : 'bottom'}
-        height={isWide ? undefined : '86dvh'}
-        onClose={closeDetail}
-        open={selectedPlan !== null && detailMode !== null}
-        placement={isWide ? 'right' : 'bottom'}
-        title={getDetailDrawerTitle(detailMode)}
-        width={720}
-      >
-        {selectedPlan && detailMode ? (
+      {selectedPlan && detailMode === 'view' ? (
+        <AppDrawer
+          className={styles.detailDrawer}
+          data-placement={isWide ? 'right' : 'bottom'}
+          height={isWide ? undefined : '86dvh'}
+          onClose={closeDetail}
+          open
+          placement={isWide ? 'right' : 'bottom'}
+          title={getDetailDrawerTitle(detailMode)}
+          width={720}
+        >
           <RoastPlanDetail
-            mode={detailMode}
+            mode="view"
             onClose={closeDetail}
             onDelete={(planId) => {
               const plan = plans.find((p) => p.id === planId);
@@ -321,8 +328,23 @@ export function RoastPage() {
             onUpdate={handleUpdate}
             plan={selectedPlan}
           />
-        ) : null}
-      </AppDrawer>
+        </AppDrawer>
+      ) : null}
+
+      {selectedPlan && detailMode === 'edit' && selectedPlanFieldPath != null ? (
+        <RoastPlanFieldEditorDrawer
+          fieldPath={selectedPlanFieldPath}
+          height={isWide ? undefined : '360px'}
+          onClose={closeDetail}
+          onUpdated={() => {
+            void refetch();
+          }}
+          open
+          plan={selectedPlan}
+          placement={isWide ? 'right' : 'bottom'}
+          width={720}
+        />
+      ) : null}
     </main>
   );
 }

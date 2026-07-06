@@ -53,7 +53,7 @@ export function RoastPlanJsonImporter({ onCancel, onImport }: RoastPlanJsonImpor
         spellCheck={false}
         value={jsonText}
       />
-      <DrawerActionBar>
+      <DrawerActionBar compact>
         {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
         <Button icon={<ImportOutlined />} onClick={handleImport} type="primary">
           创建烘焙计划

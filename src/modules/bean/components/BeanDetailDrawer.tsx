@@ -6,6 +6,9 @@ import { useBeanEditableDetail } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import type { Bean } from '@/types/domain';
+import type { FieldPath } from 'react-hook-form';
+
+import type { GreenBeanFormInput } from '../types/localGreenBean';
 
 import { BeanForm } from './BeanForm';
 import styles from './BeanDetailDrawer.module.css';
@@ -14,6 +17,7 @@ type DetailMode = 'view' | 'edit';
 
 interface BeanDetailDrawerProps {
   bean: Bean;
+  focusFieldPath?: FieldPath<GreenBeanFormInput>;
   mode: DetailMode;
   onClose: () => void;
   onUpdate: () => void;
@@ -29,7 +33,7 @@ const formatCurrency = new Intl.NumberFormat('zh-CN', {
   style: 'currency',
 });
 
-export function BeanDetailDrawer({ bean, mode, onClose, onUpdate }: BeanDetailDrawerProps) {
+export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose, onUpdate }: BeanDetailDrawerProps) {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const editableDetailQuery = useBeanEditableDetail(bean.id);
@@ -129,6 +133,7 @@ export function BeanDetailDrawer({ bean, mode, onClose, onUpdate }: BeanDetailDr
       <BeanForm
         enableCostTemplateSelection
         initialValues={editableDetailQuery.data}
+        focusFieldPath={focusFieldPath}
         onCancel={onClose}
         onSubmit={(input) => {
           onClose();
