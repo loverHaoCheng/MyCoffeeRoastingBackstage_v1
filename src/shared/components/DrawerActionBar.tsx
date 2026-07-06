@@ -15,5 +15,11 @@ const joinClassNames = (...classNames: (false | string | undefined)[]): string =
 export function DrawerActionBar({ children, compact = false }: DrawerActionBarProps) {
   const actionCount = Children.toArray(children).filter(Boolean).length;
 
-  return <footer className={joinClassNames(styles.bar, compact ? styles.compact : undefined, actionCount <= 1 ? styles.single : undefined)}>{children}</footer>;
+  return (
+    <footer className={styles.bar}>
+      <div className={joinClassNames(styles.surface, compact ? styles.compact : undefined, actionCount <= 1 ? styles.single : undefined)}>
+        {children}
+      </div>
+    </footer>
+  );
 }

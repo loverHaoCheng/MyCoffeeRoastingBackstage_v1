@@ -7,6 +7,11 @@
   gap: 0;
 }
 
+.inner {
+  display: grid;
+  gap: 0;
+}
+
 .content {
   display: grid;
   gap: 10px;

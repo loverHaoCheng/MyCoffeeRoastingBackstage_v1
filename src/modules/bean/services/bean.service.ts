@@ -1,6 +1,9 @@
 import { beanCacheService } from '@/modules/bean/services/beanCache.service';
 import { beanSyncService } from '@/modules/bean/services/beanSync.service';
-import { localGreenBeanService, mapLocalGreenBeanRecordToBean } from '@/modules/bean/services/localGreenBean.service';
+import {
+  localGreenBeanService,
+  mapLocalGreenBeanRecordToBean,
+} from '@/modules/bean/services/localGreenBean.service';
 import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
 import { logger } from '@/shared/logger/logger';
 import { AppError } from '@/shared/errors/AppError';
@@ -9,6 +12,7 @@ import { SupabaseRestClient } from '@/services/supabaseRestClient';
 import type { Bean } from '@/types/domain';
 
 import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../types';
+import type { LocalGreenBeanRecord } from '../types/localGreenBean';
 
 interface GreenBeanTableUpdateInput {
   altitude_meters_max?: null | number;
@@ -1297,6 +1301,47 @@ export const beanService = {
     const localRecord = localGreenBeanService.create(input);
     return mapLocalGreenBeanRecordToBean(localRecord);
   },
+  prepareOptimisticDelete(beanId: Bean['id']): {
+    cacheBeans: Bean[] | null;
+    cacheSource: 'mock' | 'supabase' | null;
+    localRecord: LocalGreenBeanRecord | null;
+  } {
+    const cacheBeans = beanCacheService.getBeans();
+    const cacheStatus = beanCacheService.getStatus();
+    const beanIdString = String(beanId);
+    const localRecord =
+      beanIdString.startsWith('local-') ? localGreenBeanService.findRecordById(beanIdString) : null;
+
+    if (cacheBeans) {
+      const nextCacheBeans = cacheBeans.filter((bean) => String(bean.id) !== beanIdString);
+      beanCacheService.save(nextCacheBeans, cacheStatus.source ?? 'supabase');
+    }
+
+    if (localRecord) {
+      localGreenBeanService.removeById(beanIdString);
+    }
+
+    return {
+      cacheBeans,
+      cacheSource: cacheStatus.source,
+      localRecord,
+    };
+  },
+  rollbackOptimisticDelete(snapshot: {
+    cacheBeans: Bean[] | null;
+    cacheSource: 'mock' | 'supabase' | null;
+    localRecord: LocalGreenBeanRecord | null;
+  }): Bean[] {
+    if (snapshot.cacheBeans) {
+      beanCacheService.save(snapshot.cacheBeans, snapshot.cacheSource ?? 'supabase');
+    }
+
+    if (snapshot.localRecord) {
+      localGreenBeanService.restore(snapshot.localRecord);
+    }
+
+    return getBootstrappedBeans();
+  },
   finalizeOptimisticBean(optimisticBeanId: string, remoteBean: Bean): Bean[] {
     localGreenBeanService.removeById(optimisticBeanId);
     const nextBeans = mergeBeans([remoteBean]);
@@ -1504,12 +1549,12 @@ export const beanService = {
       code: 'NETWORK',
     });
   },
-  async deleteBean(beanId: string | number): Promise<void> {
+  async deleteBean(beanId: string | number): Promise<{ queued: boolean; synced: boolean }> {
     // 在线且已配置 Supabase：直接同步到 Supabase
     if (beanSyncService.isOnline()) {
       try {
         await resolveBeanRepository().deleteBean(beanId);
-        return;
+        return { queued: false, synced: true };
       } catch (error) {
         logger.warn('bean delete failed, fallback to pending queue', { error });
       }
@@ -1519,8 +1564,10 @@ export const beanService = {
     // 如果是本地 ID（local- 开头），直接从本地存储中删除
     if (typeof beanId === 'string' && beanId.startsWith('local-')) {
       localGreenBeanService.removeById(beanId);
+      return { queued: false, synced: true };
     } else {
       beanSyncService.recordPendingDelete(beanId);
+      return { queued: true, synced: false };
     }
   },
   /**

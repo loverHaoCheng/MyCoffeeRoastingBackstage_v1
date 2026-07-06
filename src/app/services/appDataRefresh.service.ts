@@ -19,6 +19,7 @@ import { logger } from '@/shared/logger/logger';
 export interface AppDataRefreshResult {
   downloaded: number;
   failed: number;
+  failedDetails: string[];
   success: number;
   uploaded: number;
 }
@@ -26,6 +27,11 @@ export interface AppDataRefreshResult {
 export type AppRefreshScope = AppRouteKey | 'all';
 
 type SettingsSyncState = ReturnType<typeof useSettingsStore.getState>;
+
+interface NamedSyncJob {
+  label: string;
+  promise: Promise<{ downloaded: number; uploaded: number }>;
+}
 
 const quickRefreshQueryKeysByScope: Record<AppRefreshScope, readonly (readonly unknown[])[]> = {
   all: [
@@ -150,6 +156,14 @@ const refreshAppQueryCaches = async (
   );
 };
 
+const getSyncFailureDetail = (label: string, result: PromiseRejectedResult): string => {
+  if (result.reason instanceof Error && result.reason.message.trim().length > 0) {
+    return `${label}同步失败：${result.reason.message}`;
+  }
+
+  return `${label}同步失败`;
+};
+
 export const refreshQuickAppData = async (
   queryClient: QueryClient,
   scope: AppRefreshScope = resolveCurrentAppRefreshScope(),
@@ -160,6 +174,7 @@ export const refreshQuickAppData = async (
   return {
     downloaded: 0,
     failed: pendingResult.failed,
+    failedDetails: pendingResult.failed > 0 ? ['待同步操作同步失败'] : [],
     success: pendingResult.success,
     uploaded: 0,
   };
@@ -167,34 +182,42 @@ export const refreshQuickAppData = async (
 
 export const refreshAllAppData = async (queryClient: QueryClient): Promise<AppDataRefreshResult> => {
   const pendingResult = await syncSharedAppSettings();
-  const syncResults = await Promise.allSettled([
-    beanService.syncLocalAndRemote(),
-    roastPlanService.syncLocalAndRemote(),
-    roastBatchService.syncLocalAndRemote(),
-    financeService.syncLocalAndRemote(),
-  ]);
-
-  const beanSync = syncResults[0];
-  const roastPlanSync = syncResults[1];
-  const roastBatchSync = syncResults[2];
-  const financeSync = syncResults[3];
+  const syncJobs: NamedSyncJob[] = [
+    { label: '生豆', promise: beanService.syncLocalAndRemote() },
+    { label: '烘焙计划', promise: roastPlanService.syncLocalAndRemote() },
+    { label: '烘焙记录', promise: roastBatchService.syncLocalAndRemote() },
+    { label: '成本核算', promise: financeService.syncLocalAndRemote() },
+  ];
+  const syncResults = await Promise.allSettled(syncJobs.map((job) => job.promise));
+  const namedSyncResults = syncJobs.map((job, index) => ({
+    label: job.label,
+    result: syncResults[index] as PromiseSettledResult<{ downloaded: number; uploaded: number }>,
+  }));
 
   await refreshAppQueryCaches(queryClient, 'all');
 
+  const failedDetails = [
+    ...(pendingResult.failed > 0 ? ['待同步操作同步失败'] : []),
+    ...namedSyncResults.flatMap((item) => {
+      if (item.result.status !== 'rejected') {
+        return [];
+      }
+
+      return [getSyncFailureDetail(item.label, item.result)];
+    }),
+  ];
+
   return {
-    downloaded:
-      (beanSync.status === 'fulfilled' ? beanSync.value.downloaded : 0) +
-      (roastPlanSync.status === 'fulfilled' ? roastPlanSync.value.downloaded : 0) +
-      (roastBatchSync.status === 'fulfilled' ? roastBatchSync.value.downloaded : 0) +
-      (financeSync.status === 'fulfilled' ? financeSync.value.downloaded : 0),
-    failed:
-      pendingResult.failed +
-      syncResults.filter((result) => result.status === 'rejected').length,
+    downloaded: namedSyncResults.reduce(
+      (total, item) => total + (item.result.status === 'fulfilled' ? item.result.value.downloaded : 0),
+      0,
+    ),
+    failed: failedDetails.length,
+    failedDetails,
     success: pendingResult.success,
-    uploaded:
-      (beanSync.status === 'fulfilled' ? beanSync.value.uploaded : 0) +
-      (roastPlanSync.status === 'fulfilled' ? roastPlanSync.value.uploaded : 0) +
-      (roastBatchSync.status === 'fulfilled' ? roastBatchSync.value.uploaded : 0) +
-      (financeSync.status === 'fulfilled' ? financeSync.value.uploaded : 0),
+    uploaded: namedSyncResults.reduce(
+      (total, item) => total + (item.result.status === 'fulfilled' ? item.result.value.uploaded : 0),
+      0,
+    ),
   };
 };

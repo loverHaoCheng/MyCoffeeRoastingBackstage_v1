@@ -84,6 +84,19 @@
     inset 0 1px 0 var(--app-card-inset-highlight);
 }
 
+.headerActionBtn:global(.ant-btn):hover,
+.headerActionBtn:global(.ant-btn):active,
+.headerActionBtn:global(.ant-btn):focus,
+.headerActionBtn:global(.ant-btn):focus-visible {
+  background: var(--app-card-button-surface) !important;
+  box-shadow:
+    var(--app-card-button-shadow) !important,
+    inset 0 1px 0 var(--app-card-inset-highlight) !important;
+  border-color: transparent !important;
+  outline: none !important;
+  transform: none !important;
+}
+
 .viewBtn:global(.ant-btn) {
   color: var(--app-text-secondary);
 }
@@ -188,16 +201,31 @@
   min-height: 24px;
   height: 24px;
   padding: 0;
+  padding-inline: 0;
   border: 0;
-  border-radius: 14px;
+  border-radius: 0;
   background: transparent;
   color: var(--app-text-secondary);
   box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1;
   transition: none;
+}
+
+.expandButton:global(.ant-btn):hover,
+.expandButton:global(.ant-btn):active,
+.expandButton:global(.ant-btn):focus,
+.expandButton:global(.ant-btn):focus-visible {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  color: var(--app-text-secondary) !important;
+  outline: none !important;
+  transform: none !important;
 }
 
 .expandIcon {
@@ -213,15 +241,8 @@
   transform: rotate(180deg);
 }
 
-.expandButton:global(.ant-btn:hover),
-.expandButton:global(.ant-btn:active),
-.expandButton:global(.ant-btn:focus),
-.expandButton:global(.ant-btn:focus-visible) {
-  background: transparent;
-  box-shadow: none;
-  color: var(--app-text-secondary);
-  outline: none;
-  transform: none;
+.expandButton[data-expanded-level='1'][data-has-second-expansion='false'] .expandIcon {
+  transform: rotate(180deg);
 }
 
 .expandRegion {
@@ -319,28 +340,6 @@
   }
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .rowClickable:hover {
-    background: color-mix(in srgb, var(--app-bg-elevated) 94%, var(--app-text) 6%);
-  }
-
-  .rowClickable:active {
-    background: color-mix(in srgb, var(--app-bg-elevated) 90%, var(--app-text) 10%);
-  }
-
-  .headerActionBtn:global(.ant-btn):hover {
-    color: var(--app-text);
-    background: var(--app-card-button-hover-surface);
-  }
-
-  .deleteBtn:global(.ant-btn):hover {
-    color: var(--app-danger);
-    background: var(--app-danger-surface);
-    border-color: var(--app-danger-border);
-  }
-
-}
-
 @media (hover: none), (pointer: coarse) {
   .headerActionBtn:global(.ant-btn),
   .expandButton:global(.ant-btn) {
@@ -355,9 +354,5 @@
   .expandButton:global(.ant-btn):focus-visible {
     transform: none;
     box-shadow: none;
-  }
-
-  .rowClickable:hover {
-    background: transparent;
   }
 }

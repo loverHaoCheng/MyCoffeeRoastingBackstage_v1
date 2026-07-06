@@ -127,6 +127,22 @@ select,
   top: var(--app-message-top);
 }
 
+.ant-message .ant-message-notice-content {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 9px 16px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 999px;
+  background: var(--app-bg-elevated);
+  box-shadow: 0 10px 24px rgb(15 23 42 / 10%);
+  backdrop-filter: blur(16px);
+}
+
+.ant-message .ant-message-custom-content {
+  align-items: center;
+}
+
 :root[data-standalone-pwa="true"],
 :root[data-standalone-pwa="true"] body,
 :root[data-standalone-pwa="true"] #root {

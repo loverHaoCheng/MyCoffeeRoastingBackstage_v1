@@ -5,6 +5,11 @@ import type { ApiResponse } from '@/services/api.types';
 import { SupabaseRestClient } from '@/services/supabaseRestClient';
 import { logger } from '@/shared/logger/logger';
 
+import {
+  calculateDehydrationRate,
+  normalizeRoastLevel,
+  resolveRoastLevelFromDehydrationRate,
+} from '../constants/roastLevel';
 import type {
   RoastBatchCreateInput,
   RoastBatchRecord,
@@ -30,7 +35,7 @@ const loadLocalBatches = (): RoastBatchRecord[] => {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as RoastBatchRecord[];
+    return (JSON.parse(raw) as RoastBatchRecord[]).map(normalizeStoredBatch);
   } catch {
     return [];
   }
@@ -113,13 +118,34 @@ const getInventoryImpactWeight = (
   return batch.status === 'draft' ? 0 : batch.inputWeightGrams;
 };
 
+const normalizeStoredBatch = (batch: RoastBatchRecord): RoastBatchRecord => ({
+  ...batch,
+  roastLevel: resolveNormalizedRoastLevel(batch.roastLevel, batch.inputWeightGrams, batch.outputWeightGrams),
+});
+
+const resolveNormalizedRoastLevel = (
+  roastLevel: string | undefined,
+  inputWeightGrams: number,
+  outputWeightGrams: number,
+): string => {
+  if (roastLevel == null || roastLevel.trim().length === 0) {
+    return resolveRoastLevelFromDehydrationRate(calculateDehydrationRate(inputWeightGrams, outputWeightGrams));
+  }
+
+  return normalizeRoastLevel(roastLevel);
+};
+
 const saveBatchRecord = (record: RoastBatchRecord): void => {
   const batches = loadLocalBatches().filter((batch) => batch.id !== record.id);
-  saveLocalBatches(sortBatches([record, ...batches]));
+  saveLocalBatches(sortBatches([normalizeStoredBatch(record), ...batches.map(normalizeStoredBatch)]));
 };
 
 const removeStoredBatch = (batchId: string): void => {
   saveLocalBatches(loadLocalBatches().filter((batch) => batch.id !== batchId));
+};
+
+const restoreStoredBatch = (batch: RoastBatchRecord): void => {
+  saveLocalBatches([batch, ...loadLocalBatches().filter((item) => item.id !== batch.id)]);
 };
 
 const toNullableStringValue = (value: string | undefined): null | string => {
@@ -180,6 +206,11 @@ const getNextBatchState = (
   ...currentBatch,
   ...input,
   roastedBeanName: input.roastedBeanName ?? currentBatch.roastedBeanName ?? currentBatch.greenBeanName,
+  roastLevel: resolveNormalizedRoastLevel(
+    input.roastLevel ?? currentBatch.roastLevel,
+    input.inputWeightGrams ?? currentBatch.inputWeightGrams,
+    input.outputWeightGrams ?? currentBatch.outputWeightGrams,
+  ),
   status: input.status ?? currentBatch.status,
 });
 
@@ -196,7 +227,7 @@ const toSupabaseRoastBatchPayload = (input: RoastBatchCreateInput | RoastBatchUp
   if (input.roastPlanId !== undefined) payload.roast_plan_id = toNullableStringValue(input.roastPlanId);
   if (input.inputWeightGrams !== undefined) payload.input_weight_grams = input.inputWeightGrams;
   if (input.outputWeightGrams !== undefined) payload.output_weight_grams = input.outputWeightGrams;
-  if (input.roastLevel !== undefined) payload.roast_level = input.roastLevel;
+  if (input.roastLevel !== undefined) payload.roast_level = normalizeRoastLevel(input.roastLevel);
   if (input.developmentRatio !== undefined) payload.development_ratio = input.developmentRatio;
   if (input.firstCrackTime !== undefined) payload.first_crack_time = input.firstCrackTime;
   if (input.totalRoastTime !== undefined) payload.total_roast_time = input.totalRoastTime;
@@ -263,7 +294,11 @@ const mapSupabaseRoastBatchRecord = (record: Record<string, unknown>): RoastBatc
   roastPlanName: getOptionalStringField(record.roast_plan_name),
   inputWeightGrams: getNumberField(record.input_weight_grams),
   outputWeightGrams: getNumberField(record.output_weight_grams),
-  roastLevel: getStringField(record.roast_level),
+  roastLevel: resolveNormalizedRoastLevel(
+    getStringField(record.roast_level),
+    getNumberField(record.input_weight_grams),
+    getNumberField(record.output_weight_grams),
+  ),
   developmentRatio: getOptionalNumberField(record.development_ratio),
   firstCrackTime: getOptionalNumberField(record.first_crack_time),
   totalRoastTime: getOptionalNumberField(record.total_roast_time),
@@ -298,6 +333,7 @@ class MockRoastBatchRepository implements RoastBatchRepository {
     const record: RoastBatchRecord = {
       ...input,
       roastedBeanName: resolveRoastedBeanName(input.roastedBeanName, input.greenBeanName),
+      roastLevel: resolveNormalizedRoastLevel(input.roastLevel, input.inputWeightGrams, input.outputWeightGrams),
       id: `local-${Date.now().toString()}`,
       status: input.status ?? 'completed',
       imageUrls: input.imageUrls ?? [],
@@ -333,6 +369,11 @@ class MockRoastBatchRepository implements RoastBatchRepository {
       ...currentBatch,
       ...input,
       roastedBeanName: input.roastedBeanName ?? currentBatch.roastedBeanName ?? currentBatch.greenBeanName,
+      roastLevel: resolveNormalizedRoastLevel(
+        input.roastLevel ?? currentBatch.roastLevel,
+        input.inputWeightGrams ?? currentBatch.inputWeightGrams,
+        input.outputWeightGrams ?? currentBatch.outputWeightGrams,
+      ),
       id: currentBatch.id,
       updatedAt: new Date().toISOString(),
     };
@@ -485,6 +526,7 @@ export const roastBatchService = {
     const record: RoastBatchRecord = {
       ...input,
       roastedBeanName: resolveRoastedBeanName(input.roastedBeanName, input.greenBeanName),
+      roastLevel: resolveNormalizedRoastLevel(input.roastLevel, input.inputWeightGrams, input.outputWeightGrams),
       id: createOptimisticLocalBatchId(),
       status: input.status ?? 'completed',
       imageUrls: input.imageUrls ?? [],
@@ -495,6 +537,18 @@ export const roastBatchService = {
     saveBatchRecord(record);
 
     return record;
+  },
+  removeOptimisticBatch(batchId: string): RoastBatchRecord | null {
+    const removedBatch = loadLocalBatches().find((batch) => batch.id === batchId) ?? null;
+
+    removeStoredBatch(batchId);
+
+    return removedBatch;
+  },
+  restoreOptimisticBatch(batch: RoastBatchRecord): RoastBatchRecord[] {
+    restoreStoredBatch(batch);
+
+    return sortBatches(loadLocalBatches());
   },
   finalizeOptimisticBatch(optimisticBatchId: string, remoteBatch: RoastBatchRecord): RoastBatchRecord[] {
     removeStoredBatch(optimisticBatchId);
@@ -700,7 +754,7 @@ export const roastBatchService = {
         notes: batch.notes,
         outputWeightGrams: batch.outputWeightGrams,
         roastDate: batch.roastDate,
-        roastLevel: batch.roastLevel,
+        roastLevel: resolveNormalizedRoastLevel(batch.roastLevel, batch.inputWeightGrams, batch.outputWeightGrams),
         roastPlanId: batch.roastPlanId,
         roastPlanName: batch.roastPlanName,
         roastedBeanName: batch.roastedBeanName,

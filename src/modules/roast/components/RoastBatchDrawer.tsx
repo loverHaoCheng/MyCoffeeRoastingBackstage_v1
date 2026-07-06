@@ -1,9 +1,17 @@
 import { DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Input, InputNumber, Select } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useBeans } from '@/modules/bean/hooks';
 import { useRoastPlans } from '@/modules/roast/hooks';
+import {
+  ROAST_LEVEL_OPTIONS,
+  calculateDehydrationRate,
+  getRoastLevelSuggestion,
+  normalizeRoastLevel,
+  resolveRoastLevelFromDehydrationRate,
+} from '@/modules/roast/constants/roastLevel';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
@@ -33,8 +41,6 @@ interface RoastBatchDrawerProps {
   onUpdate?: (batchId: string, input: RoastBatchUpdateInput) => Promise<void> | void;
 }
 
-const ROAST_LEVELS = ['极浅', '浅焙', '肉桂', '中浅', '中焙', '中深', '深焙', '极深'];
-
 const createFormState = (batch: RoastBatchRecord | null) => ({
   roastDate: batch?.roastDate ?? '',
   greenBeanId: batch?.greenBeanId ?? '',
@@ -44,7 +50,7 @@ const createFormState = (batch: RoastBatchRecord | null) => ({
   roastPlanName: batch?.roastPlanName ?? '',
   inputWeightGrams: batch?.inputWeightGrams ?? 0,
   outputWeightGrams: batch?.outputWeightGrams ?? 0,
-  roastLevel: batch?.roastLevel ?? ROAST_LEVELS[4],
+  roastLevel: batch ? normalizeRoastLevel(batch.roastLevel) : getRoastLevelSuggestion(0, 0),
   developmentRatio: batch?.developmentRatio,
   firstCrackTime: batch?.firstCrackTime,
   totalRoastTime: batch?.totalRoastTime,
@@ -53,7 +59,9 @@ const createFormState = (batch: RoastBatchRecord | null) => ({
 
 export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange, onUpdate }: RoastBatchDrawerProps) {
   const isView = mode === 'view';
+  const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
+  const roastLevelManualOverrideRef = useRef(false);
 
   // 编辑模式下的表单状态
   const [form, setForm] = useState(() => createFormState(batch));
@@ -67,7 +75,28 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
 
   useEffect(() => {
     setForm(createFormState(batch));
+    roastLevelManualOverrideRef.current = false;
   }, [batch]);
+
+  const dehydrationRate = useMemo(
+    () => calculateDehydrationRate(form.inputWeightGrams, form.outputWeightGrams),
+    [form.inputWeightGrams, form.outputWeightGrams],
+  );
+  const suggestedRoastLevel = useMemo(
+    () => resolveRoastLevelFromDehydrationRate(dehydrationRate),
+    [dehydrationRate],
+  );
+  const normalizedRoastLevel = normalizeRoastLevel(form.roastLevel);
+
+  useEffect(() => {
+    if (roastLevelManualOverrideRef.current) {
+      return;
+    }
+
+    setForm((current) =>
+      current.roastLevel === suggestedRoastLevel ? current : { ...current, roastLevel: suggestedRoastLevel },
+    );
+  }, [suggestedRoastLevel]);
 
   const handleSave = () => {
     if (batch == null || onUpdate == null) return;
@@ -100,7 +129,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
       roastPlanName: form.roastPlanName === '' ? undefined : form.roastPlanName,
       inputWeightGrams: form.inputWeightGrams,
       outputWeightGrams: form.outputWeightGrams,
-      roastLevel: form.roastLevel,
+      roastLevel: normalizedRoastLevel,
       developmentRatio: form.developmentRatio,
       firstCrackTime: form.firstCrackTime,
       totalRoastTime: form.totalRoastTime,
@@ -168,19 +197,25 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
               )}
             </div>
             <div className={styles.field} data-field-path="roastLevel">
-              <span className={styles.fieldLabel}>烘焙程度</span>
+                  <span className={styles.fieldLabel}>烘焙程度</span>
               {isView ? (
-                <span className={styles.fieldValue}>{batch.roastLevel}</span>
+                <span className={styles.fieldValue}>{normalizeRoastLevel(batch.roastLevel)}</span>
               ) : (
                 <Select
-                  value={form.roastLevel}
+                  value={normalizedRoastLevel}
                   onChange={(v) => {
-                    setForm((f) => ({ ...f, roastLevel: v }));
+                    roastLevelManualOverrideRef.current = true;
+                    setForm((f) => ({ ...f, roastLevel: normalizeRoastLevel(v) }));
                   }}
-                  options={ROAST_LEVELS.map((l) => ({ label: l, value: l }))}
+                  options={ROAST_LEVEL_OPTIONS.map((l) => ({ label: l, value: l }))}
                   style={{ width: '100%' }}
                 />
               )}
+              {!isView ? (
+                <div style={{ color: 'var(--app-text-secondary)', fontSize: '12px', marginTop: '8px' }}>
+                  自动匹配：{suggestedRoastLevel}，当前脱水率 {dehydrationRate.toFixed(1)}%
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -189,15 +224,28 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
         <section className={styles.section}>
           <h4>生豆信息</h4>
           <div className={styles.fieldGrid}>
-            <div className={styles.field} data-field-path="greenBeanId">
+          <div className={styles.field} data-field-path="greenBeanId">
               <span className={styles.fieldLabel}>生豆</span>
               {isView ? (
                 <span className={styles.fieldValue}>{batch.greenBeanName}</span>
               ) : (
-                <>
-                  <Input value={form.greenBeanName} disabled placeholder="选择生豆" />
-                  {/* TODO: 接入生豆选择组件 */}
-                </>
+                <Select
+                  disabled={beans.length === 0}
+                  onChange={(beanId: string) => {
+                    const bean = beans.find((item) => String(item.id) === beanId);
+                    setForm((current) => ({
+                      ...current,
+                      greenBeanId: beanId,
+                      greenBeanName: bean?.name ?? '',
+                      roastPlanId: '',
+                      roastPlanName: '',
+                    }));
+                  }}
+                  options={beans.map((bean) => ({ label: bean.name, value: String(bean.id) }))}
+                  placeholder="选择生豆"
+                  value={form.greenBeanId === '' ? undefined : form.greenBeanId}
+                  style={{ width: '100%' }}
+                />
               )}
             </div>
             <div className={styles.field} data-field-path="roastedBeanName">

@@ -101,6 +101,29 @@ export function useDeleteRoastBatch() {
     mutationFn: async (batchId: string) => {
       await roastBatchService.deleteBatch(batchId);
     },
+    onMutate: async (batchId) => {
+      await queryClient.cancelQueries({ queryKey: roastBatchQueryKeys.list() });
+
+      const previousBatches = queryClient.getQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list());
+      const removedBatch =
+        previousBatches?.find((batch) => batch.id === batchId) ??
+        roastBatchService.removeOptimisticBatch(batchId);
+      queryClient.setQueryData<RoastBatchRecord[]>(
+        roastBatchQueryKeys.list(),
+        (current = []) => current.filter((batch) => batch.id !== batchId),
+      );
+
+      return { previousBatches, removedBatch };
+    },
+    onError: (_error, _batchId, context) => {
+      if (context?.previousBatches) {
+        queryClient.setQueryData(roastBatchQueryKeys.list(), context.previousBatches);
+      }
+
+      if (context?.removedBatch) {
+        roastBatchService.restoreOptimisticBatch(context.removedBatch);
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: roastBatchQueryKeys.all });
     },

@@ -436,7 +436,8 @@ export function SettingsPage() {
       const result = await refreshAllAppData(queryClient);
 
       if (result.failed > 0) {
-        void message.warning('完全同步部分失败，已尽量完成双向同步。');
+        const detailText = result.failedDetails.length > 0 ? `：${result.failedDetails.join('；')}` : '';
+        void message.warning(`完全同步部分失败${detailText}，已尽量完成双向同步。`);
         return;
       }
 

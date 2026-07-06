@@ -1,7 +1,7 @@
 import { CoffeeOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Input, InputNumber, Select } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
 import { useRoastPlans } from '@/modules/roast/hooks';
@@ -9,9 +9,15 @@ import type { RoastBatchCreateInput } from '@/modules/roast/types/roastBatch';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 
+import {
+  ROAST_LEVEL_OPTIONS,
+  calculateDehydrationRate,
+  getRoastLevelSuggestion,
+  normalizeRoastLevel,
+  resolveRoastLevelFromDehydrationRate,
+} from '../constants/roastLevel';
 import styles from './RoastBatchCreator.module.css';
 
-const ROAST_LEVELS = ['极浅', '浅焙', '肉桂', '中浅', '中焙', '中深', '深焙', '极深'];
 const ROAST_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm';
 const GENERIC_BEAN_ID = 'generic';
 
@@ -34,6 +40,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
   const hasBeanOptions = beans.length > 0;
+  const roastLevelManualOverrideRef = useRef(false);
 
   // 表单状态
   const [form, setForm] = useState({
@@ -45,7 +52,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
     roastPlanName: '',
     inputWeightGrams: 200,
     outputWeightGrams: 180,
-    roastLevel: '中焙',
+    roastLevel: getRoastLevelSuggestion(200, 180),
     developmentRatio: undefined as number | undefined,
     firstCrackTime: undefined as number | undefined,
     totalRoastTime: undefined as number | undefined,
@@ -58,6 +65,25 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
         return planBeanId === GENERIC_BEAN_ID || planBeanId === form.greenBeanId;
       })
     : [];
+  const dehydrationRate = useMemo(
+    () => calculateDehydrationRate(form.inputWeightGrams, form.outputWeightGrams),
+    [form.inputWeightGrams, form.outputWeightGrams],
+  );
+  const suggestedRoastLevel = useMemo(
+    () => resolveRoastLevelFromDehydrationRate(dehydrationRate),
+    [dehydrationRate],
+  );
+  const normalizedRoastLevel = normalizeRoastLevel(form.roastLevel);
+
+  useEffect(() => {
+    if (roastLevelManualOverrideRef.current) {
+      return;
+    }
+
+    setForm((current) =>
+      current.roastLevel === suggestedRoastLevel ? current : { ...current, roastLevel: suggestedRoastLevel },
+    );
+  }, [suggestedRoastLevel]);
 
   const lossRate = form.inputWeightGrams > 0
     ? (((form.inputWeightGrams - form.outputWeightGrams) / form.inputWeightGrams) * 100).toFixed(1)
@@ -93,7 +119,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
       roastPlanName: form.roastPlanName === '' ? undefined : form.roastPlanName,
       inputWeightGrams: form.inputWeightGrams,
       outputWeightGrams: form.outputWeightGrams,
-      roastLevel: form.roastLevel,
+      roastLevel: normalizedRoastLevel,
       developmentRatio: form.developmentRatio,
       firstCrackTime: form.firstCrackTime,
       totalRoastTime: form.totalRoastTime,
@@ -126,13 +152,17 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
           <div className={styles.field} data-field-path="roastLevel">
             <span className={styles.fieldLabel}>烘焙程度</span>
             <Select
-              value={form.roastLevel}
+              value={normalizedRoastLevel}
               onChange={(v) => {
-                setForm((f) => ({ ...f, roastLevel: v }));
+                roastLevelManualOverrideRef.current = true;
+                setForm((f) => ({ ...f, roastLevel: normalizeRoastLevel(v) }));
               }}
-              options={ROAST_LEVELS.map((l) => ({ label: l, value: l }))}
+              options={ROAST_LEVEL_OPTIONS.map((l) => ({ label: l, value: l }))}
               style={{ width: '100%' }}
             />
+            <div style={{ color: 'var(--app-text-secondary)', fontSize: '12px', marginTop: '8px' }}>
+              自动匹配：{suggestedRoastLevel}，当前脱水率 {dehydrationRate.toFixed(1)}%
+            </div>
           </div>
         </div>
       </section>
@@ -153,9 +183,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
           }}
           placeholder="选择生豆"
           options={beans.map((b) => ({ label: b.name, value: String(b.id) }))}
-          showSearch
           disabled={!hasBeanOptions}
-          optionFilterProp="label"
           style={{ width: '100%' }}
         />
       </section>

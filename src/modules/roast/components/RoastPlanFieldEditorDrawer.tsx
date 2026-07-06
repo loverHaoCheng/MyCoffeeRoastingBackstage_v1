@@ -160,7 +160,6 @@ export function RoastPlanFieldEditorDrawer({
               ...beans.map((bean) => ({ label: bean.name, value: String(bean.id) })),
             ]}
             placeholder={fieldConfig.placeholder}
-            showSearch
             value={draft.beanId == null ? undefined : String(draft.beanId)}
           />
         );

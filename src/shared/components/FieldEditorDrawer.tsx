@@ -66,15 +66,17 @@ export function FieldEditorDrawer({
       width={width}
     >
       <form className={styles.form} onSubmit={handleSubmit}>
-        <div className={styles.content}>{children}</div>
-        <DrawerActionBar compact>
-          <Button block onClick={onClose} type="default">
-            取消
-          </Button>
-          <Button block htmlType="submit" loading={submitting} type="primary">
-            {submitting && loadingLabel ? loadingLabel : submitLabel}
-          </Button>
-        </DrawerActionBar>
+        <div className={styles.inner}>
+          <div className={styles.content}>{children}</div>
+          <DrawerActionBar compact>
+            <Button block onClick={onClose} type="default">
+              取消
+            </Button>
+            <Button block htmlType="submit" loading={submitting} type="primary">
+              {submitting && loadingLabel ? loadingLabel : submitLabel}
+            </Button>
+          </DrawerActionBar>
+        </div>
       </form>
     </AppDrawer>
   );

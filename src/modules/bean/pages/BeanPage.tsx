@@ -11,7 +11,7 @@ import {
   BeanInventoryCard,
   BeanManualCreator,
 } from '@/modules/bean/components';
-import { beanQueryKeys, useBeans } from '@/modules/bean/hooks';
+import { beanQueryKeys, useBeans, useDeleteBean } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services';
 import { useCostTemplateSettings, useSupabaseConnectionSettings } from '@/modules/settings/hooks';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -65,6 +65,7 @@ export function BeanPage() {
   const [selectedBeanFieldPath, setSelectedBeanFieldPath] = useState<FieldPath<GreenBeanFormInput> | undefined>();
   const [detailMode, setDetailMode] = useState<BeanDetailMode | null>(null);
   const { data: beans = [], isFetching, refetch } = useBeans();
+  const deleteBeanMutation = useDeleteBean();
 
   const filteredBeans = useMemo(() => {
     return beans.filter((bean) => matchesKeyword(bean, keyword));
@@ -148,15 +149,14 @@ export function BeanPage() {
       okButtonProps: { danger: true },
       okText: '删除',
       title: '确认删除',
-      async onOk() {
-        try {
-          await beanService.deleteBean(bean.id);
-          await queryClient.invalidateQueries({ queryKey: beanQueryKeys.list() });
-          void message.success('生豆已删除');
-        } catch (error: unknown) {
-          const msg = error instanceof Error ? error.message : '删除失败';
-          message.error(msg);
-        }
+      onOk() {
+        void deleteBeanMutation.mutateAsync(bean.id).then((result) => {
+          if (!result.synced) {
+            void message.error('supabase删除失败');
+          }
+        }).catch(() => {
+          void message.error('supabase删除失败');
+        });
       },
     });
   };

@@ -3,6 +3,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
+import { ROAST_LEVEL_OPTIONS, normalizeRoastLevel } from '@/modules/roast/constants/roastLevel';
 import { useRoastPlans } from '@/modules/roast/hooks';
 import { useUpdateRoastBatch } from '@/modules/roast/hooks/useRoastBatches';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
@@ -34,7 +35,6 @@ interface RoastBatchFieldEditorDrawerProps {
   width?: number;
 }
 
-const ROAST_LEVELS = ['极浅', '浅焙', '肉桂', '中浅', '中焙', '中深', '深焙', '极深'];
 const GENERIC_BEAN_ID = 'generic';
 
 const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | null => {
@@ -51,7 +51,7 @@ const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | nu
     notes: batch.notes,
     outputWeightGrams: batch.outputWeightGrams,
     roastDate: batch.roastDate,
-    roastLevel: batch.roastLevel,
+    roastLevel: normalizeRoastLevel(batch.roastLevel),
     roastPlanId: batch.roastPlanId,
     roastPlanName: batch.roastPlanName,
     roastedBeanName: batch.roastedBeanName,
@@ -257,7 +257,6 @@ export function RoastBatchFieldEditorDrawer({
             }}
             options={beans.map((bean) => ({ label: bean.name, value: String(bean.id) }))}
             placeholder="选择生豆"
-            showSearch
             value={draft.greenBeanId}
           />
         );
@@ -320,7 +319,7 @@ export function RoastBatchFieldEditorDrawer({
             onChange={(value) => {
               updateDraft('roastLevel', value);
             }}
-            options={ROAST_LEVELS.map((level) => ({ label: level, value: level }))}
+            options={ROAST_LEVEL_OPTIONS.map((level) => ({ label: level, value: level }))}
             value={draft.roastLevel}
           />
         );
@@ -403,8 +402,8 @@ export function RoastBatchFieldEditorDrawer({
       title={`修改${fieldLabel}`}
       width={width}
     >
-      <section style={{ display: 'grid', gap: '12px', padding: '16px 20px 0' }}>
-        <label style={{ display: 'grid', gap: '8px' }}>
+      <section style={{ display: 'grid', gap: '10px', padding: 0 }}>
+        <label style={{ display: 'grid', gap: '6px' }}>
           <span style={{ color: 'var(--app-text-secondary)', fontSize: '12px', fontWeight: 700 }}>{fieldLabel}</span>
           {renderField()}
         </label>

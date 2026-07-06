@@ -174,6 +174,7 @@ export function UnifiedDataCard({
             aria-expanded={expandedLevel > 0}
             className={styles.expandButton}
             data-expanded-level={String(expandedLevel)}
+            data-has-second-expansion={String(hasSecondExpansion)}
             icon={
               <span aria-hidden="true" className={styles.expandIcon}>
                 <DownOutlined />

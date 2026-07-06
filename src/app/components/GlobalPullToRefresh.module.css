@@ -1,6 +1,6 @@
 .pullRefreshDock {
   position: fixed;
-  top: calc(var(--app-safe-top) + 14px);
+  top: var(--app-message-top);
   left: 50%;
   z-index: 1100;
   display: grid;
@@ -12,7 +12,7 @@
 
 @media (max-width: 767px) {
   .pullRefreshDock {
-    top: calc(var(--app-shell-header-height) + 8px);
+    top: var(--app-message-top);
     width: min(calc(100vw - 20px - var(--app-safe-left) - var(--app-safe-right)), 100%);
   }
 }

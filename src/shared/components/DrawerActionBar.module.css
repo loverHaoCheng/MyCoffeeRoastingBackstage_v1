@@ -3,12 +3,21 @@
   bottom: 0;
   z-index: 12;
   isolation: isolate;
+  margin-top: auto;
+  padding: 0;
+  background: transparent;
+}
+
+.surface {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-items: stretch;
+  align-items: stretch;
   gap: 12px;
-  margin-top: auto;
+  width: 100%;
   padding: 10px 0 calc(22px + var(--app-safe-bottom));
   background: transparent;
+  box-sizing: border-box;
 }
 
 .compact {
@@ -20,42 +29,16 @@
   grid-template-columns: 1fr;
 }
 
-.bar::before {
-  content: "";
-  position: absolute;
-  inset: 0 -18px calc(-1 * (var(--app-safe-bottom) + 12px));
-  z-index: -1;
-  border-radius: 24px 24px 0 0;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--app-bg) 0%, transparent) 0%, color-mix(in srgb, var(--app-bg) 8%, transparent) 16%, color-mix(in srgb, var(--app-bg) 34%, transparent) 36%, color-mix(in srgb, var(--app-bg) 68%, transparent) 66%, color-mix(in srgb, var(--app-bg) 90%, transparent) 100%),
-    linear-gradient(180deg, color-mix(in srgb, var(--app-bg-elevated) 0%, transparent) 0%, color-mix(in srgb, var(--app-bg-elevated) 32%, transparent) 100%);
-  backdrop-filter: blur(12px) saturate(1.01);
-  -webkit-backdrop-filter: blur(12px) saturate(1.01);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
-  pointer-events: none;
-}
-
-.bar::after {
-  content: "";
-  position: absolute;
-  inset: 28px -18px calc(-1 * (var(--app-safe-bottom) + 12px));
-  z-index: -1;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--app-bg) 0%, transparent) 0%, color-mix(in srgb, var(--app-bg) 92%, transparent) 24%, color-mix(in srgb, var(--app-bg) 98%, transparent) 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
-  pointer-events: none;
-}
-
-.bar :global(.ant-btn) {
+.surface :global(.ant-btn) {
+  width: 100%;
+  min-width: 0;
   min-height: 48px;
   border-radius: 16px;
   border-color: var(--app-border);
-  background: var(--app-bg-elevated);
+  background: #fff;
   color: var(--app-text);
   box-shadow:
-    0 10px 24px rgb(17 24 39 / 4%),
+    0 8px 20px rgb(17 24 39 / 8%),
     inset 0 1px 0 var(--app-card-inset-highlight);
   font-weight: 700;
 }
@@ -66,28 +49,20 @@
   font-size: 14px;
 }
 
-.bar :global(.ant-btn-primary),
-.bar :global(.ant-btn-primary:hover),
-.bar :global(.ant-btn-primary:focus) {
+.surface :global(.ant-btn-primary),
+.surface :global(.ant-btn-primary:hover),
+.surface :global(.ant-btn-primary:focus) {
   border-color: var(--app-border);
-  background: var(--app-bg-elevated);
+  background: #fff;
   color: var(--app-text);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .bar :global(.ant-btn:hover) {
-    background: var(--app-card-button-hover-surface);
+.surface :global(.ant-btn:hover) {
+    background: #fff;
     box-shadow:
-      0 12px 28px rgb(17 24 39 / 6%),
+      0 10px 24px rgb(17 24 39 / 10%),
       inset 0 1px 0 var(--app-card-inset-highlight);
     transform: translateY(-1px);
-  }
-}
-
-@media (hover: none), (pointer: coarse) {
-  .bar::before,
-  .bar::after {
-    backdrop-filter: blur(8px) saturate(1);
-    -webkit-backdrop-filter: blur(8px) saturate(1);
   }
 }

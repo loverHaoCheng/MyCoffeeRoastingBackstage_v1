@@ -7,6 +7,12 @@ import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { ErrorBoundary } from '@/shared/errors/ErrorBoundary';
 
 const getAppHeaderOffset = (currentWindow: Window): number => {
+  const headerElement = currentWindow.document.querySelector<HTMLElement>('[data-app-shell-header="true"]');
+
+  if (headerElement) {
+    return Math.round(headerElement.getBoundingClientRect().bottom + 10);
+  }
+
   const rootStyles = currentWindow.getComputedStyle(currentWindow.document.documentElement);
   const headerHeight = Number.parseFloat(rootStyles.getPropertyValue('--app-shell-header-height'));
   const safeOffset = Number.parseFloat(rootStyles.getPropertyValue('--app-safe-top'));
@@ -25,9 +31,16 @@ export function AppProviders({ children }: PropsWithChildren) {
             retry: 1,
             staleTime: 60_000,
           },
-      },
-    }),
+        },
+      }),
   );
+  const [messageTop, setMessageTop] = useState<number>(() => {
+    if (typeof window === 'undefined') {
+      return 0;
+    }
+
+    return getAppHeaderOffset(window);
+  });
   const { appDisplaySettings } = useAppDisplaySettings();
 
   const themeConfig = useMemo(() => {
@@ -85,6 +98,7 @@ export function AppProviders({ children }: PropsWithChildren) {
     const updateMessageOffset = () => {
       const top = getAppHeaderOffset(window);
 
+      setMessageTop(top);
       window.document.documentElement.style.setProperty('--app-message-top', `${String(top)}px`);
       antdMessage.config({
         top,
@@ -101,7 +115,7 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   return (
     <ConfigProvider locale={zhCN} theme={themeConfig}>
-      <AntApp>
+      <AntApp message={{ top: messageTop }}>
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
         </ErrorBoundary>

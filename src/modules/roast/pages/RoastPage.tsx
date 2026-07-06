@@ -120,17 +120,17 @@ export function RoastPage() {
       okButtonProps: { danger: true },
       okText: '删除',
       title: '确认删除',
-      async onOk() {
-        try {
-          await deleteMutation.mutateAsync(plan.id);
-          setSelectedPlanId(null);
-          setSelectedPlanFieldPath(undefined);
-          setDetailMode(null);
-          void message.success('烘焙计划已删除');
-        } catch (error: unknown) {
-          const msg = error instanceof Error ? error.message : '删除失败';
-          message.error(msg);
-        }
+      onOk() {
+        void deleteMutation
+          .mutateAsync(plan.id)
+          .then(() => {
+            setSelectedPlanId(null);
+            setSelectedPlanFieldPath(undefined);
+            setDetailMode(null);
+          })
+          .catch(() => {
+            void message.error('supabase删除失败');
+          });
       },
     });
   };

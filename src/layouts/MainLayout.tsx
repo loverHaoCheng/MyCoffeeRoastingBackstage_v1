@@ -306,7 +306,12 @@ export function MainLayout() {
     <ViewportScrollContext.Provider value={scrollViewportRef}>
       <Layout className={styles.shell} data-mobile={!isWide} data-standalone-pwa={isStandalonePwa}>
         {!isWide ? (
-          <button className={styles.mobileBrand} onClick={scrollToTop} type="button">
+          <button
+            className={styles.mobileBrand}
+            data-app-shell-header="true"
+            onClick={scrollToTop}
+            type="button"
+          >
             EasyBake
           </button>
         ) : null}

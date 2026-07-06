@@ -305,6 +305,15 @@ export const localGreenBeanService = {
 
     return true;
   },
+  restore(record: LocalGreenBeanRecord): LocalGreenBeanRecord {
+    const allRecords = this.listRecords();
+    const nextRecord = normalizeLocalGreenBeanRecord(record);
+    const filtered = allRecords.filter((existing) => existing.id !== nextRecord.id);
+
+    saveRecords([nextRecord, ...filtered]);
+
+    return nextRecord;
+  },
   update(beanId: string, input: GreenBeanUpdateInput): LocalGreenBeanRecord {
     const records = this.listRecords();
     const index = records.findIndex((record) => record.id === beanId);

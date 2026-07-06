@@ -166,3 +166,55 @@ export function useUpdateBean() {
     },
   });
 }
+
+export function useDeleteBean() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (beanId: Bean['id']) => {
+      return beanService.deleteBean(beanId);
+    },
+    onMutate: async (beanId) => {
+      await queryClient.cancelQueries({ queryKey: beanQueryKeys.list() });
+      await queryClient.cancelQueries({ queryKey: beanEditableDetailQueryKeys.detail(beanId) });
+
+      const previousBeans = queryClient.getQueryData<Bean[]>(beanQueryKeys.list());
+      const previousDetail = queryClient.getQueryData<GreenBeanEditableDetail>(
+        beanEditableDetailQueryKeys.detail(beanId),
+      );
+      const removedBean = previousBeans?.find((bean) => String(bean.id) === String(beanId)) ?? null;
+      const deleteSnapshot = beanService.prepareOptimisticDelete(beanId);
+
+      queryClient.setQueryData<Bean[]>(
+        beanQueryKeys.list(),
+        (current = []) => current.filter((bean) => String(bean.id) !== String(beanId)),
+      );
+
+      return {
+        previousBeans,
+        previousDetail,
+        deleteSnapshot,
+        removedBean,
+      };
+    },
+    onError: (_error, beanId, context) => {
+      if (context?.previousBeans) {
+        queryClient.setQueryData(beanQueryKeys.list(), context.previousBeans);
+      }
+
+      if (context?.previousDetail) {
+        queryClient.setQueryData(beanEditableDetailQueryKeys.detail(beanId), context.previousDetail);
+      }
+
+      if (context?.deleteSnapshot) {
+        beanService.rollbackOptimisticDelete(context.deleteSnapshot);
+      }
+    },
+    onSuccess: async (result, beanId) => {
+      if (result.synced) {
+        await queryClient.invalidateQueries({ queryKey: beanQueryKeys.all });
+        await queryClient.invalidateQueries({ queryKey: beanEditableDetailQueryKeys.detail(beanId) });
+      }
+    },
+  });
+}

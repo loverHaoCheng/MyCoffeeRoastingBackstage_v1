@@ -129,6 +129,29 @@ export function useDeleteRoastPlan() {
     mutationFn: async (planId: RoastPlan['id']) => {
       await roastPlanService.deletePlan(planId);
     },
+    onMutate: async (planId) => {
+      await queryClient.cancelQueries({ queryKey: roastPlanQueryKeys.list() });
+
+      const previousPlans = queryClient.getQueryData<RoastPlan[]>(roastPlanQueryKeys.list());
+      const removedPlan =
+        previousPlans?.find((plan) => String(plan.id) === String(planId)) ??
+        roastPlanService.removeOptimisticPlan(planId);
+      queryClient.setQueryData<RoastPlan[]>(
+        roastPlanQueryKeys.list(),
+        (current = []) => current.filter((plan) => String(plan.id) !== String(planId)),
+      );
+
+      return { previousPlans, removedPlan };
+    },
+    onError: (_error, _planId, context) => {
+      if (context?.previousPlans) {
+        queryClient.setQueryData(roastPlanQueryKeys.list(), context.previousPlans);
+      }
+
+      if (context?.removedPlan) {
+        roastPlanService.restoreOptimisticPlan(context.removedPlan);
+      }
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: roastPlanQueryKeys.all,

@@ -87,17 +87,17 @@ export function ProductionPage() {
       okButtonProps: { danger: true },
       okText: '删除',
       title: '确认删除',
-      async onOk() {
-        try {
-          await deleteMutation.mutateAsync(batch.id);
-          setSelectedBatchId(null);
-          setSelectedBatchFieldPath(undefined);
-          setDetailMode(null);
-          void message.success('烘焙记录已删除');
-        } catch (error: unknown) {
-          const msg = error instanceof Error ? error.message : '删除失败';
-          message.error(msg);
-        }
+      onOk() {
+        void deleteMutation
+          .mutateAsync(batch.id)
+          .then(() => {
+            setSelectedBatchId(null);
+            setSelectedBatchFieldPath(undefined);
+            setDetailMode(null);
+          })
+          .catch(() => {
+            void message.error('supabase删除失败');
+          });
       },
     });
   };

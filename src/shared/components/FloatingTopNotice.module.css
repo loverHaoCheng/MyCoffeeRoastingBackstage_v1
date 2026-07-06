@@ -8,11 +8,11 @@
 }
 
 .root[data-slot='primary'] {
-  top: calc(var(--app-safe-top) + 14px);
+  top: var(--app-message-top);
 }
 
 .root[data-slot='secondary'] {
-  top: calc(var(--app-safe-top) + 82px);
+  top: calc(var(--app-message-top) + 68px);
 }
 
 .content {
@@ -25,10 +25,10 @@
   }
 
   .root[data-slot='primary'] {
-    top: calc(var(--app-shell-header-height) + 8px);
+    top: var(--app-message-top);
   }
 
   .root[data-slot='secondary'] {
-    top: calc(var(--app-shell-header-height) + 84px);
+    top: calc(var(--app-message-top) + 68px);
   }
 }

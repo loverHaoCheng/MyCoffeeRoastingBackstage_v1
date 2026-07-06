@@ -1,4 +1,5 @@
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import { normalizeRoastLevel } from '@/modules/roast/constants/roastLevel';
 import { useVisibleCardMetaItems } from '@/modules/settings/hooks';
 import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 
@@ -50,7 +51,12 @@ export function RoastBatchCard({ batch, onDelete, onEdit, onView }: RoastBatchCa
     { key: 'inputWeight', label: '入豆量', value: `${String(batch.inputWeightGrams)} g`, editPath: 'inputWeightGrams' as const },
     { key: 'outputWeight', label: '出豆量', value: `${String(batch.outputWeightGrams)} g`, editPath: 'outputWeightGrams' as const },
     { key: 'lossRate', label: '失水率', value: `${lossRate}%` },
-    { key: 'roastLevel', label: '烘焙程度', value: getText('待补充', batch.roastLevel), editPath: 'roastLevel' as const },
+    {
+      key: 'roastLevel',
+      label: '烘焙程度',
+      value: getText('待补充', normalizeRoastLevel(batch.roastLevel)),
+      editPath: 'roastLevel' as const,
+    },
     {
       key: 'developmentRatio',
       label: '发展比',

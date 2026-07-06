@@ -128,10 +128,8 @@ export function RoastPlanForm({
                   field.onChange(beanId);
                   setValue('beanName', beanId === GENERIC_BEAN_ID ? GENERIC_BEAN_NAME : selectedBean?.name ?? '');
                 }}
-                optionFilterProp="label"
                 options={beanOptions}
                 placeholder="从生豆库存选择，或使用通用计划"
-                showSearch
                 value={field.value == null ? undefined : String(field.value)}
               />
             )}

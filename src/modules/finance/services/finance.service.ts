@@ -17,6 +17,11 @@ interface FinanceRepository {
   saveCalculation(input: CostCalculationFormInput): Promise<ApiResponse<CostCalculationRecord>>;
 }
 
+interface FinanceConnectionCandidate {
+  client: SupabaseRestClient;
+  dataSource: FinanceDataSource;
+}
+
 interface SupabaseCostCalculationRecord {
   bean_id: string;
   bean_name: string;
@@ -168,30 +173,45 @@ const mapSupabaseRecordToCostCalculation = (record: SupabaseCostCalculationRecor
 });
 
 const resolveFinanceConnection = ():
-  | {
-      client: SupabaseRestClient;
-      dataSource: FinanceDataSource;
-    }
+  | FinanceConnectionCandidate
   | null => {
+  return resolveFinanceConnectionCandidates()[0] ?? null;
+};
+
+const resolveFinanceConnectionCandidates = (): FinanceConnectionCandidate[] => {
+  const candidates: FinanceConnectionCandidate[] = [];
+
   const roastedConnection = supabaseConnectionSettingsService.resolveProjectConnection('roastedBean');
 
   if (roastedConnection.projectUrl.trim() && roastedConnection.publishableKey.trim()) {
-    return {
+    candidates.push({
       client: new SupabaseRestClient(roastedConnection),
       dataSource: 'roastedBean',
-    };
+    });
   }
 
   const greenConnection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
   if (greenConnection.projectUrl.trim() && greenConnection.publishableKey.trim()) {
-    return {
+    candidates.push({
       client: new SupabaseRestClient(greenConnection),
       dataSource: 'greenBean',
-    };
+    });
   }
 
-  return null;
+  return candidates;
+};
+
+const isMissingSupabaseResourceError = (error: unknown): boolean => {
+  if (!(error instanceof AppError)) {
+    return false;
+  }
+
+  const cause = error.cause;
+  const payload = typeof cause === 'object' && cause != null ? (cause as { code?: string; message?: string }) : null;
+  const message = payload?.message ?? error.message;
+
+  return error.status === 404 || payload?.code?.startsWith('PGRST') === true || message.includes('不存在');
 };
 
 const createSupabaseFinanceRepository = (
@@ -264,39 +284,69 @@ export const financeService = {
   },
   async listCalculations(): Promise<ApiResponse<CostCalculationRecord[]>> {
     const cachedRecords = localCostCalculationService.list();
-    const resolved = resolveFinanceConnection();
+    const candidates = resolveFinanceConnectionCandidates();
 
-    if (!resolved) {
+    if (candidates.length === 0) {
       return ok(cachedRecords);
     }
 
-    try {
-      const response = await createSupabaseFinanceRepository(resolved.client, resolved.dataSource).listCalculations();
-      localCostCalculationService.replace(response.data);
-      return response;
-    } catch (error) {
-      if (cachedRecords.length > 0) {
-        logger.warn('finance list failed, falling back to local cache', { error });
-        return ok(cachedRecords);
-      }
+    let lastError: unknown = null;
 
-      throw error;
-    }
-  },
-  async saveCalculation(input: CostCalculationFormInput): Promise<ApiResponse<CostCalculationRecord>> {
-    const resolved = resolveFinanceConnection();
-
-    if (resolved && (typeof navigator === 'undefined' || navigator.onLine)) {
+    for (const candidate of candidates) {
       try {
-        const response = await createSupabaseFinanceRepository(resolved.client, resolved.dataSource).saveCalculation(input);
-        localCostCalculationService.upsert(response.data);
+        const response = await createSupabaseFinanceRepository(candidate.client, candidate.dataSource).listCalculations();
+        localCostCalculationService.replace(response.data);
         return response;
       } catch (error) {
-        logger.warn('finance save failed, falling back to local cache', { error });
+        lastError = error;
+
+        if (!isMissingSupabaseResourceError(error)) {
+          break;
+        }
+
+        logger.warn('finance list missing remote table, trying fallback source', {
+          dataSource: candidate.dataSource,
+          error,
+        });
       }
     }
 
-    const localRecord = mapFormInputToLocalRecord(input, resolved?.dataSource ?? 'greenBean');
+    if (cachedRecords.length > 0) {
+      logger.warn('finance list failed, falling back to local cache', { error: lastError });
+      return ok(cachedRecords);
+    }
+
+    throw lastError;
+  },
+  async saveCalculation(input: CostCalculationFormInput): Promise<ApiResponse<CostCalculationRecord>> {
+    const candidates = resolveFinanceConnectionCandidates();
+
+    if (candidates.length > 0 && (typeof navigator === 'undefined' || navigator.onLine)) {
+      let lastError: unknown = null;
+
+      for (const candidate of candidates) {
+        try {
+          const response = await createSupabaseFinanceRepository(candidate.client, candidate.dataSource).saveCalculation(input);
+          localCostCalculationService.upsert(response.data);
+          return response;
+        } catch (error) {
+          lastError = error;
+
+          if (!isMissingSupabaseResourceError(error)) {
+            break;
+          }
+
+          logger.warn('finance save missing remote table, trying fallback source', {
+            dataSource: candidate.dataSource,
+            error,
+          });
+        }
+      }
+
+      logger.warn('finance save failed, falling back to local cache', { error: lastError });
+    }
+
+    const localRecord = mapFormInputToLocalRecord(input, candidates[0]?.dataSource ?? 'greenBean');
     localCostCalculationService.upsert(localRecord);
 
     return ok(localRecord);
@@ -306,37 +356,60 @@ export const financeService = {
       return { downloaded: 0, uploaded: 0 };
     }
 
-    const resolved = resolveFinanceConnection();
+    const candidates = resolveFinanceConnectionCandidates();
 
-    if (!resolved) {
+    if (candidates.length === 0) {
       return { downloaded: 0, uploaded: 0 };
     }
 
-    const repository = createSupabaseFinanceRepository(resolved.client, resolved.dataSource);
     const localRecordsBeforeSync = localCostCalculationService.list();
-    const remoteBeforeSync = await repository.listCalculations();
-    const remoteIds = new Set(remoteBeforeSync.data.map((record) => record.id));
-    let uploaded = 0;
+    let lastError: unknown = null;
 
-    for (const record of localRecordsBeforeSync) {
-      if (remoteIds.has(record.id)) {
-        continue;
+    for (const candidate of candidates) {
+      try {
+        const repository = createSupabaseFinanceRepository(candidate.client, candidate.dataSource);
+        const remoteBeforeSync = await repository.listCalculations();
+        const remoteIds = new Set(remoteBeforeSync.data.map((record) => record.id));
+        let uploaded = 0;
+
+        for (const record of localRecordsBeforeSync) {
+          if (remoteIds.has(record.id)) {
+            continue;
+          }
+
+          await repository.saveCalculation(mapCostCalculationRecordToFormInput(record));
+          uploaded += 1;
+        }
+
+        const remoteAfterSync = await repository.listCalculations();
+        const nextRecords = remoteAfterSync.data;
+        const beforeSignature = getCalculationSyncSnapshot(localRecordsBeforeSync);
+        const afterSignature = getCalculationSyncSnapshot(nextRecords);
+
+        localCostCalculationService.replace(nextRecords);
+
+        return {
+          downloaded: beforeSignature === afterSignature ? 0 : nextRecords.length,
+          uploaded,
+        };
+      } catch (error) {
+        lastError = error;
+
+        if (!isMissingSupabaseResourceError(error)) {
+          break;
+        }
+
+        logger.warn('finance sync missing remote table, trying fallback source', {
+          dataSource: candidate.dataSource,
+          error,
+        });
       }
-
-      await repository.saveCalculation(mapCostCalculationRecordToFormInput(record));
-      uploaded += 1;
     }
 
-    const remoteAfterSync = await repository.listCalculations();
-    const nextRecords = remoteAfterSync.data;
-    const beforeSignature = getCalculationSyncSnapshot(localRecordsBeforeSync);
-    const afterSignature = getCalculationSyncSnapshot(nextRecords);
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
 
-    localCostCalculationService.replace(nextRecords);
-
-    return {
-      downloaded: beforeSignature === afterSignature ? 0 : nextRecords.length,
-      uploaded,
-    };
+    throw new AppError('成本核算同步失败。', { code: 'NETWORK', cause: lastError });
   },
 };

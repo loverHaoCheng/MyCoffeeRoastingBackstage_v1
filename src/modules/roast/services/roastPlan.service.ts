@@ -441,6 +441,24 @@ export const roastPlanService = {
 
     return optimisticPlan;
   },
+  removeOptimisticPlan(planId: RoastPlan['id']): RoastPlan | null {
+    const nextPlanId = String(planId);
+    const removedPlan = localRoastPlans.find((plan) => String(plan.id) === nextPlanId) ?? null;
+
+    localRoastPlans = saveLocalPlans(
+      localRoastPlans.filter((plan) => String(plan.id) !== nextPlanId),
+    );
+
+    return removedPlan;
+  },
+  restoreOptimisticPlan(plan: RoastPlan): RoastPlan[] {
+    localRoastPlans = saveLocalPlans([
+      plan,
+      ...localRoastPlans.filter((currentPlan) => String(currentPlan.id) !== String(plan.id)),
+    ]);
+
+    return sortPlans(localRoastPlans);
+  },
   finalizeOptimisticPlan(optimisticPlanId: RoastPlan['id'], remotePlan: RoastPlan): RoastPlan[] {
     localRoastPlans = saveLocalPlans([
       remotePlan,
