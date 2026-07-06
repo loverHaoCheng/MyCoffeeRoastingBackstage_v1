@@ -6,7 +6,7 @@ import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
 const appDisplaySettingsKey = 'app_display_settings';
-type AppDisplaySettingsSyncPayload = Omit<AppDisplaySettings, 'themeMode'>;
+type AppDisplaySettingsSyncPayload = Pick<AppDisplaySettings, 'cardDisplaySettings' | 'updatedAt'>;
 
 const toUpdatedAtTimestamp = (value: null | string): number => {
   if (!value) {
@@ -21,18 +21,18 @@ const toUpdatedAtTimestamp = (value: null | string): number => {
 const toSyncPayload = (settings: AppDisplaySettings): AppDisplaySettingsSyncPayload => {
   return {
     cardDisplaySettings: settings.cardDisplaySettings,
-    scale: settings.scale,
     updatedAt: settings.updatedAt,
   };
 };
 
-const mergeLocalThemeMode = (
+const mergeLocalDisplayPreferences = (
   settings: AppDisplaySettingsSyncPayload,
-  themeMode: AppDisplaySettings['themeMode'],
+  localSettings: AppDisplaySettings,
 ): AppDisplaySettings => {
   return normalizeAppDisplaySettings({
     ...settings,
-    themeMode,
+    scale: localSettings.scale,
+    themeMode: localSettings.themeMode,
     updatedAt: settings.updatedAt ?? null,
   });
 };
@@ -40,7 +40,6 @@ const mergeLocalThemeMode = (
 const buildSyncSignature = (settings: AppDisplaySettingsSyncPayload): string => {
   return JSON.stringify({
     cardDisplaySettings: settings.cardDisplaySettings,
-    scale: settings.scale,
   });
 };
 
@@ -92,7 +91,7 @@ export const appDisplaySettingsSyncService = {
     }
 
     return appDisplaySettingsService.save(
-      mergeLocalThemeMode(remoteSettings, localSettings.themeMode),
+      mergeLocalDisplayPreferences(remoteSettings, localSettings),
     );
   },
   async syncSafely(localSettings = appDisplaySettingsService.load()): Promise<AppDisplaySettings> {

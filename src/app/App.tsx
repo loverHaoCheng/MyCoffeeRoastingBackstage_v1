@@ -9,8 +9,6 @@ import { localStorageCleanupService } from '@/shared/services/localStorageCleanu
 
 const preloadApplicationModules = () => {
   void import('@/modules/bean');
-  void import('@/modules/finance');
-  void import('@/modules/inventory');
   void import('@/modules/production');
   void import('@/modules/roast');
   void import('@/modules/settings');

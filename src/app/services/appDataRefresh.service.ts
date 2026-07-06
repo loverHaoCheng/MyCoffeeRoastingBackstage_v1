@@ -36,10 +36,8 @@ const quickRefreshQueryKeysByScope: Record<AppRefreshScope, readonly (readonly u
     financeQueryKeys.all,
   ],
   bean: [beanQueryKeys.all],
-  inventory: [beanQueryKeys.all],
   production: [beanQueryKeys.all, roastBatchQueryKeys.all],
   roast: [beanQueryKeys.all, roastPlanQueryKeys.all, roastBatchQueryKeys.all],
-  finance: [beanQueryKeys.all, financeQueryKeys.all],
   settings: [beanQueryKeys.all],
 };
 
@@ -64,16 +62,8 @@ const getScopeFromPathname = (pathname: string): AppRefreshScope => {
     return 'production';
   }
 
-  if (pathname.startsWith('/finance')) {
-    return 'finance';
-  }
-
   if (pathname.startsWith('/settings')) {
     return 'settings';
-  }
-
-  if (pathname.startsWith('/inventory')) {
-    return 'inventory';
   }
 
   if (pathname.startsWith('/beans')) {
