@@ -1,7 +1,9 @@
 import {
   ApartmentOutlined,
+  BankOutlined,
   DatabaseOutlined,
   FireOutlined,
+  InboxOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
 import { Button, Grid, Layout, Menu } from 'antd';
@@ -28,8 +30,10 @@ type RouteTransitionDirection = 'backward' | 'forward';
 
 const iconByRoute: Record<AppRouteKey, ReactNode> = {
   bean: <DatabaseOutlined />,
+  inventory: <InboxOutlined />,
   roast: <ApartmentOutlined />,
   production: <FireOutlined />,
+  finance: <BankOutlined />,
   settings: <SettingOutlined />,
 };
 

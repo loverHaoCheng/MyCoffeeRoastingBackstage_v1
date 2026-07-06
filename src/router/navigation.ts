@@ -1,4 +1,10 @@
-export type AppRouteKey = 'bean' | 'roast' | 'production' | 'settings';
+export type AppRouteKey =
+  | 'bean'
+  | 'inventory'
+  | 'roast'
+  | 'production'
+  | 'finance'
+  | 'settings';
 
 export interface AppNavigationItem {
   key: AppRouteKey;
@@ -16,6 +22,12 @@ export const appNavigationItems: AppNavigationItem[] = [
     path: '/beans',
   },
   {
+    key: 'inventory',
+    label: '库存管理',
+    shortLabel: '库存',
+    path: '/inventory',
+  },
+  {
     key: 'roast',
     label: '烘焙计划',
     shortLabel: '烘焙计划',
@@ -26,6 +38,12 @@ export const appNavigationItems: AppNavigationItem[] = [
     label: '烘焙历史',
     shortLabel: '烘焙',
     path: '/production',
+  },
+  {
+    key: 'finance',
+    label: '成本核算',
+    shortLabel: '核算',
+    path: '/finance',
   },
   {
     key: 'settings',

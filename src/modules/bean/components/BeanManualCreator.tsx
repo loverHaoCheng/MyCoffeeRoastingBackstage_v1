@@ -13,6 +13,7 @@ interface BeanManualCreatorProps {
 }
 
 const defaultBeanFormValues: GreenBeanCreateInput = {
+  costTemplateId: null,
   code: '',
   defaultRoastInputGrams: 200,
   defaultSaleUnitPrice: 0,

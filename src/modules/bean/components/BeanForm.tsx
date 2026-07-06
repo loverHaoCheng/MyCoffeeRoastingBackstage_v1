@@ -30,6 +30,7 @@ interface BeanFormProps {
 const fieldPathMap: Record<string, FieldPath<GreenBeanFormInput>> = {
   altitudeMetersMax: 'altitudeMetersMax',
   altitudeMetersMin: 'altitudeMetersMin',
+  costTemplateId: 'costTemplateId',
   code: 'code',
   defaultRoastInputGrams: 'defaultRoastInputGrams',
   defaultSaleUnitPrice: 'defaultSaleUnitPrice',
@@ -161,7 +162,10 @@ export function BeanForm({
     lastPurchasedWeightRef.current = initialValues.purchasedWeightGrams;
     templateSyncShouldDirtyRef.current = false;
     setSelectedTemplateId(
-      enableCostTemplateSelection && autoApplyDefaultCostTemplate ? costTemplateSettings.defaultTemplateId ?? null : null,
+      enableCostTemplateSelection
+        ? initialValues.costTemplateId ??
+            (autoApplyDefaultCostTemplate ? costTemplateSettings.defaultTemplateId ?? null : null)
+        : null,
     );
   }, [
     autoApplyDefaultCostTemplate,
@@ -187,15 +191,23 @@ export function BeanForm({
       return;
     }
 
-    if (autoApplyDefaultCostTemplate && costTemplateSettings.defaultTemplateId) {
+    if (selectedTemplateId == null && autoApplyDefaultCostTemplate && costTemplateSettings.defaultTemplateId) {
       templateSyncShouldDirtyRef.current = false;
       setSelectedTemplateId(costTemplateSettings.defaultTemplateId);
+      setValue('costTemplateId', costTemplateSettings.defaultTemplateId, { shouldDirty: false });
       return;
     }
 
-    templateSyncShouldDirtyRef.current = false;
-    setSelectedTemplateId(null);
-  }, [autoApplyDefaultCostTemplate, costTemplateSettings.defaultTemplateId, enableCostTemplateSelection]);
+    if (selectedTemplateId != null) {
+      setValue('costTemplateId', selectedTemplateId, { shouldDirty: false });
+    }
+  }, [
+    autoApplyDefaultCostTemplate,
+    costTemplateSettings.defaultTemplateId,
+    enableCostTemplateSelection,
+    selectedTemplateId,
+    setValue,
+  ]);
 
   useEffect(() => {
     if (!enableCostTemplateSelection || !selectedTemplate) {
@@ -204,6 +216,7 @@ export function BeanForm({
 
     const shouldDirty = templateSyncShouldDirtyRef.current;
 
+    setValue('costTemplateId', selectedTemplate.id, { shouldDirty });
     setValue('defaultRoastInputGrams', selectedTemplate.roastInputWeightGrams, { shouldDirty });
     templateSyncShouldDirtyRef.current = true;
   }, [enableCostTemplateSelection, selectedTemplate, setValue]);

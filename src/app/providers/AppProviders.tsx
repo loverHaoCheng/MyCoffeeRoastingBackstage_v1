@@ -1,10 +1,19 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { App as AntApp, ConfigProvider, theme as antdTheme } from 'antd';
+import { App as AntApp, ConfigProvider, message as antdMessage, theme as antdTheme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { type PropsWithChildren, useEffect, useMemo, useState } from 'react';
 
 import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { ErrorBoundary } from '@/shared/errors/ErrorBoundary';
+
+const getAppHeaderOffset = (currentWindow: Window): number => {
+  const rootStyles = currentWindow.getComputedStyle(currentWindow.document.documentElement);
+  const headerHeight = Number.parseFloat(rootStyles.getPropertyValue('--app-shell-header-height'));
+  const safeOffset = Number.parseFloat(rootStyles.getPropertyValue('--app-safe-top'));
+  const resolvedHeaderHeight = Number.isFinite(headerHeight) && headerHeight > 0 ? headerHeight : 58 + (Number.isFinite(safeOffset) ? safeOffset : 0);
+
+  return Math.round(resolvedHeaderHeight + 10);
+};
 
 export function AppProviders({ children }: PropsWithChildren) {
   const [queryClient] = useState(
@@ -67,6 +76,28 @@ export function AppProviders({ children }: PropsWithChildren) {
       delete document.documentElement.dataset.appTheme;
     };
   }, [appDisplaySettings.themeMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const updateMessageOffset = () => {
+      const top = getAppHeaderOffset(window);
+
+      window.document.documentElement.style.setProperty('--app-message-top', `${String(top)}px`);
+      antdMessage.config({
+        top,
+      });
+    };
+
+    updateMessageOffset();
+    window.addEventListener('resize', updateMessageOffset);
+
+    return () => {
+      window.removeEventListener('resize', updateMessageOffset);
+    };
+  }, []);
 
   return (
     <ConfigProvider locale={zhCN} theme={themeConfig}>

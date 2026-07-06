@@ -5,21 +5,34 @@ export interface EntityTimestamps {
 
 export interface Bean extends EntityTimestamps {
   id: number | string;
+  altitudeMetersMax?: number | null;
+  altitudeMetersMin?: number | null;
   name: string;
+  code?: string;
+  defaultRoastInputGrams?: number;
+  defaultSaleUnitPrice?: number | null;
+  defaultSaleUnitWeightGrams?: number | null;
+  densityGPerL?: number | null;
+  harvestSeason?: string;
+  millName?: string | null;
+  moisturePercent?: number | null;
+  notes?: string | null;
+  costTemplateId?: string | null;
   origin: string;
+  originArea?: string | null;
+  originCountry?: string | null;
+  originRegion?: string | null;
   process: string;
   grade: string;
+  purchasedTotalPrice?: number | null;
+  purchasedWeightGrams?: number | null;
+  remainingWeightGrams?: number | null;
   stockKg: number;
   costPerKg: number;
   supplierId?: number | null;
   supplierName?: string | null;
   // 扩展字段：从 Supabase 视图获取
   variety?: string;
-  harvestSeason?: string;
-  code?: string;
-  defaultRoastInputGrams?: number;
-  defaultSaleUnitPrice?: number | null;
-  defaultSaleUnitWeightGrams?: number | null;
 }
 
 export interface RoastPlan extends EntityTimestamps {

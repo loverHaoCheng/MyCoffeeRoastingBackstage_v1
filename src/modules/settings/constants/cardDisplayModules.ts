@@ -15,9 +15,13 @@ export interface CardDisplayModuleDefinition {
 export const beanInventoryCardMetaOptions: CardDisplayMetaOption[] = [
   { key: 'stock', label: '库存' },
   { key: 'cost', label: '成本' },
+  { key: 'costTemplateId', label: '成本模板' },
   { key: 'supplier', label: '供应商' },
   { key: 'process', label: '处理法' },
-  { key: 'origin', label: '产地' },
+  { key: 'originCountry', label: '国家' },
+  { key: 'originRegion', label: '产区' },
+  { key: 'originArea', label: '小产区' },
+  { key: 'millName', label: '处理厂' },
   { key: 'variety', label: '品种' },
   { key: 'grade', label: '等级' },
   { key: 'harvestSeason', label: '产季' },
@@ -25,6 +29,14 @@ export const beanInventoryCardMetaOptions: CardDisplayMetaOption[] = [
   { key: 'defaultRoastInput', label: '默认烘焙量' },
   { key: 'defaultSaleUnitPrice', label: '默认单份售价' },
   { key: 'defaultSaleUnitWeight', label: '默认单份重量' },
+  { key: 'purchasedWeight', label: '采购总重' },
+  { key: 'purchasedTotalPrice', label: '采购总价' },
+  { key: 'remainingWeight', label: '剩余重量' },
+  { key: 'altitudeMetersMin', label: '海拔下限' },
+  { key: 'altitudeMetersMax', label: '海拔上限' },
+  { key: 'moisturePercent', label: '含水率' },
+  { key: 'densityGPerL', label: '密度' },
+  { key: 'notes', label: '备注' },
 ];
 
 export const roastBatchCardMetaOptions: CardDisplayMetaOption[] = [

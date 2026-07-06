@@ -125,7 +125,7 @@ export const appDisplaySettingsStorageSchema = z.object({
       roastPlan: cardDisplaySettingsStorageSchema.optional(),
     })
     .optional(),
-  scale: z.number().min(0.85).max(1.2),
+  scale: z.number().min(0.85).max(1.2).optional(),
   themeMode: z.enum(['dark', 'light']).optional(),
   updatedAt: optionalIsoDatetimeSchema,
 });

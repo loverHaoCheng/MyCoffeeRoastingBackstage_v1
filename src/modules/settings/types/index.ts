@@ -78,7 +78,32 @@ export const appDisplayScaleMin = 0.85;
 export const appDisplayScaleMax = 1.2;
 export const appDisplayScaleStep = 0.05;
 
-const defaultBeanInventoryVisibleKeys = ['stock', 'cost', 'supplier', 'grade'] as const;
+const defaultBeanInventoryVisibleKeys = [
+  'stock',
+  'cost',
+  'supplier',
+  'process',
+  'originCountry',
+  'originRegion',
+  'originArea',
+  'millName',
+  'variety',
+  'grade',
+  'harvestSeason',
+  'code',
+  'defaultRoastInput',
+  'defaultSaleUnitPrice',
+  'defaultSaleUnitWeight',
+  'costTemplateId',
+  'purchasedWeight',
+  'purchasedTotalPrice',
+  'remainingWeight',
+  'altitudeMetersMin',
+  'altitudeMetersMax',
+  'moisturePercent',
+  'densityGPerL',
+  'notes',
+] as const;
 const legacyDefaultBeanInventoryVisibleKeys = ['stock', 'cost', 'supplier', 'process'] as const;
 
 const defaultCardMetaVisibleKeys: Record<AppCardModuleKey, string[]> = {

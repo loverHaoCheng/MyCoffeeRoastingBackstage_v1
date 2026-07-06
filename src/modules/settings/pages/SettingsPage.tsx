@@ -1002,7 +1002,7 @@ export function SettingsPage() {
                   <div className={styles.appearanceBlockHeader}>
                     <div>
                       <strong>显示缩放</strong>
-                      <p>按需调整内容整体缩放，保留桌面与移动端一致的节奏感。</p>
+                      <p>按需调整内容整体缩放，仅在本机生效，不会同步到云端。</p>
                     </div>
                   </div>
                   <div className={styles.zoomPanel}>

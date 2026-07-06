@@ -48,6 +48,8 @@
   --app-shell-bottom-nav-offset: 0px;
   --app-shell-content-bottom-space: calc(var(--app-shell-bottom-nav-height) + 12px);
   --app-shell-floating-bottom-offset: calc(var(--app-shell-bottom-nav-height) + 16px);
+  --app-search-sticky-top: 6px;
+  --app-message-top: calc(var(--app-shell-header-height) + 10px);
   color: var(--app-text);
   background: var(--app-bg);
   font-family:
@@ -122,7 +124,7 @@ select,
 }
 
 .ant-message {
-  top: calc(var(--app-safe-top) + 12px);
+  top: var(--app-message-top);
 }
 
 :root[data-standalone-pwa="true"],
@@ -158,12 +160,6 @@ select,
     height: 100vh;
     min-height: 100vh;
     background: var(--app-bg);
-  }
-}
-
-@media (max-width: 767px) {
-  .ant-message {
-    top: calc(var(--app-shell-header-height) + 10px);
   }
 }
 

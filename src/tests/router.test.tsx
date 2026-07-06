@@ -61,4 +61,56 @@ describe('router', () => {
     expect(screen.queryByRole('heading', { name: '当前数据同步状态' })).not.toBeInTheDocument();
     expect(screen.queryByText('同步状态')).not.toBeInTheDocument();
   });
+
+  it('opens the inventory route', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/inventory'],
+    });
+
+    render(
+      <ConfigProvider>
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </AntApp>
+      </ConfigProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '库存管理' })).toBeInTheDocument();
+    expect(screen.getByLabelText('库存管理概览')).toBeInTheDocument();
+  });
+
+  it('opens the finance route', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/finance'],
+    });
+
+    render(
+      <ConfigProvider>
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </AntApp>
+      </ConfigProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '单锅熟豆成本核算' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'bank 核算' })).toBeInTheDocument();
+  });
 });

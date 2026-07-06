@@ -36,6 +36,7 @@ const buildOptimisticBean = (currentBean: Bean, input: GreenBeanUpdateInput): Be
         ? Number(((input.purchasedTotalPrice / purchasedWeightGrams) * 1000).toFixed(2))
         : 0,
     createdAt: currentBean.createdAt,
+    costTemplateId: input.costTemplateId ?? null,
     defaultRoastInputGrams: input.defaultRoastInputGrams,
     defaultSaleUnitPrice: input.defaultSaleUnitPrice,
     defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
@@ -59,6 +60,7 @@ const buildOptimisticEditableDetail = (
 ): GreenBeanEditableDetail => {
   return {
     beanId: currentDetail?.beanId ?? String(currentBean.id),
+    costTemplateId: input.costTemplateId ?? currentDetail?.costTemplateId ?? null,
     code: input.code.trim(),
     defaultRoastInputGrams: input.defaultRoastInputGrams,
     defaultSaleSpecId: currentDetail?.defaultSaleSpecId ?? null,

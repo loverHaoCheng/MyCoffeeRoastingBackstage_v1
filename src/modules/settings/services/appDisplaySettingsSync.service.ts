@@ -1,7 +1,7 @@
 import { appDisplaySettingsStorageSchema } from '@/modules/settings/schemas';
 import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { appSettingsSyncService, type AppSettingRecord } from '@/modules/settings/services/appSettingsSync.service';
-import { normalizeAppDisplaySettings, type AppDisplaySettings, type AppThemeMode } from '@/modules/settings/types';
+import { normalizeAppDisplaySettings, type AppDisplaySettings } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
@@ -28,7 +28,7 @@ const toSyncPayload = (settings: AppDisplaySettings): AppDisplaySettingsSyncPayl
 
 const mergeLocalThemeMode = (
   settings: AppDisplaySettingsSyncPayload,
-  themeMode: AppThemeMode,
+  themeMode: AppDisplaySettings['themeMode'],
 ): AppDisplaySettings => {
   return normalizeAppDisplaySettings({
     ...settings,
@@ -37,11 +37,18 @@ const mergeLocalThemeMode = (
   });
 };
 
+const buildSyncSignature = (settings: AppDisplaySettingsSyncPayload): string => {
+  return JSON.stringify({
+    cardDisplaySettings: settings.cardDisplaySettings,
+    scale: settings.scale,
+  });
+};
+
 const parseRemoteSettings = (record: AppSettingRecord): AppDisplaySettingsSyncPayload => {
   const result = appDisplaySettingsStorageSchema.safeParse(record.value);
 
   if (!result.success) {
-    throw new AppError('显示缩放远端数据格式无效。', {
+    throw new AppError('应用显示设置远端数据格式无效。', {
       code: 'DATA',
       cause: result.error,
     });
@@ -74,18 +81,19 @@ export const appDisplaySettingsSyncService = {
 
     const localUpdatedAt = toUpdatedAtTimestamp(localSettings.updatedAt);
     const remoteUpdatedAt = toUpdatedAtTimestamp(remoteSettings.updatedAt);
+    const localSignature = buildSyncSignature(toSyncPayload(localSettings));
+    const remoteSignature = buildSyncSignature(remoteSettings);
     const shouldUploadLocal =
-      localUpdatedAt > remoteUpdatedAt ||
-      (localUpdatedAt === remoteUpdatedAt &&
-        localSettings.updatedAt != null &&
-        localSettings.scale !== remoteSettings.scale);
+      localSignature !== remoteSignature && localUpdatedAt >= remoteUpdatedAt;
 
     if (shouldUploadLocal) {
       await this.saveRemote(localSettings);
       return appDisplaySettingsService.save(localSettings);
     }
 
-    return appDisplaySettingsService.save(mergeLocalThemeMode(remoteSettings, localSettings.themeMode));
+    return appDisplaySettingsService.save(
+      mergeLocalThemeMode(remoteSettings, localSettings.themeMode),
+    );
   },
   async syncSafely(localSettings = appDisplaySettingsService.load()): Promise<AppDisplaySettings> {
     try {

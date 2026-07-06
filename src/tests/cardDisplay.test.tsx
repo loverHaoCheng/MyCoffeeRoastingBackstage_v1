@@ -1,9 +1,9 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { BeanInventoryCard } from '@/modules/bean/components/BeanInventoryCard';
 import { useSettingsStore } from '@/modules/settings/store';
-import { createDefaultAppDisplaySettings } from '@/modules/settings/types';
+import { createDefaultAppDisplaySettings, createDefaultCostTemplateSettings } from '@/modules/settings/types';
 import type { Bean } from '@/types/domain';
 
 const createBean = (): Bean => ({
@@ -24,6 +24,7 @@ describe('card display settings', () => {
   beforeEach(() => {
     useSettingsStore.setState({
       appDisplaySettings: createDefaultAppDisplaySettings(),
+      costTemplateSettings: createDefaultCostTemplateSettings(),
     });
   });
 
@@ -49,8 +50,70 @@ describe('card display settings', () => {
     useSettingsStore.setState({ appDisplaySettings: nextSettings });
 
     const { container } = render(<BeanInventoryCard bean={createBean()} />);
-    const labels = Array.from(container.querySelectorAll('dt')).map((node) => node.textContent);
+    const content = container.textContent;
 
-    expect(labels).toEqual(['成本', '库存']);
+    expect(content.indexOf('成本')).toBeGreaterThanOrEqual(0);
+    expect(content.indexOf('库存')).toBeGreaterThanOrEqual(0);
+    expect(content.indexOf('成本')).toBeLessThan(content.indexOf('库存'));
+  });
+
+  it('renders the selected cost template when the card shows that field', () => {
+    const nextSettings = createDefaultAppDisplaySettings();
+    nextSettings.cardDisplaySettings.beanInventory = {
+      displayCount: 2,
+      visibleMetaKeys: ['costTemplateId', 'stock'],
+    };
+    useSettingsStore.setState({
+      appDisplaySettings: nextSettings,
+      costTemplateSettings: {
+        defaultTemplateId: 'template-1',
+        templates: [
+          {
+            createdAt: '2026-06-28T00:00:00.000Z',
+            dehydrationRate: 14,
+            energyCost: 0,
+            id: 'template-1',
+            laborCost: 0,
+            name: '轻度成本模板',
+            notes: '',
+            otherCost: 0,
+            packagingCost: 0,
+            roastInputWeightGrams: 200,
+            saleUnitWeightGrams: 100,
+            targetProfitRate: 30,
+            updatedAt: '2026-06-28T00:00:00.000Z',
+          },
+        ],
+        updatedAt: '2026-06-28T00:00:00.000Z',
+      },
+    });
+
+    render(<BeanInventoryCard bean={{ ...createBean(), costTemplateId: 'template-1' }} />);
+
+    expect(screen.getByText('成本模板')).toBeInTheDocument();
+    expect(screen.getByText('轻度成本模板')).toBeInTheDocument();
+  });
+
+  it('shows all editable fields for newly created local beans', () => {
+    const nextSettings = createDefaultAppDisplaySettings();
+    nextSettings.cardDisplaySettings.beanInventory = {
+      displayCount: 0,
+      visibleMetaKeys: [],
+    };
+    useSettingsStore.setState({ appDisplaySettings: nextSettings });
+
+    const { container } = render(
+      <BeanInventoryCard
+        bean={{
+          ...createBean(),
+          id: 'local-test-bean-1',
+        }}
+      />,
+    );
+
+    expect(screen.getByText('默认烘焙量')).toBeInTheDocument();
+    expect(screen.getByText('默认单份售价')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '展开' })).not.toBeInTheDocument();
+    expect(container.textContent).toContain('默认单份重量');
   });
 });

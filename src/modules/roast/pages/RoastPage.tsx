@@ -14,9 +14,11 @@ import type { RoastPlanEditableFieldPath } from '@/modules/roast/components/Roas
 import {
   roastPlanQueryKeys,
   useDeleteRoastPlan,
+  useRoastBatches,
   useRoastPlans,
   useUpdateRoastPlan,
 } from '@/modules/roast/hooks';
+import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlanStatus';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { useSupabaseConnectionSettings } from '@/modules/settings/hooks';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -65,7 +67,7 @@ export function RoastPage() {
   const { supabaseConnections } = useSupabaseConnectionSettings();
   const [keyword, setKeyword] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState<RoastPlan['id'] | null>(null);
-  const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | undefined>();
+  const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | 'steps' | undefined>();
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [creationTab, setCreationTab] = useState<'manual' | 'json'>('manual');
@@ -79,12 +81,22 @@ export function RoastPage() {
     supabaseConnections.greenBean.projectUrl.trim().length > 0 &&
     supabaseConnections.greenBean.publishableKey.trim().length > 0;
 
-  const filteredPlans = useMemo(
-    () => plans.filter((p) => matchesKeyword(p, keyword)),
-    [plans, keyword],
+  const { data: batches = [] } = useRoastBatches();
+  const effectivePlans = useMemo(
+    () =>
+      plans.map((plan) => ({
+        ...plan,
+        status: getEffectiveRoastPlanStatus(plan, batches),
+      })),
+    [batches, plans],
   );
 
-  const selectedPlan = plans.find((p) => p.id === selectedPlanId) ?? null;
+  const filteredPlans = useMemo(
+    () => effectivePlans.filter((plan) => matchesKeyword(plan, keyword)),
+    [effectivePlans, keyword],
+  );
+
+  const selectedPlan = effectivePlans.find((p) => p.id === selectedPlanId) ?? null;
 
   // 查看
   const handleView = (planId: RoastPlan['id']) => {
@@ -94,7 +106,7 @@ export function RoastPage() {
   };
 
   // 编辑
-  const handleEdit = (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath) => {
+  const handleEdit = (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath | 'steps') => {
     setSelectedPlanId(planId);
     setSelectedPlanFieldPath(fieldPath);
     setDetailMode('edit');
@@ -328,7 +340,32 @@ export function RoastPage() {
         </AppDrawer>
       ) : null}
 
-      {selectedPlan && detailMode === 'edit' && selectedPlanFieldPath != null ? (
+      {selectedPlan && detailMode === 'edit' && selectedPlanFieldPath === 'steps' ? (
+        <AppDrawer
+          className={styles.detailDrawer}
+          data-placement={isWide ? 'right' : 'bottom'}
+          height={isWide ? undefined : '86dvh'}
+          onClose={closeDetail}
+          open
+          placement={isWide ? 'right' : 'bottom'}
+          title="编辑烘焙计划"
+          width={720}
+        >
+          <RoastPlanDetail
+            mode="edit"
+            onClose={closeDetail}
+            onDelete={(planId) => {
+              const plan = plans.find((p) => p.id === planId);
+              if (plan) handleDelete(plan);
+              closeDetail();
+            }}
+            onUpdate={handleUpdate}
+            plan={selectedPlan}
+          />
+        </AppDrawer>
+      ) : null}
+
+      {selectedPlan && detailMode === 'edit' && selectedPlanFieldPath != null && selectedPlanFieldPath !== 'steps' ? (
         <RoastPlanFieldEditorDrawer
           fieldPath={selectedPlanFieldPath}
           height={isWide ? undefined : '360px'}

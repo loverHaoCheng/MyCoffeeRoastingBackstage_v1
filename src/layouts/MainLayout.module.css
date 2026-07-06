@@ -162,7 +162,7 @@
   min-width: 0;
   min-height: 0;
   padding-top: 18px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .viewportFrame::before,
@@ -208,11 +208,24 @@
 
 .scaleViewport {
   --layout-content-scale: 1;
-  width: min(100%, calc(100% / var(--layout-content-scale)));
-  min-height: calc(100% / var(--layout-content-scale));
   margin: 0 auto;
-  transform: scale(var(--layout-content-scale));
-  transform-origin: top center;
+  width: 100%;
+  min-height: 100%;
+}
+
+@supports (zoom: 1) {
+  .scaleViewport {
+    zoom: var(--layout-content-scale);
+  }
+}
+
+@supports not (zoom: 1) {
+  .scaleViewport {
+    width: min(100%, calc(100% / var(--layout-content-scale)));
+    min-height: 100%;
+    transform: scale(var(--layout-content-scale));
+    transform-origin: top center;
+  }
 }
 
 .content {
@@ -229,8 +242,8 @@
   flex-direction: column;
   position: relative;
   min-height: 100%;
-  overflow: hidden;
-  contain: layout paint style;
+  overflow: visible;
+  contain: none;
 }
 
 .routePanel {
@@ -239,8 +252,6 @@
   flex-direction: column;
   min-height: 100%;
   backface-visibility: hidden;
-  transform: translateZ(0);
-  contain: layout paint style;
 }
 
 .routeTrack {
@@ -273,13 +284,47 @@
   transition: box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
 }
 
+.bottomNav::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  height: var(--app-shell-bottom-nav-height);
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgb(245 245 247 / 0%) 0%,
+    rgb(245 245 247 / 4%) 34%,
+    rgb(245 245 247 / 9%) 100%
+  );
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  mask: linear-gradient(
+    180deg,
+    transparent 0%,
+    red 24%,
+    red 100%
+  );
+  -webkit-mask: linear-gradient(
+    180deg,
+    transparent 0%,
+    red 24%,
+    red 100%
+  );
+}
+
 .bottomNavFrame {
+  position: relative;
+  z-index: 1;
   width: min(calc(100% - 24px - var(--app-safe-left) - var(--app-safe-right)), 560px);
   margin: 0 auto;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
 }
 
 .bottomNavSurface {
+  position: relative;
   width: 100%;
   padding: 5px;
   border: 1px solid var(--app-border);
@@ -413,8 +458,10 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .scaleViewport {
-    transition: transform 160ms ease, width 160ms ease, min-height 160ms ease;
+  @supports not (zoom: 1) {
+    .scaleViewport {
+      transition: transform 160ms ease, width 160ms ease, min-height 160ms ease;
+    }
   }
 }
 
@@ -437,7 +484,7 @@
   }
 
   .bottomNav::before {
-    content: none;
+    height: var(--app-shell-bottom-nav-height);
   }
 
   .bottomNavFrame {

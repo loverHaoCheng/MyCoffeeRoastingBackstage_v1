@@ -2,6 +2,7 @@ import { DeleteOutlined } from '@ant-design/icons';
 import { Button, Popconfirm } from 'antd';
 import { useMemo } from 'react';
 
+import { roastPlanStatusLabelMap } from '@/modules/roast/constants/roastPlanStatus';
 import { roastPlanToJsonInput } from '@/modules/roast/services/roastPlanJson.service';
 import type { RoastPlan } from '@/types/domain';
 
@@ -32,6 +33,7 @@ export function RoastPlanDetail({ mode, onClose, onDelete, onUpdate, plan }: Roa
       { label: '批次重量', value: `${String(plan.batchWeightGrams)}g` },
       { label: '烘焙目标', value: plan.targetRoastLevel },
       { label: '用途', value: plan.roastPurpose || '-' },
+      { label: '状态', value: roastPlanStatusLabelMap[plan.status] },
     ];
 
     return (

@@ -168,6 +168,7 @@ export const beanSyncService = {
    */
   localRecordToCreateInput(record: LocalGreenBeanRecord | Record<string, unknown>): GreenBeanCreateInput {
     return {
+      costTemplateId: toOptionalString(record.costTemplateId),
       code: toRequiredString(record.code),
       defaultRoastInputGrams: Number(record.defaultRoastInputGrams) || 200,
       defaultSaleUnitPrice: Number(record.defaultSaleUnitPrice) || 0,

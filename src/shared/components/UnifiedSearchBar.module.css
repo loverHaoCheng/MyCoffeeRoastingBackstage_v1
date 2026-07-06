@@ -1,18 +1,24 @@
 .container {
+  position: sticky;
+  top: var(--app-search-sticky-top, 12px);
+  z-index: 35;
   width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border: 1px solid var(--app-border);
-  border-radius: 16px;
-  background: var(--app-bg-elevated);
-  box-shadow: 0 8px 20px rgb(29 29 31 / 4%);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  isolation: isolate;
 }
 
 .field {
   flex: 1 1 auto;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .field :global(.ant-input-affix-wrapper) {
@@ -22,6 +28,8 @@
   align-items: center;
   background: var(--app-bg-elevated);
   color: var(--app-text);
+  box-shadow: 0 0 0 1px var(--app-border);
+  filter: drop-shadow(0 0 5px rgb(255 255 255 / 100%));
 }
 
 .field :global(.ant-input) {

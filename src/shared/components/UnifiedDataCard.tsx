@@ -36,7 +36,7 @@ export function UnifiedDataCard({
   onDelete,
   deleteLabel,
 }: UnifiedDataCardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expandedLevel, setExpandedLevel] = useState<0 | 1 | 2>(0);
   const previewItems = useMemo(() => {
     if (previewMetaItems) {
       return previewMetaItems;
@@ -50,12 +50,20 @@ export function UnifiedDataCard({
     [metaItems, previewKeySet],
   );
   const isExpandable = extraItems.length > 0;
+  const firstExpansionLimit = Math.max(0, 8 - previewItems.length);
+  const firstExpansionItems = useMemo(() => {
+    return extraItems.slice(0, firstExpansionLimit);
+  }, [extraItems, firstExpansionLimit]);
+  const secondExpansionItems = useMemo(() => {
+    return extraItems.slice(firstExpansionLimit);
+  }, [extraItems, firstExpansionLimit]);
+  const hasSecondExpansion = secondExpansionItems.length > 0;
 
   useEffect(() => {
-    if (!isExpandable && expanded) {
-      setExpanded(false);
+    if (!isExpandable && expandedLevel !== 0) {
+      setExpandedLevel(0);
     }
-  }, [expanded, isExpandable]);
+  }, [expandedLevel, isExpandable]);
 
   const renderMetaRow = (item: UnifiedDataCardMetaItem) => {
     const canEdit = typeof item.onEdit === 'function';
@@ -145,9 +153,15 @@ export function UnifiedDataCard({
           <div className={styles.rowList}>
             {previewItems.map(renderMetaRow)}
 
-            {isExpandable ? (
-              <div className={styles.expandRegion} data-expanded={expanded}>
-                <div className={styles.expandRegionInner}>{extraItems.map(renderMetaRow)}</div>
+            {firstExpansionItems.length > 0 ? (
+              <div className={styles.expandRegion} data-expanded={expandedLevel >= 1}>
+                <div className={styles.expandRegionInner}>{firstExpansionItems.map(renderMetaRow)}</div>
+              </div>
+            ) : null}
+
+            {secondExpansionItems.length > 0 ? (
+              <div className={styles.expandRegion} data-expanded={expandedLevel >= 2}>
+                <div className={styles.expandRegionInner}>{secondExpansionItems.map(renderMetaRow)}</div>
               </div>
             ) : null}
           </div>
@@ -157,8 +171,9 @@ export function UnifiedDataCard({
       {isExpandable ? (
         <div className={styles.footer}>
           <Button
-            aria-expanded={expanded}
+            aria-expanded={expandedLevel > 0}
             className={styles.expandButton}
+            data-expanded-level={String(expandedLevel)}
             icon={
               <span aria-hidden="true" className={styles.expandIcon}>
                 <DownOutlined />
@@ -166,11 +181,21 @@ export function UnifiedDataCard({
             }
             onClick={(event) => {
               event.stopPropagation();
-              setExpanded((current) => !current);
+              setExpandedLevel((current) => {
+                if (current === 0) {
+                  return 1;
+                }
+
+                if (current === 1 && hasSecondExpansion) {
+                  return 2;
+                }
+
+                return 0;
+              });
             }}
             type="text"
           >
-            {expanded ? '收起' : '展开全部'}
+            {expandedLevel === 0 ? '展开' : expandedLevel === 1 && hasSecondExpansion ? '展开全部' : '收起'}
           </Button>
         </div>
       ) : null}

@@ -1,4 +1,5 @@
 export interface GreenBeanFormInput {
+  costTemplateId?: null | string;
   code: string;
   defaultRoastInputGrams: number;
   displayName: string;

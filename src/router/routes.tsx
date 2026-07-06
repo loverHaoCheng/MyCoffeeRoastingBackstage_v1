@@ -8,8 +8,14 @@ const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default
 const RoastPage = lazy(() =>
   import('@/modules/roast').then((module) => ({ default: module.RoastPage })),
 );
+const InventoryPage = lazy(() =>
+  import('@/modules/inventory').then((module) => ({ default: module.InventoryPage })),
+);
 const ProductionPage = lazy(() =>
   import('@/modules/production').then((module) => ({ default: module.ProductionPage })),
+);
+const FinancePage = lazy(() =>
+  import('@/modules/finance').then((module) => ({ default: module.FinancePage })),
 );
 const SettingsPage = lazy(() =>
   import('@/modules/settings').then((module) => ({ default: module.SettingsPage })),
@@ -48,7 +54,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'inventory',
-        element: <Navigate to="/beans" replace />,
+        element: withPageFallback(<InventoryPage />),
       },
       {
         path: 'production',
@@ -56,7 +62,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'finance',
-        element: <Navigate to="/settings" replace />,
+        element: withPageFallback(<FinancePage />),
       },
       {
         path: 'settings',

@@ -40,6 +40,7 @@ const isLocalGreenBeanRecord = (value: unknown): value is LocalGreenBeanRecord =
   return (
     typeof record.id === 'string' &&
     record.source === 'local' &&
+    (record.costTemplateId == null || typeof record.costTemplateId === 'string') &&
     typeof record.code === 'string' &&
     typeof record.displayName === 'string' &&
     typeof record.variety === 'string' &&
@@ -68,6 +69,7 @@ const normalizeRemainingWeightGrams = (
 const normalizeLocalGreenBeanRecord = (record: LocalGreenBeanRecord): LocalGreenBeanRecord => {
   return {
     ...record,
+    costTemplateId: normalizeText(record.costTemplateId),
     grade: normalizeText(record.grade),
     remainingWeightGrams: normalizeRemainingWeightGrams(
       record.purchasedWeightGrams,
@@ -160,20 +162,33 @@ const calculateStockKg = (record: GreenBeanCreateInput): number => {
 
 export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bean => ({
   id: record.id,
+  altitudeMetersMax: record.altitudeMetersMax ?? null,
+  altitudeMetersMin: record.altitudeMetersMin ?? null,
   name: record.displayName,
+  code: record.code,
+  defaultRoastInputGrams: record.defaultRoastInputGrams,
+  defaultSaleUnitPrice: record.defaultSaleUnitPrice,
+  defaultSaleUnitWeightGrams: record.defaultSaleUnitWeightGrams ?? null,
+  costTemplateId: normalizeText(record.costTemplateId),
+  densityGPerL: record.densityGPerL ?? null,
+  harvestSeason: normalizeText(record.harvestSeason) ?? undefined,
+  millName: record.millName ?? null,
+  moisturePercent: record.moisturePercent ?? null,
+  notes: record.notes ?? null,
   origin: buildOriginLabel(record),
+  originArea: record.originArea ?? null,
+  originCountry: record.originCountry ?? null,
+  originRegion: record.originRegion ?? null,
   process: record.processMethod,
   grade: normalizeText(record.grade) ?? '',
+  purchasedTotalPrice: record.purchasedTotalPrice,
+  purchasedWeightGrams: record.purchasedWeightGrams,
+  remainingWeightGrams: record.remainingWeightGrams,
   stockKg: calculateStockKg(record),
   costPerKg: calculateCostPerKg(record),
   supplierName: normalizeText(record.supplierName),
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
-  code: record.code,
-  defaultRoastInputGrams: record.defaultRoastInputGrams,
-  defaultSaleUnitPrice: record.defaultSaleUnitPrice,
-  defaultSaleUnitWeightGrams: record.defaultSaleUnitWeightGrams ?? null,
-  harvestSeason: normalizeText(record.harvestSeason) ?? undefined,
   variety: record.variety,
 });
 
@@ -192,6 +207,7 @@ export const localGreenBeanService = {
     const nextRecord: LocalGreenBeanRecord = {
       ...input,
       code: input.code.trim(),
+      costTemplateId: normalizeText(input.costTemplateId),
       defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
       displayName: input.displayName.trim(),
       grade: normalizeText(input.grade),
@@ -306,6 +322,7 @@ export const localGreenBeanService = {
       ...currentRecord,
       ...input,
       code: input.code.trim(),
+      costTemplateId: normalizeText(input.costTemplateId),
       displayName: input.displayName.trim(),
       grade: normalizeText(input.grade),
       harvestSeason: normalizeText(input.harvestSeason),

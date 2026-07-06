@@ -1,6 +1,7 @@
 import { App, Button, Result, Spin } from 'antd';
 
 import { useBeanEditableDetail, useUpdateBean } from '@/modules/bean/hooks';
+import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import type { Bean } from '@/types/domain';
 import type { FieldPath } from 'react-hook-form';
@@ -31,10 +32,15 @@ const formatCurrency = new Intl.NumberFormat('zh-CN', {
 
 export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDetailDrawerProps) {
   const { message } = App.useApp();
+  const { costTemplateSettings } = useCostTemplateSettings();
   const editableDetailQuery = useBeanEditableDetail(bean.id);
   const updateBeanMutation = useUpdateBean();
   const totalWeightGrams = editableDetailQuery.data?.purchasedWeightGrams ?? Math.round(bean.stockKg * 1000);
   const remainingWeightGrams = editableDetailQuery.data?.remainingWeightGrams ?? Math.round(bean.stockKg * 1000);
+  const costTemplateLabel = bean.costTemplateId
+    ? costTemplateSettings.templates.find((template) => template.id === bean.costTemplateId)?.name ??
+      bean.costTemplateId
+    : '待补充';
 
   if (mode === 'view') {
     const summaryItems = [
@@ -45,6 +51,7 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDe
       { label: '总库存', value: `${formatKg.format(totalWeightGrams / 1000)} kg` },
       { label: '剩余库存', value: `${formatKg.format(remainingWeightGrams / 1000)} kg` },
       { label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
+      { label: '成本模板', value: costTemplateLabel },
       {
         label: '默认烘焙量',
         value: bean.defaultRoastInputGrams ? `${String(bean.defaultRoastInputGrams)} g` : '待补充',

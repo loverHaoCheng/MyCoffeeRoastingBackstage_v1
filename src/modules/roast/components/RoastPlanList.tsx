@@ -1,4 +1,5 @@
 import { useVisibleCardMetaItems } from '@/modules/settings/hooks';
+import { roastPlanStatusLabelMap } from '@/modules/roast/constants/roastPlanStatus';
 import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 import type { RoastPlan } from '@/types/domain';
 
@@ -8,17 +9,10 @@ import styles from './RoastPlanList.module.css';
 
 interface RoastPlanListProps {
   onDelete?: (plan: RoastPlan) => void;
-  onEdit: (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath) => void;
+  onEdit: (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath | 'steps') => void;
   onView: (planId: RoastPlan['id']) => void;
   plans: RoastPlan[];
 }
-
-const statusLabel: Record<RoastPlan['status'], string> = {
-  draft: '草稿',
-  inProgress: '进行中',
-  completed: '已完成',
-  cancelled: '已取消',
-};
 
 const formatKg = new Intl.NumberFormat('zh-CN', {
   maximumFractionDigits: 2,
@@ -34,7 +28,7 @@ const getText = (fallback: string, value: string | null | undefined): string => 
 
 interface RoastPlanCardProps {
   onDelete?: (plan: RoastPlan) => void;
-  onEdit: (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath) => void;
+  onEdit: (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath | 'steps') => void;
   onView: (planId: RoastPlan['id']) => void;
   plan: RoastPlan;
 }
@@ -47,8 +41,8 @@ function RoastPlanCard({ onDelete, onEdit, onView, plan }: RoastPlanCardProps) {
     { key: 'plannedBatchWeight', label: '计划重量', value: `${formatKg.format(plan.plannedBatchKg)} kg` },
     { key: 'roastPurpose', label: '用途', value: getText('待补充', plan.roastPurpose), multiline: true, editPath: 'purpose' as const },
     { key: 'roastLevel', label: '烘焙度', value: getText('-', plan.targetRoastLevel), editPath: 'roastLevel' as const },
-    { key: 'status', label: '状态', value: statusLabel[plan.status] },
-    { key: 'stepCount', label: '节点数', value: `${String(plan.steps.length)} 个节点` },
+    { key: 'status', label: '状态', value: roastPlanStatusLabelMap[plan.status] },
+    { key: 'stepCount', label: '节点数', value: `${String(plan.steps.length)} 个节点`, editPath: 'steps' as const },
   ];
   const previewMetaItems = useVisibleCardMetaItems('roastPlan', allMetaItems);
 
