@@ -1,0 +1,87 @@
+.page {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top, rgb(255 255 255 / 0.95) 0%, rgb(245 245 247 / 0.82) 38%, rgb(226 232 240 / 0.9) 100%);
+}
+
+.shell {
+  display: grid;
+  place-items: center;
+  gap: 18px;
+  min-height: calc(100vh - 48px);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.shellLogin {
+  justify-items: center;
+  align-content: start;
+  padding-top: min(33vh, 300px);
+}
+
+.hero {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 560px);
+  text-align: center;
+}
+
+.eyebrow {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  color: var(--app-text);
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.description {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.card {
+  width: min(100%, 480px);
+  padding: 28px;
+  border: 1px solid rgb(17 24 39 / 8%);
+  border-radius: 28px;
+  background: rgb(255 255 255 / 0.96);
+  box-shadow: 0 24px 64px rgb(15 23 42 / 10%);
+}
+
+.actions {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.actions a {
+  color: var(--app-text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px;
+  }
+
+  .shellLogin {
+    padding-top: min(33vh, 240px);
+  }
+
+  .card {
+    padding: 22px;
+    border-radius: 24px;
+  }
+}

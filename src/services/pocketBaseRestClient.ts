@@ -1,0 +1,1 @@
+export { PocketBaseRestClient } from './supabaseRestClient';

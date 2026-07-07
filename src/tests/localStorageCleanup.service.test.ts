@@ -21,4 +21,18 @@ describe('localStorageCleanupService', () => {
     expect(window.localStorage.getItem('coffee-roasting-backstage:cost-templates')).toBe('{"templates":[]}');
     expect(window.localStorage.getItem('third-party:key')).toBe('keep');
   });
+
+  it('clears cost templates during app state reset so account data can be fully resynced', () => {
+    window.localStorage.clear();
+    window.localStorage.setItem('coffee-roasting-backstage:cost-templates', '{"templates":[1]}');
+    window.localStorage.setItem('coffee-roasting-backstage:app-display-settings', '{"theme":"light"}');
+    window.localStorage.setItem('coffee-roasting-backstage:pocketbase-connections', '{"greenBean":{}}');
+
+    const removedKeys = localStorageCleanupService.clearAppState();
+
+    expect(removedKeys).toContain('coffee-roasting-backstage:cost-templates');
+    expect(window.localStorage.getItem('coffee-roasting-backstage:cost-templates')).toBeNull();
+    expect(window.localStorage.getItem('coffee-roasting-backstage:app-display-settings')).toBe('{"theme":"light"}');
+    expect(window.localStorage.getItem('coffee-roasting-backstage:pocketbase-connections')).toBe('{"greenBean":{}}');
+  });
 });

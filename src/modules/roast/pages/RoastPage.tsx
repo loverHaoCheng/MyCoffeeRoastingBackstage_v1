@@ -20,8 +20,10 @@ import {
 } from '@/modules/roast/hooks';
 import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlanStatus';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
-import { useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
@@ -64,7 +66,7 @@ export function RoastPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
-  const { supabaseConnections } = useSupabaseConnectionSettings();
+  const { pocketBaseConnections } = usePocketBaseConnectionSettings();
   const [keyword, setKeyword] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState<RoastPlan['id'] | null>(null);
   const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | 'steps' | undefined>();
@@ -77,9 +79,7 @@ export function RoastPage() {
   const deleteMutation = useDeleteRoastPlan();
 
   const isWide = screens.md ?? false;
-  const hasGreenBeanConnection =
-    supabaseConnections.greenBean.projectUrl.trim().length > 0 &&
-    supabaseConnections.greenBean.publishableKey.trim().length > 0;
+  const hasGreenBeanConnection = isPocketBaseProjectConnectionConfigured(pocketBaseConnections.greenBean);
 
   const { data: batches = [] } = useRoastBatches();
   const effectivePlans = useMemo(
@@ -128,8 +128,10 @@ export function RoastPage() {
             setSelectedPlanFieldPath(undefined);
             setDetailMode(null);
           })
-          .catch(() => {
-            void message.error('supabase删除失败');
+          .catch((error: unknown) => {
+            void message.error(
+              getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
+            );
           });
       },
     });
@@ -143,8 +145,7 @@ export function RoastPage() {
       try {
         await updateMutation.mutateAsync({ planId, input });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
-        void message.error(errorMessage);
+        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
       }
     })();
 
@@ -170,12 +171,10 @@ export function RoastPage() {
         const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
 
         queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        void queryClient.invalidateQueries({ queryKey: roastPlanQueryKeys.all });
       } catch (error: unknown) {
         const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
         queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
-        void message.error(errorMessage);
+        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，已回滚本次新建，请检查后重试。'));
       }
     })();
 
@@ -201,12 +200,10 @@ export function RoastPage() {
         const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
 
         queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        void queryClient.invalidateQueries({ queryKey: roastPlanQueryKeys.all });
       } catch (error: unknown) {
         const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
         queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
-        void message.error(errorMessage);
+        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，已回滚本次导入，请检查后重试。'));
       }
     })();
 

@@ -1,7 +1,7 @@
 import { costTemplateSettingsStorageSchema } from '@/modules/settings/schemas';
-import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
 import { appSettingsSyncService, type AppSettingRecord } from '@/modules/settings/services/appSettingsSync.service';
-import type { CostTemplate, CostTemplateSettings } from '@/modules/settings/types';
+import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
+import { createDefaultCostTemplateSettings, type CostTemplateSettings } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
@@ -22,56 +22,14 @@ const parseRemoteSettings = (record: AppSettingRecord): CostTemplateSettings => 
     result.data.templates.some((template) => template.id === result.data.defaultTemplateId);
 
   return {
-    defaultTemplateId: hasDefaultTemplate ? result.data.defaultTemplateId ?? null : result.data.templates[0]?.id ?? null,
+    defaultTemplateId: hasDefaultTemplate ? result.data.defaultTemplateId ?? null : null,
     templates: result.data.templates,
     updatedAt: result.data.updatedAt ?? record.updated_at ?? null,
   };
 };
 
-const buildTemplateSnapshot = (settings: CostTemplateSettings): string => {
-  return JSON.stringify(
-    [...settings.templates]
-      .sort((left, right) => left.id.localeCompare(right.id))
-      .map((template) => `${template.id}:${template.updatedAt}`),
-  );
-};
-
-const mergeTemplateSettings = (
-  localSettings: CostTemplateSettings,
-  remoteSettings: CostTemplateSettings,
-): CostTemplateSettings => {
-  const mergedTemplates = new Map<string, CostTemplate>();
-
-  remoteSettings.templates.forEach((template) => {
-    mergedTemplates.set(template.id, template);
-  });
-
-  localSettings.templates.forEach((template) => {
-    if (!mergedTemplates.has(template.id)) {
-      mergedTemplates.set(template.id, template);
-    }
-  });
-
-  const templates = [...mergedTemplates.values()].sort((left, right) => {
-    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-  });
-
-  const defaultTemplateId =
-    remoteSettings.defaultTemplateId && mergedTemplates.has(remoteSettings.defaultTemplateId)
-      ? remoteSettings.defaultTemplateId
-      : localSettings.defaultTemplateId && mergedTemplates.has(localSettings.defaultTemplateId)
-        ? localSettings.defaultTemplateId
-        : templates[0]?.id ?? null;
-
-  const updatedAtCandidates = [remoteSettings.updatedAt, localSettings.updatedAt]
-    .filter((value): value is string => typeof value === 'string' && value.length > 0)
-    .sort((left, right) => new Date(right).getTime() - new Date(left).getTime());
-
-  return {
-    defaultTemplateId,
-    templates,
-    updatedAt: updatedAtCandidates[0] ?? null,
-  };
+const normalizeRemoteResult = (remoteSettings: CostTemplateSettings | null): CostTemplateSettings => {
+  return remoteSettings ?? createDefaultCostTemplateSettings();
 };
 
 export const costTemplateSyncService = {
@@ -83,27 +41,29 @@ export const costTemplateSyncService = {
   async saveRemote(settings: CostTemplateSettings): Promise<void> {
     await appSettingsSyncService.saveRecord(costTemplateSettingsKey, settings);
   },
-  async sync(localSettings = costTemplateSettingsService.load()): Promise<CostTemplateSettings> {
-    const remoteSettings = await this.loadRemote();
+  async syncFromRemote(): Promise<CostTemplateSettings> {
+    const nextSettings = normalizeRemoteResult(await this.loadRemote());
 
-    if (!remoteSettings) {
-      await this.saveRemote(localSettings);
-      return costTemplateSettingsService.save(localSettings);
-    }
-
-    const mergedSettings = mergeTemplateSettings(localSettings, remoteSettings);
-
-    if (buildTemplateSnapshot(remoteSettings) !== buildTemplateSnapshot(mergedSettings)) {
-      await this.saveRemote(mergedSettings);
-    }
-
-    return costTemplateSettingsService.save(mergedSettings);
+    return costTemplateSettingsService.save(nextSettings);
   },
-  async syncSafely(localSettings = costTemplateSettingsService.load()): Promise<CostTemplateSettings> {
+  async syncFromRemoteSafely(): Promise<CostTemplateSettings> {
     try {
-      return await this.sync(localSettings);
+      return await this.syncFromRemote();
     } catch (error) {
-      logger.warn('cost template remote sync failed', { error });
+      logger.warn('cost template remote pull failed', { error });
+      return costTemplateSettingsService.load();
+    }
+  },
+  async syncLocalChange(localSettings = costTemplateSettingsService.load()): Promise<CostTemplateSettings> {
+    await this.saveRemote(localSettings);
+
+    return costTemplateSettingsService.save(localSettings);
+  },
+  async syncLocalChangeSafely(localSettings = costTemplateSettingsService.load()): Promise<CostTemplateSettings> {
+    try {
+      return await this.syncLocalChange(localSettings);
+    } catch (error) {
+      logger.warn('cost template remote push failed', { error });
       return localSettings;
     }
   },

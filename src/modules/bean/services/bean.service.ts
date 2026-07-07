@@ -4,11 +4,12 @@ import {
   localGreenBeanService,
   mapLocalGreenBeanRecordToBean,
 } from '@/modules/bean/services/localGreenBean.service';
-import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { logger } from '@/shared/logger/logger';
 import { AppError } from '@/shared/errors/AppError';
 import type { ApiResponse } from '@/services/api.types';
-import { SupabaseRestClient } from '@/services/supabaseRestClient';
+import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import type { Bean } from '@/types/domain';
 
 import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../types';
@@ -21,6 +22,7 @@ interface GreenBeanTableUpdateInput {
   default_roast_input_grams?: number;
   density_g_per_l?: null | number;
   display_name?: string;
+  grade?: null | string;
   harvest_season?: null | string;
   mill_name?: null | string;
   moisture_percent?: null | number;
@@ -215,6 +217,7 @@ const mapBeanFormInputToTableInput = (input: GreenBeanUpdateInput): GreenBeanTab
   default_roast_input_grams: input.defaultRoastInputGrams,
   density_g_per_l: toNullableNumber(input.densityGPerL),
   display_name: input.displayName.trim(),
+  grade: normalizeText(input.grade),
   harvest_season: normalizeText(input.harvestSeason),
   mill_name: normalizeText(input.millName),
   moisture_percent: toNullableNumber(input.moisturePercent),
@@ -678,12 +681,12 @@ export function createSupabaseBeanRepository(
       return ok(beans.data.find((bean) => bean.id === beanId) ?? null);
     },
     getEditableBean() {
-      return Promise.reject(new AppError('此仓库不支持编辑详情，请使用 SupabaseRestClient 仓库。', {
+      return Promise.reject(new AppError('此仓库不支持编辑详情，请使用 PocketBaseRestClient 仓库。', {
         code: 'CONFIG',
       }));
     },
     adjustRemainingWeight() {
-      return Promise.reject(new AppError('此仓库不支持库存调整，请使用 SupabaseRestClient 仓库。', {
+      return Promise.reject(new AppError('此仓库不支持库存调整，请使用 PocketBaseRestClient 仓库。', {
         code: 'CONFIG',
       }));
     },
@@ -703,9 +706,9 @@ export function createSupabaseBeanRepository(
       return this.listBeans();
     },
     updateBean(): Promise<ApiResponse<Bean>> {
-      // createSupabaseBeanRepository 使用 Supabase JS SDK，暂不支持 update
-      // 实际更新通过 createSupabaseGreenBeanInventoryRepository 的 SupabaseRestClient 完成
-      return Promise.reject(new AppError('此仓库不支持更新，请使用 SupabaseRestClient 仓库。', {
+      // createSupabaseBeanRepository 使用兼容查询接口，暂不支持 update
+      // 实际更新通过 createSupabaseGreenBeanInventoryRepository 的 PocketBaseRestClient 完成
+      return Promise.reject(new AppError('此仓库不支持更新，请使用 PocketBaseRestClient 仓库。', {
         code: 'CONFIG',
       }));
     },
@@ -714,7 +717,7 @@ export function createSupabaseBeanRepository(
       return Promise.resolve();
     },
     createBean(): Promise<ApiResponse<Bean>> {
-      return Promise.reject(new AppError('此仓库不支持创建，请使用 SupabaseRestClient 仓库。', {
+      return Promise.reject(new AppError('此仓库不支持创建，请使用 PocketBaseRestClient 仓库。', {
         code: 'CONFIG',
       }));
     },
@@ -722,13 +725,45 @@ export function createSupabaseBeanRepository(
 }
 
 export function createSupabaseGreenBeanInventoryRepository(
-  client: SupabaseRestClient,
+  client: PocketBaseRestClient,
   options: { tableName?: string; viewName?: string } = {},
 ): BeanRepository {
   const tableName = options.tableName ?? 'green_beans';
   void options.viewName;
+  const OPTIONAL_COLLECTIONS = new Set(['app_settings', 'bean_sale_specs', 'roast_batches']);
 
-  const loadBeanSaleDefaultsRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+  const isMissingOptionalCollectionError = (collectionName: string, error: unknown): boolean => {
+    return (
+      OPTIONAL_COLLECTIONS.has(collectionName) &&
+      error instanceof AppError &&
+      error.code === 'HTTP' &&
+      error.status === 404
+    );
+  };
+
+  const withOptionalCollectionFallback = async <T,>(
+    collectionName: string,
+    operation: string,
+    execute: () => Promise<T>,
+    fallback: T,
+  ): Promise<T> => {
+    try {
+      return await execute();
+    } catch (error) {
+      if (isMissingOptionalCollectionError(collectionName, error)) {
+        logger.warn('bean repository optional collection unavailable', {
+          collectionName,
+          error,
+          operation,
+        });
+        return fallback;
+      }
+
+      throw error;
+    }
+  };
+
+  const loadBeanSaleDefaultsRecordRaw = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
     const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
       limit: 1,
       match: { key: getBeanSaleDefaultsSettingKey(String(beanId)) },
@@ -741,7 +776,18 @@ export function createSupabaseGreenBeanInventoryRepository(
     return rows[0] ?? null;
   };
 
-  const loadBeanCostTemplateRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+  const loadBeanSaleDefaultsRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+    return withOptionalCollectionFallback(
+      'app_settings',
+      'load bean sale defaults',
+      () => loadBeanSaleDefaultsRecordRaw(beanId),
+      null,
+    );
+  };
+
+  const loadBeanCostTemplateRecordRaw = async (
+    beanId: string | number,
+  ): Promise<null | SupabaseAppSettingRecord> => {
     const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
       limit: 1,
       match: { key: getBeanCostTemplateSettingKey(String(beanId)) },
@@ -754,7 +800,16 @@ export function createSupabaseGreenBeanInventoryRepository(
     return rows[0] ?? null;
   };
 
-  const loadBeanGradeRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+  const loadBeanCostTemplateRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+    return withOptionalCollectionFallback(
+      'app_settings',
+      'load bean cost template',
+      () => loadBeanCostTemplateRecordRaw(beanId),
+      null,
+    );
+  };
+
+  const loadBeanGradeRecordRaw = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
     const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
       limit: 1,
       match: { key: getBeanGradeSettingKey(String(beanId)) },
@@ -767,155 +822,245 @@ export function createSupabaseGreenBeanInventoryRepository(
     return rows[0] ?? null;
   };
 
+  const loadBeanGradeRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+    return withOptionalCollectionFallback(
+      'app_settings',
+      'load bean grade',
+      () => loadBeanGradeRecordRaw(beanId),
+      null,
+    );
+  };
+
   const loadBeanSaleDefaultsMap = async (): Promise<Map<string, BeanSaleDefaultsSettingValue>> => {
-    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
-      orderBy: {
-        ascending: false,
-        column: 'updated_at',
-      },
-    });
-    const result = new Map<string, BeanSaleDefaultsSettingValue>();
+    return withOptionalCollectionFallback('app_settings', 'load bean sale defaults map', async () => {
+      const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+        orderBy: {
+          ascending: false,
+          column: 'updated_at',
+        },
+      });
+      const result = new Map<string, BeanSaleDefaultsSettingValue>();
 
-    rows.forEach((row) => {
-      if (!row.key.startsWith('green_bean_sale_defaults:')) {
-        return;
-      }
+      rows.forEach((row) => {
+        if (!row.key.startsWith('green_bean_sale_defaults:')) {
+          return;
+        }
 
-      const beanId = row.key.replace('green_bean_sale_defaults:', '');
-      const parsedValue = parseBeanSaleDefaultsSettingValue(row.value);
+        const beanId = row.key.replace('green_bean_sale_defaults:', '');
+        const parsedValue = parseBeanSaleDefaultsSettingValue(row.value);
 
-      if (!beanId || !parsedValue || result.has(beanId)) {
-        return;
-      }
+        if (!beanId || !parsedValue || result.has(beanId)) {
+          return;
+        }
 
-      result.set(beanId, parsedValue);
-    });
+        result.set(beanId, parsedValue);
+      });
 
-    return result;
+      return result;
+    }, new Map<string, BeanSaleDefaultsSettingValue>());
   };
 
   const loadBeanCostTemplateMap = async (): Promise<Map<string, BeanCostTemplateSettingValue>> => {
-    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
-      orderBy: {
-        ascending: false,
-        column: 'updated_at',
-      },
-    });
-    const result = new Map<string, BeanCostTemplateSettingValue>();
+    return withOptionalCollectionFallback('app_settings', 'load bean cost template map', async () => {
+      const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+        orderBy: {
+          ascending: false,
+          column: 'updated_at',
+        },
+      });
+      const result = new Map<string, BeanCostTemplateSettingValue>();
 
-    rows.forEach((row) => {
-      if (!row.key.startsWith('green_bean_cost_template:')) {
-        return;
-      }
+      rows.forEach((row) => {
+        if (!row.key.startsWith('green_bean_cost_template:')) {
+          return;
+        }
 
-      const beanId = row.key.replace('green_bean_cost_template:', '');
-      const parsedValue = parseBeanCostTemplateSettingValue(row.value);
+        const beanId = row.key.replace('green_bean_cost_template:', '');
+        const parsedValue = parseBeanCostTemplateSettingValue(row.value);
 
-      if (!beanId || !parsedValue || result.has(beanId)) {
-        return;
-      }
+        if (!beanId || !parsedValue || result.has(beanId)) {
+          return;
+        }
 
-      result.set(beanId, parsedValue);
-    });
+        result.set(beanId, parsedValue);
+      });
 
-    return result;
+      return result;
+    }, new Map<string, BeanCostTemplateSettingValue>());
   };
 
   const loadBeanGradeMap = async (): Promise<Map<string, BeanGradeSettingValue>> => {
-    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
-      orderBy: {
-        ascending: false,
-        column: 'updated_at',
-      },
-    });
-    const result = new Map<string, BeanGradeSettingValue>();
+    return withOptionalCollectionFallback('app_settings', 'load bean grade map', async () => {
+      const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+        orderBy: {
+          ascending: false,
+          column: 'updated_at',
+        },
+      });
+      const result = new Map<string, BeanGradeSettingValue>();
 
-    rows.forEach((row) => {
-      if (!row.key.startsWith('green_bean_grade:')) {
-        return;
-      }
+      rows.forEach((row) => {
+        if (!row.key.startsWith('green_bean_grade:')) {
+          return;
+        }
 
-      const beanId = row.key.replace('green_bean_grade:', '');
-      const parsedValue = parseBeanGradeSettingValue(row.value);
+        const beanId = row.key.replace('green_bean_grade:', '');
+        const parsedValue = parseBeanGradeSettingValue(row.value);
 
-      if (!beanId || !parsedValue || result.has(beanId)) {
-        return;
-      }
+        if (!beanId || !parsedValue || result.has(beanId)) {
+          return;
+        }
 
-      result.set(beanId, parsedValue);
-    });
+        result.set(beanId, parsedValue);
+      });
 
-    return result;
+      return result;
+    }, new Map<string, BeanGradeSettingValue>());
   };
 
   const saveBeanSaleDefaults = async (
     beanId: string | number,
     input: Pick<GreenBeanUpdateInput, 'defaultSaleUnitPrice' | 'defaultSaleUnitWeightGrams'>,
   ): Promise<void> => {
-    const currentRecord = await loadBeanSaleDefaultsRecord(beanId);
-    const payload = {
-      key: getBeanSaleDefaultsSettingKey(String(beanId)),
-      value: {
-        defaultSaleUnitPrice: input.defaultSaleUnitPrice,
-        defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
-        updatedAt: new Date().toISOString(),
-      },
-    };
+    await withOptionalCollectionFallback('app_settings', 'save bean sale defaults', async () => {
+      const currentRecord = await loadBeanSaleDefaultsRecordRaw(beanId);
+      const payload = {
+        key: getBeanSaleDefaultsSettingKey(String(beanId)),
+        value: {
+          defaultSaleUnitPrice: input.defaultSaleUnitPrice,
+          defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
+          updatedAt: new Date().toISOString(),
+        },
+      };
 
-    if (!currentRecord) {
-      await client.insert('app_settings', payload);
-      return;
-    }
+      if (!currentRecord) {
+        await client.insert('app_settings', payload);
+        return;
+      }
 
-    await client.update('app_settings', payload, {
-      match: { id: currentRecord.id },
-      select: '*',
-    });
+      await client.update('app_settings', payload, {
+        match: { id: currentRecord.id },
+        select: '*',
+      });
+    }, undefined);
   };
 
   const saveBeanCostTemplate = async (beanId: string | number, costTemplateId: null | string): Promise<void> => {
-    const currentRecord = await loadBeanCostTemplateRecord(beanId);
-    const payload = {
-      key: getBeanCostTemplateSettingKey(String(beanId)),
-      value: {
-        costTemplateId,
-        updatedAt: new Date().toISOString(),
-      },
-    };
+    await withOptionalCollectionFallback('app_settings', 'save bean cost template', async () => {
+      const currentRecord = await loadBeanCostTemplateRecordRaw(beanId);
+      const payload = {
+        key: getBeanCostTemplateSettingKey(String(beanId)),
+        value: {
+          costTemplateId,
+          updatedAt: new Date().toISOString(),
+        },
+      };
 
-    if (!currentRecord) {
-      await client.insert('app_settings', payload);
-      return;
-    }
+      if (!currentRecord) {
+        await client.insert('app_settings', payload);
+        return;
+      }
 
-    await client.update('app_settings', payload, {
-      match: { id: currentRecord.id },
-      select: '*',
-    });
+      await client.update('app_settings', payload, {
+        match: { id: currentRecord.id },
+        select: '*',
+      });
+    }, undefined);
   };
 
   const saveBeanGrade = async (
     beanId: string | number,
     grade: null | string | undefined,
   ): Promise<void> => {
-    const currentRecord = await loadBeanGradeRecord(beanId);
-    const payload = {
-      key: getBeanGradeSettingKey(String(beanId)),
-      value: {
-        grade: normalizeText(grade),
-        updatedAt: new Date().toISOString(),
-      },
-    };
+    await withOptionalCollectionFallback('app_settings', 'save bean grade', async () => {
+      const currentRecord = await loadBeanGradeRecordRaw(beanId);
+      const payload = {
+        key: getBeanGradeSettingKey(String(beanId)),
+        value: {
+          grade: normalizeText(grade),
+          updatedAt: new Date().toISOString(),
+        },
+      };
 
-    if (!currentRecord) {
-      await client.insert('app_settings', payload);
-      return;
-    }
+      if (!currentRecord) {
+        await client.insert('app_settings', payload);
+        return;
+      }
 
-    await client.update('app_settings', payload, {
-      match: { id: currentRecord.id },
-      select: '*',
-    });
+      await client.update('app_settings', payload, {
+        match: { id: currentRecord.id },
+        select: '*',
+      });
+    }, undefined);
+  };
+
+  const listSaleSpecs = async (
+    options?: Parameters<typeof client.list<SupabaseSaleSpecRecord>>[1],
+  ): Promise<SupabaseSaleSpecRecord[]> => {
+    return withOptionalCollectionFallback(
+      'bean_sale_specs',
+      'list bean sale specs',
+      () => client.list<SupabaseSaleSpecRecord>('bean_sale_specs', options),
+      [],
+    );
+  };
+
+  const listRoastBatches = async (): Promise<SupabaseRoastBatchOverviewRecord[]> => {
+    return withOptionalCollectionFallback(
+      'roast_batches',
+      'list roast batches for bean aggregation',
+      () => client.list<SupabaseRoastBatchOverviewRecord>('roast_batches'),
+      [],
+    );
+  };
+
+  const upsertOptionalDefaultSaleSpec = async (
+    beanId: string | number,
+    input: GreenBeanUpdateInput,
+  ): Promise<void> => {
+    await withOptionalCollectionFallback('bean_sale_specs', 'upsert default sale spec', async () => {
+      if (input.defaultSaleUnitWeightGrams == null) {
+        const existingSaleSpecs = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
+          match: { green_bean_id: beanId, is_default: true },
+        });
+        const defaultSaleSpec = getDefaultSaleSpecRecord(existingSaleSpecs);
+
+        if (defaultSaleSpec) {
+          await client.update('bean_sale_specs', {
+            unit_price: input.defaultSaleUnitPrice,
+          }, {
+            match: { id: defaultSaleSpec.id },
+            select: '*',
+          });
+        }
+
+        return;
+      }
+
+      const existingSaleSpecs = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
+        match: { green_bean_id: beanId, is_default: true },
+      });
+      const defaultSaleSpec = getDefaultSaleSpecRecord(existingSaleSpecs);
+
+      if (!defaultSaleSpec) {
+        await client.insert('bean_sale_specs', {
+          channel: 'default',
+          green_bean_id: beanId,
+          is_default: true,
+          unit_price: input.defaultSaleUnitPrice,
+          unit_weight_grams: input.defaultSaleUnitWeightGrams,
+        });
+        return;
+      }
+
+      await client.update('bean_sale_specs', {
+        unit_price: input.defaultSaleUnitPrice,
+        unit_weight_grams: input.defaultSaleUnitWeightGrams,
+      }, {
+        match: { id: defaultSaleSpec.id },
+        select: '*',
+      });
+    }, undefined);
   };
 
   const loadInventoryOverviewRecordsFromTables = async (): Promise<SupabaseGreenBeanInventoryRecord[]> => {
@@ -927,8 +1072,8 @@ export function createSupabaseGreenBeanInventoryRepository(
         },
       }),
       client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches'),
-      client.list<SupabaseSaleSpecRecord>('bean_sale_specs'),
-      client.list<SupabaseRoastBatchOverviewRecord>('roast_batches'),
+      listSaleSpecs(),
+      listRoastBatches(),
       loadBeanSaleDefaultsMap(),
       loadBeanCostTemplateMap(),
       loadBeanGradeMap(),
@@ -1002,7 +1147,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       match: { green_bean_id: beanId },
     });
 
-    const saleSpecRows = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
+    const saleSpecRows = await listSaleSpecs({
       match: { green_bean_id: beanId, is_default: true },
     });
     const savedSaleDefaults = parseBeanSaleDefaultsSettingValue((await loadBeanSaleDefaultsRecord(beanId))?.value);
@@ -1059,54 +1204,6 @@ export function createSupabaseGreenBeanInventoryRepository(
       remaining_weight_grams: payload.remaining_weight_grams,
     }, {
       match: { id: latestBatch.id },
-      select: '*',
-    });
-  };
-
-  const upsertDefaultSaleSpec = async (
-    beanId: string | number,
-    input: GreenBeanUpdateInput,
-  ): Promise<void> => {
-    if (input.defaultSaleUnitWeightGrams == null) {
-      const existingSaleSpecs = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
-        match: { green_bean_id: beanId, is_default: true },
-      });
-      const defaultSaleSpec = getDefaultSaleSpecRecord(existingSaleSpecs);
-
-      if (defaultSaleSpec) {
-        await client.update('bean_sale_specs', {
-          unit_price: input.defaultSaleUnitPrice,
-        }, {
-          match: { id: defaultSaleSpec.id },
-          select: '*',
-        });
-        return;
-      }
-
-      return;
-    }
-
-    const existingSaleSpecs = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
-      match: { green_bean_id: beanId, is_default: true },
-    });
-    const defaultSaleSpec = getDefaultSaleSpecRecord(existingSaleSpecs);
-
-    if (!defaultSaleSpec) {
-      await client.insert('bean_sale_specs', {
-        channel: 'default',
-        green_bean_id: beanId,
-        is_default: true,
-        unit_price: input.defaultSaleUnitPrice,
-        unit_weight_grams: input.defaultSaleUnitWeightGrams,
-      });
-      return;
-    }
-
-    await client.update('bean_sale_specs', {
-      unit_price: input.defaultSaleUnitPrice,
-      unit_weight_grams: input.defaultSaleUnitWeightGrams,
-    }, {
-      match: { id: defaultSaleSpec.id },
       select: '*',
     });
   };
@@ -1177,7 +1274,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       await saveBeanGrade(beanId, input.grade);
       await saveBeanCostTemplate(beanId, input.costTemplateId ?? null);
       await upsertLatestPurchaseBatch(beanId, input);
-      await upsertDefaultSaleSpec(beanId, input);
+      await upsertOptionalDefaultSaleSpec(beanId, input);
       await saveBeanSaleDefaults(beanId, input);
 
       const bean = await getLatestInventoryBean(beanId);
@@ -1202,6 +1299,7 @@ export function createSupabaseGreenBeanInventoryRepository(
         code: input.code.trim(),
         default_roast_input_grams: input.defaultRoastInputGrams,
         display_name: input.displayName.trim(),
+        grade: normalizeText(input.grade),
         harvest_season: normalizeText(input.harvestSeason),
         notes: normalizeText(input.notes),
         origin_area: normalizeText(input.originArea),
@@ -1252,7 +1350,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       await saveBeanGrade(newBeanId, input.grade);
       await saveBeanCostTemplate(newBeanId, input.costTemplateId ?? null);
       await upsertLatestPurchaseBatch(newBeanId, input);
-      await upsertDefaultSaleSpec(newBeanId, input);
+      await upsertOptionalDefaultSaleSpec(newBeanId, input);
       await saveBeanSaleDefaults(newBeanId, input);
 
       const bean = await getLatestInventoryBean(newBeanId);
@@ -1265,11 +1363,9 @@ export function createSupabaseGreenBeanInventoryRepository(
 }
 
 const hasSupabaseConnection = (): boolean => {
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
-  const { projectUrl, publishableKey } = connection;
-
-  return projectUrl.trim().length > 0 && publishableKey.trim().length > 0;
+  return isPocketBaseProjectConnectionConfigured(connection);
 };
 
 export const resolveBeanRepository = (): BeanRepository => {
@@ -1283,8 +1379,8 @@ export const resolveBeanRepository = (): BeanRepository => {
     return new MockBeanRepository();
   }
 
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
-  const client = new SupabaseRestClient({
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
+  const client = new PocketBaseRestClient({
     projectUrl: connection.projectUrl,
     publishableKey: connection.publishableKey,
   });
@@ -1355,9 +1451,14 @@ export const beanService = {
 
     return mergeBeans(beanCacheService.getBeans() ?? []);
   },
+  persistOptimisticBeanAsPending(input: GreenBeanCreateInput): Bean[] {
+    beanSyncService.recordPendingCreate(input);
+
+    return getBootstrappedBeans();
+  },
   async createRemoteBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
     if (!beanSyncService.isOnline()) {
-      throw new AppError('当前网络不可用，无法同步到 Supabase。', { code: 'NETWORK' });
+      throw new AppError('当前网络不可用，无法同步到 PocketBase。', { code: 'NETWORK' });
     }
 
     return resolveBeanRepository().createBean(input);

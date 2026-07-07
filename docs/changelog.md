@@ -1,5 +1,13 @@
 # 变更记录
 
+## 2026-07-07
+
+- 新增 PocketBase collection 导入文件 `docs/pocketbase-collections.json`
+- 新增 PocketBase 本地初始化说明 `docs/pocketbase-local-setup.md`
+- 新增本地 runtime 说明 `PocketBase/README.md`
+- 前端 PocketBase 兼容层补齐 `owner` 与时间戳字段写入
+- 烘焙计划写入补齐 `bean_name`，以便 PocketBase 侧正常展示与筛选
+
 ## 2026-06-28
 
 - 新增 `设置` 模块，可录入并本地保存生豆库和熟豆库的 Supabase `Project URL` / `Publishable Key`

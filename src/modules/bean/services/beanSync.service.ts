@@ -1,4 +1,5 @@
-import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import type { GreenBeanCreateInput, GreenBeanUpdateInput, LocalGreenBeanRecord } from '../types/localGreenBean';
 
 const PENDING_OPS_KEY = 'coffee-roasting-backstage:pending-ops';
@@ -79,9 +80,9 @@ export const beanSyncService = {
     if (typeof navigator === 'undefined') return false;
     if (!navigator.onLine) return false;
 
-    const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
+    const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
-    return connection.projectUrl.trim().length > 0 && connection.publishableKey.trim().length > 0;
+    return isPocketBaseProjectConnectionConfigured(connection);
   },
 
   /**

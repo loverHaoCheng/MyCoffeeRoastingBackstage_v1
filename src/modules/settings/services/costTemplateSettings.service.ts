@@ -76,7 +76,7 @@ export const costTemplateSettingsService = {
         result.data.templates.some((template) => template.id === result.data.defaultTemplateId);
 
       return {
-        defaultTemplateId: hasDefaultTemplate ? result.data.defaultTemplateId ?? null : result.data.templates[0]?.id ?? null,
+        defaultTemplateId: hasDefaultTemplate ? result.data.defaultTemplateId ?? null : null,
         templates: result.data.templates,
         updatedAt: result.data.updatedAt ?? null,
       };

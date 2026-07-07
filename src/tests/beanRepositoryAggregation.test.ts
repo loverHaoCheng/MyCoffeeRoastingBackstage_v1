@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createSupabaseGreenBeanInventoryRepository } from '@/modules/bean/services/bean.service';
+import { AppError } from '@/shared/errors/AppError';
 import { SupabaseRestClient } from '@/services/supabaseRestClient';
 
 describe('createSupabaseGreenBeanInventoryRepository', () => {
@@ -107,7 +108,7 @@ describe('createSupabaseGreenBeanInventoryRepository', () => {
     ]);
   });
 
-  it('stores grade in app settings so update works on databases without grade column', async () => {
+  it('writes grade into the green bean table while keeping app settings compatibility', async () => {
     const updateCalls: { payload: Record<string, unknown>; tableName: string }[] = [];
     const insertCalls: { payload: Record<string, unknown>; tableName: string }[] = [];
     const client = {
@@ -212,11 +213,124 @@ describe('createSupabaseGreenBeanInventoryRepository', () => {
     const greenBeanUpdateCall = updateCalls.find((item) => item.tableName === 'green_beans');
     const gradeInsertCall = insertCalls.find((item) => item.tableName === 'app_settings');
 
-    expect(greenBeanUpdateCall?.payload).not.toHaveProperty('grade');
+    expect(greenBeanUpdateCall?.payload).toHaveProperty('grade', 'SHB');
     expect(gradeInsertCall?.payload.key).toBe('green_bean_grade:bean-1');
     expect(gradeInsertCall?.payload.value).toEqual(
       expect.objectContaining({
         grade: 'SHB',
+      }),
+    );
+  });
+
+  it('creates beans successfully when optional bean settings collections are unavailable', async () => {
+    const missingOptionalCollectionError = new AppError('PocketBase 记录或集合不存在，请先执行初始化。', {
+      code: 'HTTP',
+      status: 404,
+    });
+    const client = {
+      insert: <T,>(tableName: string): Promise<T[]> => {
+        if (tableName === 'green_beans') {
+          return Promise.resolve([{ id: 'bean-1' } as T]);
+        }
+
+        if (tableName === 'green_bean_purchase_batches') {
+          return Promise.resolve([{ id: 'batch-1' } as T]);
+        }
+
+        if (tableName === 'app_settings' || tableName === 'bean_sale_specs') {
+          return Promise.reject(missingOptionalCollectionError);
+        }
+
+        return Promise.resolve([] as T[]);
+      },
+      list: <T,>(tableName: string): Promise<T[]> => {
+        if (tableName === 'green_beans') {
+          return Promise.resolve([
+            {
+              altitude_meters_max: null,
+              altitude_meters_min: null,
+              code: 'GB-001',
+              created_at: '2026-07-03T00:00:00.000Z',
+              default_roast_input_grams: 200,
+              density_g_per_l: null,
+              display_name: '测试生豆',
+              grade: 'G1',
+              harvest_season: '2025/26',
+              id: 'bean-1',
+              mill_name: null,
+              moisture_percent: null,
+              notes: null,
+              origin_area: '古吉',
+              origin_country: '埃塞俄比亚',
+              origin_region: '耶加雪菲',
+              process_method: '水洗',
+              updated_at: '2026-07-03T00:00:00.000Z',
+              variety: '74110',
+            } as T,
+          ]);
+        }
+
+        if (tableName === 'green_bean_purchase_batches') {
+          return Promise.resolve([
+            {
+              created_at: '2026-07-03T00:00:00.000Z',
+              green_bean_id: 'bean-1',
+              id: 'batch-1',
+              purchased_total_price: 720,
+              purchased_weight_grams: 4000,
+              received_at: '2026-07-03',
+              remaining_weight_grams: 4000,
+              supplier_name: '供应商 A',
+              updated_at: '2026-07-03T00:00:00.000Z',
+            } as T,
+          ]);
+        }
+
+        if (tableName === 'app_settings' || tableName === 'bean_sale_specs' || tableName === 'roast_batches') {
+          return Promise.reject(missingOptionalCollectionError);
+        }
+
+        return Promise.resolve([] as T[]);
+      },
+      update: <T,>(): Promise<T[]> => {
+        return Promise.resolve([] as T[]);
+      },
+    } as unknown as SupabaseRestClient;
+
+    const repository = createSupabaseGreenBeanInventoryRepository(client);
+    const result = await repository.createBean({
+      altitudeMetersMax: null,
+      altitudeMetersMin: null,
+      code: 'GB-001',
+      costTemplateId: null,
+      defaultRoastInputGrams: 200,
+      defaultSaleUnitPrice: 48,
+      defaultSaleUnitWeightGrams: 250,
+      densityGPerL: null,
+      displayName: '测试生豆',
+      grade: 'G1',
+      harvestSeason: '2025/26',
+      millName: '',
+      moisturePercent: null,
+      notes: '',
+      originArea: '古吉',
+      originCountry: '埃塞俄比亚',
+      originRegion: '耶加雪菲',
+      processMethod: '水洗',
+      purchasedTotalPrice: 720,
+      purchasedWeightGrams: 4000,
+      remainingWeightGrams: 4000,
+      supplierName: '供应商 A',
+      variety: '74110',
+    });
+
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        code: 'GB-001',
+        costPerKg: 180,
+        grade: 'G1',
+        name: '测试生豆',
+        stockKg: 4,
       }),
     );
   });

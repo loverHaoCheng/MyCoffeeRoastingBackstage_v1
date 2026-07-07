@@ -44,8 +44,13 @@ export function useCreateRoastBatch() {
       const response = await roastBatchService.createBatch(input);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: roastBatchQueryKeys.all });
+    onSuccess: (nextBatch) => {
+      queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), (current = []) =>
+        sortBatchesByRoastDate([
+          nextBatch,
+          ...current.filter((batch) => batch.id !== nextBatch.id),
+        ]),
+      );
     },
   });
 }
@@ -124,8 +129,11 @@ export function useDeleteRoastBatch() {
         roastBatchService.restoreOptimisticBatch(context.removedBatch);
       }
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: roastBatchQueryKeys.all });
+    onSuccess: (_result, batchId) => {
+      queryClient.setQueryData<RoastBatchRecord[]>(
+        roastBatchQueryKeys.list(),
+        (current = []) => current.filter((batch) => batch.id !== batchId),
+      );
     },
   });
 }

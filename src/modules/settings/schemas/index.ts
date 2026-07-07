@@ -2,49 +2,43 @@ import { z } from 'zod';
 
 const optionalIsoDatetimeSchema = z.string().datetime().nullable().optional();
 
-const supabaseConnectionStorageSchema = z.object({
+const pocketBaseConnectionStorageSchema = z.object({
   projectUrl: z.string(),
   publishableKey: z.string(),
 });
 
-const supabaseConnectionFormSectionSchema = (required: boolean) =>
+const pocketBaseConnectionFormSectionSchema = (required: boolean) =>
   z
     .object({
       projectUrl: z.string().trim(),
-      publishableKey: z.string().trim().max(2048, 'Publishable Key 长度超出限制'),
+      publishableKey: z.string().trim().max(2048, '访问密钥长度超出限制'),
     })
     .superRefine((value, context) => {
       const hasProjectUrl = value.projectUrl.length > 0;
-      const hasPublishableKey = value.publishableKey.length > 0;
 
-      if (!required && !hasProjectUrl && !hasPublishableKey) {
+      if (!required && !hasProjectUrl) {
         return;
       }
 
       if (!hasProjectUrl) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          message: '请输入 Project URL',
+          message: '请输入 PocketBase 地址',
           path: ['projectUrl'],
         });
       }
 
-      if (!hasPublishableKey) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: '请输入 Publishable Key',
-          path: ['publishableKey'],
-        });
-      }
-
-      if (!hasProjectUrl || !hasPublishableKey) {
+      if (!hasProjectUrl) {
         return;
       }
 
       const projectUrlValidation = z
         .string()
-        .url('请输入有效的 Supabase Project URL')
-        .refine((item) => item.startsWith('https://'), 'Project URL 必须以 https:// 开头')
+        .url('请输入有效的 PocketBase 地址')
+        .refine(
+          (item) => item.startsWith('http://') || item.startsWith('https://'),
+          'PocketBase 地址必须以 http:// 或 https:// 开头',
+        )
         .safeParse(value.projectUrl);
 
       if (!projectUrlValidation.success) {
@@ -57,25 +51,28 @@ const supabaseConnectionFormSectionSchema = (required: boolean) =>
         });
       }
 
-      if (/\s/.test(value.publishableKey)) {
+      if (value.publishableKey.length > 0 && /\s/.test(value.publishableKey)) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Publishable Key 不能包含空格',
+          message: '访问密钥不能包含空格',
           path: ['publishableKey'],
         });
       }
     });
 
-export const supabaseConnectionSettingsStorageSchema = z.object({
-  greenBean: supabaseConnectionStorageSchema,
-  roastedBean: supabaseConnectionStorageSchema,
+export const pocketBaseConnectionSettingsStorageSchema = z.object({
+  greenBean: pocketBaseConnectionStorageSchema,
+  roastedBean: pocketBaseConnectionStorageSchema,
   updatedAt: optionalIsoDatetimeSchema,
 });
 
-export const supabaseConnectionFormSchema = z.object({
-  greenBean: supabaseConnectionFormSectionSchema(true),
-  roastedBean: supabaseConnectionFormSectionSchema(false),
+export const pocketBaseConnectionFormSchema = z.object({
+  greenBean: pocketBaseConnectionFormSectionSchema(true),
+  roastedBean: pocketBaseConnectionFormSectionSchema(false),
 });
+
+export const supabaseConnectionSettingsStorageSchema = pocketBaseConnectionSettingsStorageSchema;
+export const supabaseConnectionFormSchema = pocketBaseConnectionFormSchema;
 
 const costTemplateStorageItemSchema = z.object({
   createdAt: z.string().datetime(),

@@ -55,10 +55,13 @@ export function useCreateRoastPlan() {
 
       return response.data;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: roastPlanQueryKeys.all,
-      });
+    onSuccess: (nextPlan) => {
+      queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) =>
+        sortPlansByUpdatedAt([
+          nextPlan,
+          ...current.filter((plan) => String(plan.id) !== String(nextPlan.id)),
+        ]),
+      );
     },
   });
 }
@@ -72,10 +75,13 @@ export function useCreateRoastPlanFromJson() {
 
       return response.data;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: roastPlanQueryKeys.all,
-      });
+    onSuccess: (nextPlan) => {
+      queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) =>
+        sortPlansByUpdatedAt([
+          nextPlan,
+          ...current.filter((plan) => String(plan.id) !== String(nextPlan.id)),
+        ]),
+      );
     },
   });
 }
@@ -152,10 +158,11 @@ export function useDeleteRoastPlan() {
         roastPlanService.restoreOptimisticPlan(context.removedPlan);
       }
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: roastPlanQueryKeys.all,
-      });
+    onSuccess: (_result, planId) => {
+      queryClient.setQueryData<RoastPlan[]>(
+        roastPlanQueryKeys.list(),
+        (current = []) => current.filter((plan) => String(plan.id) !== String(planId)),
+      );
     },
   });
 }

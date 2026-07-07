@@ -1,7 +1,8 @@
-import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import type { ApiResponse } from '@/services/api.types';
-import { SupabaseRestClient } from '@/services/supabaseRestClient';
+import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import type { RoastPlan } from '@/types/domain';
 
 import { seedRoastPlans } from '@/modules/roast/constants/roastPlan.mock';
@@ -158,7 +159,7 @@ const mapSupabaseRoastPlanRecord = (record: SupabaseRoastPlanOverviewRecord): Ro
   beanId: record.green_bean_id ?? GENERIC_BEAN_ID,
   beanName: record.bean_name ?? GENERIC_BEAN_NAME,
   batchWeightGrams: record.batch_weight_grams,
-  plannedBatchKg: record.planned_batch_kg,
+  plannedBatchKg: toPlannedBatchKilograms(record.batch_weight_grams),
   targetRoastLevel: record.target_roast_level ?? '',
   roastPurpose: record.roast_purpose ?? '',
   status: normalizeRoastPlanStatus(record.status),
@@ -171,7 +172,15 @@ const isUuidLike = (value: string): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 };
 
-const resolveGreenBeanId = async (client: SupabaseRestClient, input: RoastPlanJsonInput): Promise<null | string> => {
+const toPlannedBatchKilograms = (batchWeightGrams: number): number => {
+  return Number((batchWeightGrams / 1000).toFixed(3));
+};
+
+const toPocketBaseCompatiblePlannedBatchKilograms = (batchWeightGrams: number): number => {
+  return Math.max(1, toPlannedBatchKilograms(batchWeightGrams));
+};
+
+const resolveGreenBeanId = async (client: PocketBaseRestClient, input: RoastPlanJsonInput): Promise<null | string> => {
   if (String(input.beanId ?? '') === GENERIC_BEAN_ID || input.beanName.trim() === GENERIC_BEAN_NAME) {
     return null;
   }
@@ -202,15 +211,17 @@ const resolveGreenBeanId = async (client: SupabaseRestClient, input: RoastPlanJs
 };
 
 const toSupabaseRoastPlanPayload = async (
-  client: SupabaseRestClient,
+  client: PocketBaseRestClient,
   input: RoastPlanJsonInput,
   status: RoastPlanStatus = 'draft',
 ): Promise<Record<string, unknown>> => {
   return {
     batch_weight_grams: input.batchWeightGrams,
+    bean_name: input.beanName.trim(),
     green_bean_id: await resolveGreenBeanId(client, input),
     is_active: true,
     name: input.name,
+    planned_batch_kg: toPocketBaseCompatiblePlannedBatchKilograms(input.batchWeightGrams),
     roast_purpose: input.purpose ?? null,
     status,
     steps: input.steps.map((step) => ({
@@ -226,22 +237,22 @@ const toSupabaseRoastPlanPayload = async (
 };
 
 const hasSupabaseConnection = (): boolean => {
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
-  return connection.projectUrl.trim().length > 0 && connection.publishableKey.trim().length > 0;
+  return isPocketBaseProjectConnectionConfigured(connection);
 };
 
-const getSupabaseClient = (): SupabaseRestClient => {
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
+const getSupabaseClient = (): PocketBaseRestClient => {
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
-  return new SupabaseRestClient({
+  return new PocketBaseRestClient({
     projectUrl: connection.projectUrl,
     publishableKey: connection.publishableKey,
   });
 };
 
 const getRoastPlanById = async (
-  client: SupabaseRestClient,
+  client: PocketBaseRestClient,
   planId: RoastPlan['id'],
 ): Promise<RoastPlan> => {
   const records = await client.list<SupabaseRoastPlanOverviewRecord>('roast_plan_overview', {
@@ -311,7 +322,7 @@ class LocalRoastPlanRepository implements RoastPlanRepository {
 }
 
 class SupabaseRoastPlanRepository implements RoastPlanRepository {
-  constructor(private readonly client: SupabaseRestClient) {}
+  constructor(private readonly client: PocketBaseRestClient) {}
 
   async createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     const insertedRows = await this.client.insert<SupabaseRoastProfileMutationRecord>(

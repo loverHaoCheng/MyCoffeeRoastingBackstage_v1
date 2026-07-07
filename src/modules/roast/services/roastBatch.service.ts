@@ -1,8 +1,9 @@
 import { beanService } from '@/modules/bean/services';
-import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import type { ApiResponse } from '@/services/api.types';
-import { SupabaseRestClient } from '@/services/supabaseRestClient';
+import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import { logger } from '@/shared/logger/logger';
 
 import {
@@ -214,17 +215,21 @@ const getNextBatchState = (
   status: input.status ?? currentBatch.status,
 });
 
-// ============ Supabase 字段映射 ============
+// ============ PocketBase 字段映射 ============
 
-const toSupabaseRoastBatchPayload = (input: RoastBatchCreateInput | RoastBatchUpdateInput): Record<string, unknown> => {
+export const toPocketBaseRoastBatchPayload = (
+  input: RoastBatchCreateInput | RoastBatchUpdateInput,
+): Record<string, unknown> => {
   const payload: Record<string, unknown> = {};
 
   if (input.roastDate !== undefined) payload.roast_date = input.roastDate;
   if (input.greenBeanId !== undefined) payload.green_bean_id = input.greenBeanId;
+  if (input.greenBeanName !== undefined) payload.green_bean_name = input.greenBeanName;
   if (input.roastedBeanName !== undefined) {
     payload.roasted_bean_name = toNullableStringValue(input.roastedBeanName);
   }
   if (input.roastPlanId !== undefined) payload.roast_plan_id = toNullableStringValue(input.roastPlanId);
+  if (input.roastPlanName !== undefined) payload.roast_plan_name = toNullableStringValue(input.roastPlanName);
   if (input.inputWeightGrams !== undefined) payload.input_weight_grams = input.inputWeightGrams;
   if (input.outputWeightGrams !== undefined) payload.output_weight_grams = input.outputWeightGrams;
   if (input.roastLevel !== undefined) payload.roast_level = normalizeRoastLevel(input.roastLevel);
@@ -236,6 +241,13 @@ const toSupabaseRoastBatchPayload = (input: RoastBatchCreateInput | RoastBatchUp
   if (input.status !== undefined) payload.status = input.status;
 
   return payload;
+};
+
+export const toPocketBaseRoastBatchCreatePayload = (input: RoastBatchCreateInput): Record<string, unknown> => {
+  return toPocketBaseRoastBatchPayload({
+    ...input,
+    status: input.status ?? 'completed',
+  });
 };
 
 const omitRoastedBeanNamePayload = (payload: Record<string, unknown>): Record<string, unknown> => {
@@ -312,13 +324,13 @@ const mapSupabaseRoastBatchRecord = (record: Record<string, unknown>): RoastBatc
 // ============ 连接检测 ============
 
 const hasSupabaseConnection = (): boolean => {
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
-  return connection.projectUrl.trim().length > 0 && connection.publishableKey.trim().length > 0;
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
+  return isPocketBaseProjectConnectionConfigured(connection);
 };
 
-const getSupabaseClient = (): SupabaseRestClient => {
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
-  return new SupabaseRestClient({
+const getSupabaseClient = (): PocketBaseRestClient => {
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
+  return new PocketBaseRestClient({
     projectUrl: connection.projectUrl,
     publishableKey: connection.publishableKey,
   });
@@ -386,10 +398,10 @@ class MockRoastBatchRepository implements RoastBatchRepository {
 // ============ Supabase Repository ============
 
 class SupabaseRoastBatchRepository implements RoastBatchRepository {
-  constructor(private readonly client: SupabaseRestClient) {}
+  constructor(private readonly client: PocketBaseRestClient) {}
 
   async createBatch(input: RoastBatchCreateInput): Promise<ApiResponse<RoastBatchRecord>> {
-    const payload = toSupabaseRoastBatchPayload(input);
+    const payload = toPocketBaseRoastBatchCreatePayload(input);
     let rows: Record<string, unknown>[];
 
     try {
@@ -474,7 +486,7 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
   }
 
   async updateBatch(batchId: string, input: RoastBatchUpdateInput): Promise<ApiResponse<RoastBatchRecord>> {
-    const payload = toSupabaseRoastBatchPayload(input);
+    const payload = toPocketBaseRoastBatchPayload(input);
     let rows: Record<string, unknown>[];
 
     try {
@@ -509,6 +521,10 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
 // ============ Repository 解析 ============
 
 const resolveRoastBatchRepository = (): RoastBatchRepository => {
+  if (import.meta.env.MODE === 'test') {
+    return new MockRoastBatchRepository();
+  }
+
   if (!hasSupabaseConnection()) {
     return new MockRoastBatchRepository();
   }

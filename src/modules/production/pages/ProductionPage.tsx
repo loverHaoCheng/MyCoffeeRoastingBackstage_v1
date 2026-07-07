@@ -3,7 +3,6 @@ import { App, Empty, Grid, Spin } from 'antd';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import { useBeans } from '@/modules/bean/hooks';
 import {
   RoastBatchCard,
@@ -18,8 +17,10 @@ import {
 } from '@/modules/roast/hooks';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
-import { useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
@@ -49,7 +50,7 @@ export function ProductionPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
-  const { supabaseConnections } = useSupabaseConnectionSettings();
+  const { pocketBaseConnections } = usePocketBaseConnectionSettings();
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
@@ -59,9 +60,7 @@ export function ProductionPage() {
   const { data: beans = [] } = useBeans();
   const deleteMutation = useDeleteRoastBatch();
   const isWide = screens.md ?? false;
-  const hasGreenBeanConnection =
-    supabaseConnections.greenBean.projectUrl.trim().length > 0 &&
-    supabaseConnections.greenBean.publishableKey.trim().length > 0;
+  const hasGreenBeanConnection = isPocketBaseProjectConnectionConfigured(pocketBaseConnections.greenBean);
 
   const filteredBatches = batches.filter((b) => matchesKeyword(b, keyword));
   const selectedBatch = batches.find((b) => b.id === selectedBatchId) ?? null;
@@ -95,8 +94,10 @@ export function ProductionPage() {
             setSelectedBatchFieldPath(undefined);
             setDetailMode(null);
           })
-          .catch(() => {
-            void message.error('supabase删除失败');
+          .catch((error: unknown) => {
+            void message.error(
+              getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
+            );
           });
       },
     });
@@ -120,12 +121,10 @@ export function ProductionPage() {
         const nextBatches = roastBatchService.finalizeOptimisticBatch(optimisticBatch.id, response.data);
 
         queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
-        refreshAllAppData(queryClient).catch(() => undefined);
       } catch (error: unknown) {
         const nextBatches = roastBatchService.rollbackOptimisticBatch(optimisticBatch.id);
         queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
-        const errorMessage = error instanceof Error ? error.message : '烘焙记录同步失败，本地已备份。';
-        void message.error(errorMessage);
+        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，已回滚本次新建，请检查后重试。'));
       }
     })();
 

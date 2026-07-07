@@ -9,6 +9,7 @@ import { useUpdateRoastBatch } from '@/modules/roast/hooks/useRoastBatches';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
 import { FieldEditorDrawer } from '@/shared/components/FieldEditorDrawer';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 
 export type RoastBatchEditableFieldPath =
@@ -227,8 +228,7 @@ export function RoastBatchFieldEditorDrawer({
 
     const updateTask = updateBatchMutation.mutateAsync({ batchId: batch.id, input: updateInput }).catch(
       (error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : '烘焙记录同步失败，本地已备份。';
-        void message.error(errorMessage);
+        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，本地备份已保留，请检查后重试。'));
       },
     );
 

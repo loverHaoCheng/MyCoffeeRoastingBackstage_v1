@@ -2,12 +2,12 @@ import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 
 import { AppUpdateBanner } from '@/app/components/AppUpdateBanner';
-import { AppStartupSync } from '@/app/components/AppStartupSync';
 import { AppProviders } from '@/app/providers/AppProviders';
 import { router } from '@/router/routes';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
 
 const preloadApplicationModules = () => {
+  void import('@/modules/auth');
   void import('@/modules/bean');
   void import('@/modules/production');
   void import('@/modules/roast');
@@ -44,7 +44,6 @@ export function App() {
   return (
     <AppProviders>
       <AppUpdateBanner />
-      <AppStartupSync />
       <RouterProvider router={router} />
     </AppProviders>
   );

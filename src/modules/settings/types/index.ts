@@ -1,20 +1,41 @@
-export type SupabaseDataSource = 'greenBean' | 'roastedBean';
+import { resolvePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
+
+export type PocketBaseDataSource = 'greenBean' | 'roastedBean';
 export type AppThemeMode = 'dark' | 'light';
 export type AppCardModuleKey = 'beanInventory' | 'roastBatch' | 'roastPlan';
 export type CardDisplayCount = 0 | 2 | 4;
 
-export interface SupabaseProjectConnection {
+export interface PocketBaseProjectConnection {
   projectUrl: string;
   publishableKey: string;
 }
 
-export interface SupabaseConnectionSettings {
-  greenBean: SupabaseProjectConnection;
-  roastedBean: SupabaseProjectConnection;
+export const normalizePocketBaseProjectConnection = (
+  connection: null | undefined | Partial<PocketBaseProjectConnection>,
+  options: { fallbackToDefaultUrl?: boolean } = {},
+): PocketBaseProjectConnection => {
+  const fallbackProjectUrl = options.fallbackToDefaultUrl === false ? '' : resolvePocketBaseBaseUrl();
+  const projectUrl = connection?.projectUrl?.trim() ?? '';
+
+  return {
+    projectUrl: projectUrl.length > 0 ? projectUrl : fallbackProjectUrl,
+    publishableKey: connection?.publishableKey?.trim() ?? '',
+  };
+};
+
+export const isPocketBaseProjectConnectionConfigured = (
+  connection: Pick<PocketBaseProjectConnection, 'projectUrl'>,
+): boolean => {
+  return connection.projectUrl.trim().length > 0;
+};
+
+export interface PocketBaseConnectionSettings {
+  greenBean: PocketBaseProjectConnection;
+  roastedBean: PocketBaseProjectConnection;
   updatedAt: null | string;
 }
 
-export type SupabaseConnectionFormValues = Omit<SupabaseConnectionSettings, 'updatedAt'>;
+export type PocketBaseConnectionFormValues = Omit<PocketBaseConnectionSettings, 'updatedAt'>;
 
 export interface CostTemplate {
   createdAt: string;
@@ -209,14 +230,14 @@ export const normalizeAppDisplaySettings = (
   };
 };
 
-export const createEmptySupabaseProjectConnection = (): SupabaseProjectConnection => ({
-  projectUrl: '',
-  publishableKey: '',
+export const createEmptyPocketBaseProjectConnection = (): PocketBaseProjectConnection => ({
+  projectUrl: resolvePocketBaseBaseUrl(),
+  publishableKey: 'local-access',
 });
 
-export const createDefaultSupabaseConnectionSettings = (): SupabaseConnectionSettings => ({
-  greenBean: createEmptySupabaseProjectConnection(),
-  roastedBean: createEmptySupabaseProjectConnection(),
+export const createDefaultPocketBaseConnectionSettings = (): PocketBaseConnectionSettings => ({
+  greenBean: createEmptyPocketBaseProjectConnection(),
+  roastedBean: createEmptyPocketBaseProjectConnection(),
   updatedAt: null,
 });
 

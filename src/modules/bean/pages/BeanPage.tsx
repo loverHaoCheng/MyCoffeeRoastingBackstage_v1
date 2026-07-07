@@ -1,9 +1,8 @@
 import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 import { App, Button, Empty, Grid, Spin, Tabs } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import {
   BeanAiRecognitionPlaceholder,
   BeanDetailDrawer,
@@ -13,12 +12,14 @@ import {
 } from '@/modules/bean/components';
 import { beanQueryKeys, useBeans, useDeleteBean } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services';
-import { useCostTemplateSettings, useSupabaseConnectionSettings } from '@/modules/settings/hooks';
+import { useCostTemplateSettings, usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { AppError } from '@/shared/errors/AppError';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
-import { logger } from '@/shared/logger/logger';
 import type { Bean } from '@/types/domain';
 import type { GreenBeanCreateInput } from '@/modules/bean/types';
 import type { FieldPath } from 'react-hook-form';
@@ -57,14 +58,14 @@ export function BeanPage() {
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
   const { costTemplateSettings } = useCostTemplateSettings();
-  const { supabaseConnections } = useSupabaseConnectionSettings();
+  const { pocketBaseConnections } = usePocketBaseConnectionSettings();
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [isZeroStockCollapsed, setIsZeroStockCollapsed] = useState(true);
   const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
   const [selectedBeanFieldPath, setSelectedBeanFieldPath] = useState<FieldPath<GreenBeanFormInput> | undefined>();
   const [detailMode, setDetailMode] = useState<BeanDetailMode | null>(null);
-  const { data: beans = [], isFetching, refetch } = useBeans();
+  const { data: beans = [], isFetching } = useBeans();
   const deleteBeanMutation = useDeleteBean();
 
   const filteredBeans = useMemo(() => {
@@ -94,41 +95,7 @@ export function BeanPage() {
   }, [beans, selectedBeanId]);
 
   const isWide = screens.md ?? false;
-  const hasGreenBeanConnection =
-    supabaseConnections.greenBean.projectUrl.trim().length > 0 &&
-    supabaseConnections.greenBean.publishableKey.trim().length > 0;
-
-  // 网络恢复时自动同步待处理操作
-  useEffect(() => {
-    const syncPendingOperations = async () => {
-      try {
-        const result = await beanService.syncPendingOperations();
-        if (result.success > 0) {
-          void message.success(`已同步 ${String(result.success)} 条待处理操作`);
-          await refetch();
-        }
-        if (result.failed > 0) {
-          void message.warning(`${String(result.failed)} 条操作同步失败，将在下次联网时重试`);
-        }
-      } catch (error) {
-        logger.error('bean page pending sync failed', { error });
-      }
-    };
-    const handleOnline = () => {
-      void syncPendingOperations();
-    };
-
-    window.addEventListener('online', handleOnline);
-
-    // 组件加载时如果有网络，也尝试同步一次
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      handleOnline();
-    }
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-    };
-  }, [message, refetch]);
+  const hasGreenBeanConnection = isPocketBaseProjectConnectionConfigured(pocketBaseConnections.greenBean);
 
   const handleViewBean = (beanId: Bean['id']) => {
     setSelectedBeanId(beanId);
@@ -150,13 +117,18 @@ export function BeanPage() {
       okText: '删除',
       title: '确认删除',
       onOk() {
-        void deleteBeanMutation.mutateAsync(bean.id).then((result) => {
-          if (!result.synced) {
-            void message.error('supabase删除失败');
-          }
-        }).catch(() => {
-          void message.error('supabase删除失败');
-        });
+        void deleteBeanMutation
+          .mutateAsync(bean.id)
+          .then((result) => {
+            if (!result.synced) {
+              void message.error('删除已保存到本地，但远程 PocketBase 删除未同步成功，请稍后重试。');
+            }
+          })
+          .catch((error: unknown) => {
+            void message.error(
+              getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
+            );
+          });
       },
     });
   };
@@ -179,12 +151,20 @@ export function BeanPage() {
         const nextBeans = beanService.finalizeOptimisticBean(String(optimisticBean.id), response.data);
 
         queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
-        refreshAllAppData(queryClient).catch(() => undefined);
       } catch (error) {
+        if (
+          error instanceof AppError &&
+          (error.code === 'NETWORK' || (error.code === 'HTTP' && error.status === 404))
+        ) {
+          const nextBeans = beanService.persistOptimisticBeanAsPending(input);
+          queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
+          void message.warning('PocketBase 暂未就绪，已先保存到本地，待连接恢复后会自动同步。');
+          return;
+        }
+
         const nextBeans = beanService.rollbackOptimisticBean(String(optimisticBean.id));
         queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
-        const errorMessage = error instanceof Error ? error.message : '生豆同步失败，本地已备份。';
-        void message.error(errorMessage);
+        void message.error(getUserFacingErrorMessage(error, '生豆同步失败，已回滚本次新建，请检查后重试。'));
       }
     })();
 

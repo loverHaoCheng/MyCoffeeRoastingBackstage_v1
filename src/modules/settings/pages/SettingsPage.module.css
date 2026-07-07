@@ -42,13 +42,6 @@
   z-index: 1;
 }
 
-.syncAlert:global(.ant-alert) {
-  border-radius: 20px;
-  box-shadow:
-    0 6px 14px -10px rgb(15 23 42 / 10%),
-    0 18px 42px -30px rgb(15 23 42 / 12%);
-}
-
 .section {
   display: grid;
   gap: 0;
@@ -280,55 +273,6 @@
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none;
-}
-
-.statusInlineBar {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 10px;
-  min-width: 0;
-  min-height: 58px;
-  padding: 14px 18px;
-  border: 1px solid var(--app-border);
-  border-radius: 18px;
-  background: var(--app-bg-elevated);
-  box-shadow:
-    0 6px 14px -10px rgb(15 23 42 / 9%),
-    0 18px 38px -28px rgb(15 23 42 / 12%);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-}
-
-.statusInlineBar::-webkit-scrollbar {
-  display: none;
-}
-
-.statusInlineGroup {
-  display: flex;
-  flex: 1 1 0;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-}
-
-.statusInlineValue {
-  flex: 0 0 auto;
-  color: var(--app-text);
-  font-size: 13px;
-  line-height: 1.2;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.statusInlineDivider {
-  width: 1px;
-  height: 14px;
-  flex: 0 0 auto;
-  margin: 0 4px;
-  background: var(--app-border-soft);
 }
 
 .sectionCollapse {
@@ -589,12 +533,6 @@
 
   .section[data-collapsed='false'] {
     gap: 14px;
-  }
-
-  .statusInlineBar {
-    min-height: 52px;
-    padding: 11px 15px;
-    border-radius: 16px;
   }
 
   .sectionCollapseInner {

@@ -27,9 +27,12 @@ export function AppProviders({ children }: PropsWithChildren) {
       new QueryClient({
         defaultOptions: {
           queries: {
+            gcTime: 30 * 60_000,
+            refetchOnMount: false,
+            refetchOnReconnect: false,
             refetchOnWindowFocus: false,
             retry: 1,
-            staleTime: 60_000,
+            staleTime: Number.POSITIVE_INFINITY,
           },
         },
       }),
@@ -50,13 +53,13 @@ export function AppProviders({ children }: PropsWithChildren) {
       algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
       token: {
         borderRadius: 8,
-        colorBgBase: isDarkMode ? '#111113' : '#ffffff',
-        colorBgLayout: isDarkMode ? '#0b0b0c' : '#f5f5f7',
-        colorInfo: '#007aff',
-        colorPrimary: '#007aff',
-        colorSuccess: '#34c759',
-        colorWarning: '#ff9500',
-        colorError: '#ff3b30',
+        colorBgBase: isDarkMode ? '#101012' : '#ffffff',
+        colorBgLayout: isDarkMode ? '#09090a' : '#f5f5f7',
+        colorInfo: '#111111',
+        colorPrimary: '#111111',
+        colorSuccess: '#4b5563',
+        colorWarning: '#6b7280',
+        colorError: '#111111',
         colorText: isDarkMode ? '#f5f5f7' : '#1d1d1f',
         colorTextSecondary: isDarkMode ? '#a1a1aa' : '#6e6e73',
         fontFamily:
@@ -70,9 +73,9 @@ export function AppProviders({ children }: PropsWithChildren) {
           headerFontSize: 15,
         },
         Layout: {
-          bodyBg: isDarkMode ? '#0b0b0c' : '#f5f5f7',
-          headerBg: isDarkMode ? '#111113' : '#ffffff',
-          siderBg: isDarkMode ? '#111113' : '#1d1d1f',
+          bodyBg: isDarkMode ? '#09090a' : '#f5f5f7',
+          headerBg: isDarkMode ? '#101012' : '#ffffff',
+          siderBg: isDarkMode ? '#101012' : '#1d1d1f',
         },
       },
     };

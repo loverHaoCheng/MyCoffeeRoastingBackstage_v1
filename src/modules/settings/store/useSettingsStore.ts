@@ -2,18 +2,18 @@ import { create } from 'zustand';
 
 import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
-import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import {
   createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
-  createDefaultSupabaseConnectionSettings,
+  createDefaultPocketBaseConnectionSettings,
   normalizeAppDisplaySettings,
   type AppDisplaySettings,
   type CostTemplate,
   type CostTemplateFormValues,
   type CostTemplateSettings,
-  type SupabaseConnectionFormValues,
-  type SupabaseConnectionSettings,
+  type PocketBaseConnectionFormValues,
+  type PocketBaseConnectionSettings,
 } from '@/modules/settings/types';
 
 interface SettingsState {
@@ -22,21 +22,23 @@ interface SettingsState {
   deleteCostTemplate: (templateId: string) => void;
   loadAppDisplaySettings: () => void;
   loadCostTemplates: () => void;
-  loadSupabaseConnections: () => void;
+  loadPocketBaseConnections: () => void;
   resetAppDisplaySettings: () => void;
-  saveCostTemplate: (values: CostTemplateFormValues, templateId?: string) => CostTemplate;
   saveAppDisplaySettings: (settings: AppDisplaySettings) => AppDisplaySettings;
-  setDefaultCostTemplate: (templateId: string) => void;
-  supabaseConnections: SupabaseConnectionSettings;
+  saveCostTemplate: (values: CostTemplateFormValues, templateId?: string) => CostTemplate;
+  savePocketBaseConnections: (values: PocketBaseConnectionFormValues) => void;
+  setDefaultCostTemplate: (templateId: null | string) => void;
+  pocketBaseConnections: PocketBaseConnectionSettings;
   resetCostTemplates: () => void;
-  resetSupabaseConnections: () => void;
-  saveSupabaseConnections: (values: SupabaseConnectionFormValues) => void;
+  resetPocketBaseConnections: () => void;
 }
+
+const initialPocketBaseConnections = pocketBaseConnectionSettingsService.load();
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   appDisplaySettings: appDisplaySettingsService.load(),
   costTemplateSettings: costTemplateSettingsService.load(),
-  supabaseConnections: supabaseConnectionSettingsService.load(),
+  pocketBaseConnections: initialPocketBaseConnections,
   deleteCostTemplate: (templateId) => {
     set((state) => {
       const nextTemplates = state.costTemplateSettings.templates.filter((template) => template.id !== templateId);
@@ -57,20 +59,38 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       return { costTemplateSettings: nextValue };
     });
   },
-  loadCostTemplates: () => {
-    set({
-      costTemplateSettings: costTemplateSettingsService.load(),
-    });
-  },
   loadAppDisplaySettings: () => {
     set({
       appDisplaySettings: appDisplaySettingsService.load(),
     });
   },
-  loadSupabaseConnections: () => {
+  loadCostTemplates: () => {
     set({
-      supabaseConnections: supabaseConnectionSettingsService.load(),
+      costTemplateSettings: costTemplateSettingsService.load(),
     });
+  },
+  loadPocketBaseConnections: () => {
+    set({
+      pocketBaseConnections: pocketBaseConnectionSettingsService.load(),
+    });
+  },
+  resetAppDisplaySettings: () => {
+    const nextValue = createDefaultAppDisplaySettings();
+
+    appDisplaySettingsService.clear();
+    appDisplaySettingsService.save(nextValue);
+    set({ appDisplaySettings: nextValue });
+  },
+  saveAppDisplaySettings: (settings) => {
+    const nextValue = normalizeAppDisplaySettings({
+      ...settings,
+      updatedAt: new Date().toISOString(),
+    });
+
+    appDisplaySettingsService.save(nextValue);
+    set({ appDisplaySettings: nextValue });
+
+    return nextValue;
   },
   saveCostTemplate: (values, templateId) => {
     const currentSettings = costTemplateSettingsService.load();
@@ -85,7 +105,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       : [nextTemplate, ...currentSettings.templates];
     const nextSettings: CostTemplateSettings = {
       defaultTemplateId:
-        currentSettings.defaultTemplateId ?? nextTemplates[0]?.id ?? nextTemplate.id,
+        currentSettings.defaultTemplateId ??
+        (currentSettings.templates.length === 0 && !existingTemplate ? nextTemplate.id : null),
       templates: nextTemplates,
       updatedAt: new Date().toISOString(),
     };
@@ -95,9 +116,20 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
     return nextTemplate;
   },
+  savePocketBaseConnections: (values) => {
+    const nextValue: PocketBaseConnectionSettings = {
+      ...values,
+      updatedAt: new Date().toISOString(),
+    };
+
+    pocketBaseConnectionSettingsService.save(nextValue);
+    set({
+      pocketBaseConnections: nextValue,
+    });
+  },
   setDefaultCostTemplate: (templateId) => {
     set((state) => {
-      if (!state.costTemplateSettings.templates.some((template) => template.id === templateId)) {
+      if (templateId != null && !state.costTemplateSettings.templates.some((template) => template.id === templateId)) {
         return state;
       }
 
@@ -117,37 +149,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     costTemplateSettingsService.save(nextValue);
     set({ costTemplateSettings: nextValue });
   },
-  resetAppDisplaySettings: () => {
-    const nextValue = createDefaultAppDisplaySettings();
+  resetPocketBaseConnections: () => {
+    const nextValue = createDefaultPocketBaseConnectionSettings();
 
-    appDisplaySettingsService.clear();
-    appDisplaySettingsService.save(nextValue);
-    set({ appDisplaySettings: nextValue });
-  },
-  resetSupabaseConnections: () => {
-    const nextValue = createDefaultSupabaseConnectionSettings();
-
-    supabaseConnectionSettingsService.clear();
-    set({ supabaseConnections: nextValue });
-  },
-  saveSupabaseConnections: (values) => {
-    const nextValue: SupabaseConnectionSettings = {
-      ...values,
-      updatedAt: new Date().toISOString(),
-    };
-
-    supabaseConnectionSettingsService.save(nextValue);
-    set({ supabaseConnections: nextValue });
-  },
-  saveAppDisplaySettings: (settings) => {
-    const nextValue = normalizeAppDisplaySettings({
-      ...settings,
-      updatedAt: new Date().toISOString(),
+    pocketBaseConnectionSettingsService.clear();
+    set({
+      pocketBaseConnections: nextValue,
     });
-
-    appDisplaySettingsService.save(nextValue);
-    set({ appDisplaySettings: nextValue });
-
-    return nextValue;
   },
 }));

@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RoastPage } from '@/modules/roast';
 import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
-import { supabaseConnectionSettingsStorageKey } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsStorageKey } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
 import {
   createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
-  createDefaultSupabaseConnectionSettings,
+  createDefaultPocketBaseConnectionSettings,
 } from '@/modules/settings/types';
 import { renderWithQuery } from '@/tests/renderWithProviders';
 import { localGreenBeanStorageKey } from '@/modules/bean/services';
@@ -134,15 +134,15 @@ describe('RoastPage', () => {
     useSettingsStore.setState({
       appDisplaySettings: createDefaultAppDisplaySettings(),
       costTemplateSettings: createDefaultCostTemplateSettings(),
-      supabaseConnections: createDefaultSupabaseConnectionSettings(),
+      pocketBaseConnections: createDefaultPocketBaseConnectionSettings(),
     });
 
     window.localStorage.setItem(
-      supabaseConnectionSettingsStorageKey,
+      pocketBaseConnectionSettingsStorageKey,
       JSON.stringify({
         greenBean: {
-          projectUrl: 'https://green-demo.supabase.co',
-          publishableKey: 'sb_publishable_green_demo',
+          projectUrl: 'https://green-demo.pocketbase.local',
+          publishableKey: 'local-access',
         },
         roastedBean: {
           projectUrl: '',
@@ -212,7 +212,7 @@ describe('RoastPage', () => {
       }),
     );
 
-    useSettingsStore.getState().loadSupabaseConnections();
+    useSettingsStore.getState().loadPocketBaseConnections();
     useSettingsStore.getState().loadCostTemplates();
   });
 

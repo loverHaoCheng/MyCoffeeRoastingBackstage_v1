@@ -13,6 +13,9 @@ supabase/.branches/
 supabase/.cache/
 supabase/.temp/
 
+# local PocketBase runtime
+PocketBase/
+
 # environment files
 .env
 .env.*

@@ -2,14 +2,17 @@ import {
   ApartmentOutlined,
   DatabaseOutlined,
   FireOutlined,
+  LogoutOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import { Button, Grid, Layout, Menu } from 'antd';
+import { App, Button, Grid, Layout, Menu, Space, Typography } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, type ReactNode, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 
 import { GlobalPullToRefresh } from '@/app/components/GlobalPullToRefresh';
 import { isStandalonePwaRuntime, syncViewportMetrics } from '@/app/services/viewportMetrics.service';
+import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { appNavigationItems, type AppRouteKey } from '@/router/navigation';
 import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
@@ -21,7 +24,7 @@ import styles from './MainLayout.module.css';
 
 const { Content, Sider } = Layout;
 const { useBreakpoint } = Grid;
-const MOBILE_ROUTE_TRANSITION_MS = 360;
+const MOBILE_ROUTE_TRANSITION_MS = 300;
 const FLOATING_ACTION_VISIBILITY_TRANSITION_MS = 220;
 
 type RouteTransitionDirection = 'backward' | 'forward';
@@ -34,7 +37,10 @@ const iconByRoute: Record<AppRouteKey, ReactNode> = {
 };
 
 export function MainLayout() {
+  const { message } = App.useApp();
+  const queryClient = useQueryClient();
   const { setSidebarCollapsed, sidebarCollapsed } = useAppStore();
+  const { logout, user } = useAuthStore();
   const { appDisplaySettings, loadAppDisplaySettings } = useAppDisplaySettings();
   const screens = useBreakpoint();
   const navigate = useNavigate();
@@ -72,6 +78,7 @@ export function MainLayout() {
       appNavigationItems.find((item) => location.pathname.startsWith(item.path))?.key ?? 'bean'
     );
   }, [location.pathname]);
+  const previousSelectedKeyRef = useRef<AppRouteKey>(selectedKey);
   const activeBottomNavIndex = useMemo(() => {
     const activeIndex = bottomNavItems.findIndex((item) => item.key === selectedKey);
 
@@ -97,6 +104,10 @@ export function MainLayout() {
   useEffect(() => {
     loadAppDisplaySettings();
   }, [loadAppDisplaySettings]);
+
+  useEffect(() => {
+    previousSelectedKeyRef.current = selectedKey;
+  }, [selectedKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -255,6 +266,32 @@ export function MainLayout() {
     });
   };
 
+  const renderSettingsAuthBar = () => (
+    <div className={styles.authBar}>
+      <Space align="center" size={10}>
+        <div className={styles.authAvatar}>
+          {String(user?.email ?? 'U').slice(0, 1).toUpperCase()}
+        </div>
+        <div className={styles.authMeta}>
+          <Typography.Text className={styles.authLabel}>当前账号</Typography.Text>
+          <Typography.Text className={styles.authValue} ellipsis>
+            {user?.email ?? '未登录'}
+          </Typography.Text>
+        </div>
+      </Space>
+      <Button icon={<LogoutOutlined />} onClick={handleLogout} type="text">
+        退出登录
+      </Button>
+    </div>
+  );
+
+  const renderRoutePanelContent = (routeKey: AppRouteKey, outletNode: ReactNode) => (
+    <>
+      {routeKey === 'settings' ? renderSettingsAuthBar() : null}
+      {outletNode}
+    </>
+  );
+
   const registerFloatingAction = useCallback((config: ViewportFloatingActionButtonProps) => {
     const registrationId = floatingActionRegistrationIdRef.current + 1;
     floatingActionRegistrationIdRef.current = registrationId;
@@ -300,6 +337,13 @@ export function MainLayout() {
       left: 0,
       behavior: 'smooth',
     });
+  };
+
+  const handleLogout = () => {
+    logout();
+    queryClient.clear();
+    void message.success('已退出登录');
+    void navigate('/login', { replace: true });
   };
 
   return (
@@ -366,12 +410,12 @@ export function MainLayout() {
                           <>
                             <FloatingActionRegistrationContext.Provider value={disabledFloatingActionRegistration}>
                               <div className={styles.routePanel} data-role="previous">
-                                {previousOutlet}
+                                {renderRoutePanelContent(previousSelectedKeyRef.current, previousOutlet)}
                               </div>
                             </FloatingActionRegistrationContext.Provider>
                             <FloatingActionRegistrationContext.Provider value={enabledFloatingActionRegistration}>
                               <div className={styles.routePanel} data-role="current">
-                                {currentOutlet}
+                                {renderRoutePanelContent(selectedKey, currentOutlet)}
                               </div>
                             </FloatingActionRegistrationContext.Provider>
                           </>
@@ -379,12 +423,12 @@ export function MainLayout() {
                           <>
                             <FloatingActionRegistrationContext.Provider value={enabledFloatingActionRegistration}>
                               <div className={styles.routePanel} data-role="current">
-                                {currentOutlet}
+                                {renderRoutePanelContent(selectedKey, currentOutlet)}
                               </div>
                             </FloatingActionRegistrationContext.Provider>
                             <FloatingActionRegistrationContext.Provider value={disabledFloatingActionRegistration}>
                               <div className={styles.routePanel} data-role="previous">
-                                {previousOutlet}
+                                {renderRoutePanelContent(previousSelectedKeyRef.current, previousOutlet)}
                               </div>
                             </FloatingActionRegistrationContext.Provider>
                           </>
@@ -393,7 +437,7 @@ export function MainLayout() {
                     ) : (
                       <FloatingActionRegistrationContext.Provider value={enabledFloatingActionRegistration}>
                         <div className={styles.routePanel} data-role="current" key={location.pathname}>
-                          {currentOutlet}
+                          {renderRoutePanelContent(selectedKey, currentOutlet)}
                         </div>
                       </FloatingActionRegistrationContext.Provider>
                     )}

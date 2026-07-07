@@ -11,6 +11,7 @@ import type { RoastPlanJsonInput } from '../types';
 
 import { FieldEditorDrawer } from '@/shared/components/FieldEditorDrawer';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 
 const GENERIC_BEAN_ID = 'generic';
@@ -124,8 +125,7 @@ export function RoastPlanFieldEditorDrawer({
 
     const updateTask = updatePlanMutation.mutateAsync({ planId: plan.id, input: parsed.data }).catch(
       (error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : '烘焙计划同步失败，本地已备份。';
-        void message.error(errorMessage);
+        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
       },
     );
 

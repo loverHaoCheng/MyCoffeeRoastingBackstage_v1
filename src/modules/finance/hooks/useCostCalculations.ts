@@ -43,10 +43,14 @@ export function useSaveCostCalculation() {
 
       return response.data;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: financeQueryKeys.calculations(),
-      });
+    onSuccess: (nextCalculation) => {
+      queryClient.setQueryData(
+        financeQueryKeys.calculations(),
+        (current: ReturnType<typeof financeService.getBootstrappedCalculations> = []) =>
+          [nextCalculation, ...current.filter((record) => record.id !== nextCalculation.id)].sort((left, right) => {
+            return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+          }),
+      );
     },
   });
 }

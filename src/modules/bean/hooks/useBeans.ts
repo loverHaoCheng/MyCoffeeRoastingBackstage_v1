@@ -162,7 +162,20 @@ export function useUpdateBean() {
         beanQueryKeys.list(),
         (current = []) => current.map((bean) => (String(bean.id) === String(variables.beanId) ? nextBean : bean)),
       );
-      void queryClient.invalidateQueries({ queryKey: beanEditableDetailQueryKeys.detail(variables.beanId) });
+      queryClient.setQueryData<GreenBeanEditableDetail>(
+        beanEditableDetailQueryKeys.detail(variables.beanId),
+        (currentDetail) => {
+          const currentBean = queryClient
+            .getQueryData<Bean[]>(beanQueryKeys.list())
+            ?.find((bean) => String(bean.id) === String(variables.beanId));
+
+          if (!currentBean) {
+            return currentDetail;
+          }
+
+          return buildOptimisticEditableDetail(currentDetail, currentBean, variables.input);
+        },
+      );
     },
   });
 }
@@ -210,10 +223,9 @@ export function useDeleteBean() {
         beanService.rollbackOptimisticDelete(context.deleteSnapshot);
       }
     },
-    onSuccess: async (result, beanId) => {
+    onSuccess: (result, beanId) => {
       if (result.synced) {
-        await queryClient.invalidateQueries({ queryKey: beanQueryKeys.all });
-        await queryClient.invalidateQueries({ queryKey: beanEditableDetailQueryKeys.detail(beanId) });
+        queryClient.removeQueries({ queryKey: beanEditableDetailQueryKeys.detail(beanId), exact: true });
       }
     },
   });

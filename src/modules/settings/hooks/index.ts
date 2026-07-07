@@ -1,4 +1,4 @@
 export { useAppDisplaySettings } from './useAppDisplaySettings';
 export { useCostTemplateSettings } from './useCostTemplateSettings';
-export { useSupabaseConnectionSettings } from './useSupabaseConnectionSettings';
+export { usePocketBaseConnectionSettings } from './usePocketBaseConnectionSettings';
 export { useVisibleCardMetaItems } from './useVisibleCardMetaItems';

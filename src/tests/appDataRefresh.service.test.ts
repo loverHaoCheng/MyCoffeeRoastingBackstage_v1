@@ -13,7 +13,6 @@ import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { appDisplaySettingsSyncService } from '@/modules/settings/services/appDisplaySettingsSync.service';
-import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
 import { costTemplateSyncService } from '@/modules/settings/services/costTemplateSync.service';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
 
@@ -35,16 +34,26 @@ describe('appDataRefresh.service', () => {
     window.location.hash = '#/roasts';
     vi.useFakeTimers();
 
-    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    const setQueryData = vi.fn();
+    const removeQueries = vi.fn();
     const queryClient = {
-      invalidateQueries,
+      removeQueries,
+      setQueryData,
     } as unknown as QueryClient;
 
     const pendingOpsSpy = vi.spyOn(beanSyncService, 'getPendingOperations').mockReturnValue([]);
     const pendingSyncSpy = vi.spyOn(beanService, 'syncPendingOperations');
+    const beanSyncSpy = vi.spyOn(beanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 1, uploaded: 0 });
+    const roastPlanSyncSpy = vi.spyOn(roastPlanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 2, uploaded: 1 });
+    const roastBatchSyncSpy = vi.spyOn(roastBatchService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 0, uploaded: 0 });
+    const financeSyncSpy = vi.spyOn(financeService, 'syncLocalAndRemote');
     const costTemplateSyncSpy = vi
-      .spyOn(costTemplateSyncService, 'syncSafely')
-      .mockResolvedValue(costTemplateSettingsService.load());
+      .spyOn(costTemplateSyncService, 'syncFromRemoteSafely')
+      .mockResolvedValue({
+        defaultTemplateId: null,
+        templates: [],
+        updatedAt: null,
+      });
     const appDisplaySyncSpy = vi
       .spyOn(appDisplaySettingsSyncService, 'syncSafely')
       .mockResolvedValue(appDisplaySettingsService.load());
@@ -53,28 +62,33 @@ describe('appDataRefresh.service', () => {
     const result = await refreshQuickAppData(queryClient);
 
     expect(result).toEqual({
-      downloaded: 0,
+      downloaded: 3,
       failed: 0,
       failedDetails: [],
       success: 0,
-      uploaded: 0,
+      uploaded: 1,
     });
     expect(pendingOpsSpy).toHaveBeenCalledTimes(1);
     expect(pendingSyncSpy).not.toHaveBeenCalled();
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: beanQueryKeys.all });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: roastPlanQueryKeys.all });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: roastBatchQueryKeys.all });
-    expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: financeQueryKeys.all });
-    expect(costTemplateSyncSpy).not.toHaveBeenCalled();
-    expect(appDisplaySyncSpy).not.toHaveBeenCalled();
+    expect(beanSyncSpy).toHaveBeenCalledTimes(1);
+    expect(roastPlanSyncSpy).toHaveBeenCalledTimes(1);
+    expect(roastBatchSyncSpy).toHaveBeenCalledTimes(1);
+    expect(financeSyncSpy).not.toHaveBeenCalled();
+    expect(setQueryData).toHaveBeenCalledWith(beanQueryKeys.list(), beanService.getBootstrappedBeans());
+    expect(setQueryData).toHaveBeenCalledWith(roastPlanQueryKeys.list(), roastPlanService.getBootstrappedPlans());
+    expect(setQueryData).toHaveBeenCalledWith(roastBatchQueryKeys.list(), roastBatchService.getBootstrappedBatches());
+    expect(costTemplateSyncSpy).toHaveBeenCalledTimes(1);
+    expect(appDisplaySyncSpy).toHaveBeenCalledTimes(1);
   });
 
   it('returns failed sync module details for full refresh', async () => {
     window.location.hash = '#/settings';
 
-    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    const setQueryData = vi.fn();
+    const removeQueries = vi.fn();
     const queryClient = {
-      invalidateQueries,
+      removeQueries,
+      setQueryData,
     } as unknown as QueryClient;
 
     vi.spyOn(beanSyncService, 'getPendingOperations').mockReturnValue([]);
@@ -82,7 +96,11 @@ describe('appDataRefresh.service', () => {
     vi.spyOn(roastPlanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 0, uploaded: 0 });
     vi.spyOn(roastBatchService, 'syncLocalAndRemote').mockRejectedValue(new Error('熟豆库表结构不匹配'));
     vi.spyOn(financeService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 0, uploaded: 0 });
-    vi.spyOn(costTemplateSyncService, 'syncSafely').mockResolvedValue(costTemplateSettingsService.load());
+    vi.spyOn(costTemplateSyncService, 'syncFromRemoteSafely').mockResolvedValue({
+      defaultTemplateId: null,
+      templates: [],
+      updatedAt: null,
+    });
     vi.spyOn(appDisplaySettingsSyncService, 'syncSafely').mockResolvedValue(appDisplaySettingsService.load());
     vi.spyOn(localStorageCleanupService, 'cleanupObsoleteKeys').mockReturnValue([]);
 
@@ -91,5 +109,9 @@ describe('appDataRefresh.service', () => {
     expect(result.failed).toBe(1);
     expect(result.failedDetails[0]).toContain('烘焙记录同步失败');
     expect(result.failedDetails[0]).toContain('熟豆库表结构不匹配');
+    expect(setQueryData).toHaveBeenCalledWith(beanQueryKeys.list(), beanService.getBootstrappedBeans());
+    expect(setQueryData).toHaveBeenCalledWith(roastPlanQueryKeys.list(), roastPlanService.getBootstrappedPlans());
+    expect(setQueryData).toHaveBeenCalledWith(roastBatchQueryKeys.list(), roastBatchService.getBootstrappedBatches());
+    expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.calculations(), financeService.getBootstrappedCalculations());
   });
 });

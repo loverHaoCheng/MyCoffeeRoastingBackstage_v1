@@ -10,6 +10,7 @@ import { greenBeanCreateFormSchema } from '@/modules/bean/schemas';
 import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { FieldEditorDrawer } from '@/shared/components/FieldEditorDrawer';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import type { Bean } from '@/types/domain';
 
@@ -199,8 +200,7 @@ export function BeanFieldEditorDrawer({
 
     const updateTask = updateBeanMutation.mutateAsync({ beanId: bean.id, input: parsed.data }).catch(
       (error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : '生豆同步失败，本地已备份。';
-        void message.error(errorMessage);
+        void message.error(getUserFacingErrorMessage(error, '生豆同步失败，本地备份已保留，请检查后重试。'));
       },
     );
 

@@ -2,6 +2,7 @@ import { App, Button, Result, Spin } from 'antd';
 
 import { useBeanEditableDetail, useUpdateBean } from '@/modules/bean/hooks';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import type { Bean } from '@/types/domain';
 import type { FieldPath } from 'react-hook-form';
@@ -147,8 +148,7 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDe
             try {
               await updateBeanMutation.mutateAsync({ beanId: bean.id, input });
             } catch (error) {
-              const errorMessage = error instanceof Error ? error.message : '生豆同步失败，本地已备份。';
-              void message.error(errorMessage);
+              void message.error(getUserFacingErrorMessage(error, '生豆同步失败，本地备份已保留，请检查后重试。'));
             }
           })();
 

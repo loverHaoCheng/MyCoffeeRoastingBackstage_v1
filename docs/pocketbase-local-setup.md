@@ -1,0 +1,285 @@
+# PocketBase 本地优先配置
+
+这份说明用于本地 `PocketBase/` 目录初始化，也适用于后续迁腾讯云 CVM。
+
+## 目标
+
+- 让当前项目先在本地 PocketBase 跑通注册、登录和用户隔离。
+- 让每个业务 collection 都带 `owner`，确保“每个用户只能看自己的数据”。
+- 让本地与云端保持同一套 collection 命名和权限规则。
+
+## 运行前提
+
+- PocketBase 二进制放在仓库根目录的 `PocketBase/pocketbase`。
+- 数据目录放在 `PocketBase/data`。
+- 前端通过 `VITE_PB_URL=http://127.0.0.1:8090` 连接本地服务。
+
+## 当前客户端兼容约定
+
+- 前端已经会自动给业务写入补 `owner` 字段。
+- 前端已经会自动补 `created_at` 和 `updated_at` 字段。
+- 当前代码把 `roast_plan_overview` 视为 `roast_profiles` 的兼容别名。
+- 当前代码把 `roast_batch_overview` 视为 `roast_batches` 的兼容别名。
+
+## 认证集合
+
+### `users`
+
+- 类型：Auth collection
+- 用途：注册、登录、当前用户身份
+- 认证方式：Email + Password
+- 建议：先用 Dashboard 创建第一个 admin，再允许前端注册普通用户
+
+### 权限规则
+
+```text
+listRule: id = @request.auth.id
+viewRule: id = @request.auth.id
+createRule: true
+updateRule: id = @request.auth.id
+deleteRule: id = @request.auth.id
+```
+
+## 业务集合模板
+
+所有业务集合都建议加一个 `owner` 字段：
+
+- 字段类型：`relation`
+- 关联集合：`users`
+- 最大选择：`1`
+- 必填：`yes`
+
+通用规则模板：
+
+```text
+listRule: owner = @request.auth.id
+viewRule: owner = @request.auth.id
+createRule: @request.auth.id != "" && owner = @request.auth.id
+updateRule: @request.auth.id != "" && owner = @request.auth.id
+deleteRule: @request.auth.id != "" && owner = @request.auth.id
+```
+
+## Collection 清单
+
+### `green_beans`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `code` | text | 生豆编号 |
+| `display_name` | text | 生豆名称 |
+| `process_method` | text | 处理法 |
+| `variety` | text | 豆种 |
+| `grade` | text | 等级 |
+| `origin_country` | text | 国家 |
+| `origin_region` | text | 产区 |
+| `origin_area` | text | 更细分产区 |
+| `harvest_season` | text | 产季 |
+| `default_roast_input_grams` | number | 默认单次投豆量 |
+| `altitude_meters_min` | number | 最低海拔 |
+| `altitude_meters_max` | number | 最高海拔 |
+| `moisture_percent` | number | 含水率 |
+| `density_g_per_l` | number | 密度 |
+| `mill_name` | text | 处理厂 |
+| `notes` | text | 备注 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+建议索引：
+
+- `owner,code`
+
+### `green_bean_purchase_batches`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `green_bean_id` | relation(green_beans) | 关联生豆 |
+| `purchased_total_price` | number | 采购总价 |
+| `purchased_weight_grams` | number | 采购重量 |
+| `remaining_weight_grams` | number | 剩余重量 |
+| `supplier_name` | text | 供应商 |
+| `received_at` | date | 到货日期 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+建议索引：
+
+- `owner,green_bean_id,received_at`
+
+### `bean_sale_specs`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `green_bean_id` | relation(green_beans) | 关联生豆 |
+| `channel` | text | 销售渠道 |
+| `is_default` | bool | 是否默认规格 |
+| `unit_price` | number | 单价 |
+| `unit_weight_grams` | number | 单份重量 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+建议索引：
+
+- `owner,green_bean_id,channel`
+
+### `app_settings`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `key` | text | 设置键 |
+| `value` | json | 设置值 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+这里会存：
+
+- 单豆售价默认值
+- 成本模板绑定
+- 单豆等级覆盖
+
+建议索引：
+
+- `owner,key`
+
+### `roast_profiles`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `green_bean_id` | relation(green_beans) | 关联生豆 |
+| `bean_name` | text | 冗余显示名称 |
+| `name` | text | 方案名称 |
+| `batch_weight_grams` | number | 单批投豆量 |
+| `planned_batch_kg` | number | 计划批量 |
+| `roast_purpose` | text | 用途 |
+| `status` | select | `draft` / `inProgress` / `completed` / `cancelled` |
+| `steps` | json | 烘焙步骤 |
+| `target_roast_level` | text | 目标烘焙程度 |
+| `is_active` | bool | 是否启用 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+建议索引：
+
+- `owner,green_bean_id,status`
+
+### `roast_batches`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `roast_date` | date | 烘焙日期 |
+| `green_bean_id` | relation(green_beans) | 关联生豆 |
+| `green_bean_name` | text | 冗余生豆名称 |
+| `roasted_bean_name` | text | 熟豆名称 |
+| `roast_plan_id` | relation(roast_profiles) | 关联烘焙计划 |
+| `roast_plan_name` | text | 冗余计划名称 |
+| `input_weight_grams` | number | 入豆量 |
+| `output_weight_grams` | number | 出豆量 |
+| `roast_level` | text | 烘焙程度 |
+| `development_ratio` | number | 发展比 |
+| `first_crack_time` | number | 一爆时间 |
+| `total_roast_time` | number | 总烘焙时间 |
+| `notes` | text | 备注 |
+| `image_urls` | json | 图片地址数组 |
+| `status` | select | `completed` / `draft` |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+建议索引：
+
+- `owner,roast_date`
+- `owner,green_bean_id`
+
+### `roast_records`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `green_bean_id` | relation(green_beans) | 关联生豆 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+这个集合当前主要用于删除关联数据时兜底，后面如果完全迁移到 PocketBase 也可以再细化。
+
+### `cost_calculations`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `bean_id` | text | 生豆 ID |
+| `bean_name` | text | 生豆名称 |
+| `calculation_name` | text | 计算名称 |
+| `purchase_cost_per_kg` | number | 生豆单价 |
+| `dehydration_rate` | number | 脱水率 |
+| `roast_input_weight_grams` | number | 单锅投豆量 |
+| `packaging_cost` | number | 包装费 |
+| `energy_cost` | number | 能耗费 |
+| `labor_cost` | number | 人工费 |
+| `other_cost` | number | 其他费用 |
+| `sale_unit_weight_grams` | number | 单份重量 |
+| `sale_unit_price` | number | 单份售价 |
+| `target_profit_rate` | number | 目标利润率 |
+| `cost_per_roasted_kg` | number | 每千克熟豆成本 |
+| `cost_per_sale_unit` | number | 单份成本 |
+| `profit_per_sale_unit` | number | 单份利润 |
+| `profit_rate` | number | 利润率 |
+| `roasted_output_weight_grams` | number | 预计出豆量 |
+| `sale_unit_count` | number | 可售份数 |
+| `suggested_sale_price` | number | 建议售价 |
+| `total_batch_cost` | number | 单锅总成本 |
+| `data_source` | text | 成本来源 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+建议索引：
+
+- `owner,bean_id,updated_at`
+
+### `coffee_beans`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `user_id` | text | 兼容熟豆镜像写入 |
+| `data` | json | 熟豆镜像数据 |
+| `deleted_at` | date | 软删除时间 |
+| `version` | number | 版本号 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+## 推荐实施顺序
+
+1. 先建 `users` auth collection。
+2. 再建 `green_beans`、`green_bean_purchase_batches`、`bean_sale_specs`、`app_settings`。
+3. 接着建 `roast_profiles`、`roast_batches`、`roast_records`。
+4. 最后建 `cost_calculations` 和 `coffee_beans`。
+
+## 腾讯云部署建议
+
+- CVM 上保持同样目录结构：`PocketBase/pocketbase` + `PocketBase/data`
+- 数据目录单独挂载持久化盘
+- 前面挂 Nginx，统一做 HTTPS 和域名
+- 部署后只切 `VITE_PB_URL`
+- 备份时直接打包 `PocketBase/data`

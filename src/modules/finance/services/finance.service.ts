@@ -1,8 +1,9 @@
-import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/services/api.types';
-import { SupabaseRestClient } from '@/services/supabaseRestClient';
+import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 
 import type {
   CostCalculationFormInput,
@@ -18,7 +19,7 @@ interface FinanceRepository {
 }
 
 interface FinanceConnectionCandidate {
-  client: SupabaseRestClient;
+  client: PocketBaseRestClient;
   dataSource: FinanceDataSource;
 }
 
@@ -181,20 +182,20 @@ const resolveFinanceConnection = ():
 const resolveFinanceConnectionCandidates = (): FinanceConnectionCandidate[] => {
   const candidates: FinanceConnectionCandidate[] = [];
 
-  const roastedConnection = supabaseConnectionSettingsService.resolveProjectConnection('roastedBean');
+  const roastedConnection = pocketBaseConnectionSettingsService.resolveProjectConnection('roastedBean');
 
-  if (roastedConnection.projectUrl.trim() && roastedConnection.publishableKey.trim()) {
+  if (isPocketBaseProjectConnectionConfigured(roastedConnection)) {
     candidates.push({
-      client: new SupabaseRestClient(roastedConnection),
+      client: new PocketBaseRestClient(roastedConnection),
       dataSource: 'roastedBean',
     });
   }
 
-  const greenConnection = supabaseConnectionSettingsService.resolveProjectConnection('greenBean');
+  const greenConnection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
-  if (greenConnection.projectUrl.trim() && greenConnection.publishableKey.trim()) {
+  if (isPocketBaseProjectConnectionConfigured(greenConnection)) {
     candidates.push({
-      client: new SupabaseRestClient(greenConnection),
+      client: new PocketBaseRestClient(greenConnection),
       dataSource: 'greenBean',
     });
   }
@@ -215,7 +216,7 @@ const isMissingSupabaseResourceError = (error: unknown): boolean => {
 };
 
 const createSupabaseFinanceRepository = (
-  client: SupabaseRestClient,
+  client: PocketBaseRestClient,
   dataSource: FinanceDataSource,
 ): FinanceRepository => ({
   async listCalculations() {

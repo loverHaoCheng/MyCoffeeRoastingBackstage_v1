@@ -1,6 +1,9 @@
-import type { SupabaseDataSource } from '@/modules/settings/types';
-import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
-import { SupabaseRestClient } from '@/services/supabaseRestClient';
+import {
+  isPocketBaseProjectConnectionConfigured,
+  type PocketBaseDataSource,
+} from '@/modules/settings/types';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 
 export interface AppSettingRecord {
   id: string;
@@ -10,7 +13,7 @@ export interface AppSettingRecord {
 }
 
 interface SyncAppSettingOptions<T> {
-  dataSource?: SupabaseDataSource;
+  dataSource?: PocketBaseDataSource;
   key: string;
   loadLocal: () => T;
   parseRemote: (record: AppSettingRecord) => T;
@@ -19,18 +22,18 @@ interface SyncAppSettingOptions<T> {
 
 const APP_SETTINGS_TABLE = 'app_settings';
 
-const createClient = (dataSource: SupabaseDataSource = 'greenBean'): null | SupabaseRestClient => {
+const createClient = (dataSource: PocketBaseDataSource = 'greenBean'): null | PocketBaseRestClient => {
   if (import.meta.env.MODE === 'test') {
     return null;
   }
 
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection(dataSource);
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection(dataSource);
 
-  if (!connection.projectUrl.trim() || !connection.publishableKey.trim()) {
+  if (!isPocketBaseProjectConnectionConfigured(connection)) {
     return null;
   }
 
-  return new SupabaseRestClient({
+  return new PocketBaseRestClient({
     projectUrl: connection.projectUrl,
     publishableKey: connection.publishableKey,
   });
@@ -39,7 +42,7 @@ const createClient = (dataSource: SupabaseDataSource = 'greenBean'): null | Supa
 export const appSettingsSyncService = {
   async loadRecord(
     key: string,
-    dataSource: SupabaseDataSource = 'greenBean',
+    dataSource: PocketBaseDataSource = 'greenBean',
   ): Promise<AppSettingRecord | null> {
     const client = createClient(dataSource);
 
@@ -58,7 +61,7 @@ export const appSettingsSyncService = {
   async saveRecord(
     key: string,
     value: unknown,
-    dataSource: SupabaseDataSource = 'greenBean',
+    dataSource: PocketBaseDataSource = 'greenBean',
   ): Promise<void> {
     const client = createClient(dataSource);
 

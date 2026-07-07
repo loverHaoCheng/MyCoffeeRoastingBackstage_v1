@@ -4,12 +4,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { BeanPage } from '@/modules/bean';
 import { beanCacheStorageKey } from '@/modules/bean/services';
 import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
-import { supabaseConnectionSettingsStorageKey } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsStorageKey } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
 import {
   createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
-  createDefaultSupabaseConnectionSettings,
+  createDefaultPocketBaseConnectionSettings,
 } from '@/modules/settings/types';
 import { renderWithQuery } from '@/tests/renderWithProviders';
 
@@ -19,7 +19,7 @@ describe('BeanPage', () => {
     useSettingsStore.setState({
       appDisplaySettings: createDefaultAppDisplaySettings(),
       costTemplateSettings: createDefaultCostTemplateSettings(),
-      supabaseConnections: createDefaultSupabaseConnectionSettings(),
+      pocketBaseConnections: createDefaultPocketBaseConnectionSettings(),
     });
   });
 
@@ -111,11 +111,11 @@ describe('BeanPage', () => {
 
   it('renders the bean page workspace shell', async () => {
     window.localStorage.setItem(
-      supabaseConnectionSettingsStorageKey,
+      pocketBaseConnectionSettingsStorageKey,
       JSON.stringify({
         greenBean: {
-          projectUrl: 'https://green-demo.supabase.co',
-          publishableKey: 'sb_publishable_green_demo',
+          projectUrl: 'https://green-demo.pocketbase.local',
+          publishableKey: 'local-access',
         },
         roastedBean: {
           projectUrl: '',
@@ -148,7 +148,7 @@ describe('BeanPage', () => {
         updatedAt: '2026-07-03T00:00:00.000Z',
       }),
     );
-    useSettingsStore.getState().loadSupabaseConnections();
+    useSettingsStore.getState().loadPocketBaseConnections();
     useSettingsStore.getState().loadCostTemplates();
 
     renderWithQuery(<BeanPage />);
@@ -185,7 +185,7 @@ describe('BeanPage', () => {
     useSettingsStore.setState({
       appDisplaySettings: createDefaultAppDisplaySettings(),
       costTemplateSettings: createDefaultCostTemplateSettings(),
-      supabaseConnections: createDefaultSupabaseConnectionSettings(),
+      pocketBaseConnections: createDefaultPocketBaseConnectionSettings(),
     });
     saveBeanCache(12.5);
 

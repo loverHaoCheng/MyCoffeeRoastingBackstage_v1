@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { refreshQuickAppData } from '@/app/services/appDataRefresh.service';
 import { useViewportScrollContainer } from '@/layouts/ViewportContext';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 
 import styles from './GlobalPullToRefresh.module.css';
 
@@ -103,8 +104,7 @@ export function GlobalPullToRefresh() {
         }
       } catch (error) {
         setRefreshFeedback('warning');
-        const errorMessage = error instanceof Error ? error.message : '刷新失败，请稍后重试。';
-        setRefreshFeedbackText(errorMessage);
+        setRefreshFeedbackText(getUserFacingErrorMessage(error, '刷新失败，请稍后重试。'));
       } finally {
         touchStartYRef.current = null;
         pullTriggeredRef.current = false;

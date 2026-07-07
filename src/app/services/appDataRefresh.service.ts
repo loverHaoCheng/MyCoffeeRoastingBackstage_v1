@@ -33,20 +33,6 @@ interface NamedSyncJob {
   promise: Promise<{ downloaded: number; uploaded: number }>;
 }
 
-const quickRefreshQueryKeysByScope: Record<AppRefreshScope, readonly (readonly unknown[])[]> = {
-  all: [
-    beanQueryKeys.all,
-    beanEditableDetailQueryKeys.all,
-    roastPlanQueryKeys.all,
-    roastBatchQueryKeys.all,
-    financeQueryKeys.all,
-  ],
-  bean: [beanQueryKeys.all],
-  production: [beanQueryKeys.all, roastBatchQueryKeys.all],
-  roast: [beanQueryKeys.all, roastPlanQueryKeys.all, roastBatchQueryKeys.all],
-  settings: [beanQueryKeys.all],
-};
-
 let deferredSettingsSyncPromise: null | Promise<void> = null;
 
 const getCurrentPathname = (): string => {
@@ -92,7 +78,7 @@ const scheduleDeferredSettingsSync = (settingsState: SettingsSyncState): Promise
     const runDeferredSync = () => {
       void (async () => {
         try {
-          await costTemplateSyncService.syncSafely(settingsState.costTemplateSettings);
+          await costTemplateSyncService.syncFromRemoteSafely();
           await appDisplaySettingsSyncService.syncSafely(settingsState.appDisplaySettings);
           settingsState.loadCostTemplates();
           settingsState.loadAppDisplaySettings();
@@ -121,7 +107,7 @@ const syncSharedAppSettings = async (options: { deferNonCriticalSync?: boolean }
 
   const settingsState = useSettingsStore.getState();
 
-  settingsState.loadSupabaseConnections();
+  settingsState.loadPocketBaseConnections();
   settingsState.loadCostTemplates();
   settingsState.loadAppDisplaySettings();
 
@@ -134,7 +120,7 @@ const syncSharedAppSettings = async (options: { deferNonCriticalSync?: boolean }
   if (options.deferNonCriticalSync) {
     void scheduleDeferredSettingsSync(settingsState);
   } else {
-    await costTemplateSyncService.syncSafely(settingsState.costTemplateSettings);
+    await costTemplateSyncService.syncFromRemoteSafely();
     await appDisplaySettingsSyncService.syncSafely(settingsState.appDisplaySettings);
     settingsState.loadCostTemplates();
     settingsState.loadAppDisplaySettings();
@@ -143,59 +129,67 @@ const syncSharedAppSettings = async (options: { deferNonCriticalSync?: boolean }
   return pendingResult;
 };
 
-const refreshAppQueryCaches = async (
-  queryClient: QueryClient,
-  scope: AppRefreshScope,
-): Promise<void> => {
-  const targetQueryKeys = quickRefreshQueryKeysByScope[scope];
-
-  await Promise.all(
-    targetQueryKeys.map((queryKey) =>
-      queryClient.invalidateQueries({ queryKey }),
-    ),
-  );
-};
-
-const getSyncFailureDetail = (label: string, result: PromiseRejectedResult): string => {
-  if (result.reason instanceof Error && result.reason.message.trim().length > 0) {
-    return `${label}同步失败：${result.reason.message}`;
+const getSyncJobsForScope = (scope: AppRefreshScope): NamedSyncJob[] => {
+  if (scope === 'all') {
+    return [
+      { label: '生豆', promise: beanService.syncLocalAndRemote() },
+      { label: '烘焙计划', promise: roastPlanService.syncLocalAndRemote() },
+      { label: '烘焙记录', promise: roastBatchService.syncLocalAndRemote() },
+      { label: '成本核算', promise: financeService.syncLocalAndRemote() },
+    ];
   }
 
-  return `${label}同步失败`;
+  if (scope === 'bean') {
+    return [{ label: '生豆', promise: beanService.syncLocalAndRemote() }];
+  }
+
+  if (scope === 'production') {
+    return [
+      { label: '生豆', promise: beanService.syncLocalAndRemote() },
+      { label: '烘焙记录', promise: roastBatchService.syncLocalAndRemote() },
+    ];
+  }
+
+  if (scope === 'roast') {
+    return [
+      { label: '生豆', promise: beanService.syncLocalAndRemote() },
+      { label: '烘焙计划', promise: roastPlanService.syncLocalAndRemote() },
+      { label: '烘焙记录', promise: roastBatchService.syncLocalAndRemote() },
+    ];
+  }
+
+  return [];
 };
 
-export const refreshQuickAppData = async (
-  queryClient: QueryClient,
-  scope: AppRefreshScope = resolveCurrentAppRefreshScope(),
-): Promise<AppDataRefreshResult> => {
-  const pendingResult = await syncSharedAppSettings({ deferNonCriticalSync: true });
-  await refreshAppQueryCaches(queryClient, scope);
+const hydrateAppQueryCaches = (queryClient: QueryClient, scope: AppRefreshScope): void => {
+  if (scope === 'all' || scope === 'bean' || scope === 'production' || scope === 'roast') {
+    queryClient.setQueryData(beanQueryKeys.list(), beanService.getBootstrappedBeans());
+  }
 
-  return {
-    downloaded: 0,
-    failed: pendingResult.failed,
-    failedDetails: pendingResult.failed > 0 ? ['待同步操作同步失败'] : [],
-    success: pendingResult.success,
-    uploaded: 0,
-  };
+  if (scope === 'all' || scope === 'roast') {
+    queryClient.setQueryData(roastPlanQueryKeys.list(), roastPlanService.getBootstrappedPlans());
+  }
+
+  if (scope === 'all' || scope === 'production' || scope === 'roast') {
+    queryClient.setQueryData(roastBatchQueryKeys.list(), roastBatchService.getBootstrappedBatches());
+  }
+
+  if (scope === 'all') {
+    queryClient.setQueryData(financeQueryKeys.calculations(), financeService.getBootstrappedCalculations());
+  }
+
+  if (scope === 'all' || scope === 'bean') {
+    queryClient.removeQueries({ queryKey: beanEditableDetailQueryKeys.all, type: 'inactive' });
+  }
 };
 
-export const refreshAllAppData = async (queryClient: QueryClient): Promise<AppDataRefreshResult> => {
-  const pendingResult = await syncSharedAppSettings();
-  const syncJobs: NamedSyncJob[] = [
-    { label: '生豆', promise: beanService.syncLocalAndRemote() },
-    { label: '烘焙计划', promise: roastPlanService.syncLocalAndRemote() },
-    { label: '烘焙记录', promise: roastBatchService.syncLocalAndRemote() },
-    { label: '成本核算', promise: financeService.syncLocalAndRemote() },
-  ];
-  const syncResults = await Promise.allSettled(syncJobs.map((job) => job.promise));
-  const namedSyncResults = syncJobs.map((job, index) => ({
-    label: job.label,
-    result: syncResults[index] as PromiseSettledResult<{ downloaded: number; uploaded: number }>,
-  }));
-
-  await refreshAppQueryCaches(queryClient, 'all');
-
+const buildRefreshResult = (
+  pendingResult: { failed: number; success: number },
+  namedSyncResults: Array<{
+    label: string;
+    result: PromiseSettledResult<{ downloaded: number; uploaded: number }>;
+  }>,
+): AppDataRefreshResult => {
   const failedDetails = [
     ...(pendingResult.failed > 0 ? ['待同步操作同步失败'] : []),
     ...namedSyncResults.flatMap((item) => {
@@ -220,4 +214,43 @@ export const refreshAllAppData = async (queryClient: QueryClient): Promise<AppDa
       0,
     ),
   };
+};
+
+const getSyncFailureDetail = (label: string, result: PromiseRejectedResult): string => {
+  if (result.reason instanceof Error && result.reason.message.trim().length > 0) {
+    return `${label}同步失败：${result.reason.message}`;
+  }
+
+  return `${label}同步失败`;
+};
+
+export const refreshQuickAppData = async (
+  queryClient: QueryClient,
+  scope: AppRefreshScope = resolveCurrentAppRefreshScope(),
+): Promise<AppDataRefreshResult> => {
+  const pendingResult = await syncSharedAppSettings();
+  const syncJobs = getSyncJobsForScope(scope);
+  const syncResults = await Promise.allSettled(syncJobs.map((job) => job.promise));
+  const namedSyncResults = syncJobs.map((job, index) => ({
+    label: job.label,
+    result: syncResults[index] as PromiseSettledResult<{ downloaded: number; uploaded: number }>,
+  }));
+
+  hydrateAppQueryCaches(queryClient, scope);
+
+  return buildRefreshResult(pendingResult, namedSyncResults);
+};
+
+export const refreshAllAppData = async (queryClient: QueryClient): Promise<AppDataRefreshResult> => {
+  const pendingResult = await syncSharedAppSettings();
+  const syncJobs = getSyncJobsForScope('all');
+  const syncResults = await Promise.allSettled(syncJobs.map((job) => job.promise));
+  const namedSyncResults = syncJobs.map((job, index) => ({
+    label: job.label,
+    result: syncResults[index] as PromiseSettledResult<{ downloaded: number; uploaded: number }>,
+  }));
+
+  hydrateAppQueryCaches(queryClient, 'all');
+
+  return buildRefreshResult(pendingResult, namedSyncResults);
 };

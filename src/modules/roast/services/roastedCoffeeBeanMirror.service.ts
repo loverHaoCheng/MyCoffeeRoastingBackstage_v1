@@ -1,8 +1,9 @@
 import { beanService } from '@/modules/bean/services';
-import { supabaseConnectionSettingsService } from '@/modules/settings/services/supabaseConnectionSettings.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
-import { SupabaseRestClient } from '@/services/supabaseRestClient';
+import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import type { Bean } from '@/types/domain';
 
 import { normalizeRoastLevel } from '../constants/roastLevel';
@@ -302,15 +303,19 @@ export const buildMirrorData = (
 };
 
 const hasRoastedBeanConnection = (): boolean => {
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection('roastedBean');
+  if (import.meta.env.MODE === 'test') {
+    return false;
+  }
 
-  return connection.projectUrl.trim().length > 0 && connection.publishableKey.trim().length > 0;
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('roastedBean');
+
+  return isPocketBaseProjectConnectionConfigured(connection);
 };
 
-const getRoastedBeanClient = (): SupabaseRestClient => {
-  const connection = supabaseConnectionSettingsService.resolveProjectConnection('roastedBean');
+const getRoastedBeanClient = (): PocketBaseRestClient => {
+  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('roastedBean');
 
-  return new SupabaseRestClient({
+  return new PocketBaseRestClient({
     projectUrl: connection.projectUrl,
     publishableKey: connection.publishableKey,
   });

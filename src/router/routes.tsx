@@ -1,8 +1,10 @@
 import { Spin } from 'antd';
 import { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, createHashRouter, type RouteObject } from 'react-router-dom';
+import { Navigate, useLocation, createHashRouter, type RouteObject } from 'react-router-dom';
 
+import { LoginPage, RegisterPage } from '@/modules/auth';
 import { MainLayout } from '@/layouts/MainLayout';
+import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));
 const RoastPage = lazy(() =>
@@ -29,10 +31,35 @@ const withPageFallback = (children: ReactNode) => {
   );
 };
 
+function RequireAuth({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const isAuthenticated = useAuthStore((state) => state.status === 'authenticated');
+
+  if (!isAuthenticated) {
+    return <Navigate replace state={{ from: location.pathname }} to="/login" />;
+  }
+
+  return children;
+}
+
+function PublicOnly({ children }: { children: ReactNode }) {
+  const isAuthenticated = useAuthStore((state) => state.status === 'authenticated');
+
+  if (isAuthenticated) {
+    return <Navigate replace to="/beans" />;
+  }
+
+  return children;
+}
+
 export const routes: RouteObject[] = [
   {
     path: '/',
-    element: <MainLayout />,
+    element: (
+      <RequireAuth>
+        <MainLayout />
+      </RequireAuth>
+    ),
     children: [
       {
         index: true,
@@ -57,8 +84,24 @@ export const routes: RouteObject[] = [
     ],
   },
   {
+    path: '/login',
+    element: (
+      <PublicOnly>
+        <LoginPage />
+      </PublicOnly>
+    ),
+  },
+  {
+    path: '/register',
+    element: (
+      <PublicOnly>
+        <RegisterPage />
+      </PublicOnly>
+    ),
+  },
+  {
     path: '*',
-    element: <Navigate to="/beans" replace />,
+    element: <Navigate to="/" replace />,
   },
 ];
 

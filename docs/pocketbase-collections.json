@@ -1,0 +1,1425 @@
+{
+  "collections": [
+    {
+      "id": "col_users_auth",
+      "name": "users",
+      "type": "auth",
+      "system": false,
+      "schema": [
+        {
+          "system": true,
+          "id": "fld_email",
+          "name": "email",
+          "type": "email",
+          "required": true,
+          "presentable": false,
+          "unique": true,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "id = @request.auth.id",
+      "viewRule": "id = @request.auth.id",
+      "createRule": "true",
+      "updateRule": "id = @request.auth.id",
+      "deleteRule": "id = @request.auth.id",
+      "manageRule": "id = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_green_beans",
+      "name": "green_beans",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_code",
+          "name": "code",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_display_name",
+          "name": "display_name",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_process_method",
+          "name": "process_method",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_variety",
+          "name": "variety",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_grade",
+          "name": "grade",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_origin_country",
+          "name": "origin_country",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_origin_region",
+          "name": "origin_region",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_origin_area",
+          "name": "origin_area",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_harvest_season",
+          "name": "harvest_season",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_default_roast_input_grams",
+          "name": "default_roast_input_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_altitude_meters_min",
+          "name": "altitude_meters_min",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_altitude_meters_max",
+          "name": "altitude_meters_max",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_moisture_percent",
+          "name": "moisture_percent",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_density_g_per_l",
+          "name": "density_g_per_l",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_mill_name",
+          "name": "mill_name",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_notes",
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_green_bean_purchase_batches",
+      "name": "green_bean_purchase_batches",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_green_bean_id",
+          "name": "green_bean_id",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_green_beans",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "display_name"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_purchased_total_price",
+          "name": "purchased_total_price",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_purchased_weight_grams",
+          "name": "purchased_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_remaining_weight_grams",
+          "name": "remaining_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_supplier_name",
+          "name": "supplier_name",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_received_at",
+          "name": "received_at",
+          "type": "text",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_bean_sale_specs",
+      "name": "bean_sale_specs",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_green_bean_id",
+          "name": "green_bean_id",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_green_beans",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "display_name"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_channel",
+          "name": "channel",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_is_default",
+          "name": "is_default",
+          "type": "bool",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_unit_price",
+          "name": "unit_price",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_unit_weight_grams",
+          "name": "unit_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_app_settings",
+      "name": "app_settings",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_key",
+          "name": "key",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_value",
+          "name": "value",
+          "type": "json",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_roast_profiles",
+      "name": "roast_profiles",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_green_bean_id",
+          "name": "green_bean_id",
+          "type": "relation",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_green_beans",
+            "cascadeDelete": false,
+            "minSelect": 0,
+            "maxSelect": 1,
+            "displayFields": [
+              "display_name"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_bean_name",
+          "name": "bean_name",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_name",
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_batch_weight_grams",
+          "name": "batch_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_planned_batch_kg",
+          "name": "planned_batch_kg",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_roast_purpose",
+          "name": "roast_purpose",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_status",
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "maxSelect": 1,
+            "values": [
+              "draft",
+              "inProgress",
+              "completed",
+              "cancelled"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_steps",
+          "name": "steps",
+          "type": "json",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_target_roast_level",
+          "name": "target_roast_level",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_is_active",
+          "name": "is_active",
+          "type": "bool",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_roast_batches",
+      "name": "roast_batches",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_roast_date",
+          "name": "roast_date",
+          "type": "text",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_green_bean_id",
+          "name": "green_bean_id",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_green_beans",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "display_name"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_green_bean_name",
+          "name": "green_bean_name",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_roasted_bean_name",
+          "name": "roasted_bean_name",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_roast_plan_id",
+          "name": "roast_plan_id",
+          "type": "relation",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_roast_profiles",
+            "cascadeDelete": false,
+            "minSelect": 0,
+            "maxSelect": 1,
+            "displayFields": [
+              "name"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_roast_plan_name",
+          "name": "roast_plan_name",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_input_weight_grams",
+          "name": "input_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_output_weight_grams",
+          "name": "output_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_roast_level",
+          "name": "roast_level",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_development_ratio",
+          "name": "development_ratio",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_first_crack_time",
+          "name": "first_crack_time",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_total_roast_time",
+          "name": "total_roast_time",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_notes",
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_image_urls",
+          "name": "image_urls",
+          "type": "json",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_status",
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "maxSelect": 1,
+            "values": [
+              "completed",
+              "draft"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_roast_records",
+      "name": "roast_records",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_green_bean_id",
+          "name": "green_bean_id",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_green_beans",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "display_name"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_data",
+          "name": "data",
+          "type": "json",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_deleted_at",
+          "name": "deleted_at",
+          "type": "text",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_version",
+          "name": "version",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_cost_calculations",
+      "name": "cost_calculations",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_bean_id",
+          "name": "bean_id",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_bean_name",
+          "name": "bean_name",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_calculation_name",
+          "name": "calculation_name",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_data_source",
+          "name": "data_source",
+          "type": "select",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "maxSelect": 1,
+            "values": [
+              "greenBean",
+              "roastedBean"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_purchase_cost_per_kg",
+          "name": "purchase_cost_per_kg",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_dehydration_rate",
+          "name": "dehydration_rate",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_roast_input_weight_grams",
+          "name": "roast_input_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_packaging_cost",
+          "name": "packaging_cost",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_energy_cost",
+          "name": "energy_cost",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_labor_cost",
+          "name": "labor_cost",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_other_cost",
+          "name": "other_cost",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_sale_unit_weight_grams",
+          "name": "sale_unit_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_sale_unit_price",
+          "name": "sale_unit_price",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_target_profit_rate",
+          "name": "target_profit_rate",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_cost_per_roasted_kg",
+          "name": "cost_per_roasted_kg",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_cost_per_sale_unit",
+          "name": "cost_per_sale_unit",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_profit_per_sale_unit",
+          "name": "profit_per_sale_unit",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_profit_rate",
+          "name": "profit_rate",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_roasted_output_weight_grams",
+          "name": "roasted_output_weight_grams",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_sale_unit_count",
+          "name": "sale_unit_count",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_suggested_sale_price",
+          "name": "suggested_sale_price",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_total_batch_cost",
+          "name": "total_batch_cost",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_notes",
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_coffee_beans",
+      "name": "coffee_beans",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_user_id",
+          "name": "user_id",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_data",
+          "name": "data",
+          "type": "json",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_deleted_at",
+          "name": "deleted_at",
+          "type": "text",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_version",
+          "name": "version",
+          "type": "number",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_created_at",
+          "name": "created_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_updated_at",
+          "name": "updated_at",
+          "type": "autodate",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    }
+  ]
+}

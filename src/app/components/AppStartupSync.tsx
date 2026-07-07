@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { App } from 'antd';
 
-import { refreshQuickAppData } from '@/app/services/appDataRefresh.service';
+import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
+import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { AppError } from '@/shared/errors/AppError';
 
 const scheduleWhenIdle = (callback: () => void): (() => void) => {
@@ -40,36 +41,42 @@ const getErrorMessage = (error: unknown): string => {
 };
 
 export function AppStartupSync() {
-  const hasStartedRef = useRef(false);
+  const syncedUserIdRef = useRef<null | string>(null);
   const queryClient = useQueryClient();
   const { message } = App.useApp();
+  const isAuthenticated = useAuthStore((state) => state.status === 'authenticated');
+  const userId = useAuthStore((state) => state.user?.id ?? null);
 
   useEffect(() => {
-    if (import.meta.env.MODE === 'test' || hasStartedRef.current) {
+    if (!isAuthenticated) {
+      syncedUserIdRef.current = null;
       return;
     }
 
-    hasStartedRef.current = true;
+    if (import.meta.env.MODE === 'test' || !userId || syncedUserIdRef.current === userId) {
+      return;
+    }
+
+    syncedUserIdRef.current = userId;
 
     const cancelSchedule = scheduleWhenIdle(() => {
       void (async () => {
         try {
-          const result = await refreshQuickAppData(queryClient);
+          const result = await refreshAllAppData(queryClient);
 
           if (result.failed > 0) {
-            void message.warning('部分数据刷新失败，将在稍后自动重试。');
+            void message.warning('登录后同步未完全成功，部分数据稍后会继续重试。');
             return;
           }
 
-          if (result.success > 0) {
-            void message.info('已在后台同步待处理操作并完成当前数据对比。');
+          if (result.downloaded + result.uploaded + result.success > 0) {
+            void message.info('登录后已完成本地与 PocketBase 数据同步。');
             return;
           }
 
-          if (result.downloaded + result.uploaded > 0) {
-            void message.info('已在后台完成当前数据对比刷新。');
-          }
+          void message.info('登录后已校验当前数据，与 PocketBase 保持一致。');
         } catch (error) {
+          syncedUserIdRef.current = null;
           void message.warning(getErrorMessage(error));
           return;
         }
@@ -79,7 +86,7 @@ export function AppStartupSync() {
     return () => {
       cancelSchedule();
     };
-  }, [message, queryClient]);
+  }, [isAuthenticated, message, queryClient, userId]);
 
   return null;
 }
