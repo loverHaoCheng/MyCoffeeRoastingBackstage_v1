@@ -254,7 +254,7 @@
 
 @media (max-width: 767px) {
   .authBar {
-    margin-bottom: 12px;
+    margin-bottom: 0;
   }
 }
 
