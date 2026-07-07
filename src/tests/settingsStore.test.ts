@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
 import {
   createDefaultAppDisplaySettings,
@@ -63,14 +62,6 @@ describe('useSettingsStore cost template defaults', () => {
         updatedAt: '2026-07-07T09:00:00.000Z',
       },
     });
-    window.localStorage.setItem(
-      costTemplateSettingsStorageKey,
-      JSON.stringify({
-        defaultTemplateId: null,
-        templates: [template],
-        updatedAt: '2026-07-07T09:00:00.000Z',
-      }),
-    );
 
     useSettingsStore.getState().saveCostTemplate(
       {
@@ -89,11 +80,5 @@ describe('useSettingsStore cost template defaults', () => {
     );
 
     expect(useSettingsStore.getState().costTemplateSettings.defaultTemplateId).toBeNull();
-
-    const storedValue = JSON.parse(window.localStorage.getItem(costTemplateSettingsStorageKey) ?? '{}') as {
-      defaultTemplateId?: null | string;
-    };
-
-    expect(storedValue.defaultTemplateId).toBeNull();
   });
 });

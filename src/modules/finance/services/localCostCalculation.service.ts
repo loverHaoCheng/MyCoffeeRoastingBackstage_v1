@@ -7,11 +7,7 @@ interface LocalCostCalculationSnapshot {
 
 const LOCAL_COST_CALCULATION_VERSION = 1;
 export const localCostCalculationStorageKey = 'coffee-roasting-backstage:cost-calculations';
-const legacyLocalCostCalculationBackupStorageKey = 'coffee-roasting-backstage:cost-calculations:backup';
-
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
+let currentCostCalculationSnapshot: LocalCostCalculationSnapshot | null = null;
 
 const isFiniteNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);
@@ -75,45 +71,21 @@ const sortRecords = (records: CostCalculationRecord[]): CostCalculationRecord[] 
 };
 
 const loadSnapshot = (): LocalCostCalculationSnapshot | null => {
-  if (!canUseStorage()) {
+  if (!currentCostCalculationSnapshot || !isSnapshot(currentCostCalculationSnapshot)) {
     return null;
   }
 
-  const rawValue = window.localStorage.getItem(localCostCalculationStorageKey);
-
-  if (!rawValue) {
-    window.localStorage.removeItem(legacyLocalCostCalculationBackupStorageKey);
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue) as unknown;
-
-    if (!isSnapshot(parsed)) {
-      return null;
-    }
-
-    return {
-      ...parsed,
-      records: sortRecords(parsed.records),
-    };
-  } catch {
-    return null;
-  }
+  return {
+    ...currentCostCalculationSnapshot,
+    records: sortRecords(currentCostCalculationSnapshot.records),
+  };
 };
 
 const saveSnapshot = (snapshot: LocalCostCalculationSnapshot): void => {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  const serialized = JSON.stringify({
+  currentCostCalculationSnapshot = {
     ...snapshot,
     records: sortRecords(snapshot.records),
-  });
-
-  window.localStorage.setItem(localCostCalculationStorageKey, serialized);
-  window.localStorage.removeItem(legacyLocalCostCalculationBackupStorageKey);
+  };
 };
 
 const createLocalCalculationId = (): string => {
@@ -126,12 +98,7 @@ const createLocalCalculationId = (): string => {
 
 export const localCostCalculationService = {
   clear(): void {
-    if (!canUseStorage()) {
-      return;
-    }
-
-    window.localStorage.removeItem(localCostCalculationStorageKey);
-    window.localStorage.removeItem(legacyLocalCostCalculationBackupStorageKey);
+    currentCostCalculationSnapshot = null;
   },
   createLocalId(): string {
     return createLocalCalculationId();

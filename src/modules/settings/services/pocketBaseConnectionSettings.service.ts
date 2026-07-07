@@ -2,6 +2,7 @@ import { pocketBaseConnectionSettingsStorageSchema } from '@/modules/settings/sc
 import {
   createDefaultPocketBaseConnectionSettings,
   normalizePocketBaseProjectConnection,
+  normalizeRoastedBeanPocketBaseProjectConnection,
   type PocketBaseConnectionSettings,
   type PocketBaseDataSource,
   type PocketBaseProjectConnection,
@@ -10,101 +11,42 @@ import { logger } from '@/shared/logger/logger';
 
 export const pocketBaseConnectionSettingsStorageKey =
   'coffee-roasting-backstage:pocketbase-connections';
-const legacyPocketBaseConnectionSettingsStorageKey =
-  'coffee-roasting-backstage:supabase-connections';
-const pocketBaseConnectionSettingsBackupStorageKey =
-  'coffee-roasting-backstage:pocketbase-connections:backup';
-const legacyPocketBaseConnectionSettingsBackupStorageKey =
-  'coffee-roasting-backstage:supabase-connections:backup';
 
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
+let currentPocketBaseConnectionSettings: PocketBaseConnectionSettings =
+  createDefaultPocketBaseConnectionSettings();
 
 export const pocketBaseConnectionSettingsService = {
   clear(): void {
-    if (!canUseStorage()) {
-      return;
-    }
-
-    window.localStorage.removeItem(pocketBaseConnectionSettingsStorageKey);
-    window.localStorage.removeItem(legacyPocketBaseConnectionSettingsStorageKey);
-    window.localStorage.removeItem(pocketBaseConnectionSettingsBackupStorageKey);
-    window.localStorage.removeItem(legacyPocketBaseConnectionSettingsBackupStorageKey);
+    currentPocketBaseConnectionSettings = createDefaultPocketBaseConnectionSettings();
   },
   load(): PocketBaseConnectionSettings {
-    if (!canUseStorage()) {
+    const result = pocketBaseConnectionSettingsStorageSchema.safeParse(currentPocketBaseConnectionSettings);
+
+    if (!result.success) {
+      logger.warn('pocketbase connection settings memory state parse failed', {
+        issues: result.error.issues,
+      });
+      currentPocketBaseConnectionSettings = createDefaultPocketBaseConnectionSettings();
       return createDefaultPocketBaseConnectionSettings();
     }
 
-    const rawValue =
-      window.localStorage.getItem(pocketBaseConnectionSettingsStorageKey) ??
-      window.localStorage.getItem(legacyPocketBaseConnectionSettingsStorageKey);
-
-    if (!rawValue) {
-      window.localStorage.removeItem(legacyPocketBaseConnectionSettingsBackupStorageKey);
-      return createDefaultPocketBaseConnectionSettings();
-    }
-
-    try {
-      const parsed = JSON.parse(rawValue) as unknown;
-      const result = pocketBaseConnectionSettingsStorageSchema.safeParse(parsed);
-
-      if (!result.success) {
-        logger.warn('pocketbase connection settings parse failed', {
-          issues: result.error.issues,
-        });
-        return createDefaultPocketBaseConnectionSettings();
-      }
-
-      if (!window.localStorage.getItem(pocketBaseConnectionSettingsStorageKey)) {
-        window.localStorage.setItem(pocketBaseConnectionSettingsStorageKey, rawValue);
-      }
-      window.localStorage.removeItem(legacyPocketBaseConnectionSettingsStorageKey);
-      window.localStorage.removeItem(legacyPocketBaseConnectionSettingsBackupStorageKey);
-
-      const normalizedSettings: PocketBaseConnectionSettings = {
-        greenBean: normalizePocketBaseProjectConnection(result.data.greenBean),
-        roastedBean: normalizePocketBaseProjectConnection(result.data.roastedBean, {
-          fallbackToDefaultUrl: false,
-        }),
-        updatedAt: result.data.updatedAt ?? null,
-      };
-
-      if (JSON.stringify(normalizedSettings) !== rawValue) {
-        window.localStorage.setItem(
-          pocketBaseConnectionSettingsStorageKey,
-          JSON.stringify(normalizedSettings),
-        );
-      }
-
-      return normalizedSettings;
-    } catch (error) {
-      logger.error('pocketbase connection settings load failed', { error });
-      return createDefaultPocketBaseConnectionSettings();
-    }
+    return {
+      greenBean: normalizePocketBaseProjectConnection(result.data.greenBean),
+      roastedBean: normalizeRoastedBeanPocketBaseProjectConnection(result.data.roastedBean),
+      updatedAt: result.data.updatedAt ?? null,
+    };
   },
   resolveProjectConnection(dataSource: PocketBaseDataSource): PocketBaseProjectConnection {
     return this.load()[dataSource];
   },
   save(settings: PocketBaseConnectionSettings): PocketBaseConnectionSettings {
-    if (!canUseStorage()) {
-      return settings;
-    }
-
     const normalizedSettings: PocketBaseConnectionSettings = {
       greenBean: normalizePocketBaseProjectConnection(settings.greenBean),
-      roastedBean: normalizePocketBaseProjectConnection(settings.roastedBean, {
-        fallbackToDefaultUrl: false,
-      }),
+      roastedBean: normalizeRoastedBeanPocketBaseProjectConnection(settings.roastedBean),
       updatedAt: settings.updatedAt,
     };
-    const serialized = JSON.stringify(normalizedSettings);
 
-    window.localStorage.setItem(pocketBaseConnectionSettingsStorageKey, serialized);
-    window.localStorage.removeItem(legacyPocketBaseConnectionSettingsStorageKey);
-    window.localStorage.removeItem(pocketBaseConnectionSettingsBackupStorageKey);
-    window.localStorage.removeItem(legacyPocketBaseConnectionSettingsBackupStorageKey);
+    currentPocketBaseConnectionSettings = normalizedSettings;
     logger.info('pocketbase connection settings saved', {
       updatedAt: normalizedSettings.updatedAt,
     });

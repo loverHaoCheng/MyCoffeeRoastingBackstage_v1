@@ -62,26 +62,9 @@ const GENERIC_BEAN_NAME = '通用';
 
 const STORAGE_KEY = 'coffee-roasting-backstage:roast-plans';
 
-const isBrowser = (): boolean => typeof window !== 'undefined';
-
 const loadLocalPlans = (): RoastPlan[] => {
-  if (!isBrowser()) {
-    return [];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw) as unknown;
-
-    return Array.isArray(parsed) ? sortPlans(parsed as RoastPlan[]) : [];
-  } catch {
-    return [];
-  }
+  void STORAGE_KEY;
+  return [];
 };
 
 const ok = <T,>(data: T): ApiResponse<T> => ({
@@ -98,10 +81,6 @@ const sortPlans = (plans: RoastPlan[]): RoastPlan[] => {
 
 const saveLocalPlans = (plans: RoastPlan[]): RoastPlan[] => {
   const nextPlans = sortPlans(plans);
-
-  if (isBrowser()) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextPlans));
-  }
 
   return nextPlans;
 };

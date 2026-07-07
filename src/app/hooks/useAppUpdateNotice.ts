@@ -14,10 +14,6 @@ type AppUpdateNotice =
       type: 'updated';
     };
 
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
-
 const getVersionManifestUrl = (): null | string => {
   if (typeof window === 'undefined') {
     return null;
@@ -46,10 +42,6 @@ export function useAppUpdateNotice() {
   const [notice, setNotice] = useState<AppUpdateNotice | null>(null);
 
   useEffect(() => {
-    if (!canUseStorage()) {
-      return;
-    }
-
     try {
       const lastSeenVersion = appBuildVersionService.get();
 

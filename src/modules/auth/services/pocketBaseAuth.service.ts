@@ -1,4 +1,8 @@
-import { pocketBaseSessionService, type PocketBaseSession, type PocketBaseSessionUser } from '@/services/pocketBaseSession.service';
+import {
+  pocketBaseSessionService,
+  type PocketBaseSession,
+  type PocketBaseSessionUser,
+} from '@/services/pocketBaseSession.service';
 import { normalizePocketBaseBaseUrl, resolvePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { AppError } from '@/shared/errors/AppError';
@@ -31,6 +35,16 @@ const parseResponseJson = async (response: Response): Promise<unknown> => {
   try {
     return JSON.parse(text) as unknown;
   } catch (error) {
+    if (!response.ok) {
+      const isHtmlErrorPage = text.trimStart().startsWith('<');
+
+      return {
+        message: isHtmlErrorPage
+          ? '登录网关返回了非 JSON 错误页面，请确认开发服务已启动，或服务器已正确转发 /api/auth。'
+          : '登录网关返回了无法解析的错误响应。',
+      } satisfies PocketBaseErrorPayload;
+    }
+
     throw new AppError('PocketBase 返回了无法解析的数据。', {
       code: 'DATA',
       status: response.status,
@@ -168,7 +182,9 @@ const isCredentialFailurePayload = (payload: unknown): boolean => {
 };
 
 const toAuthError = (response: Response, payload: unknown): AppError => {
-  const defaultMessage = parseErrorPayload(payload).message?.trim() || `PocketBase 请求失败：${String(response.status)}`;
+  const payloadMessage = parseErrorPayload(payload).message?.trim();
+  const defaultMessage =
+    payloadMessage && payloadMessage.length > 0 ? payloadMessage : `PocketBase 请求失败：${String(response.status)}`;
 
   if (response.status === 400) {
     if (isCredentialFailurePayload(payload)) {
@@ -195,7 +211,11 @@ const toAuthError = (response: Response, payload: unknown): AppError => {
   }
 
   if (response.status >= 500) {
-    return new AppError('PocketBase 服务暂时不可用，请稍后重试。', {
+    const message = defaultMessage.includes('非 JSON 错误页面')
+      ? defaultMessage
+      : '登录网关暂时不可用，请稍后重试。';
+
+    return new AppError(message, {
       code: 'HTTP',
       status: response.status,
       cause: payload,
@@ -225,7 +245,7 @@ const toNetworkError = (error: unknown, url: string): AppError => {
   }
 
   return new AppError(
-    `无法连接到 PocketBase 鉴权服务（${url}），请检查设置页中的地址、服务是否启动或当前网络是否可用。`,
+    `无法连接到登录网关（${url}），请检查服务是否启动、当前网络是否可用，或确认 Nginx 是否已转发 /api/auth。`,
     {
       code: 'NETWORK',
       cause: error,
@@ -233,18 +253,18 @@ const toNetworkError = (error: unknown, url: string): AppError => {
   );
 };
 
-const postJson = async (
+const buildAuthGatewayUrl = (path: string): string => {
+  return `/api/auth${path}`;
+};
+
+const requestJson = async (
   url: string,
-  body: Record<string, unknown>,
-): Promise<PocketBaseAuthResponse> => {
+  options: RequestInit,
+): Promise<unknown> => {
   try {
     const response = await fetch(url, {
-      body: JSON.stringify(body),
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      method: 'POST',
+      credentials: 'same-origin',
+      ...options,
     });
 
     const payload = await parseResponseJson(response);
@@ -261,7 +281,7 @@ const postJson = async (
       });
     }
 
-    return payload as PocketBaseAuthResponse;
+    return payload;
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -271,20 +291,15 @@ const postJson = async (
   }
 };
 
-const buildAuthUrl = (path: string): string => {
-  const configuredUrl = normalizePocketBaseBaseUrl(
-    pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean').projectUrl.trim() ||
-      resolvePocketBaseBaseUrl(),
-  );
-
-  try {
-    return new URL(path, `${configuredUrl.replace(/\/+$/, '')}/`).toString();
-  } catch (error) {
-    throw new AppError('PocketBase 地址格式不正确，请前往设置页检查数据库地址配置。', {
-      code: 'CONFIG',
-      cause: error,
-    });
-  }
+const postJson = async (path: string, body: Record<string, unknown>): Promise<unknown> => {
+  return requestJson(buildAuthGatewayUrl(path), {
+    body: JSON.stringify(body),
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    method: 'POST',
+  });
 };
 
 const getSessionFromAuthResponse = (response: PocketBaseAuthResponse): PocketBaseSession => {
@@ -307,30 +322,57 @@ const getSessionFromAuthResponse = (response: PocketBaseAuthResponse): PocketBas
 
 export const pocketBaseAuthService = {
   async register(input: RegisterInput): Promise<PocketBaseSession> {
-    await postJson(buildAuthUrl('/api/collections/users/records'), {
+    await postJson('/register', {
       email: input.email.trim(),
       password: input.password,
       passwordConfirm: input.passwordConfirm,
     });
 
-    const loginResponse = await postJson(buildAuthUrl('/api/collections/users/auth-with-password'), {
+    const loginResponse = (await postJson('/login', {
       identity: input.email.trim(),
       password: input.password,
-    });
+    })) as PocketBaseAuthResponse;
 
     return getSessionFromAuthResponse(loginResponse);
   },
   async login(input: AuthCredentialsInput): Promise<PocketBaseSession> {
-    const response = await postJson(buildAuthUrl('/api/collections/users/auth-with-password'), {
+    const response = (await postJson('/login', {
       identity: input.email.trim(),
       password: input.password,
-    });
+    })) as PocketBaseAuthResponse;
 
     return getSessionFromAuthResponse(response);
   },
-  logout(): void {
-    pocketBaseSessionService.clear();
-    logger.info('pocketbase session cleared');
+  async restoreSession(): Promise<PocketBaseSession | null> {
+    const response = (await requestJson(buildAuthGatewayUrl('/session'), {
+      headers: {
+        Accept: 'application/json',
+      },
+      method: 'GET',
+    })) as PocketBaseAuthResponse;
+
+    if (!response.record || !response.token) {
+      return null;
+    }
+
+    return getSessionFromAuthResponse(response);
+  },
+  async logout(): Promise<void> {
+    try {
+      await requestJson(buildAuthGatewayUrl('/logout'), {
+        headers: {
+          Accept: 'application/json',
+        },
+        method: 'POST',
+      });
+    } catch (error) {
+      logger.warn('pocketbase logout gateway request failed', {
+        error,
+      });
+    } finally {
+      pocketBaseSessionService.clear();
+      logger.info('pocketbase session cleared');
+    }
   },
   loadSession(): PocketBaseSession | null {
     return pocketBaseSessionService.load();

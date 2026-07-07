@@ -1,10 +1,8 @@
 import { CheckOutlined, LoadingOutlined } from '@ant-design/icons';
-import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
-import { refreshQuickAppData } from '@/app/services/appDataRefresh.service';
+import { useQuickRefreshAction } from '@/app/hooks/useQuickRefreshAction';
 import { useViewportScrollContainer } from '@/layouts/ViewportContext';
-import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 
 import styles from './GlobalPullToRefresh.module.css';
 
@@ -36,9 +34,8 @@ const isInteractiveOverlayTarget = (target: EventTarget | null): boolean => {
 };
 
 export function GlobalPullToRefresh() {
-  const queryClient = useQueryClient();
   const scrollContainerRef = useViewportScrollContainer();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isRefreshing, refresh } = useQuickRefreshAction();
   const [pullDistance, setPullDistance] = useState(0);
   const [pullTriggerDistance, setPullTriggerDistance] = useState(() => getPullTriggerDistance());
   const [refreshFeedback, setRefreshFeedback] = useState<null | 'success' | 'warning'>(
@@ -86,30 +83,22 @@ export function GlobalPullToRefresh() {
     };
 
     const handlePullRefresh = async () => {
-      setIsRefreshing(true);
-
       try {
-        const result = await refreshQuickAppData(queryClient);
-
-        if (result.failed > 0) {
-          setRefreshFeedback('warning');
-          setRefreshFeedbackText('部分数据刷新失败，将在稍后自动重试');
-        } else {
-          setRefreshFeedback('success');
-          setRefreshFeedbackText(
-            result.success > 0
-              ? '快速刷新完成，待处理操作已同步'
-              : '快速刷新完成，已完成当前数据对比',
-          );
-        }
-      } catch (error) {
-        setRefreshFeedback('warning');
-        setRefreshFeedbackText(getUserFacingErrorMessage(error, '刷新失败，请稍后重试。'));
+        await refresh({
+          onError: (errorMessage) => {
+            setRefreshFeedback('warning');
+            setRefreshFeedbackText(errorMessage);
+          },
+          onSuccess: (feedback) => {
+            setRefreshFeedback(feedback.status);
+            setRefreshFeedbackText(feedback.text);
+          },
+          silent: true,
+        });
       } finally {
         touchStartYRef.current = null;
         pullTriggeredRef.current = false;
         setPullDistance(0);
-        setIsRefreshing(false);
         window.setTimeout(() => {
           setRefreshFeedback(null);
           setRefreshFeedbackText('');
@@ -174,7 +163,7 @@ export function GlobalPullToRefresh() {
       scrollContainer.removeEventListener('touchend', handleTouchEnd);
       scrollContainer.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [pullTriggerDistance, queryClient, scrollContainerRef]);
+  }, [isRefreshing, pullTriggerDistance, refresh, scrollContainerRef]);
 
   return (
     <section

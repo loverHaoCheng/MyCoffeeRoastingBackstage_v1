@@ -3,6 +3,7 @@ import {
   DatabaseOutlined,
   FireOutlined,
   LogoutOutlined,
+  ReloadOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
 import { App, Button, Grid, Layout, Menu, Space, Typography } from 'antd';
@@ -11,6 +12,7 @@ import { type CSSProperties, type ReactNode, startTransition, useCallback, useEf
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 
 import { GlobalPullToRefresh } from '@/app/components/GlobalPullToRefresh';
+import { useQuickRefreshAction } from '@/app/hooks/useQuickRefreshAction';
 import { isStandalonePwaRuntime, syncViewportMetrics } from '@/app/services/viewportMetrics.service';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { useAppDisplaySettings } from '@/modules/settings/hooks';
@@ -37,8 +39,16 @@ const iconByRoute: Record<AppRouteKey, ReactNode> = {
 };
 
 export function MainLayout() {
+  const resolveSupportsTouchPullRefresh = (): boolean => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return window.matchMedia('(pointer: coarse)').matches;
+  };
   const { message } = App.useApp();
   const queryClient = useQueryClient();
+  const { isRefreshing: isQuickRefreshing, refresh } = useQuickRefreshAction();
   const { setSidebarCollapsed, sidebarCollapsed } = useAppStore();
   const { logout, user } = useAuthStore();
   const { appDisplaySettings, loadAppDisplaySettings } = useAppDisplaySettings();
@@ -68,6 +78,9 @@ export function MainLayout() {
     }
 
     return isStandalonePwaRuntime(window);
+  });
+  const [supportsTouchPullRefresh, setSupportsTouchPullRefresh] = useState(() => {
+    return resolveSupportsTouchPullRefresh();
   });
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [routeTransitionDirection, setRouteTransitionDirection] =
@@ -115,16 +128,20 @@ export function MainLayout() {
     }
 
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const touchPointerQuery = window.matchMedia('(pointer: coarse)');
     const updateStandaloneState = () => {
       syncViewportMetrics(window, document);
       setIsStandalonePwa(isStandalonePwaRuntime(window));
+      setSupportsTouchPullRefresh(resolveSupportsTouchPullRefresh());
     };
 
     updateStandaloneState();
     mediaQuery.addEventListener('change', updateStandaloneState);
+    touchPointerQuery.addEventListener('change', updateStandaloneState);
 
     return () => {
       mediaQuery.removeEventListener('change', updateStandaloneState);
+      touchPointerQuery.removeEventListener('change', updateStandaloneState);
     };
   }, []);
 
@@ -340,11 +357,15 @@ export function MainLayout() {
   };
 
   const handleLogout = () => {
-    logout();
-    queryClient.clear();
-    void message.success('已退出登录');
-    void navigate('/login', { replace: true });
+    void (async () => {
+      await logout();
+      queryClient.clear();
+      void message.success('已退出登录');
+      void navigate('/login', { replace: true });
+    })();
   };
+  const shouldShowWebRefreshAction = !supportsTouchPullRefresh;
+  const shouldShowFloatingActions = isFloatingActionVisible || shouldShowWebRefreshAction;
 
   return (
     <ViewportScrollContext.Provider value={scrollViewportRef}>
@@ -488,8 +509,21 @@ export function MainLayout() {
         <div
           aria-hidden="true"
           className={styles.floatingActionRoot}
-          data-visible={isFloatingActionVisible}
+          data-visible={shouldShowFloatingActions}
         >
+          {shouldShowWebRefreshAction ? (
+            <Button
+              aria-label="快速刷新当前数据"
+              className={floatingActionStyles.button}
+              disabled={isQuickRefreshing}
+              icon={<ReloadOutlined spin={isQuickRefreshing} />}
+              onClick={() => {
+                void refresh();
+              }}
+              shape="circle"
+              type="default"
+            />
+          ) : null}
           {renderedFloatingActionConfig ? (
             <Button
               aria-label={renderedFloatingActionConfig.ariaLabel}

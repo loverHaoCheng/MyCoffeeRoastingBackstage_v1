@@ -1,9 +1,11 @@
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
+import { isSupabaseProjectUrl } from '@/services/pocketBaseConfig';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/services/api.types';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { SupabaseDataClient } from '@/services/supabaseDataClient';
 
 import type {
   CostCalculationFormInput,
@@ -19,7 +21,7 @@ interface FinanceRepository {
 }
 
 interface FinanceConnectionCandidate {
-  client: PocketBaseRestClient;
+  client: Pick<PocketBaseRestClient, 'insert' | 'list'>;
   dataSource: FinanceDataSource;
 }
 
@@ -186,7 +188,9 @@ const resolveFinanceConnectionCandidates = (): FinanceConnectionCandidate[] => {
 
   if (isPocketBaseProjectConnectionConfigured(roastedConnection)) {
     candidates.push({
-      client: new PocketBaseRestClient(roastedConnection),
+      client: isSupabaseProjectUrl(roastedConnection.projectUrl)
+        ? new SupabaseDataClient(roastedConnection)
+        : new PocketBaseRestClient(roastedConnection),
       dataSource: 'roastedBean',
     });
   }
@@ -216,7 +220,7 @@ const isMissingSupabaseResourceError = (error: unknown): boolean => {
 };
 
 const createSupabaseFinanceRepository = (
-  client: PocketBaseRestClient,
+  client: Pick<PocketBaseRestClient, 'insert' | 'list'>,
   dataSource: FinanceDataSource,
 ): FinanceRepository => ({
   async listCalculations() {

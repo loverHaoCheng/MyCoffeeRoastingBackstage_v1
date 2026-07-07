@@ -1,10 +1,10 @@
-# PocketBase 本地优先配置
+# PocketBase 服务器优先配置
 
-这份说明用于本地 `PocketBase/` 目录初始化，也适用于后续迁腾讯云 CVM。
+这份说明用于服务器 `PocketBase/` 目录初始化，也适用于后续迁腾讯云 CVM。
 
 ## 目标
 
-- 让当前项目先在本地 PocketBase 跑通注册、登录和用户隔离。
+- 让当前项目先在服务器 PocketBase 跑通注册、登录和用户隔离。
 - 让每个业务 collection 都带 `owner`，确保“每个用户只能看自己的数据”。
 - 让本地与云端保持同一套 collection 命名和权限规则。
 
@@ -12,7 +12,7 @@
 
 - PocketBase 二进制放在仓库根目录的 `PocketBase/pocketbase`。
 - 数据目录放在 `PocketBase/data`。
-- 前端通过 `VITE_PB_URL=http://127.0.0.1:8090` 连接本地服务。
+- 前端通过 `VITE_PB_URL=http://81.70.224.75` 连接服务器服务。
 
 ## 当前客户端兼容约定
 

@@ -18,11 +18,13 @@
 ## 双 Supabase 配置
 
 - 新增 `设置` 模块，负责维护生豆库和熟豆库两套 `Project URL` / `Publishable Key`。
-- 设置模块当前通过 Zustand + 本地存储保存连接信息，后续仓库层可按领域读取并创建对应客户端。
+- 设置模块当前通过 Zustand 管理运行期状态，连接信息后续应迁移到服务端用户配置，不再写入浏览器持久存储。
 - 详细流程见 `docs/architecture/settings-and-supabase.md`。
 
 ## 本地缓存
 
-- 生豆数据新增 `localStorage` 缓存层，键名为 `coffee-roasting-backstage:beans-cache`。
-- 成功拉取 Supabase 数据后会写入缓存；遇到可恢复请求失败时会自动回退到缓存。
-- 设置页底部会展示缓存条数、最近同步时间、当前同步状态与数据来源。
+- 发布版本不再使用 `localStorage` 保存业务数据、设置、连接信息或认证会话。
+- 应用启动和退出登录时会清理所有 `coffee-roasting-backstage:` 前缀的历史 `localStorage` 键，不做旧数据迁移。
+- 已新增统一 IndexedDB 缓存仓储 `shared/cache`，缓存条目必须包含 `namespace`、`schemaVersion`、`updatedAt` 与可选 `expiresAt`。
+- 当前业务服务先以运行期内存状态 + 远端同步为主，后续按领域逐步接入 IndexedDB 缓存仓储。
+- 个人数据自主备份预留在 `shared/backup/personalDataBackup.service.ts`，支持导出 JSON、解析 JSON、合并导入和覆盖导入。

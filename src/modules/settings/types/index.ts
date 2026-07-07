@@ -1,4 +1,9 @@
-import { resolvePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
+import {
+  isSupabaseProjectUrl,
+  normalizePocketBaseBaseUrl,
+  normalizeSupabaseProjectUrl,
+  resolvePocketBaseBaseUrl,
+} from '@/services/pocketBaseConfig';
 
 export type PocketBaseDataSource = 'greenBean' | 'roastedBean';
 export type AppThemeMode = 'dark' | 'light';
@@ -18,8 +23,52 @@ export const normalizePocketBaseProjectConnection = (
   const projectUrl = connection?.projectUrl?.trim() ?? '';
 
   return {
-    projectUrl: projectUrl.length > 0 ? projectUrl : fallbackProjectUrl,
+    projectUrl: projectUrl.length > 0 ? normalizePocketBaseBaseUrl(projectUrl) : fallbackProjectUrl,
     publishableKey: connection?.publishableKey?.trim() ?? '',
+  };
+};
+
+const isLegacyRoastedBeanProjectUrl = (value: string): boolean => {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return false;
+  }
+
+  if (isSupabaseProjectUrl(normalizedValue)) {
+    return false;
+  }
+
+  if (normalizedValue === resolvePocketBaseBaseUrl()) {
+    return true;
+  }
+
+  return normalizePocketBaseBaseUrl(normalizedValue) === resolvePocketBaseBaseUrl();
+};
+
+export const normalizeRoastedBeanPocketBaseProjectConnection = (
+  connection: null | undefined | Partial<PocketBaseProjectConnection>,
+): PocketBaseProjectConnection => {
+  const projectUrl = normalizeSupabaseProjectUrl(connection?.projectUrl);
+  const publishableKey = connection?.publishableKey?.trim() ?? '';
+
+  if (!projectUrl) {
+    return {
+      projectUrl: '',
+      publishableKey: publishableKey === 'local-access' ? '' : publishableKey,
+    };
+  }
+
+  if (isLegacyRoastedBeanProjectUrl(projectUrl)) {
+    return {
+      projectUrl: '',
+      publishableKey: '',
+    };
+  }
+
+  return {
+    projectUrl,
+    publishableKey: publishableKey === 'local-access' ? '' : publishableKey,
   };
 };
 
@@ -235,9 +284,14 @@ export const createEmptyPocketBaseProjectConnection = (): PocketBaseProjectConne
   publishableKey: 'local-access',
 });
 
+export const createEmptyRoastedBeanPocketBaseProjectConnection = (): PocketBaseProjectConnection => ({
+  projectUrl: '',
+  publishableKey: '',
+});
+
 export const createDefaultPocketBaseConnectionSettings = (): PocketBaseConnectionSettings => ({
   greenBean: createEmptyPocketBaseProjectConnection(),
-  roastedBean: createEmptyPocketBaseProjectConnection(),
+  roastedBean: createEmptyRoastedBeanPocketBaseProjectConnection(),
   updatedAt: null,
 });
 

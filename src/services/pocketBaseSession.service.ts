@@ -16,9 +16,7 @@ export interface PocketBaseSession {
   user: PocketBaseSessionUser;
 }
 
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
+let currentSession: PocketBaseSession | null = null;
 
 const normalizeSessionUser = (value: unknown): PocketBaseSessionUser | null => {
   if (typeof value !== 'object' || value == null) {
@@ -68,28 +66,10 @@ const normalizeSession = (value: unknown): PocketBaseSession | null => {
 
 export const pocketBaseSessionService = {
   clear(): void {
-    if (!canUseStorage()) {
-      return;
-    }
-
-    window.localStorage.removeItem(pocketBaseSessionStorageKey);
+    currentSession = null;
   },
   load(): PocketBaseSession | null {
-    if (!canUseStorage()) {
-      return null;
-    }
-
-    const rawValue = window.localStorage.getItem(pocketBaseSessionStorageKey);
-
-    if (!rawValue) {
-      return null;
-    }
-
-    try {
-      return normalizeSession(JSON.parse(rawValue) as unknown);
-    } catch {
-      return null;
-    }
+    return currentSession == null ? null : normalizeSession(currentSession);
   },
   save(session: Omit<PocketBaseSession, 'updatedAt'>): PocketBaseSession {
     const nextSession: PocketBaseSession = {
@@ -98,9 +78,7 @@ export const pocketBaseSessionService = {
       updatedAt: new Date().toISOString(),
     };
 
-    if (canUseStorage()) {
-      window.localStorage.setItem(pocketBaseSessionStorageKey, JSON.stringify(nextSession));
-    }
+    currentSession = nextSession;
 
     return nextSession;
   },
@@ -117,4 +95,3 @@ export const pocketBaseSessionService = {
     return pocketBaseSessionStorageKey;
   },
 };
-

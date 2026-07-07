@@ -1,21 +1,29 @@
 import { create } from 'zustand';
 
 import { pocketBaseAuthService } from '@/modules/auth/services/pocketBaseAuth.service';
-import { pocketBaseSessionService, type PocketBaseSession, type PocketBaseSessionUser } from '@/services/pocketBaseSession.service';
+import {
+  pocketBaseSessionService,
+  type PocketBaseSession,
+  type PocketBaseSessionUser,
+} from '@/services/pocketBaseSession.service';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
 
 import type { AuthCredentialsInput, RegisterInput } from '../types';
 
-export type AuthStatus = 'authenticated' | 'unauthenticated';
+export type AuthStatus = 'authenticated' | 'hydrating' | 'unauthenticated';
 
 interface AuthState {
+  bootstrapSession: () => Promise<void>;
+  hasHydrated: boolean;
   login: (input: AuthCredentialsInput) => Promise<PocketBaseSession>;
-  logout: () => void;
+  logout: () => Promise<void>;
   register: (input: RegisterInput) => Promise<PocketBaseSession>;
   session: PocketBaseSession | null;
   status: AuthStatus;
   user: PocketBaseSessionUser | null;
 }
+
+let bootstrapSessionPromise: Promise<void> | null = null;
 
 const loadInitialSession = (): PocketBaseSession | null => {
   const session = pocketBaseSessionService.load();
@@ -40,13 +48,64 @@ const loadInitialSession = (): PocketBaseSession | null => {
 };
 
 const initialSession = loadInitialSession();
+const initialHasHydrated = initialSession != null || import.meta.env.MODE === 'test';
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
+  bootstrapSession: async () => {
+    if (get().hasHydrated) {
+      return;
+    }
+
+    if (bootstrapSessionPromise != null) {
+      return bootstrapSessionPromise;
+    }
+
+    bootstrapSessionPromise = (async () => {
+      set({
+        hasHydrated: false,
+        status: 'hydrating',
+      });
+
+      try {
+        const session = await pocketBaseAuthService.restoreSession();
+
+        if (session) {
+          set({
+            hasHydrated: true,
+            session,
+            status: 'authenticated',
+            user: session.user,
+          });
+          return;
+        }
+
+        set({
+          hasHydrated: true,
+          session: null,
+          status: 'unauthenticated',
+          user: null,
+        });
+      } catch {
+        set({
+          hasHydrated: true,
+          session: null,
+          status: 'unauthenticated',
+          user: null,
+        });
+      } finally {
+        bootstrapSessionPromise = null;
+      }
+    })();
+
+    return bootstrapSessionPromise;
+  },
+  hasHydrated: initialHasHydrated,
   login: async (input) => {
     localStorageCleanupService.clearAppState();
     const session = await pocketBaseAuthService.login(input);
 
     set({
+      hasHydrated: true,
       session,
       status: 'authenticated',
       user: session.user,
@@ -54,10 +113,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     return session;
   },
-  logout: () => {
+  logout: async () => {
     localStorageCleanupService.clearAppState();
-    pocketBaseAuthService.logout();
+    await pocketBaseAuthService.logout();
     set({
+      hasHydrated: true,
       session: null,
       status: 'unauthenticated',
       user: null,
@@ -68,6 +128,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const session = await pocketBaseAuthService.register(input);
 
     set({
+      hasHydrated: true,
       session,
       status: 'authenticated',
       user: session.user,
@@ -76,6 +137,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     return session;
   },
   session: initialSession,
-  status: initialSession != null ? 'authenticated' : 'unauthenticated',
+  status: initialSession != null ? 'authenticated' : 'hydrating',
   user: initialSession?.user ?? null,
 }));

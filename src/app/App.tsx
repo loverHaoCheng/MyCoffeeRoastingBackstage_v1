@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 
+import { AppRealtimeSync } from '@/app/components/AppRealtimeSync';
+import { AppAuthBootstrap } from '@/app/components/AppAuthBootstrap';
 import { AppUpdateBanner } from '@/app/components/AppUpdateBanner';
 import { AppProviders } from '@/app/providers/AppProviders';
 import { router } from '@/router/routes';
@@ -43,7 +45,9 @@ export function App() {
 
   return (
     <AppProviders>
+      <AppAuthBootstrap />
       <AppUpdateBanner />
+      <AppRealtimeSync />
       <RouterProvider router={router} />
     </AppProviders>
   );

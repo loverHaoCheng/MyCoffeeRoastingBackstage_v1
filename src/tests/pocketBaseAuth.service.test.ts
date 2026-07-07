@@ -2,34 +2,43 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { pocketBaseAuthService } from '@/modules/auth/services/pocketBaseAuth.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { AppError } from '@/shared/errors/AppError';
 
 describe('pocketBaseAuthService', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    pocketBaseSessionService.clear();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     window.localStorage.clear();
+    pocketBaseSessionService.clear();
   });
 
   it('maps login fetch failures to a descriptive network error', async () => {
     const fetchMock = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(
-      pocketBaseAuthService.login({
+    try {
+      await pocketBaseAuthService.login({
         email: 'demo@example.com',
         password: 'password123',
-      }),
-    ).rejects.toMatchObject({
-      code: 'NETWORK',
-      message: expect.stringContaining('PocketBase 鉴权服务'),
-    });
+      });
+      throw new Error('Expected login to reject.');
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(AppError);
+
+      if (error instanceof AppError) {
+        expect(error.code).toBe('NETWORK');
+        expect(error.message).toContain('登录网关');
+      }
+    }
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://127.0.0.1:8090/api/collections/users/auth-with-password',
+      '/api/auth/login',
       expect.objectContaining({
         method: 'POST',
       }),
@@ -70,17 +79,86 @@ describe('pocketBaseAuthService', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/register',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
   });
 
-  it('falls back to the default PocketBase url when legacy Supabase settings are still stored', async () => {
+  it('turns upstream 5xx login failures into a gateway-specific message', async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(
         new Response(
           JSON.stringify({
-            message: 'Failed to authenticate.',
+            message: 'PocketBase service unavailable',
           }),
           {
-            status: 400,
+            status: 503,
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      pocketBaseAuthService.login({
+        email: 'demo@example.com',
+        password: 'password123',
+      }),
+    ).rejects.toMatchObject({
+      code: 'HTTP',
+      status: 503,
+      message: '登录网关暂时不可用，请稍后重试。',
+    });
+  });
+
+  it('maps html gateway failures without leaking JSON parse errors', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response('<!doctype html><html><body>Internal Server Error</body></html>', {
+          headers: {
+            'Content-Type': 'text/html',
+          },
+          status: 500,
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      await pocketBaseAuthService.login({
+        email: 'demo@example.com',
+        password: 'password123',
+      });
+      throw new Error('Expected login to reject.');
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(AppError);
+
+      if (error instanceof AppError) {
+        expect(error.code).toBe('HTTP');
+        expect(error.status).toBe(500);
+        expect(error.message).toContain('非 JSON 错误页面');
+      }
+    }
+  });
+
+  it('restores the session from the auth gateway and keeps the current PocketBase base url', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            record: {
+              email: 'demo@example.com',
+              id: 'user-1',
+              verified: true,
+              username: 'demo',
+            },
+            token: 'new-token',
+          }),
+          {
+            status: 200,
           },
         ),
       ),
@@ -98,19 +176,60 @@ describe('pocketBaseAuthService', () => {
       updatedAt: '2026-07-07T00:00:00.000Z',
     });
 
-    await expect(
-      pocketBaseAuthService.login({
+    const session = await pocketBaseAuthService.restoreSession();
+
+    expect(session).toMatchObject({
+      token: 'new-token',
+      user: {
         email: 'demo@example.com',
-        password: 'password123',
+        id: 'user-1',
+        verified: true,
+        username: 'demo',
+      },
+    });
+    expect(pocketBaseSessionService.load()).toMatchObject({
+      token: 'new-token',
+      user: {
+        email: 'demo@example.com',
+        id: 'user-1',
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/session',
+      expect.objectContaining({
+        method: 'GET',
       }),
-    ).rejects.toMatchObject({
-      code: 'AUTH',
-      status: 400,
-      message: '登录失败，邮箱或密码不正确，请重新输入。',
+    );
+  });
+
+  it('clears the in-memory session when logging out', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            success: true,
+          }),
+          {
+            status: 200,
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    pocketBaseSessionService.save({
+      baseUrl: 'http://81.70.224.75',
+      token: 'stored-token',
+      user: {
+        email: 'demo@example.com',
+        id: 'user-1',
+      },
     });
 
+    await pocketBaseAuthService.logout();
+
+    expect(pocketBaseSessionService.load()).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://127.0.0.1:8090/api/collections/users/auth-with-password',
+      '/api/auth/logout',
       expect.objectContaining({
         method: 'POST',
       }),

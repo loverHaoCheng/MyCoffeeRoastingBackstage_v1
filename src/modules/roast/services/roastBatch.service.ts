@@ -31,19 +31,15 @@ export interface RoastBatchRepository {
 // ============ 本地存储键 ============
 
 const STORAGE_KEY = 'coffee-roasting-backstage:roast-batches';
+let localRoastBatches: RoastBatchRecord[] = [];
 
 const loadLocalBatches = (): RoastBatchRecord[] => {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return (JSON.parse(raw) as RoastBatchRecord[]).map(normalizeStoredBatch);
-  } catch {
-    return [];
-  }
+  void STORAGE_KEY;
+  return sortBatches(localRoastBatches.map(normalizeStoredBatch));
 };
 
 const saveLocalBatches = (batches: RoastBatchRecord[]): void => {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(batches));
+  localRoastBatches = sortBatches(batches);
 };
 
 const createOptimisticLocalBatchId = (): string => {

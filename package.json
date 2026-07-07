@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "auth:bff:build": "tsc -b tsconfig.server.json --force",
+    "auth:bff:start": "node dist/server/pocketbase-auth-bff.js",
+    "auth:bff:watch": "tsc -b tsconfig.server.json --watch",
     "pb:serve": "./PocketBase/pocketbase serve --dir ./PocketBase/data --http=127.0.0.1:8090",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",

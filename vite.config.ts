@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vitest/config';
+import { handleAuthGatewayRequest } from './server/pocketbase-auth-bff';
 
 const packageJson = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
@@ -16,6 +17,23 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      name: 'pocketbase-auth-bff-dev',
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
+          const isAuthGatewayRequest =
+            requestUrl.pathname === '/api/health' || requestUrl.pathname.startsWith('/api/auth/');
+
+          if (!isAuthGatewayRequest) {
+            next();
+            return;
+          }
+
+          void handleAuthGatewayRequest(request, response);
+        });
+      },
+    },
     {
       name: 'app-version-manifest',
       generateBundle() {

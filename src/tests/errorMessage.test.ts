@@ -6,7 +6,7 @@ import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 describe('getUserFacingErrorMessage', () => {
   it('translates browser fetch failures into a specific connection message', () => {
     expect(getUserFacingErrorMessage(new TypeError('Failed to fetch'))).toBe(
-      '无法连接到 PocketBase 服务，请检查设置页中的地址、服务是否启动或当前网络是否可用。',
+      '无法连接到 PocketBase 服务，请检查设置页中的服务器地址、服务是否启动或当前网络是否可用。',
     );
   });
 

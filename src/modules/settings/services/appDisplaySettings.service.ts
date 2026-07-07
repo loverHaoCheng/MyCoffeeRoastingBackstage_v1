@@ -8,59 +8,29 @@ import { logger } from '@/shared/logger/logger';
 
 export const appDisplaySettingsStorageKey = 'coffee-roasting-backstage:app-display-settings';
 
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
+let currentAppDisplaySettings: AppDisplaySettings = createDefaultAppDisplaySettings();
 
 export const appDisplaySettingsService = {
   clear(): void {
-    if (!canUseStorage()) {
-      return;
-    }
-
-    window.localStorage.removeItem(appDisplaySettingsStorageKey);
+    currentAppDisplaySettings = createDefaultAppDisplaySettings();
   },
   load(): AppDisplaySettings {
-    if (!canUseStorage()) {
-      return createDefaultAppDisplaySettings();
-    }
+    const result = appDisplaySettingsStorageSchema.safeParse(currentAppDisplaySettings);
 
-    const rawValue = window.localStorage.getItem(appDisplaySettingsStorageKey);
-
-    if (!rawValue) {
-      return createDefaultAppDisplaySettings();
-    }
-
-    try {
-      const parsed = JSON.parse(rawValue) as unknown;
-      const result = appDisplaySettingsStorageSchema.safeParse(parsed);
-
-      if (!result.success) {
-        logger.warn('app display settings parse failed', {
-          issues: result.error.issues,
-        });
-
-        return createDefaultAppDisplaySettings();
-      }
-
-      return normalizeAppDisplaySettings({
-        ...result.data,
-        updatedAt: result.data.updatedAt ?? null,
+    if (!result.success) {
+      logger.warn('app display settings memory state parse failed', {
+        issues: result.error.issues,
       });
-    } catch (error) {
-      logger.error('app display settings load failed', { error });
 
-      return createDefaultAppDisplaySettings();
+      currentAppDisplaySettings = createDefaultAppDisplaySettings();
     }
+
+    return normalizeAppDisplaySettings(currentAppDisplaySettings);
   },
   save(settings: AppDisplaySettings): AppDisplaySettings {
-    if (!canUseStorage()) {
-      return normalizeAppDisplaySettings(settings);
-    }
-
     const normalizedSettings = normalizeAppDisplaySettings(settings);
 
-    window.localStorage.setItem(appDisplaySettingsStorageKey, JSON.stringify(normalizedSettings));
+    currentAppDisplaySettings = normalizedSettings;
     logger.info('app display settings saved', {
       scale: normalizedSettings.scale,
       themeMode: normalizedSettings.themeMode,

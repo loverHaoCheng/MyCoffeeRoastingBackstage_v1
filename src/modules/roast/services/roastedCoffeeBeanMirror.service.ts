@@ -1,9 +1,11 @@
 import { beanService } from '@/modules/bean/services';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
+import { isSupabaseProjectUrl } from '@/services/pocketBaseConfig';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { SupabaseDataClient } from '@/services/supabaseDataClient';
 import type { Bean } from '@/types/domain';
 
 import { normalizeRoastLevel } from '../constants/roastLevel';
@@ -312,8 +314,15 @@ const hasRoastedBeanConnection = (): boolean => {
   return isPocketBaseProjectConnectionConfigured(connection);
 };
 
-const getRoastedBeanClient = (): PocketBaseRestClient => {
+const getRoastedBeanClient = (): Pick<PocketBaseRestClient, 'insert'> => {
   const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('roastedBean');
+
+  if (isSupabaseProjectUrl(connection.projectUrl)) {
+    return new SupabaseDataClient({
+      projectUrl: connection.projectUrl,
+      publishableKey: connection.publishableKey,
+    });
+  }
 
   return new PocketBaseRestClient({
     projectUrl: connection.projectUrl,

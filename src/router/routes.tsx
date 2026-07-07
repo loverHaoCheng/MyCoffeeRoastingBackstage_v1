@@ -31,11 +31,22 @@ const withPageFallback = (children: ReactNode) => {
   );
 };
 
+const authLoadingFallback = (
+  <div style={{ display: 'grid', minHeight: '100vh', placeItems: 'center' }}>
+    <Spin tip="正在恢复登录态" />
+  </div>
+);
+
 function RequireAuth({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const isAuthenticated = useAuthStore((state) => state.status === 'authenticated');
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const status = useAuthStore((state) => state.status);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || status === 'hydrating') {
+    return authLoadingFallback;
+  }
+
+  if (status !== 'authenticated') {
     return <Navigate replace state={{ from: location.pathname }} to="/login" />;
   }
 
@@ -43,9 +54,14 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 function PublicOnly({ children }: { children: ReactNode }) {
-  const isAuthenticated = useAuthStore((state) => state.status === 'authenticated');
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const status = useAuthStore((state) => state.status);
 
-  if (isAuthenticated) {
+  if (!hasHydrated || status === 'hydrating') {
+    return authLoadingFallback;
+  }
+
+  if (status === 'authenticated') {
     return <Navigate replace to="/beans" />;
   }
 

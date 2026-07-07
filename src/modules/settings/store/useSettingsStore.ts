@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { supabaseRoastedBeanConnectionSyncService } from '@/modules/settings/services/supabaseRoastedBeanConnectionSync.service';
 import {
   createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
@@ -22,7 +23,7 @@ interface SettingsState {
   deleteCostTemplate: (templateId: string) => void;
   loadAppDisplaySettings: () => void;
   loadCostTemplates: () => void;
-  loadPocketBaseConnections: () => void;
+  loadPocketBaseConnections: () => Promise<void>;
   resetAppDisplaySettings: () => void;
   saveAppDisplaySettings: (settings: AppDisplaySettings) => AppDisplaySettings;
   saveCostTemplate: (values: CostTemplateFormValues, templateId?: string) => CostTemplate;
@@ -35,7 +36,7 @@ interface SettingsState {
 
 const initialPocketBaseConnections = pocketBaseConnectionSettingsService.load();
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = create<SettingsState>((set, get) => ({
   appDisplaySettings: appDisplaySettingsService.load(),
   costTemplateSettings: costTemplateSettingsService.load(),
   pocketBaseConnections: initialPocketBaseConnections,
@@ -69,9 +70,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       costTemplateSettings: costTemplateSettingsService.load(),
     });
   },
-  loadPocketBaseConnections: () => {
+  loadPocketBaseConnections: async () => {
+    const nextValue = await supabaseRoastedBeanConnectionSyncService.syncFromRemoteSafely();
+
     set({
-      pocketBaseConnections: pocketBaseConnectionSettingsService.load(),
+      pocketBaseConnections: nextValue,
     });
   },
   resetAppDisplaySettings: () => {
@@ -93,20 +96,20 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     return nextValue;
   },
   saveCostTemplate: (values, templateId) => {
-    const currentSettings = costTemplateSettingsService.load();
+    const currentSettings = get().costTemplateSettings;
     const existingTemplate = currentSettings.templates.find((template) => template.id === templateId);
-    const nextTemplate = costTemplateSettingsService.createTemplate(
+    const savedTemplate = costTemplateSettingsService.createTemplate(
       values,
       existingTemplate?.id,
       existingTemplate?.createdAt,
     );
     const nextTemplates = existingTemplate
-      ? currentSettings.templates.map((template) => (template.id === existingTemplate.id ? nextTemplate : template))
-      : [nextTemplate, ...currentSettings.templates];
+      ? currentSettings.templates.map((template) => (template.id === existingTemplate.id ? savedTemplate : template))
+      : [savedTemplate, ...currentSettings.templates];
     const nextSettings: CostTemplateSettings = {
       defaultTemplateId:
         currentSettings.defaultTemplateId ??
-        (currentSettings.templates.length === 0 && !existingTemplate ? nextTemplate.id : null),
+        (currentSettings.templates.length === 0 && !existingTemplate ? savedTemplate.id : null),
       templates: nextTemplates,
       updatedAt: new Date().toISOString(),
     };
@@ -114,7 +117,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     costTemplateSettingsService.save(nextSettings);
     set({ costTemplateSettings: nextSettings });
 
-    return nextTemplate;
+    return savedTemplate;
   },
   savePocketBaseConnections: (values) => {
     const nextValue: PocketBaseConnectionSettings = {
@@ -122,9 +125,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       updatedAt: new Date().toISOString(),
     };
 
-    pocketBaseConnectionSettingsService.save(nextValue);
+    const savedValue = pocketBaseConnectionSettingsService.save(nextValue);
     set({
-      pocketBaseConnections: nextValue,
+      pocketBaseConnections: savedValue,
     });
   },
   setDefaultCostTemplate: (templateId) => {

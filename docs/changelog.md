@@ -1,5 +1,20 @@
 # 变更记录
 
+## 2026-07-08 - 登录态持久化
+
+- 新增同源 `/api/auth/*` 登录态网关，使用 `HttpOnly Cookie` 保存 PocketBase token
+- 前端启动时自动请求会话接口，恢复浏览器关闭后的登录状态
+- 新增 auth BFF 的构建、启动、开发脚本和 Nginx 代理说明
+- 修复开发环境登录接口 500：Vite 直接挂载 auth BFF，并强制刷新 BFF 构建产物
+
+## 2026-07-08
+
+- 移除业务代码对 `localStorage` 的持久化依赖，保留启动清理器用于删除历史应用键
+- 新增 `shared/cache` IndexedDB 缓存仓储，统一缓存命名空间、版本号、更新时间和过期时间
+- 新增个人数据备份服务预留接口，支持未来导出 JSON 备份并合并或覆盖导入
+- 恢复设置页中的熟豆 Supabase 连接配置，并在失焦后将熟豆连接信息同步到主库设置记录
+- 烘焙历史创建成功后继续向熟豆 Supabase 写入熟豆镜像数据，但不从熟豆库回拉任何信息
+
 ## 2026-07-07
 
 - 新增 PocketBase collection 导入文件 `docs/pocketbase-collections.json`

@@ -23,7 +23,7 @@ const pocketBaseConnectionFormSectionSchema = (required: boolean) =>
       if (!hasProjectUrl) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          message: '请输入 PocketBase 地址',
+          message: '请输入 PocketBase 服务器地址',
           path: ['projectUrl'],
         });
       }
@@ -32,12 +32,20 @@ const pocketBaseConnectionFormSectionSchema = (required: boolean) =>
         return;
       }
 
+      if (value.publishableKey.length === 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '请输入访问密钥',
+          path: ['publishableKey'],
+        });
+      }
+
       const projectUrlValidation = z
         .string()
-        .url('请输入有效的 PocketBase 地址')
+        .url('请输入有效的 PocketBase 服务器地址')
         .refine(
           (item) => item.startsWith('http://') || item.startsWith('https://'),
-          'PocketBase 地址必须以 http:// 或 https:// 开头',
+          'PocketBase 服务器地址必须以 http:// 或 https:// 开头',
         )
         .safeParse(value.projectUrl);
 
@@ -73,6 +81,7 @@ export const pocketBaseConnectionFormSchema = z.object({
 
 export const supabaseConnectionSettingsStorageSchema = pocketBaseConnectionSettingsStorageSchema;
 export const supabaseConnectionFormSchema = pocketBaseConnectionFormSchema;
+export const supabaseConnectionFormSectionSchema = pocketBaseConnectionFormSectionSchema;
 
 const costTemplateStorageItemSchema = z.object({
   createdAt: z.string().datetime(),

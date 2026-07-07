@@ -26,13 +26,44 @@
   padding: 0 12px;
   border-radius: 12px;
   align-items: center;
+  border: 1px solid var(--app-border-soft);
   background: var(--app-bg-elevated);
   color: var(--app-text);
-  box-shadow: 0 0 0 1px var(--app-border);
-  filter: drop-shadow(0 0 5px rgb(255 255 255 / 100%));
+  box-shadow:
+    0 8px 20px rgb(17 24 39 / 8%),
+    inset 0 1px 0 var(--app-card-inset-highlight);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .field :global(.ant-input) {
   font-size: 14px;
   color: var(--app-text);
+}
+
+.field :global(.ant-input-affix-wrapper:hover),
+.field :global(.ant-input-affix-wrapper:focus),
+.field :global(.ant-input-affix-wrapper:focus-visible),
+.field :global(.ant-input-affix-wrapper-focused) {
+  border-color: var(--app-border);
+  box-shadow:
+    0 10px 24px rgb(17 24 39 / 10%),
+    inset 0 1px 0 var(--app-card-inset-highlight);
+}
+
+:global(:root[data-app-theme='dark']) .field :global(.ant-input-affix-wrapper) {
+  background: color-mix(in srgb, var(--app-bg-elevated) 94%, transparent);
+  box-shadow:
+    0 12px 28px rgb(0 0 0 / 34%),
+    inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+
+:global(:root[data-app-theme='dark']) .field :global(.ant-input-affix-wrapper:hover),
+:global(:root[data-app-theme='dark']) .field :global(.ant-input-affix-wrapper:focus),
+:global(:root[data-app-theme='dark']) .field :global(.ant-input-affix-wrapper:focus-visible),
+:global(:root[data-app-theme='dark']) .field :global(.ant-input-affix-wrapper-focused) {
+  border-color: var(--app-border-hover);
+  box-shadow:
+    0 14px 32px rgb(0 0 0 / 38%),
+    inset 0 1px 0 rgb(255 255 255 / 5%);
 }

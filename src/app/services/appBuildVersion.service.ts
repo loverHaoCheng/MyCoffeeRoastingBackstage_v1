@@ -1,9 +1,7 @@
 export const appBuildVersionStorageKey = 'coffee-roasting-backstage:last-seen-build-version';
 export const appBuildVersionUpdatedEventName = 'coffee-roasting-backstage:app-build-version-updated';
 
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
+let currentAppBuildVersion: null | string = null;
 
 const emitUpdate = (): void => {
   if (typeof window === 'undefined') {
@@ -14,27 +12,23 @@ const emitUpdate = (): void => {
 };
 
 export const appBuildVersionService = {
+  clear(): void {
+    currentAppBuildVersion = null;
+    emitUpdate();
+  },
   get(): null | string {
-    if (!canUseStorage()) {
-      return null;
-    }
-
-    const value = window.localStorage.getItem(appBuildVersionStorageKey);
+    const value = currentAppBuildVersion;
 
     return value && value.trim().length > 0 ? value.trim() : null;
   },
   save(version: string): void {
-    if (!canUseStorage()) {
-      return;
-    }
-
     const normalizedVersion = version.trim();
 
-    if (!normalizedVersion || window.localStorage.getItem(appBuildVersionStorageKey) === normalizedVersion) {
+    if (!normalizedVersion || currentAppBuildVersion === normalizedVersion) {
       return;
     }
 
-    window.localStorage.setItem(appBuildVersionStorageKey, normalizedVersion);
+    currentAppBuildVersion = normalizedVersion;
     emitUpdate();
   },
 };

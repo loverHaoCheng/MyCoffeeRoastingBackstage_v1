@@ -1,6 +1,8 @@
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
 export function useAuth() {
+  const bootstrapSession = useAuthStore((state) => state.bootstrapSession);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const login = useAuthStore((state) => state.login);
   const logout = useAuthStore((state) => state.logout);
   const register = useAuthStore((state) => state.register);
@@ -9,6 +11,8 @@ export function useAuth() {
   const user = useAuthStore((state) => state.user);
 
   return {
+    bootstrapSession,
+    hasHydrated,
     login,
     logout,
     register,
@@ -16,6 +20,6 @@ export function useAuth() {
     status,
     user,
     isAuthenticated: status === 'authenticated',
+    isHydrating: status === 'hydrating',
   };
 }
-

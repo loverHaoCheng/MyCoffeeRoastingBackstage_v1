@@ -232,6 +232,7 @@
 
 .content {
   --content-page-inline-padding: 16px;
+  --content-page-max-width: 1148px;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -244,12 +245,19 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin: 0 var(--content-page-inline-padding) 18px;
+  width: min(
+    calc(100% - (var(--content-page-inline-padding) * 2)),
+    var(--content-page-max-width)
+  );
+  margin: 14px auto 18px;
   padding: 14px 18px;
-  border: 1px solid rgb(17 24 39 / 8%);
+  border: 1px solid var(--app-border-soft);
   border-radius: 22px;
-  background: rgb(255 255 255 / 0.88);
+  background:
+    linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
+  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
   backdrop-filter: blur(18px);
+  color: var(--app-text);
 }
 
 @media (max-width: 767px) {
@@ -265,8 +273,8 @@
   height: 38px;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: rgb(17 24 39 / 92%);
-  color: white;
+  background: var(--app-text);
+  color: var(--app-bg);
   font-size: 14px;
   font-weight: 700;
 }
@@ -286,6 +294,20 @@
   color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
+}
+
+.authBar :global(.ant-btn) {
+  color: var(--app-text);
+}
+
+.authBar :global(.ant-btn:hover),
+.authBar :global(.ant-btn:active),
+.authBar :global(.ant-btn:focus),
+.authBar :global(.ant-btn:focus-visible) {
+  color: var(--app-text) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .routeScene {

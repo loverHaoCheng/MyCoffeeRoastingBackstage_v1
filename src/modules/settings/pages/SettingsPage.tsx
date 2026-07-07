@@ -27,6 +27,7 @@ import { scrollToField } from '@/shared/forms/scrollToField';
 import authorCodeImage from '@/assets/settings-codes/author-code.png';
 import sponsorCodeImage from '@/assets/settings-codes/sponsor-code.png';
 import { useAppBuildVersion } from '@/app/hooks/useAppBuildVersion';
+import { RoastedBeanConnectionCard } from '@/modules/settings/components/RoastedBeanConnectionCard';
 
 import styles from './SettingsPage.module.css';
 
@@ -400,6 +401,8 @@ export function SettingsPage() {
   return (
     <main className={styles.page}>
       <form className={styles.form}>
+        <RoastedBeanConnectionCard />
+
         <section className={styles.section} data-collapsed={collapsedSections.displayScale}>
           <header className={styles.sectionHeader}>
             <div className={styles.sectionHeaderRow}>

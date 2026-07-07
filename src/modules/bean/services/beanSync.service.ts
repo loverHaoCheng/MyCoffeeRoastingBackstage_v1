@@ -2,7 +2,7 @@ import { pocketBaseConnectionSettingsService } from '@/modules/settings/services
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import type { GreenBeanCreateInput, GreenBeanUpdateInput, LocalGreenBeanRecord } from '../types/localGreenBean';
 
-const PENDING_OPS_KEY = 'coffee-roasting-backstage:pending-ops';
+let currentPendingOperations: PendingOperation[] = [];
 
 export type PendingOperationType = 'create' | 'update' | 'delete';
 
@@ -55,21 +55,22 @@ const generatePendingId = (): string => {
 };
 
 const loadPendingOps = (): PendingOperation[] => {
-  try {
-    const raw = window.localStorage.getItem(PENDING_OPS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed) && parsed.every(isPendingOperation)) {
-      return parsed;
-    }
-    return [];
-  } catch {
-    return [];
+  if (currentPendingOperations.every(isPendingOperation)) {
+    return currentPendingOperations;
   }
+
+  currentPendingOperations = [];
+
+  return [];
 };
 
 const savePendingOps = (ops: PendingOperation[]): void => {
-  window.localStorage.setItem(PENDING_OPS_KEY, JSON.stringify(ops));
+  if (!ops.every(isPendingOperation)) {
+    currentPendingOperations = [];
+    return;
+  }
+
+  currentPendingOperations = ops;
 };
 
 export const beanSyncService = {
@@ -161,7 +162,7 @@ export const beanSyncService = {
    * 清空所有待同步操作
    */
   clearPendingOps(): void {
-    window.localStorage.removeItem(PENDING_OPS_KEY);
+    currentPendingOperations = [];
   },
 
   /**

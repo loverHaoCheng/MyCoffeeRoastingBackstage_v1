@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- 新增同源 `/api/auth/*` 登录态网关，支持通过 `HttpOnly Cookie` 恢复 PocketBase 登录态。
+- 前端启动时自动拉取会话并恢复登录，关闭浏览器后下次打开仍可保持登录状态。
+- 新增 PocketBase auth BFF 的构建、启动和开发脚本，以及对应的 Nginx 代理说明。
+- 修复开发环境登录接口 500：Vite 直接挂载 auth BFF，并强制刷新 BFF 构建产物，避免代理到未启动的 `127.0.0.1:3001`。
+
 ## 0.1.0
 
 - 初始化 Vite + React + TypeScript 项目。

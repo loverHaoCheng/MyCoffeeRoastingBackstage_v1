@@ -1,11 +1,10 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { appBuildVersionStorageKey, appBuildVersionUpdatedEventName } from '@/app/services/appBuildVersion.service';
+import { appBuildVersionService } from '@/app/services/appBuildVersion.service';
 import { SettingsPage } from '@/modules/settings';
-import { beanCacheStorageKey } from '@/modules/bean/services';
-import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
-import { pocketBaseConnectionSettingsStorageKey } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
 import {
   createDefaultAppDisplaySettings,
@@ -13,6 +12,40 @@ import {
   createDefaultPocketBaseConnectionSettings,
 } from '@/modules/settings/types';
 import { renderWithQuery } from '@/tests/renderWithProviders';
+
+const { syncLocalChangeMock } = vi.hoisted(() => ({
+  syncLocalChangeMock: vi.fn().mockResolvedValue(undefined),
+}));
+
+const { syncFromRemoteSafelyMock } = vi.hoisted(() => ({
+  syncFromRemoteSafelyMock: vi.fn().mockResolvedValue({
+    greenBean: {
+      projectUrl: 'http://81.70.224.75',
+      publishableKey: 'local-access',
+    },
+    roastedBean: {
+      projectUrl: '',
+      publishableKey: '',
+    },
+    updatedAt: null,
+  }),
+}));
+
+vi.mock(
+  '@/modules/settings/services/supabaseRoastedBeanConnectionSync.service',
+  async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/modules/settings/services/supabaseRoastedBeanConnectionSync.service')>();
+
+    return {
+      ...actual,
+      supabaseRoastedBeanConnectionSyncService: {
+        ...actual.supabaseRoastedBeanConnectionSyncService,
+        syncFromRemoteSafely: syncFromRemoteSafelyMock,
+        syncLocalChange: syncLocalChangeMock,
+      },
+    };
+  },
+);
 
 const expandSection = async (headingName: string): Promise<HTMLElement> => {
   const section = screen.getByRole('heading', { name: headingName }).closest('section');
@@ -39,6 +72,23 @@ const expandSection = async (headingName: string): Promise<HTMLElement> => {
 describe('SettingsPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    appBuildVersionService.clear();
+    costTemplateSettingsService.clear();
+    pocketBaseConnectionSettingsService.clear();
+    syncLocalChangeMock.mockClear();
+    syncLocalChangeMock.mockResolvedValue(undefined);
+    syncFromRemoteSafelyMock.mockClear();
+    syncFromRemoteSafelyMock.mockResolvedValue({
+      greenBean: {
+        projectUrl: 'http://81.70.224.75',
+        publishableKey: 'local-access',
+      },
+      roastedBean: {
+        projectUrl: '',
+        publishableKey: '',
+      },
+      updatedAt: null,
+    });
     useSettingsStore.setState({
       appDisplaySettings: createDefaultAppDisplaySettings(),
       costTemplateSettings: createDefaultCostTemplateSettings(),
@@ -46,299 +96,135 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('loads saved PocketBase connection settings', async () => {
-    window.localStorage.setItem(
-      pocketBaseConnectionSettingsStorageKey,
-      JSON.stringify({
-        greenBean: {
-          projectUrl: 'http://127.0.0.1:8091',
-          publishableKey: 'local-access-green',
-        },
-        roastedBean: {
-          projectUrl: 'http://127.0.0.1:8091',
-          publishableKey: 'local-access-roasted',
-        },
-        updatedAt: '2026-06-28T12:00:00.000Z',
-      }),
-    );
-
+  it('renders the roasted bean supabase connection card', async () => {
     renderWithQuery(<SettingsPage />);
-    await expandSection('生豆 PocketBase');
-    await expandSection('熟豆 PocketBase');
+
+    expect(await screen.findByRole('heading', { name: '熟豆 Supabase 连接' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '界面外观' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '成本模板' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '清空配置' })).toBeInTheDocument();
+    expect(document.getElementById('roasted-bean-project-url')).toHaveValue('');
+    expect(document.getElementById('roasted-bean-publishable-key')).toHaveValue('');
+    expect(screen.getByText('未配置')).toBeInTheDocument();
+  });
+
+  it('syncs roasted bean supabase settings on blur and keeps cleared values', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    const projectUrlInput = document.getElementById('roasted-bean-project-url');
+
+    expect(projectUrlInput).not.toBeNull();
+
+    if (projectUrlInput == null) {
+      throw new Error('roasted bean project url input not found');
+    }
+
+    fireEvent.change(projectUrlInput, { target: { value: '' } });
+    fireEvent.blur(projectUrlInput);
 
     await waitFor(() => {
-      expect(
-        screen.getByLabelText('PocketBase 地址', { selector: '#green-bean-project-url' }),
-      ).toHaveValue('http://127.0.0.1:8091');
+      expect(useSettingsStore.getState().pocketBaseConnections.roastedBean.projectUrl).toBe('');
     });
-    expect(
-      screen.getByLabelText('访问密钥', { selector: '#roasted-bean-publishable-key' }),
-    ).toHaveValue('local-access-roasted');
+
+    expect(syncLocalChangeMock).not.toHaveBeenCalled();
+    expect(screen.getByText('未配置')).toBeInTheDocument();
   });
 
-  it('saves both PocketBase connection configs', async () => {
+  it('marks roasted bean supabase as connected after a verified save and syncs remote settings', async () => {
     renderWithQuery(<SettingsPage />);
-    await expandSection('生豆 PocketBase');
-    await expandSection('熟豆 PocketBase');
 
-    fireEvent.change(screen.getByLabelText('PocketBase 地址', { selector: '#green-bean-project-url' }), {
-      target: { value: 'http://127.0.0.1:8091' },
-    });
-    fireEvent.change(
-      screen.getByLabelText('访问密钥', { selector: '#green-bean-publishable-key' }),
-      {
-        target: { value: 'local-access-green' },
-      },
-    );
-    fireEvent.change(
-      screen.getByLabelText('PocketBase 地址', { selector: '#roasted-bean-project-url' }),
-      {
-        target: { value: 'http://127.0.0.1:8091' },
-      },
-    );
-    fireEvent.change(
-      screen.getByLabelText('访问密钥', { selector: '#roasted-bean-publishable-key' }),
-      {
-        target: { value: 'local-access-roasted' },
-      },
-    );
-    fireEvent.blur(
-      screen.getByLabelText('访问密钥', { selector: '#roasted-bean-publishable-key' }),
-    );
+    const projectUrlInput = document.getElementById('roasted-bean-project-url');
+    const publishableKeyInput = document.getElementById('roasted-bean-publishable-key');
+
+    expect(projectUrlInput).not.toBeNull();
+    expect(publishableKeyInput).not.toBeNull();
+
+    if (projectUrlInput == null || publishableKeyInput == null) {
+      throw new Error('roasted bean connection inputs not found');
+    }
+
+    fireEvent.change(projectUrlInput, { target: { value: 'https://roasted.example.com' } });
+    fireEvent.change(publishableKeyInput, { target: { value: 'real-publishable-key' } });
+    fireEvent.blur(publishableKeyInput);
 
     await waitFor(() => {
-      expect(window.localStorage.getItem(pocketBaseConnectionSettingsStorageKey)).not.toBeNull();
+      expect(syncLocalChangeMock).toHaveBeenCalledWith({
+        projectUrl: 'https://roasted.example.com',
+        publishableKey: 'real-publishable-key',
+      });
     });
+    expect(syncLocalChangeMock).toHaveBeenCalledTimes(1);
 
-    const storedValue = JSON.parse(
-      window.localStorage.getItem(pocketBaseConnectionSettingsStorageKey) ?? '{}',
-    ) as {
-      greenBean?: { projectUrl?: string };
-      roastedBean?: { publishableKey?: string };
-      updatedAt?: string;
-    };
-
-    expect(storedValue.greenBean?.projectUrl).toBe('http://127.0.0.1:8091');
-    expect(storedValue.roastedBean?.publishableKey).toBe('local-access-roasted');
-    expect(storedValue.updatedAt).toEqual(expect.any(String));
+    expect(await screen.findByText('已连通')).toBeInTheDocument();
   });
 
-  it('allows leaving the roasted bean database blank', async () => {
-    renderWithQuery(<SettingsPage />);
-    await expandSection('生豆 PocketBase');
-    await expandSection('熟豆 PocketBase');
-
-    fireEvent.change(screen.getByLabelText('PocketBase 地址', { selector: '#green-bean-project-url' }), {
-      target: { value: 'http://127.0.0.1:8091' },
+  it('rehydrates roasted bean supabase settings from remote storage after refresh', async () => {
+    syncFromRemoteSafelyMock.mockResolvedValueOnce({
+      greenBean: {
+        projectUrl: 'http://81.70.224.75',
+        publishableKey: 'local-access',
+      },
+      roastedBean: {
+        projectUrl: 'https://demo.supabase.co',
+        publishableKey: 'sb_publishable_demo',
+      },
+      updatedAt: null,
     });
-    fireEvent.change(
-      screen.getByLabelText('访问密钥', { selector: '#green-bean-publishable-key' }),
-      {
-        target: { value: 'local-access-green' },
-      },
-    );
-    fireEvent.change(
-      screen.getByLabelText('PocketBase 地址', { selector: '#roasted-bean-project-url' }),
-      {
-        target: { value: '' },
-      },
-    );
-    fireEvent.change(
-      screen.getByLabelText('访问密钥', { selector: '#roasted-bean-publishable-key' }),
-      {
-        target: { value: '' },
-      },
-    );
-    fireEvent.blur(
-      screen.getByLabelText('访问密钥', { selector: '#roasted-bean-publishable-key' }),
-    );
+
+    renderWithQuery(<SettingsPage />);
 
     await waitFor(() => {
-      const storedValue = window.localStorage.getItem(pocketBaseConnectionSettingsStorageKey);
-      expect(storedValue).not.toBeNull();
+      expect(document.getElementById('roasted-bean-project-url')).toHaveValue('https://demo.supabase.co');
+      expect(document.getElementById('roasted-bean-publishable-key')).toHaveValue('sb_publishable_demo');
     });
+
+    expect(await screen.findByText('已连通')).toBeInTheDocument();
   });
 
-  it('persists connection drafts even before the form is fully valid', async () => {
+  it('toggles the roasted bean connection card collapse button', async () => {
     renderWithQuery(<SettingsPage />);
-    await expandSection('熟豆 PocketBase');
 
-    fireEvent.change(
-      screen.getByLabelText('PocketBase 地址', { selector: '#roasted-bean-project-url' }),
-      {
-        target: { value: 'http://127.0.0.1:8091' },
-      },
-    );
-    fireEvent.blur(
-      screen.getByLabelText('PocketBase 地址', { selector: '#roasted-bean-project-url' }),
-    );
+    const card = screen.getByRole('heading', { name: '熟豆 Supabase 连接' }).closest('article');
+
+    expect(card).not.toBeNull();
+
+    if (card == null) {
+      throw new Error('roasted bean card not found');
+    }
+
+    const collapseButton = within(card).getByRole('button', { name: '收起' });
+
+    fireEvent.click(collapseButton);
 
     await waitFor(() => {
-      const storedValue = JSON.parse(
-        window.localStorage.getItem(pocketBaseConnectionSettingsStorageKey) ?? '{}',
-      ) as {
-        roastedBean?: { projectUrl?: string };
-      };
-
-      expect(storedValue.roastedBean?.projectUrl).toBe('http://127.0.0.1:8091');
-    });
-  });
-
-  it('does not persist PocketBase connection inputs before blur', async () => {
-    renderWithQuery(<SettingsPage />);
-    await expandSection('生豆 PocketBase');
-
-    fireEvent.change(screen.getByLabelText('PocketBase 地址', { selector: '#green-bean-project-url' }), {
-      target: { value: 'http://127.0.0.1:8091' },
+      expect(card.getAttribute('data-collapsed')).toBe('true');
     });
 
-    expect(window.localStorage.getItem(pocketBaseConnectionSettingsStorageKey)).toBeNull();
-  });
-
-  it('shows local cache sync status at the bottom of the page', () => {
-    window.localStorage.setItem(
-      pocketBaseConnectionSettingsStorageKey,
-      JSON.stringify({
-        greenBean: {
-          projectUrl: 'http://127.0.0.1:8091',
-          publishableKey: 'local-access-green',
-        },
-        roastedBean: {
-          projectUrl: '',
-          publishableKey: '',
-        },
-        updatedAt: '2026-06-28T12:00:00.000Z',
-      }),
-    );
-    window.localStorage.setItem(
-      beanCacheStorageKey,
-      JSON.stringify({
-        beans: [
-          {
-            id: 'bean-1',
-            name: '测试生豆',
-            origin: '埃塞俄比亚 · 古吉',
-            process: '水洗',
-            grade: 'G1',
-            stockKg: 12,
-            costPerKg: 86,
-            createdAt: '2026-06-28T10:00:00.000Z',
-            updatedAt: '2026-06-28T10:00:00.000Z',
-          },
-        ],
-        errorCode: null,
-        lastReadAt: '2026-06-28T11:00:00.000Z',
-        source: 'pocketbase',
-        status: 'cached',
-        syncedAt: '2026-06-28T11:00:00.000Z',
-        version: 1,
-      }),
-    );
-
-    renderWithQuery(<SettingsPage />);
-
-    expect(screen.queryByRole('heading', { name: '当前数据同步状态' })).not.toBeInTheDocument();
-    expect(screen.getAllByText('已连接').length).toBeGreaterThan(0);
-    expect(screen.queryByText('最近同步')).not.toBeInTheDocument();
-    expect(screen.queryByText('生豆连接')).not.toBeInTheDocument();
-    expect(screen.queryByText('熟豆连接')).not.toBeInTheDocument();
-  });
-
-  it('does not show a warning when the remote bean database is simply empty', () => {
-    window.localStorage.setItem(
-      pocketBaseConnectionSettingsStorageKey,
-      JSON.stringify({
-        greenBean: {
-          projectUrl: 'http://127.0.0.1:8091',
-          publishableKey: 'local-access-green',
-        },
-        roastedBean: {
-          projectUrl: '',
-          publishableKey: '',
-        },
-        updatedAt: '2026-06-28T12:00:00.000Z',
-      }),
-    );
-    window.localStorage.setItem(
-      beanCacheStorageKey,
-      JSON.stringify({
-        beans: [],
-        errorCode: null,
-        lastReadAt: '2026-06-28T11:00:00.000Z',
-        source: 'pocketbase',
-        status: 'empty',
-        syncedAt: '2026-06-28T11:00:00.000Z',
-        version: 1,
-      }),
-    );
-
-    renderWithQuery(<SettingsPage />);
-
-    expect(screen.queryByText('网络连接异常，请检查当前网络或 PocketBase 服务可达性。')).not.toBeInTheDocument();
-    expect(screen.getAllByText('已连接').length).toBeGreaterThan(0);
-  });
-
-  it('shows connected status when local PocketBase config is present', () => {
-    window.localStorage.setItem(
-      beanCacheStorageKey,
-      JSON.stringify({
-        beans: [],
-        errorCode: null,
-        lastReadAt: '2026-06-28T11:00:00.000Z',
-        source: 'pocketbase',
-        status: 'empty',
-        syncedAt: '2026-06-28T11:00:00.000Z',
-        version: 1,
-      }),
-    );
-
-    renderWithQuery(<SettingsPage />);
-
-    expect(screen.getAllByText('已连接').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('已连接').length).toBeGreaterThan(0);
-  });
-
-  it('shows connection tags inside each database card and removes footer buttons', async () => {
-    renderWithQuery(<SettingsPage />);
-
-    const greenBeanSection = await expandSection('生豆 PocketBase');
-    const roastedBeanSection = await expandSection('熟豆 PocketBase');
-
-    expect(within(greenBeanSection).getByText('已连接')).toBeInTheDocument();
-    expect(within(greenBeanSection).getByRole('button', { name: /完全同步/ })).not.toBeDisabled();
-    expect(within(roastedBeanSection).getByText('已连接')).toBeInTheDocument();
-    expect(
-      within(roastedBeanSection).getByRole('button', { name: /复制熟豆 PocketBase 后台地址/ }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '保存设置' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '清空配置' })).not.toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: '展开' })).toBeInTheDocument();
   });
 
   it('allows clearing the default cost template without removing the template', async () => {
-    window.localStorage.setItem(
-      costTemplateSettingsStorageKey,
-      JSON.stringify({
-        defaultTemplateId: 'template-default',
-        templates: [
-          {
-            createdAt: '2026-07-07T10:00:00.000Z',
-            dehydrationRate: 14,
-            energyCost: 0,
-            id: 'template-default',
-            laborCost: 0,
-            name: 'test-成本',
-            notes: '',
-            otherCost: 0,
-            packagingCost: 0,
-            roastInputWeightGrams: 200,
-            saleUnitWeightGrams: 100,
-            targetProfitRate: 30,
-            updatedAt: '2026-07-07T10:00:00.000Z',
-          },
-        ],
-        updatedAt: '2026-07-07T10:00:00.000Z',
-      }),
-    );
+    costTemplateSettingsService.save({
+      defaultTemplateId: 'template-default',
+      templates: [
+        {
+          createdAt: '2026-07-07T10:00:00.000Z',
+          dehydrationRate: 14,
+          energyCost: 0,
+          id: 'template-default',
+          laborCost: 0,
+          name: 'test-成本',
+          notes: '',
+          otherCost: 0,
+          packagingCost: 0,
+          roastInputWeightGrams: 200,
+          saleUnitWeightGrams: 100,
+          targetProfitRate: 30,
+          updatedAt: '2026-07-07T10:00:00.000Z',
+        },
+      ],
+      updatedAt: '2026-07-07T10:00:00.000Z',
+    });
 
     renderWithQuery(<SettingsPage />);
     const section = await expandSection('成本模板');
@@ -353,30 +239,22 @@ describe('SettingsPage', () => {
     fireEvent.click(within(templateCard).getByRole('button', { name: '取消默认' }));
 
     await waitFor(() => {
-      const storedValue = JSON.parse(window.localStorage.getItem(costTemplateSettingsStorageKey) ?? '{}') as {
-        defaultTemplateId?: null | string;
-      };
-
-      expect(storedValue.defaultTemplateId).toBeNull();
+      expect(useSettingsStore.getState().costTemplateSettings.defaultTemplateId).toBeNull();
     });
 
     expect(within(templateCard).queryByText('默认模板')).not.toBeInTheDocument();
     expect(within(templateCard).getByRole('button', { name: '设为默认' })).toBeInTheDocument();
   });
 
-  it('keeps the build version label in sync with localStorage updates', async () => {
-    window.localStorage.setItem(
-      appBuildVersionStorageKey,
-      '0.1.0-initial',
-    );
+  it('keeps the build version label in sync with runtime version updates', async () => {
+    appBuildVersionService.save('0.1.0-initial');
 
     renderWithQuery(<SettingsPage />);
 
     expect(screen.getByText('当前 Web 上传版本：0.1.0-initial')).toBeInTheDocument();
 
     act(() => {
-      window.localStorage.setItem(appBuildVersionStorageKey, '0.1.0-updated');
-      window.dispatchEvent(new CustomEvent(appBuildVersionUpdatedEventName));
+      appBuildVersionService.save('0.1.0-updated');
     });
 
     expect(await screen.findByText('当前 Web 上传版本：0.1.0-updated')).toBeInTheDocument();

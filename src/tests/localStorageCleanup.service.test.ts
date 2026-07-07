@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
 
 describe('localStorageCleanupService', () => {
-  it('removes obsolete app-prefixed keys and preserves active keys', () => {
+  it('removes every app-prefixed key and preserves third-party keys', () => {
     window.localStorage.clear();
     window.localStorage.setItem('coffee-roasting-backstage:cost-templates', '{"templates":[]}');
     window.localStorage.setItem('coffee-roasting-backstage:cost-templates:backup', 'legacy');
@@ -14,11 +14,12 @@ describe('localStorageCleanupService', () => {
     const removedKeys = localStorageCleanupService.cleanupObsoleteKeys();
 
     expect(removedKeys.sort()).toEqual([
+      'coffee-roasting-backstage:cost-templates',
       'coffee-roasting-backstage:cost-templates:backup',
       'coffee-roasting-backstage:submission-backups',
       'coffee-roasting-backstage:unknown-key',
     ]);
-    expect(window.localStorage.getItem('coffee-roasting-backstage:cost-templates')).toBe('{"templates":[]}');
+    expect(window.localStorage.getItem('coffee-roasting-backstage:cost-templates')).toBeNull();
     expect(window.localStorage.getItem('third-party:key')).toBe('keep');
   });
 
@@ -32,7 +33,7 @@ describe('localStorageCleanupService', () => {
 
     expect(removedKeys).toContain('coffee-roasting-backstage:cost-templates');
     expect(window.localStorage.getItem('coffee-roasting-backstage:cost-templates')).toBeNull();
-    expect(window.localStorage.getItem('coffee-roasting-backstage:app-display-settings')).toBe('{"theme":"light"}');
-    expect(window.localStorage.getItem('coffee-roasting-backstage:pocketbase-connections')).toBe('{"greenBean":{}}');
+    expect(window.localStorage.getItem('coffee-roasting-backstage:app-display-settings')).toBeNull();
+    expect(window.localStorage.getItem('coffee-roasting-backstage:pocketbase-connections')).toBeNull();
   });
 });

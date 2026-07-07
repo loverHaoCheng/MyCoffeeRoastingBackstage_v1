@@ -1,17 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { seedBeans } from '@/modules/bean/constants';
-import { beanCacheService, beanCacheStorageKey } from '@/modules/bean/services';
+import { beanCacheService } from '@/modules/bean/services';
 
 describe('beanCacheService', () => {
-  it('persists bean cache to localStorage and returns status metadata', () => {
-    window.localStorage.clear();
+  it('keeps bean cache in runtime memory and returns status metadata', () => {
+    beanCacheService.clear();
 
     beanCacheService.save(seedBeans, 'mock');
 
-    const rawValue = window.localStorage.getItem(beanCacheStorageKey);
-
-    expect(rawValue).not.toBeNull();
     expect(beanCacheService.getBeans()).toHaveLength(seedBeans.length);
     expect(beanCacheService.getStatus()).toMatchObject({
       recordCount: seedBeans.length,
@@ -21,7 +18,7 @@ describe('beanCacheService', () => {
   });
 
   it('marks fallback without losing the cached beans', () => {
-    window.localStorage.clear();
+    beanCacheService.clear();
     beanCacheService.save(seedBeans.slice(0, 2), 'supabase');
 
     const cachedBeans = beanCacheService.markFallback('TIMEOUT');
@@ -36,7 +33,7 @@ describe('beanCacheService', () => {
   });
 
   it('stores a sync error even when there is no cached bean data', () => {
-    window.localStorage.clear();
+    beanCacheService.clear();
 
     beanCacheService.markFailure('NETWORK');
 

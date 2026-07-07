@@ -8,11 +8,8 @@ import {
 import { logger } from '@/shared/logger/logger';
 
 export const costTemplateSettingsStorageKey = 'coffee-roasting-backstage:cost-templates';
-const legacyCostTemplateSettingsBackupStorageKey = 'coffee-roasting-backstage:cost-templates:backup';
 
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
+let currentCostTemplateSettings: CostTemplateSettings = createDefaultCostTemplateSettings();
 
 const createTemplateId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -30,12 +27,7 @@ const normalizeTemplateInput = (values: CostTemplateFormValues): CostTemplateFor
 
 export const costTemplateSettingsService = {
   clear(): void {
-    if (!canUseStorage()) {
-      return;
-    }
-
-    window.localStorage.removeItem(costTemplateSettingsStorageKey);
-    window.localStorage.removeItem(legacyCostTemplateSettingsBackupStorageKey);
+    currentCostTemplateSettings = createDefaultCostTemplateSettings();
   },
   createTemplate(values: CostTemplateFormValues, templateId?: string, createdAt?: string): CostTemplate {
     const timestamp = new Date().toISOString();
@@ -49,51 +41,28 @@ export const costTemplateSettingsService = {
     };
   },
   load(): CostTemplateSettings {
-    if (!canUseStorage()) {
+    const result = costTemplateSettingsStorageSchema.safeParse(currentCostTemplateSettings);
+
+    if (!result.success) {
+      logger.warn('cost template settings memory state parse failed', {
+        issues: result.error.issues,
+      });
+      currentCostTemplateSettings = createDefaultCostTemplateSettings();
       return createDefaultCostTemplateSettings();
     }
 
-    const rawValue = window.localStorage.getItem(costTemplateSettingsStorageKey);
+    const hasDefaultTemplate =
+      result.data.defaultTemplateId == null ||
+      result.data.templates.some((template) => template.id === result.data.defaultTemplateId);
 
-    if (!rawValue) {
-      window.localStorage.removeItem(legacyCostTemplateSettingsBackupStorageKey);
-      return createDefaultCostTemplateSettings();
-    }
-
-    try {
-      const parsed = JSON.parse(rawValue) as unknown;
-      const result = costTemplateSettingsStorageSchema.safeParse(parsed);
-
-      if (!result.success) {
-        logger.warn('cost template settings parse failed', {
-          issues: result.error.issues,
-        });
-        return createDefaultCostTemplateSettings();
-      }
-
-      const hasDefaultTemplate =
-        result.data.defaultTemplateId == null ||
-        result.data.templates.some((template) => template.id === result.data.defaultTemplateId);
-
-      return {
-        defaultTemplateId: hasDefaultTemplate ? result.data.defaultTemplateId ?? null : null,
-        templates: result.data.templates,
-        updatedAt: result.data.updatedAt ?? null,
-      };
-    } catch (error) {
-      logger.error('cost template settings load failed', { error });
-      return createDefaultCostTemplateSettings();
-    }
+    return {
+      defaultTemplateId: hasDefaultTemplate ? result.data.defaultTemplateId ?? null : null,
+      templates: result.data.templates,
+      updatedAt: result.data.updatedAt ?? null,
+    };
   },
   save(settings: CostTemplateSettings): CostTemplateSettings {
-    if (!canUseStorage()) {
-      return settings;
-    }
-
-    const serialized = JSON.stringify(settings);
-
-    window.localStorage.setItem(costTemplateSettingsStorageKey, serialized);
-    window.localStorage.removeItem(legacyCostTemplateSettingsBackupStorageKey);
+    currentCostTemplateSettings = settings;
     logger.info('cost template settings saved', {
       templateCount: settings.templates.length,
       updatedAt: settings.updatedAt,

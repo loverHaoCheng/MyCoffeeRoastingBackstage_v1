@@ -2,9 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { BeanPage } from '@/modules/bean';
-import { beanCacheStorageKey } from '@/modules/bean/services';
-import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
-import { pocketBaseConnectionSettingsStorageKey } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { beanCacheService } from '@/modules/bean/services';
 import { useSettingsStore } from '@/modules/settings/store';
 import {
   createDefaultAppDisplaySettings,
@@ -16,6 +14,7 @@ import { renderWithQuery } from '@/tests/renderWithProviders';
 describe('BeanPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    beanCacheService.clear();
     useSettingsStore.setState({
       appDisplaySettings: createDefaultAppDisplaySettings(),
       costTemplateSettings: createDefaultCostTemplateSettings(),
@@ -24,67 +23,51 @@ describe('BeanPage', () => {
   });
 
   const saveBeanCache = (stockKg: number): void => {
-    window.localStorage.setItem(
-      beanCacheStorageKey,
-      JSON.stringify({
-        beans: [
-          {
-            costPerKg: 86,
-            createdAt: '2026-07-03T00:00:00.000Z',
-            grade: 'G1',
-            id: 'bean-zero-stock',
-            name: '零库存测试豆',
-            origin: '埃塞俄比亚 · 古吉',
-            process: '水洗',
-            stockKg,
-            updatedAt: '2026-07-03T00:00:00.000Z',
-          },
-        ],
-        errorCode: null,
-        lastReadAt: '2026-07-03T00:00:00.000Z',
-        source: 'mock',
-        status: stockKg > 0 ? 'cached' : 'empty',
-        syncedAt: '2026-07-03T00:00:00.000Z',
-        version: 1,
-      }),
+    beanCacheService.save(
+      [
+        {
+          costPerKg: 86,
+          createdAt: '2026-07-03T00:00:00.000Z',
+          grade: 'G1',
+          id: 'bean-zero-stock',
+          name: '零库存测试豆',
+          origin: '埃塞俄比亚 · 古吉',
+          process: '水洗',
+          stockKg,
+          updatedAt: '2026-07-03T00:00:00.000Z',
+        },
+      ],
+      'mock',
     );
   };
 
   const saveBeanSummaryCache = (): void => {
-    window.localStorage.setItem(
-      beanCacheStorageKey,
-      JSON.stringify({
-        beans: [
-          {
-            costPerKg: 100,
-            createdAt: '2026-07-03T00:00:00.000Z',
-            grade: 'G1',
-            id: 'bean-a',
-            name: '测试豆 A',
-            origin: '埃塞俄比亚 · 古吉',
-            process: '水洗',
-            stockKg: 1,
-            updatedAt: '2026-07-03T00:00:00.000Z',
-          },
-          {
-            costPerKg: 200,
-            createdAt: '2026-07-03T00:00:00.000Z',
-            grade: 'G1',
-            id: 'bean-b',
-            name: '测试豆 B',
-            origin: '哥伦比亚 · 慧兰',
-            process: '日晒',
-            stockKg: 9,
-            updatedAt: '2026-07-03T00:00:00.000Z',
-          },
-        ],
-        errorCode: null,
-        lastReadAt: '2026-07-03T00:00:00.000Z',
-        source: 'mock',
-        status: 'cached',
-        syncedAt: '2026-07-03T00:00:00.000Z',
-        version: 1,
-      }),
+    beanCacheService.save(
+      [
+        {
+          costPerKg: 100,
+          createdAt: '2026-07-03T00:00:00.000Z',
+          grade: 'G1',
+          id: 'bean-a',
+          name: '测试豆 A',
+          origin: '埃塞俄比亚 · 古吉',
+          process: '水洗',
+          stockKg: 1,
+          updatedAt: '2026-07-03T00:00:00.000Z',
+        },
+        {
+          costPerKg: 200,
+          createdAt: '2026-07-03T00:00:00.000Z',
+          grade: 'G1',
+          id: 'bean-b',
+          name: '测试豆 B',
+          origin: '哥伦比亚 · 慧兰',
+          process: '日晒',
+          stockKg: 9,
+          updatedAt: '2026-07-03T00:00:00.000Z',
+        },
+      ],
+      'mock',
     );
   };
 
@@ -110,47 +93,6 @@ describe('BeanPage', () => {
   });
 
   it('renders the bean page workspace shell', async () => {
-    window.localStorage.setItem(
-      pocketBaseConnectionSettingsStorageKey,
-      JSON.stringify({
-        greenBean: {
-          projectUrl: 'https://green-demo.pocketbase.local',
-          publishableKey: 'local-access',
-        },
-        roastedBean: {
-          projectUrl: '',
-          publishableKey: '',
-        },
-        updatedAt: '2026-07-03T00:00:00.000Z',
-      }),
-    );
-    window.localStorage.setItem(
-      costTemplateSettingsStorageKey,
-      JSON.stringify({
-        defaultTemplateId: 'template-1',
-        templates: [
-          {
-            id: 'template-1',
-            name: '默认模板',
-            notes: '',
-            roastInputWeightGrams: 200,
-            saleUnitWeightGrams: 100,
-            dehydrationRate: 14,
-            packagingCost: 0,
-            energyCost: 0,
-            laborCost: 0,
-            otherCost: 0,
-            targetProfitRate: 30,
-            createdAt: '2026-07-03T00:00:00.000Z',
-            updatedAt: '2026-07-03T00:00:00.000Z',
-          },
-        ],
-        updatedAt: '2026-07-03T00:00:00.000Z',
-      }),
-    );
-    useSettingsStore.getState().loadPocketBaseConnections();
-    useSettingsStore.getState().loadCostTemplates();
-
     renderWithQuery(<BeanPage />);
 
     expect(await screen.findByText('没有匹配的生豆批次')).toBeInTheDocument();
@@ -181,7 +123,7 @@ describe('BeanPage', () => {
 
     firstRender.unmount();
 
-    window.localStorage.clear();
+    beanCacheService.clear();
     useSettingsStore.setState({
       appDisplaySettings: createDefaultAppDisplaySettings(),
       costTemplateSettings: createDefaultCostTemplateSettings(),

@@ -19,7 +19,7 @@ const getUnknownErrorMessage = (error: unknown, fallbackMessage: string): string
     }
 
     if (isGenericFetchFailure(message)) {
-      return '无法连接到 PocketBase 服务，请检查设置页中的地址、服务是否启动或当前网络是否可用。';
+      return '无法连接到 PocketBase 服务，请检查设置页中的服务器地址、服务是否启动或当前网络是否可用。';
     }
 
     return message;
@@ -38,7 +38,7 @@ export const getUserFacingErrorMessage = (
 
   switch (error.code) {
     case 'CONFIG':
-      return '数据库连接配置不完整，请先在设置页填写正确的 PocketBase 地址。';
+      return '数据库连接配置不完整，请先在设置页填写正确的 PocketBase 服务器地址。';
     case 'AUTH':
       if (error.status === 401) {
         return '登录失败，邮箱或密码不正确，请重新输入。';
@@ -56,7 +56,7 @@ export const getUserFacingErrorMessage = (
     case 'DATA':
       return error.message || '数据库返回的数据结构与前端预期不一致，请检查表结构、视图或字段映射。';
     case 'NETWORK':
-      return error.message || '无法连接到 PocketBase 服务，请检查地址配置、服务状态或当前网络。';
+      return error.message || '无法连接到 PocketBase 服务，请检查服务器地址配置、服务状态或当前网络。';
     case 'HTTP':
       return error.message || fallbackMessage;
     case 'BUSINESS':

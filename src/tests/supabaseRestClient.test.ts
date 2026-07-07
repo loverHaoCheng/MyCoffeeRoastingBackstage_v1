@@ -21,7 +21,7 @@ describe('SupabaseRestClient', () => {
       { id: 'bean-default', display_name: 'Default URL Bean' },
     ]);
     expect(fetcher).toHaveBeenCalledWith(
-      expect.stringContaining('http://127.0.0.1:8090/api/collections/green_beans/records'),
+      expect.stringContaining('http://81.70.224.75/api/collections/green_beans/records'),
       expect.objectContaining({
         method: 'GET',
       }),

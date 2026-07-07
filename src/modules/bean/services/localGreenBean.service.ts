@@ -14,11 +14,7 @@ interface LocalGreenBeanSnapshot {
 
 const LOCAL_GREEN_BEAN_VERSION = 1;
 export const localGreenBeanStorageKey = 'coffee-roasting-backstage:local-green-beans';
-const legacyLocalGreenBeanBackupStorageKey = 'coffee-roasting-backstage:local-green-beans:backup';
-
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
+let currentLocalGreenBeanSnapshot: LocalGreenBeanSnapshot | null = null;
 
 const normalizeText = (value: null | string | undefined): null | string => {
   const nextValue = value?.trim() ?? '';
@@ -93,40 +89,18 @@ const isLocalGreenBeanSnapshot = (value: unknown): value is LocalGreenBeanSnapsh
 };
 
 const loadSnapshot = (): LocalGreenBeanSnapshot | null => {
-  if (!canUseStorage()) {
+  if (!currentLocalGreenBeanSnapshot || !isLocalGreenBeanSnapshot(currentLocalGreenBeanSnapshot)) {
     return null;
   }
 
-  const rawValue = window.localStorage.getItem(localGreenBeanStorageKey);
-
-  if (!rawValue) {
-    window.localStorage.removeItem(legacyLocalGreenBeanBackupStorageKey);
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue) as unknown;
-
-    if (!isLocalGreenBeanSnapshot(parsed)) {
-      return null;
-    }
-
-    return {
-      ...parsed,
-      records: parsed.records.map(normalizeLocalGreenBeanRecord),
-    };
-  } catch {
-    return null;
-  }
+  return {
+    ...currentLocalGreenBeanSnapshot,
+    records: currentLocalGreenBeanSnapshot.records.map(normalizeLocalGreenBeanRecord),
+  };
 };
 
 const saveSnapshot = (snapshot: LocalGreenBeanSnapshot): void => {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.setItem(localGreenBeanStorageKey, JSON.stringify(snapshot));
-  window.localStorage.removeItem(legacyLocalGreenBeanBackupStorageKey);
+  currentLocalGreenBeanSnapshot = snapshot;
 };
 
 const saveRecords = (records: LocalGreenBeanRecord[]): void => {
@@ -194,12 +168,7 @@ export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bea
 
 export const localGreenBeanService = {
   clear(): void {
-    if (!canUseStorage()) {
-      return;
-    }
-
-    window.localStorage.removeItem(localGreenBeanStorageKey);
-    window.localStorage.removeItem(legacyLocalGreenBeanBackupStorageKey);
+    currentLocalGreenBeanSnapshot = null;
   },
   create(input: GreenBeanCreateInput): LocalGreenBeanRecord {
     const currentRecords = this.listRecords();

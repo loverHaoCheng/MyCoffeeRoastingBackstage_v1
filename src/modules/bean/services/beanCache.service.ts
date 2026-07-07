@@ -24,12 +24,9 @@ export interface BeanCacheStatus {
 
 const BEAN_CACHE_VERSION = 1;
 export const beanCacheStorageKey = 'coffee-roasting-backstage:beans-cache';
-const legacyBeanCacheBackupStorageKey = 'coffee-roasting-backstage:beans-cache:backup';
 export const beanCacheUpdatedEventName = 'coffee-roasting-backstage:beans-cache-updated';
 
-const canUseStorage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-};
+let currentBeanCacheSnapshot: BeanCacheSnapshot | null = null;
 
 const isBeanLike = (value: unknown): value is Bean => {
   if (typeof value !== 'object' || value == null) {
@@ -82,48 +79,21 @@ const emitUpdate = (): void => {
 };
 
 const loadSnapshot = (): BeanCacheSnapshot | null => {
-  if (!canUseStorage()) {
+  if (!currentBeanCacheSnapshot || !isBeanCacheSnapshot(currentBeanCacheSnapshot)) {
     return null;
   }
 
-  const rawValue = window.localStorage.getItem(beanCacheStorageKey);
-
-  if (!rawValue) {
-    window.localStorage.removeItem(legacyBeanCacheBackupStorageKey);
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue) as unknown;
-
-    if (!isBeanCacheSnapshot(parsed)) {
-      return null;
-    }
-
-    return parsed;
-  } catch {
-    return null;
-  }
+  return currentBeanCacheSnapshot;
 };
 
 const saveSnapshot = (snapshot: BeanCacheSnapshot): void => {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.setItem(beanCacheStorageKey, JSON.stringify(snapshot));
-  window.localStorage.removeItem(legacyBeanCacheBackupStorageKey);
+  currentBeanCacheSnapshot = snapshot;
   emitUpdate();
 };
 
 export const beanCacheService = {
   clear(): void {
-    if (!canUseStorage()) {
-      return;
-    }
-
-    window.localStorage.removeItem(beanCacheStorageKey);
-    window.localStorage.removeItem(legacyBeanCacheBackupStorageKey);
+    currentBeanCacheSnapshot = null;
     emitUpdate();
   },
   getBeans(): Bean[] | null {
