@@ -1,17 +1,17 @@
 # PocketBase 服务器优先配置
 
-这份说明用于服务器 `PocketBase/` 目录初始化，也适用于后续迁腾讯云 CVM。
+这份说明用于服务器侧 PocketBase 集合、权限和部署结构初始化。
 
 ## 目标
 
 - 让当前项目先在服务器 PocketBase 跑通注册、登录和用户隔离。
 - 让每个业务 collection 都带 `owner`，确保“每个用户只能看自己的数据”。
-- 让本地与云端保持同一套 collection 命名和权限规则。
+- 让当前项目与服务器上的 PocketBase 保持同一套 collection 命名和权限规则。
 
 ## 运行前提
 
-- PocketBase 二进制放在仓库根目录的 `PocketBase/pocketbase`。
-- 数据目录放在 `PocketBase/data`。
+- 服务器上已经有可访问的 PocketBase 服务。
+- 可通过 PocketBase Dashboard 或 API 管理集合与权限。
 - 前端通过 `VITE_PB_URL=http://81.70.224.75` 连接服务器服务。
 
 ## 当前客户端兼容约定
@@ -278,8 +278,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 
 ## 腾讯云部署建议
 
-- CVM 上保持同样目录结构：`PocketBase/pocketbase` + `PocketBase/data`
-- 数据目录单独挂载持久化盘
+- 服务器侧数据目录单独挂载持久化盘
 - 前面挂 Nginx，统一做 HTTPS 和域名
-- 部署后只切 `VITE_PB_URL`
-- 备份时直接打包 `PocketBase/data`
+- 前端或 BFF 部署后只需要切 `VITE_PB_URL` / `PB_BASE_URL`
+- 备份以服务器上的 PocketBase 数据目录为准

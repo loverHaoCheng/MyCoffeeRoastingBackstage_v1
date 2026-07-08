@@ -35,15 +35,15 @@ describe('pocketBaseConnectionSettingsService', () => {
     expect(result.roastedBean.projectUrl).toBe('');
   });
 
-  it('strips legacy placeholder values from roasted bean connections', () => {
+  it('keeps explicit non-supabase roasted bean project urls as-is', () => {
     pocketBaseConnectionSettingsService.save({
         greenBean: {
-          projectUrl: 'http://127.0.0.1:8090',
-          publishableKey: 'legacy-local-access',
+          projectUrl: 'http://81.70.224.75',
+          publishableKey: '',
         },
         roastedBean: {
-          projectUrl: 'http://127.0.0.1:8090',
-          publishableKey: 'legacy-local-access',
+          projectUrl: 'https://mirror.example.com',
+          publishableKey: 'mirror-key',
         },
         updatedAt: '2026-07-07T12:00:00.000Z',
       });
@@ -51,8 +51,8 @@ describe('pocketBaseConnectionSettingsService', () => {
     const result = pocketBaseConnectionSettingsService.load();
 
     expect(result.greenBean.projectUrl).toBe('http://81.70.224.75');
-    expect(result.roastedBean.projectUrl).toBe('');
-    expect(result.roastedBean.publishableKey).toBe('');
+    expect(result.roastedBean.projectUrl).toBe('https://mirror.example.com');
+    expect(result.roastedBean.publishableKey).toBe('mirror-key');
   });
 
   it('keeps roasted bean supabase project urls instead of normalizing them to pocketbase defaults', () => {

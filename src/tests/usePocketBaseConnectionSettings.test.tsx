@@ -33,8 +33,8 @@ describe('usePocketBaseConnectionSettings', () => {
       pocketBaseConnections: {
         ...createDefaultPocketBaseConnectionSettings(),
         greenBean: {
-          projectUrl: 'http://127.0.0.1:8090',
-          publishableKey: 'local-access',
+          projectUrl: 'http://81.70.224.75',
+          publishableKey: '',
         },
       },
     });
@@ -44,7 +44,7 @@ describe('usePocketBaseConnectionSettings', () => {
     render(<HookHarness />);
 
     expect(screen.getByTestId('green-bean-url')).toHaveTextContent(
-      'http://127.0.0.1:8090',
+      'http://81.70.224.75',
     );
     expect(screen.getByTestId('aliases-ready')).toHaveTextContent(
       'function,function,function',

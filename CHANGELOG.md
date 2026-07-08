@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 新增 `GPL-3.0-only` 开源协议文件，并同步更新 `package.json` 与 `README` 的许可证说明。
 - 新增同源 `/api/auth/*` 登录态网关，支持通过 `HttpOnly Cookie` 恢复 PocketBase 登录态。
 - 前端启动时自动拉取会话并恢复登录，关闭浏览器后下次打开仍可保持登录状态。
 - 新增 PocketBase auth BFF 的构建、启动和开发脚本，以及对应的 Nginx 代理说明。

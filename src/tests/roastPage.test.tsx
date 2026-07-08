@@ -142,7 +142,7 @@ describe('RoastPage', () => {
       JSON.stringify({
         greenBean: {
           projectUrl: 'https://green-demo.pocketbase.local',
-          publishableKey: 'local-access',
+          publishableKey: '',
         },
         roastedBean: {
           projectUrl: '',

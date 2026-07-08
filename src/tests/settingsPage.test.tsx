@@ -21,7 +21,7 @@ const { syncFromRemoteSafelyMock } = vi.hoisted(() => ({
   syncFromRemoteSafelyMock: vi.fn().mockResolvedValue({
     greenBean: {
       projectUrl: 'http://81.70.224.75',
-      publishableKey: 'local-access',
+      publishableKey: '',
     },
     roastedBean: {
       projectUrl: '',
@@ -100,7 +100,7 @@ describe('SettingsPage', () => {
     syncFromRemoteSafelyMock.mockResolvedValue({
       greenBean: {
         projectUrl: 'http://81.70.224.75',
-        publishableKey: 'local-access',
+        publishableKey: '',
       },
       roastedBean: {
         projectUrl: '',
@@ -192,7 +192,7 @@ describe('SettingsPage', () => {
     syncFromRemoteSafelyMock.mockResolvedValueOnce({
       greenBean: {
         projectUrl: 'http://81.70.224.75',
-        publishableKey: 'local-access',
+        publishableKey: '',
       },
       roastedBean: {
         projectUrl: 'https://demo.supabase.co',

@@ -17,7 +17,7 @@ describe('beanSyncService', () => {
       pocketBaseConnectionSettingsStorageKey,
       JSON.stringify({
         greenBean: {
-          projectUrl: 'http://127.0.0.1:8090',
+          projectUrl: 'http://81.70.224.75',
           publishableKey: '',
         },
         roastedBean: {

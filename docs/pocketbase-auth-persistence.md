@@ -58,21 +58,15 @@ systemctl reload nginx
 3. 重新打开浏览器并访问应用。
 4. 如果网络和 PocketBase 正常，页面会自动恢复到已登录状态。
 
-## 本地开发步骤
+## 开发环境步骤
 
-### 1. 启动 PocketBase
-
-```bash
-npm run pb:serve
-```
-
-### 2. 启动前端
+### 1. 启动前端
 
 ```bash
 npm run dev
 ```
 
-开发环境下，Vite 会直接挂载同一套 `/api/auth/*` 网关处理器，不需要额外启动 `auth:bff:start`。
+开发环境下，Vite 会直接挂载同一套 `/api/auth/*` 网关处理器，不需要额外启动 `auth:bff:start`。前提是服务器上的 PocketBase 已可访问。
 
 如果要验证服务器部署形态，可以单独运行：
 

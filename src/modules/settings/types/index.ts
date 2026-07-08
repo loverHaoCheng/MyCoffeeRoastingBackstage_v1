@@ -55,7 +55,7 @@ export const normalizeRoastedBeanPocketBaseProjectConnection = (
   if (!projectUrl) {
     return {
       projectUrl: '',
-      publishableKey: publishableKey === 'local-access' ? '' : publishableKey,
+      publishableKey,
     };
   }
 
@@ -68,7 +68,7 @@ export const normalizeRoastedBeanPocketBaseProjectConnection = (
 
   return {
     projectUrl,
-    publishableKey: publishableKey === 'local-access' ? '' : publishableKey,
+    publishableKey,
   };
 };
 
@@ -281,7 +281,7 @@ export const normalizeAppDisplaySettings = (
 
 export const createEmptyPocketBaseProjectConnection = (): PocketBaseProjectConnection => ({
   projectUrl: resolvePocketBaseBaseUrl(),
-  publishableKey: 'local-access',
+  publishableKey: '',
 });
 
 export const createEmptyRoastedBeanPocketBaseProjectConnection = (): PocketBaseProjectConnection => ({

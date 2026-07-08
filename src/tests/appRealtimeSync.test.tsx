@@ -89,7 +89,7 @@ describe('AppRealtimeSync', () => {
     FakeEventSource.instances = [];
     useAuthStore.setState({
       session: {
-        baseUrl: 'http://127.0.0.1:8090',
+        baseUrl: 'http://81.70.224.75',
         token: 'test-token',
         updatedAt: new Date().toISOString(),
         user: {
@@ -104,7 +104,7 @@ describe('AppRealtimeSync', () => {
       },
     });
     pocketBaseSessionService.save({
-      baseUrl: 'http://127.0.0.1:8090',
+      baseUrl: 'http://81.70.224.75',
       token: 'test-token',
       user: {
         email: 'tester@example.com',

@@ -93,7 +93,7 @@ describe('SupabaseRestClient', () => {
     );
     const client = new SupabaseRestClient({
       fetcher,
-      projectUrl: 'http://127.0.0.1:8090',
+      projectUrl: 'http://81.70.224.75',
       publishableKey: '',
     });
 
@@ -123,7 +123,7 @@ describe('SupabaseRestClient', () => {
             status: 400,
           }),
         ),
-      projectUrl: 'http://127.0.0.1:8090',
+      projectUrl: 'http://81.70.224.75',
       publishableKey: '',
     });
 
@@ -150,7 +150,7 @@ describe('SupabaseRestClient', () => {
             status: 400,
           }),
         ),
-      projectUrl: 'http://127.0.0.1:8090',
+      projectUrl: 'http://81.70.224.75',
       publishableKey: '',
     });
 
