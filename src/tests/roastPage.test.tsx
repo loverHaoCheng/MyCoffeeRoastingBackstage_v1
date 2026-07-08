@@ -245,10 +245,8 @@ describe('RoastPage', () => {
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
     expect(screen.queryByLabelText('生豆名称')).not.toBeInTheDocument();
 
-    const deleteButton = screen.getByRole('button', { name: '删除计划' });
     const saveButton = screen.getByRole('button', { name: '保存计划' });
 
-    expect(deleteButton).toBeInTheDocument();
     expect(screen.getByText('烘焙节点')).toBeInTheDocument();
     expect(screen.getAllByText('火力')[0]).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '上移节点 1' })).toBeDisabled();
@@ -290,6 +288,15 @@ describe('RoastPage', () => {
     expect(screen.queryByRole('button', { name: '保存计划' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '删除计划' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '添加节点' })).not.toBeInTheDocument();
+  });
+
+  it('opens the full roast plan form from the card level edit button', () => {
+    renderWithQuery(<RoastPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '全部编辑 肯尼亚 柏拉 AA Plus SL28 SL34 水洗' }));
+
+    expect(screen.getByText('编辑烘焙计划')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '保存计划' })).toBeInTheDocument();
   });
 
   it('renders the roast history workspace shell', () => {

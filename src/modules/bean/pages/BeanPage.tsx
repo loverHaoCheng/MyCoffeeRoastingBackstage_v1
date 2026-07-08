@@ -109,6 +109,12 @@ export function BeanPage() {
     setDetailMode('edit');
   };
 
+  const handleEditBeanAll = (beanId: Bean['id']) => {
+    setSelectedBeanId(beanId);
+    setSelectedBeanFieldPath(undefined);
+    setDetailMode('edit');
+  };
+
   const handleDeleteBean = (bean: Bean) => {
     modal.confirm({
       centered: true,
@@ -228,6 +234,7 @@ export function BeanPage() {
               handleDeleteBean(bean);
             }}
             onEdit={handleEditBean}
+            onEditAll={handleEditBeanAll}
             onView={handleViewBean}
           />
         ))}
@@ -270,6 +277,7 @@ export function BeanPage() {
                         handleDeleteBean(bean);
                       }}
                       onEdit={handleEditBean}
+                      onEditAll={handleEditBeanAll}
                       onView={handleViewBean}
                     />
                   ))}
@@ -331,14 +339,18 @@ export function BeanPage() {
           setSelectedBeanFieldPath(undefined);
           setDetailMode(null);
         }}
-        open={selectedBean !== null && detailMode === 'view'}
+        open={
+          selectedBean !== null &&
+          (detailMode === 'view' || (detailMode === 'edit' && selectedBeanFieldPath == null))
+        }
         placement={isWide ? 'right' : 'bottom'}
-        title="查看生豆详情"
+        title={detailMode === 'edit' ? '编辑生豆' : '查看生豆详情'}
         width={720}
       >
-        {selectedBean && detailMode === 'view' ? (
+        {selectedBean && (detailMode === 'view' || (detailMode === 'edit' && selectedBeanFieldPath == null)) ? (
           <BeanDetailDrawer
             bean={selectedBean}
+            focusFieldPath={selectedBeanFieldPath}
             mode={detailMode}
             onClose={() => {
               setSelectedBeanId(null);

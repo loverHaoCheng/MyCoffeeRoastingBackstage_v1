@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BeanInventoryCard } from '@/modules/bean/components/BeanInventoryCard';
 import { useSettingsStore } from '@/modules/settings/store';
@@ -115,5 +115,15 @@ describe('card display settings', () => {
     expect(screen.getByText('默认单份售价')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '展开' })).not.toBeInTheDocument();
     expect(container.textContent).toContain('默认单份重量');
+  });
+
+  it('wires the full edit button to the card callback', () => {
+    const onEditAll = vi.fn();
+
+    render(<BeanInventoryCard bean={createBean()} onEditAll={onEditAll} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试生豆' }));
+
+    expect(onEditAll).toHaveBeenCalledWith(1);
   });
 });

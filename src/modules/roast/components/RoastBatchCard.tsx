@@ -9,6 +9,7 @@ interface RoastBatchCardProps {
   batch: RoastBatchRecord;
   onDelete?: (batch: RoastBatchRecord) => void;
   onEdit?: (batchId: string, fieldPath?: RoastBatchEditableFieldPath) => void;
+  onEditAll?: (batchId: string) => void;
   onView?: (batchId: string) => void;
 }
 
@@ -26,7 +27,7 @@ const getText = (fallback: string, ...values: (string | null | undefined)[]): st
   return fallback;
 };
 
-export function RoastBatchCard({ batch, onDelete, onEdit, onView }: RoastBatchCardProps) {
+export function RoastBatchCard({ batch, onDelete, onEdit, onEditAll, onView }: RoastBatchCardProps) {
   const displayName = getText('未命名烘焙记录', batch.roastedBeanName, batch.greenBeanName);
   const subtitleDate = new Intl.DateTimeFormat('zh-CN', {
     day: '2-digit',
@@ -104,6 +105,13 @@ export function RoastBatchCard({ batch, onDelete, onEdit, onView }: RoastBatchCa
             }
           : undefined
       }
+      onEditAll={
+        onEditAll
+          ? () => {
+              onEditAll(batch.id);
+            }
+          : undefined
+      }
       onView={
         onView
           ? () => {
@@ -125,6 +133,7 @@ export function RoastBatchCard({ batch, onDelete, onEdit, onView }: RoastBatchCa
               : undefined,
         };
       })}
+      editAllLabel={`全部编辑 ${displayName}`}
       subtitle={`日期 ${subtitleDate}`}
       title={displayName}
     />

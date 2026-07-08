@@ -1,4 +1,4 @@
-import { DownOutlined } from '@ant-design/icons';
+import { DownOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
 import { App, Button, Grid, Input, InputNumber, Popconfirm, Radio, Select, Slider, Tag } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -122,7 +122,7 @@ export function SettingsPage() {
       displayScale: collapsedByDefault,
     };
   });
-  const refreshGreenBeanDependencies = useCallback(async (connectionSignature: string) => {
+  const refreshGreenBeanDependencies = useCallback((connectionSignature: string) => {
     if (!connectionSignature || lastGreenBeanRefreshSignatureRef.current === connectionSignature) {
       return;
     }
@@ -136,7 +136,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     loadAppDisplaySettings();
-    loadPocketBaseConnections();
+    void loadPocketBaseConnections();
     loadCostTemplates();
   }, [loadAppDisplaySettings, loadCostTemplates, loadPocketBaseConnections]);
 
@@ -149,7 +149,7 @@ export function SettingsPage() {
 
     const signature = JSON.stringify({ projectUrl });
 
-    void refreshGreenBeanDependencies(signature);
+    refreshGreenBeanDependencies(signature);
   }, [
     refreshGreenBeanDependencies,
     pocketBaseConnections.greenBean.projectUrl,
@@ -882,7 +882,11 @@ export function SettingsPage() {
 
           <DrawerActionBar compact>
             <Button onClick={handleCloseTemplateDrawer}>取消</Button>
-            <Button onClick={handleSaveTemplate} type="primary">
+            <Button
+              icon={isCreatingTemplate ? <PlusOutlined /> : <SaveOutlined />}
+              onClick={handleSaveTemplate}
+              type="primary"
+            >
               {isCreatingTemplate ? '创建模板' : '保存模板'}
             </Button>
           </DrawerActionBar>

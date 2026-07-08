@@ -1,5 +1,3 @@
-import { DeleteOutlined } from '@ant-design/icons';
-import { Button, Popconfirm } from 'antd';
 import { useMemo } from 'react';
 
 import { roastPlanStatusLabelMap } from '@/modules/roast/constants/roastPlanStatus';
@@ -14,12 +12,11 @@ import styles from './RoastPlanDetail.module.css';
 interface RoastPlanDetailProps {
   mode: 'view' | 'edit';
   onClose: () => void;
-  onDelete: (planId: RoastPlan['id']) => Promise<void> | void;
   onUpdate?: (planId: RoastPlan['id'], input: RoastPlanJsonInput) => Promise<void> | void;
   plan: RoastPlan;
 }
 
-export function RoastPlanDetail({ mode, onClose, onDelete, onUpdate, plan }: RoastPlanDetailProps) {
+export function RoastPlanDetail({ mode, onClose, onUpdate, plan }: RoastPlanDetailProps) {
   const initialValues = useMemo(() => roastPlanToJsonInput(plan), [plan]);
 
   const handleSubmit = (input: RoastPlanJsonInput) => {
@@ -90,21 +87,6 @@ export function RoastPlanDetail({ mode, onClose, onDelete, onUpdate, plan }: Roa
         onSubmit={handleSubmit}
         submitLabel="保存计划"
       />
-      <div className={styles.dangerZone}>
-        <Popconfirm
-          cancelText="取消"
-          okText="删除"
-          okButtonProps={{ danger: true }}
-          onConfirm={async () => {
-            await onDelete(plan.id);
-          }}
-          title="删除这个烘焙计划？"
-        >
-          <Button aria-label="删除计划" block danger icon={<DeleteOutlined />}>
-            删除计划
-          </Button>
-        </Popconfirm>
-      </div>
     </section>
   );
 }

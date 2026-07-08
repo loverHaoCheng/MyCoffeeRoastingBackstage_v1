@@ -195,7 +195,7 @@ export function RoastPlanFieldEditorDrawer({
       onSubmit={handleSubmit}
       open={open}
       placement={placement}
-      submitLabel={editableFieldPath === 'beanId' ? '设置' : `保存${fieldConfig.label}`}
+      submitLabel={`保存${fieldConfig.label}`}
       title={`修改${fieldConfig.label}`}
       width={width}
     >

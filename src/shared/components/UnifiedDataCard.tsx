@@ -1,4 +1,4 @@
-import { DeleteOutlined, DownOutlined, EyeOutlined, RightOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownOutlined, EditOutlined, ReadOutlined, RightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 
@@ -18,8 +18,10 @@ interface UnifiedDataCardProps {
   subtitle?: ReactNode;
   metaItems: UnifiedDataCardMetaItem[];
   previewMetaItems?: UnifiedDataCardMetaItem[];
+  onEditAll?: () => void;
   onView?: () => void;
   onDelete?: () => void;
+  editAllLabel?: string;
   deleteLabel?: string;
 }
 
@@ -32,8 +34,10 @@ export function UnifiedDataCard({
   subtitle,
   metaItems,
   previewMetaItems,
+  onEditAll,
   onView,
   onDelete,
+  editAllLabel,
   deleteLabel,
 }: UnifiedDataCardProps) {
   const [expandedLevel, setExpandedLevel] = useState<0 | 1 | 2>(0);
@@ -120,10 +124,25 @@ export function UnifiedDataCard({
             <Button
               aria-label={`查看 ${title}`}
               className={joinClassNames(styles.headerActionBtn, styles.viewBtn)}
-              icon={<EyeOutlined />}
+              icon={<ReadOutlined />}
               onClick={(event) => {
                 event.stopPropagation();
                 onView();
+              }}
+              shape="circle"
+              size="small"
+              type="text"
+            />
+          ) : null}
+
+          {onEditAll ? (
+            <Button
+              aria-label={editAllLabel ?? `全部编辑 ${title}`}
+              className={joinClassNames(styles.headerActionBtn, styles.editBtn)}
+              icon={<EditOutlined />}
+              onClick={(event) => {
+                event.stopPropagation();
+                onEditAll();
               }}
               shape="circle"
               size="small"

@@ -1,7 +1,7 @@
 import {
-  ApartmentOutlined,
   DatabaseOutlined,
   FireOutlined,
+  FundOutlined,
   LogoutOutlined,
   ReloadOutlined,
   SettingOutlined,
@@ -33,7 +33,7 @@ type RouteTransitionDirection = 'backward' | 'forward';
 
 const iconByRoute: Record<AppRouteKey, ReactNode> = {
   bean: <DatabaseOutlined />,
-  roast: <ApartmentOutlined />,
+  roast: <FundOutlined />,
   production: <FireOutlined />,
   settings: <SettingOutlined />,
 };
@@ -287,7 +287,7 @@ export function MainLayout() {
     <div className={styles.authBar}>
       <Space align="center" size={10}>
         <div className={styles.authAvatar}>
-          {String(user?.email ?? 'U').slice(0, 1).toUpperCase()}
+          {(user?.email ?? 'U').slice(0, 1).toUpperCase()}
         </div>
         <div className={styles.authMeta}>
           <Typography.Text className={styles.authLabel}>当前账号</Typography.Text>

@@ -42,7 +42,7 @@ export function RoastedBeanConnectionCard() {
       ? 'disconnected'
       : 'unconfigured';
   });
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const persistedProjectUrl = pocketBaseConnections.roastedBean.projectUrl;
   const persistedPublishableKey = pocketBaseConnections.roastedBean.publishableKey;
 

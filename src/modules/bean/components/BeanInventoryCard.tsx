@@ -9,6 +9,7 @@ interface BeanInventoryCardProps {
   bean: Bean;
   onDelete?: () => void;
   onEdit?: (beanId: Bean['id'], fieldPath?: FieldPath<GreenBeanFormInput>) => void;
+  onEditAll?: (beanId: Bean['id']) => void;
   onView?: (beanId: Bean['id']) => void;
 }
 
@@ -87,7 +88,7 @@ const beanCardEditFieldPathMap: Record<string, FieldPath<GreenBeanFormInput> | u
   variety: 'variety',
 };
 
-export function BeanInventoryCard({ bean, onDelete, onEdit, onView }: BeanInventoryCardProps) {
+export function BeanInventoryCard({ bean, onDelete, onEdit, onEditAll, onView }: BeanInventoryCardProps) {
   const { costTemplateSettings } = useCostTemplateSettings();
   const isLocalDraftBean = String(bean.id).startsWith('local-');
   const supplierName = normalizeText(bean.supplierName);
@@ -184,6 +185,13 @@ export function BeanInventoryCard({ bean, onDelete, onEdit, onView }: BeanInvent
             : undefined,
       }))}
       onDelete={onDelete}
+      onEditAll={
+        onEditAll
+          ? () => {
+              onEditAll(bean.id);
+            }
+          : undefined
+      }
       onView={
         onView
           ? () => {
@@ -203,6 +211,7 @@ export function BeanInventoryCard({ bean, onDelete, onEdit, onView }: BeanInvent
       }))}
       subtitle={subtitle}
       title={bean.name}
+      editAllLabel={`全部编辑 ${bean.name}`}
     />
   );
 }

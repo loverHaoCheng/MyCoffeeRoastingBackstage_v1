@@ -69,6 +69,25 @@ const expandSection = async (headingName: string): Promise<HTMLElement> => {
   return resolvedSection;
 };
 
+const expandRoastedBeanConnectionCard = async (): Promise<HTMLElement> => {
+  const card = screen.getByRole('heading', { name: '熟豆 Supabase 连接' }).closest('article');
+
+  expect(card).not.toBeNull();
+
+  if (card == null) {
+    throw new Error('roasted bean connection card not found');
+  }
+
+  const expandButton = within(card).getByRole('button', { name: '展开' });
+  fireEvent.click(expandButton);
+
+  await waitFor(() => {
+    expect(card.getAttribute('data-collapsed')).toBe('false');
+  });
+
+  return card;
+};
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -99,10 +118,19 @@ describe('SettingsPage', () => {
   it('renders the roasted bean supabase connection card', async () => {
     renderWithQuery(<SettingsPage />);
 
+    const card = screen.getByRole('heading', { name: '熟豆 Supabase 连接' }).closest('article');
+
+    expect(card).not.toBeNull();
+
+    if (card == null) {
+      throw new Error('roasted bean card not found');
+    }
+
     expect(await screen.findByRole('heading', { name: '熟豆 Supabase 连接' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: '界面外观' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '成本模板' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '清空配置' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: '展开' })).toBeInTheDocument();
+    expect(card.getAttribute('data-collapsed')).toBe('true');
     expect(document.getElementById('roasted-bean-project-url')).toHaveValue('');
     expect(document.getElementById('roasted-bean-publishable-key')).toHaveValue('');
     expect(screen.getByText('未配置')).toBeInTheDocument();
@@ -110,6 +138,7 @@ describe('SettingsPage', () => {
 
   it('syncs roasted bean supabase settings on blur and keeps cleared values', async () => {
     renderWithQuery(<SettingsPage />);
+    await expandRoastedBeanConnectionCard();
 
     const projectUrlInput = document.getElementById('roasted-bean-project-url');
 
@@ -132,6 +161,7 @@ describe('SettingsPage', () => {
 
   it('marks roasted bean supabase as connected after a verified save and syncs remote settings', async () => {
     renderWithQuery(<SettingsPage />);
+    await expandRoastedBeanConnectionCard();
 
     const projectUrlInput = document.getElementById('roasted-bean-project-url');
     const publishableKeyInput = document.getElementById('roasted-bean-publishable-key');
@@ -192,15 +222,15 @@ describe('SettingsPage', () => {
       throw new Error('roasted bean card not found');
     }
 
-    const collapseButton = within(card).getByRole('button', { name: '收起' });
+    const collapseButton = within(card).getByRole('button', { name: '展开' });
 
     fireEvent.click(collapseButton);
 
     await waitFor(() => {
-      expect(card.getAttribute('data-collapsed')).toBe('true');
+      expect(card.getAttribute('data-collapsed')).toBe('false');
     });
 
-    expect(within(card).getByRole('button', { name: '展开' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: '收起' })).toBeInTheDocument();
   });
 
   it('allows clearing the default cost template without removing the template', async () => {

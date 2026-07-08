@@ -1,3 +1,4 @@
+import { SaveOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import type { ReactNode, SyntheticEvent } from 'react';
 import { useState } from 'react';
@@ -72,7 +73,7 @@ export function FieldEditorDrawer({
             <Button block onClick={onClose} type="default">
               取消
             </Button>
-            <Button block htmlType="submit" loading={submitting} type="primary">
+            <Button block htmlType="submit" icon={<SaveOutlined />} loading={submitting} type="primary">
               {submitting && loadingLabel ? loadingLabel : submitLabel}
             </Button>
           </DrawerActionBar>

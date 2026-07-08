@@ -136,20 +136,6 @@
   font-size: 13px;
 }
 
-.footer {
-  display: flex;
-  gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid var(--app-border-soft);
-  flex-shrink: 0;
-}
-
-.footer :global(.ant-btn) {
-  border-color: var(--app-border);
-  background: var(--app-bg-elevated);
-  color: var(--app-text);
-}
-
 @media (max-width: 767px) {
   .fieldGrid {
     display: grid;

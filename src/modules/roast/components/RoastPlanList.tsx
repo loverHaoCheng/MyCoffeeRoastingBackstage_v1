@@ -10,6 +10,7 @@ import styles from './RoastPlanList.module.css';
 interface RoastPlanListProps {
   onDelete?: (plan: RoastPlan) => void;
   onEdit: (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath | 'steps') => void;
+  onEditAll?: (planId: RoastPlan['id']) => void;
   onView: (planId: RoastPlan['id']) => void;
   plans: RoastPlan[];
 }
@@ -29,11 +30,12 @@ const getText = (fallback: string, value: string | null | undefined): string => 
 interface RoastPlanCardProps {
   onDelete?: (plan: RoastPlan) => void;
   onEdit: (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath | 'steps') => void;
+  onEditAll?: (planId: RoastPlan['id']) => void;
   onView: (planId: RoastPlan['id']) => void;
   plan: RoastPlan;
 }
 
-function RoastPlanCard({ onDelete, onEdit, onView, plan }: RoastPlanCardProps) {
+function RoastPlanCard({ onDelete, onEdit, onEditAll, onView, plan }: RoastPlanCardProps) {
   const totalTimeLabel = getText('-', plan.steps[plan.steps.length - 1]?.timeLabel);
   const allMetaItems = [
     { key: 'beanName', label: '生豆', value: getText('待配置', plan.beanName), multiline: true, editPath: 'beanId' as const },
@@ -69,6 +71,13 @@ function RoastPlanCard({ onDelete, onEdit, onView, plan }: RoastPlanCardProps) {
             }
           : undefined
       }
+      onEditAll={
+        onEditAll
+          ? () => {
+              onEditAll(plan.id);
+            }
+          : undefined
+      }
       onView={() => {
         onView(plan.id);
       }}
@@ -85,13 +94,14 @@ function RoastPlanCard({ onDelete, onEdit, onView, plan }: RoastPlanCardProps) {
             : undefined,
         };
       })}
+      editAllLabel={`全部编辑 ${plan.name}`}
       subtitle={`总时间 ${totalTimeLabel}`}
       title={plan.name}
     />
   );
 }
 
-export function RoastPlanList({ plans, onDelete, onEdit, onView }: RoastPlanListProps) {
+export function RoastPlanList({ plans, onDelete, onEdit, onEditAll, onView }: RoastPlanListProps) {
   return (
     <div className={styles.list} aria-label="烘焙计划列表">
       {plans.map((plan) => (
@@ -99,6 +109,7 @@ export function RoastPlanList({ plans, onDelete, onEdit, onView }: RoastPlanList
           key={plan.id}
           onDelete={onDelete}
           onEdit={onEdit}
+          onEditAll={onEditAll}
           onView={onView}
           plan={plan}
         />

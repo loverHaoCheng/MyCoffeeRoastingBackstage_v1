@@ -297,7 +297,7 @@ export function RoastPlanForm({
 
       <DrawerActionBar compact>
         {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
-        <Button aria-label={submitLabel} block icon={<SaveOutlined />} htmlType="submit">
+        <Button aria-label={submitLabel} block icon={<SaveOutlined />} htmlType="submit" type="primary">
           {submitLabel}
         </Button>
       </DrawerActionBar>

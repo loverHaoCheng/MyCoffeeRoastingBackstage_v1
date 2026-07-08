@@ -14,6 +14,7 @@ import type { RoastBatchEditableFieldPath } from '@/modules/roast/components/Roa
 import {
   useDeleteRoastBatch,
   useRoastBatches,
+  useUpdateRoastBatch,
 } from '@/modules/roast/hooks';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
@@ -24,7 +25,7 @@ import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
-import type { RoastBatchCreateInput, RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import type { RoastBatchCreateInput, RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
 
 import styles from './ProductionPage.module.css';
 
@@ -59,6 +60,7 @@ export function ProductionPage() {
   const { data: batches = [], isFetching } = useRoastBatches();
   const { data: beans = [] } = useBeans();
   const deleteMutation = useDeleteRoastBatch();
+  const updateMutation = useUpdateRoastBatch();
   const isWide = screens.md ?? false;
   const hasGreenBeanConnection = isPocketBaseProjectConnectionConfigured(pocketBaseConnections.greenBean);
 
@@ -74,6 +76,12 @@ export function ProductionPage() {
   const handleEdit = (batchId: string, fieldPath?: RoastBatchEditableFieldPath) => {
     setSelectedBatchId(batchId);
     setSelectedBatchFieldPath(fieldPath);
+    setDetailMode('edit');
+  };
+
+  const handleEditAll = (batchId: string) => {
+    setSelectedBatchId(batchId);
+    setSelectedBatchFieldPath(undefined);
     setDetailMode('edit');
   };
 
@@ -131,6 +139,20 @@ export function ProductionPage() {
     void createTask;
   };
 
+  const handleUpdate = (batchId: string, input: RoastBatchUpdateInput) => {
+    submissionBackupService.save('update', { batchId, input }, 'roastBatch');
+
+    const updateTask = (async () => {
+      try {
+        await updateMutation.mutateAsync({ batchId, input });
+      } catch (error: unknown) {
+        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，本地备份已保留，请检查后重试。'));
+      }
+    })();
+
+    void updateTask;
+  };
+
   const handleOpenCreateDrawer = () => {
     if (!hasGreenBeanConnection) {
       void message.warning('请先前往设置页创建并连接生豆数据库，完成后才能新增烘焙记录。');
@@ -184,6 +206,7 @@ export function ProductionPage() {
               handleDelete(batch);
             }}
             onEdit={handleEdit}
+            onEditAll={handleEditAll}
             onView={handleView}
           />
         ))}
@@ -218,7 +241,7 @@ export function ProductionPage() {
       </AppDrawer>
 
       {/* 详情/编辑抽屉 */}
-      {selectedBatch && detailMode === 'view' ? (
+      {selectedBatch && (detailMode === 'view' || (detailMode === 'edit' && selectedBatchFieldPath == null)) ? (
         <AppDrawer
           className={styles.detailDrawer}
           data-placement={isWide ? 'right' : 'bottom'}
@@ -226,14 +249,21 @@ export function ProductionPage() {
           onClose={closeDetail}
           open
           placement={isWide ? 'right' : 'bottom'}
-          title="烘焙记录详情"
+          title={detailMode === 'edit' ? '编辑烘焙记录' : '烘焙记录详情'}
           width={720}
         >
           <RoastBatchDrawer
             batch={selectedBatch}
-            mode="view"
+            mode={detailMode}
             onClose={closeDetail}
             onDelete={handleDelete}
+            onModeChange={(mode) => {
+              setDetailMode(mode);
+              if (mode === 'view') {
+                setSelectedBatchFieldPath(undefined);
+              }
+            }}
+            onUpdate={handleUpdate}
           />
         </AppDrawer>
       ) : null}

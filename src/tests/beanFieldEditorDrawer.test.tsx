@@ -65,7 +65,7 @@ describe('BeanFieldEditorDrawer', () => {
     );
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '新供应商' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存供应商' }));
+    fireEvent.click(screen.getByRole('button', { name: /保存供应商/ }));
 
     await waitFor(() => {
       expect(updateBeanSpy).toHaveBeenCalledTimes(1);
@@ -127,7 +127,7 @@ describe('BeanFieldEditorDrawer', () => {
 
     fireEvent.mouseDown(screen.getByRole('combobox'));
     fireEvent.click(await screen.findByText('标准模板'));
-    fireEvent.click(screen.getByRole('button', { name: '保存成本模板' }));
+    fireEvent.click(screen.getByRole('button', { name: /保存成本模板/ }));
 
     await waitFor(() => {
       expect(updateBeanSpy).toHaveBeenCalledTimes(1);

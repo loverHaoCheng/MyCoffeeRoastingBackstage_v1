@@ -147,4 +147,14 @@ describe('BeanPage', () => {
     expect(within(summary).getByText('10 kg')).toBeInTheDocument();
     expect(within(summary).getByText('¥190 / kg')).toBeInTheDocument();
   });
+
+  it('opens the full bean form drawer from the card level edit button', async () => {
+    saveBeanSummaryCache();
+
+    renderWithQuery(<BeanPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试豆 A' }));
+
+    expect(await screen.findByText('编辑生豆')).toBeInTheDocument();
+  });
 });

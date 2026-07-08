@@ -112,6 +112,12 @@ export function RoastPage() {
     setDetailMode('edit');
   };
 
+  const handleEditAll = (planId: RoastPlan['id']) => {
+    setSelectedPlanId(planId);
+    setSelectedPlanFieldPath(undefined);
+    setDetailMode('edit');
+  };
+
   // 删除
   const handleDelete = (plan: RoastPlan) => {
     modal.confirm({
@@ -254,6 +260,7 @@ export function RoastPage() {
         <RoastPlanList
           onDelete={handleDelete}
           onEdit={handleEdit}
+          onEditAll={handleEditAll}
           onView={handleView}
           plans={filteredPlans}
         />
@@ -312,7 +319,9 @@ export function RoastPage() {
       </AppDrawer>
 
       {/* 详情/编辑抽屉 */}
-      {selectedPlan && detailMode === 'view' ? (
+      {selectedPlan &&
+      (detailMode === 'view' ||
+        (detailMode === 'edit' && (selectedPlanFieldPath == null || selectedPlanFieldPath === 'steps'))) ? (
         <AppDrawer
           className={styles.detailDrawer}
           data-placement={isWide ? 'right' : 'bottom'}
@@ -324,38 +333,8 @@ export function RoastPage() {
           width={720}
         >
           <RoastPlanDetail
-            mode="view"
+            mode={detailMode}
             onClose={closeDetail}
-            onDelete={(planId) => {
-              const plan = plans.find((p) => p.id === planId);
-              if (plan) handleDelete(plan);
-              closeDetail();
-            }}
-            onUpdate={handleUpdate}
-            plan={selectedPlan}
-          />
-        </AppDrawer>
-      ) : null}
-
-      {selectedPlan && detailMode === 'edit' && selectedPlanFieldPath === 'steps' ? (
-        <AppDrawer
-          className={styles.detailDrawer}
-          data-placement={isWide ? 'right' : 'bottom'}
-          height={isWide ? undefined : '86dvh'}
-          onClose={closeDetail}
-          open
-          placement={isWide ? 'right' : 'bottom'}
-          title="编辑烘焙计划"
-          width={720}
-        >
-          <RoastPlanDetail
-            mode="edit"
-            onClose={closeDetail}
-            onDelete={(planId) => {
-              const plan = plans.find((p) => p.id === planId);
-              if (plan) handleDelete(plan);
-              closeDetail();
-            }}
             onUpdate={handleUpdate}
             plan={selectedPlan}
           />

@@ -1,4 +1,4 @@
-import { DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Input, InputNumber, Select } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -415,31 +415,35 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
             </div>
           )}
         </section>
+
+        {/* 底部操作栏（编辑模式） */}
+        {!isView && (
+          <DrawerActionBar compact>
+            <Button block onClick={onClose}>
+              取消
+            </Button>
+            <Button aria-label="保存烘焙记录" block icon={<SaveOutlined />} onClick={handleSave} type="primary">
+              保存烘焙记录
+            </Button>
+          </DrawerActionBar>
+        )}
+
+        {/* 查看模式的删除按钮 */}
+        {isView && onDelete && (
+          <DrawerActionBar compact>
+            <Button
+              block
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => {
+                onDelete(batch);
+              }}
+            >
+              删除此记录
+            </Button>
+          </DrawerActionBar>
+        )}
       </div>
-
-      {/* 底部操作栏（编辑模式） */}
-      {!isView && (
-        <DrawerActionBar compact>
-          <Button onClick={onClose} block>取消</Button>
-          <Button type="primary" onClick={handleSave} block>完成</Button>
-        </DrawerActionBar>
-      )}
-
-      {/* 查看模式的删除按钮 */}
-      {isView && onDelete && (
-        <DrawerActionBar compact>
-          <Button
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => {
-              onDelete(batch);
-            }}
-            block
-          >
-            删除此记录
-          </Button>
-        </DrawerActionBar>
-      )}
     </div>
   );
 }
