@@ -1,8 +1,10 @@
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Input, Tag } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { App, Button, Input, Tag } from 'antd';
+import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { supabaseConnectionFormSectionSchema } from '@/modules/settings/schemas';
+import { brewGuideLinkService, brewGuideUrl } from '@/modules/settings/services/brewGuideLink.service';
+import { pocketBaseConnectionRuntimeService } from '@/modules/settings/services/pocketBaseConnectionRuntime.service';
 import { supabaseConnectionProbeService } from '@/modules/settings/services/pocketBaseConnectionProbe.service';
 import {
   hasSyncableRoastedBeanConnection,
@@ -23,6 +25,8 @@ const EMPTY_CONNECTION: PocketBaseProjectConnection = {
   projectUrl: '',
   publishableKey: '',
 };
+const BREW_GUIDE_LINK_COPIED_MESSAGE = '已复制链接，可以到浏览器粘贴展示';
+const BREW_GUIDE_LINK_COPY_FAILED_MESSAGE = '链接复制失败，请稍后重试。';
 
 const normalizeConnectionDraft = (
   connection: Partial<PocketBaseProjectConnection> | null | undefined,
@@ -30,7 +34,24 @@ const normalizeConnectionDraft = (
   return normalizeRoastedBeanPocketBaseProjectConnection(connection);
 };
 
+const resolveRuntimeConnectionStatus = (
+  connection: PocketBaseProjectConnection,
+): ConnectionStatus => {
+  const cachedStatus = pocketBaseConnectionRuntimeService.readRoastedBeanConnectionStatus(
+    connection,
+  );
+
+  if (cachedStatus != null) {
+    return cachedStatus;
+  }
+
+  return hasSyncableRoastedBeanConnection(connection)
+    ? 'disconnected'
+    : 'unconfigured';
+};
+
 export function RoastedBeanConnectionCard() {
+  const { message } = App.useApp();
   const pocketBaseConnections = useSettingsStore((state) => state.pocketBaseConnections);
   const savePocketBaseConnections = useSettingsStore((state) => state.savePocketBaseConnections);
   const [draft, setDraft] = useState<PocketBaseProjectConnection>(() =>
@@ -38,9 +59,9 @@ export function RoastedBeanConnectionCard() {
   );
   const [errors, setErrors] = useState<Partial<Record<ConnectionFieldKey, string>>>({});
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(() => {
-    return hasSyncableRoastedBeanConnection(pocketBaseConnections.roastedBean)
-      ? 'disconnected'
-      : 'unconfigured';
+    return resolveRuntimeConnectionStatus(
+      normalizeConnectionDraft(pocketBaseConnections.roastedBean),
+    );
   });
   const [isCollapsed, setIsCollapsed] = useState(true);
   const persistedProjectUrl = pocketBaseConnections.roastedBean.projectUrl;
@@ -67,17 +88,33 @@ export function RoastedBeanConnectionCard() {
 
   const syncConnection = useCallback(async (connection: PocketBaseProjectConnection): Promise<void> => {
     if (!hasSyncableRoastedBeanConnection(connection)) {
+      pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
+        connection,
+        'unconfigured',
+      );
       setConnectionStatus('unconfigured');
       return;
     }
 
+    pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
+      connection,
+      'checking',
+    );
     setConnectionStatus('checking');
 
     try {
       await supabaseConnectionProbeService.verify('roastedBean', connection);
       await supabaseRoastedBeanConnectionSyncService.syncLocalChange(connection);
+      pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
+        connection,
+        'connected',
+      );
       setConnectionStatus('connected');
     } catch {
+      pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
+        connection,
+        'disconnected',
+      );
       setConnectionStatus('disconnected');
     }
   }, []);
@@ -89,17 +126,42 @@ export function RoastedBeanConnectionCard() {
     });
 
     if (!hasSyncableRoastedBeanConnection(currentConnection)) {
+      pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
+        currentConnection,
+        'unconfigured',
+      );
       setConnectionStatus('unconfigured');
       return;
     }
 
+    const cachedStatus = pocketBaseConnectionRuntimeService.readRoastedBeanConnectionStatus(
+      currentConnection,
+    );
+
+    if (cachedStatus != null) {
+      setConnectionStatus(cachedStatus);
+      return;
+    }
+
+    pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
+      currentConnection,
+      'checking',
+    );
     setConnectionStatus('checking');
 
     void (async () => {
       try {
         await supabaseConnectionProbeService.verify('roastedBean', currentConnection);
+        pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
+          currentConnection,
+          'connected',
+        );
         setConnectionStatus('connected');
       } catch {
+        pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
+          currentConnection,
+          'disconnected',
+        );
         setConnectionStatus('disconnected');
       }
     })();
@@ -160,6 +222,27 @@ export function RoastedBeanConnectionCard() {
     setDraft(EMPTY_CONNECTION);
     persistDraft(EMPTY_CONNECTION);
   };
+
+  const handleLearnMoreClick = useCallback((event: MouseEvent<HTMLAnchorElement>): void => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (!brewGuideLinkService.shouldCopyInCurrentRuntime(window)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    void (async () => {
+      try {
+        await brewGuideLinkService.copyUrlToClipboard(window.navigator);
+        void message.success(BREW_GUIDE_LINK_COPIED_MESSAGE);
+      } catch {
+        void message.error(BREW_GUIDE_LINK_COPY_FAILED_MESSAGE);
+      }
+    })();
+  }, [message]);
 
   return (
     <article className={styles.card} data-collapsed={isCollapsed}>
@@ -225,9 +308,22 @@ export function RoastedBeanConnectionCard() {
                 placeholder="请输入熟豆库的 Publishable Key"
                 status={errors.publishableKey ? 'error' : undefined}
                 value={draft.publishableKey}
-                />
+              />
             </label>
           </div>
+
+          <p className={styles.helpText}>
+            熟豆数据将会发送至 Brew Guide 中进行展示。
+            <a
+              className={styles.helpLink}
+              href={brewGuideUrl}
+              onClick={handleLearnMoreClick}
+              rel="noreferrer"
+              target="_blank"
+            >
+              进一步了解...
+            </a>
+          </p>
         </div>
       </div>
     </article>

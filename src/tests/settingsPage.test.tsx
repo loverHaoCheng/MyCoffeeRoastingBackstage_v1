@@ -17,6 +17,10 @@ const { syncLocalChangeMock } = vi.hoisted(() => ({
   syncLocalChangeMock: vi.fn().mockResolvedValue(undefined),
 }));
 
+const { verifyMock } = vi.hoisted(() => ({
+  verifyMock: vi.fn().mockResolvedValue(undefined),
+}));
+
 const { syncFromRemoteSafelyMock } = vi.hoisted(() => ({
   syncFromRemoteSafelyMock: vi.fn().mockResolvedValue({
     greenBean: {
@@ -46,6 +50,12 @@ vi.mock(
     };
   },
 );
+
+vi.mock('@/modules/settings/services/pocketBaseConnectionProbe.service', () => ({
+  supabaseConnectionProbeService: {
+    verify: verifyMock,
+  },
+}));
 
 const expandSection = async (headingName: string): Promise<HTMLElement> => {
   const section = screen.getByRole('heading', { name: headingName }).closest('section');
@@ -90,12 +100,28 @@ const expandRoastedBeanConnectionCard = async (): Promise<HTMLElement> => {
 
 describe('SettingsPage', () => {
   beforeEach(() => {
+    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: undefined,
+    });
     window.localStorage.clear();
     appBuildVersionService.clear();
     costTemplateSettingsService.clear();
     pocketBaseConnectionSettingsService.clear();
     syncLocalChangeMock.mockClear();
     syncLocalChangeMock.mockResolvedValue(undefined);
+    verifyMock.mockClear();
+    verifyMock.mockResolvedValue(undefined);
     syncFromRemoteSafelyMock.mockClear();
     syncFromRemoteSafelyMock.mockResolvedValue({
       greenBean: {
@@ -134,6 +160,17 @@ describe('SettingsPage', () => {
     expect(document.getElementById('roasted-bean-project-url')).toHaveValue('');
     expect(document.getElementById('roasted-bean-publishable-key')).toHaveValue('');
     expect(screen.getByText('未配置')).toBeInTheDocument();
+  });
+
+  it('renders the brew guide note and link in the roasted bean card', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    const card = await expandRoastedBeanConnectionCard();
+    const guideLink = within(card).getByRole('link', { name: '进一步了解...' });
+
+    expect(within(card).getByText(/熟豆数据将会发送至 Brew Guide 中进行展示。/)).toBeInTheDocument();
+    expect(guideLink).toHaveAttribute('href', 'https://chu3.top/brewguide');
+    expect(guideLink).toHaveAttribute('target', '_blank');
   });
 
   it('syncs roasted bean supabase settings on blur and keeps cleared values', async () => {
@@ -184,6 +221,7 @@ describe('SettingsPage', () => {
       });
     });
     expect(syncLocalChangeMock).toHaveBeenCalledTimes(1);
+    expect(verifyMock).toHaveBeenCalledTimes(1);
 
     expect(await screen.findByText('已连通')).toBeInTheDocument();
   });
@@ -231,6 +269,73 @@ describe('SettingsPage', () => {
     });
 
     expect(within(card).getByRole('button', { name: '收起' })).toBeInTheDocument();
+  });
+
+  it('loads and verifies roasted bean settings only once across settings page remounts in the same session', async () => {
+    syncFromRemoteSafelyMock.mockResolvedValue({
+      greenBean: {
+        projectUrl: 'http://81.70.224.75',
+        publishableKey: '',
+      },
+      roastedBean: {
+        projectUrl: 'https://demo.supabase.co',
+        publishableKey: 'sb_publishable_demo',
+      },
+      updatedAt: null,
+    });
+
+    const firstRender = renderWithQuery(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(document.getElementById('roasted-bean-project-url')).toHaveValue('https://demo.supabase.co');
+    });
+    expect(await screen.findByText('已连通')).toBeInTheDocument();
+    expect(syncFromRemoteSafelyMock).toHaveBeenCalledTimes(1);
+    expect(verifyMock).toHaveBeenCalledTimes(1);
+
+    firstRender.unmount();
+
+    renderWithQuery(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '熟豆 Supabase 连接' })).toBeInTheDocument();
+    });
+
+    expect(syncFromRemoteSafelyMock).toHaveBeenCalledTimes(1);
+    expect(verifyMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('copies the brew guide link in standalone pwa runtime', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+
+    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
+      matches: query === '(display-mode: standalone)',
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: writeTextMock,
+      },
+    });
+
+    renderWithQuery(<SettingsPage />);
+
+    const card = await expandRoastedBeanConnectionCard();
+    const guideLink = within(card).getByRole('link', { name: '进一步了解...' });
+
+    fireEvent.click(guideLink);
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith('https://chu3.top/brewguide');
+    });
+    expect(await screen.findByText('已复制链接，可以到浏览器粘贴展示')).toBeInTheDocument();
   });
 
   it('allows clearing the default cost template without removing the template', async () => {

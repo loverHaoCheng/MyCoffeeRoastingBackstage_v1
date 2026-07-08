@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
+import { pocketBaseConnectionRuntimeService } from '@/modules/settings/services/pocketBaseConnectionRuntime.service';
 import { supabaseRoastedBeanConnectionSyncService } from '@/modules/settings/services/supabaseRoastedBeanConnectionSync.service';
 import {
   createDefaultAppDisplaySettings,
@@ -23,7 +24,7 @@ interface SettingsState {
   deleteCostTemplate: (templateId: string) => void;
   loadAppDisplaySettings: () => void;
   loadCostTemplates: () => void;
-  loadPocketBaseConnections: () => Promise<void>;
+  loadPocketBaseConnections: (options?: { forceRemote?: boolean }) => Promise<void>;
   resetAppDisplaySettings: () => void;
   saveAppDisplaySettings: (settings: AppDisplaySettings) => AppDisplaySettings;
   saveCostTemplate: (values: CostTemplateFormValues, templateId?: string) => CostTemplate;
@@ -70,8 +71,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       costTemplateSettings: costTemplateSettingsService.load(),
     });
   },
-  loadPocketBaseConnections: async () => {
+  loadPocketBaseConnections: async (options) => {
+    if (
+      options?.forceRemote !== true &&
+      pocketBaseConnectionRuntimeService.hasLoadedPocketBaseConnectionsThisSession()
+    ) {
+      set({
+        pocketBaseConnections: pocketBaseConnectionSettingsService.load(),
+      });
+      return;
+    }
+
     const nextValue = await supabaseRoastedBeanConnectionSyncService.syncFromRemoteSafely();
+
+    pocketBaseConnectionRuntimeService.markPocketBaseConnectionsLoadedThisSession();
 
     set({
       pocketBaseConnections: nextValue,

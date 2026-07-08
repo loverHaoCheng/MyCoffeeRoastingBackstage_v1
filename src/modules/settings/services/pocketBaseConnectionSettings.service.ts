@@ -1,4 +1,5 @@
 import { pocketBaseConnectionSettingsStorageSchema } from '@/modules/settings/schemas';
+import { pocketBaseConnectionRuntimeService } from '@/modules/settings/services/pocketBaseConnectionRuntime.service';
 import {
   createDefaultPocketBaseConnectionSettings,
   normalizePocketBaseProjectConnection,
@@ -18,6 +19,7 @@ let currentPocketBaseConnectionSettings: PocketBaseConnectionSettings =
 export const pocketBaseConnectionSettingsService = {
   clear(): void {
     currentPocketBaseConnectionSettings = createDefaultPocketBaseConnectionSettings();
+    pocketBaseConnectionRuntimeService.clear();
   },
   load(): PocketBaseConnectionSettings {
     const result = pocketBaseConnectionSettingsStorageSchema.safeParse(currentPocketBaseConnectionSettings);

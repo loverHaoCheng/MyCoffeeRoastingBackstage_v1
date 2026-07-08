@@ -78,7 +78,7 @@ const scheduleDeferredSettingsSync = (settingsState: SettingsSyncState): Promise
     const runDeferredSync = () => {
       void (async () => {
         try {
-          await settingsState.loadPocketBaseConnections();
+          await settingsState.loadPocketBaseConnections({ forceRemote: true });
           await costTemplateSyncService.syncFromRemoteSafely();
           await appDisplaySettingsSyncService.syncSafely(settingsState.appDisplaySettings);
           settingsState.loadCostTemplates();
@@ -108,7 +108,7 @@ const syncSharedAppSettings = async (options: { deferNonCriticalSync?: boolean }
 
   const settingsState = useSettingsStore.getState();
 
-  await settingsState.loadPocketBaseConnections();
+  await settingsState.loadPocketBaseConnections({ forceRemote: true });
   settingsState.loadCostTemplates();
   settingsState.loadAppDisplaySettings();
 

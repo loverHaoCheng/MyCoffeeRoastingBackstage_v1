@@ -22,6 +22,7 @@ flowchart TD
 ## 设计说明
 
 - 设置模块当前只负责采集和保存前端可公开使用的连接配置。
+- 熟豆连接配置在单次前端运行时内会保留在 Zustand / runtime memory 中，避免用户在页面间来回切换时重复回拉与重复探活；刷新页面或重新启动 PWA 后会重新执行一次校验。
 - 生豆库和熟豆库拆成两个 Supabase 项目，便于后续按领域拆权限、拆 RLS、拆财务边界。
 - 页面层不直接依赖 Supabase SDK，仍然通过 `Service -> Repository` 接入。
 - 熟豆连接配置只做单向写入：设置页在失焦后把熟豆 `Project URL` / `Publishable Key` 写入主库的设置记录，不会从熟豆库回拉任何连接信息。

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { pocketBaseAuthService } from '@/modules/auth/services/pocketBaseAuth.service';
+import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import {
   pocketBaseSessionService,
   type PocketBaseSession,
@@ -102,6 +103,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   hasHydrated: initialHasHydrated,
   login: async (input) => {
     localStorageCleanupService.clearAppState();
+    pocketBaseConnectionSettingsService.clear();
     const session = await pocketBaseAuthService.login(input);
 
     set({
@@ -115,6 +117,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   logout: async () => {
     localStorageCleanupService.clearAppState();
+    pocketBaseConnectionSettingsService.clear();
     await pocketBaseAuthService.logout();
     set({
       hasHydrated: true,
@@ -125,6 +128,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   register: async (input) => {
     localStorageCleanupService.clearAppState();
+    pocketBaseConnectionSettingsService.clear();
     const result = await pocketBaseAuthService.register(input);
 
     set({
