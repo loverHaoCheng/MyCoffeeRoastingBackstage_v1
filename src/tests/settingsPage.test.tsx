@@ -114,6 +114,10 @@ describe('SettingsPage', () => {
       configurable: true,
       value: undefined,
     });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: vi.fn().mockReturnValue(true),
+    });
     window.localStorage.clear();
     appBuildVersionService.clear();
     costTemplateSettingsService.clear();
@@ -334,6 +338,45 @@ describe('SettingsPage', () => {
 
     await waitFor(() => {
       expect(writeTextMock).toHaveBeenCalledWith('https://chu3.top/brewguide');
+    });
+    expect(await screen.findByText('已复制链接，可以到浏览器粘贴展示')).toBeInTheDocument();
+  });
+
+  it('falls back to execCommand copy in standalone pwa when clipboard api rejects', async () => {
+    const writeTextMock = vi.fn().mockRejectedValue(new Error('clipboard denied'));
+    const execCommandMock = vi.fn().mockReturnValue(true);
+
+    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
+      matches: query === '(display-mode: standalone)',
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: writeTextMock,
+      },
+    });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: execCommandMock,
+    });
+
+    renderWithQuery(<SettingsPage />);
+
+    const card = await expandRoastedBeanConnectionCard();
+    const guideLink = within(card).getByRole('link', { name: '进一步了解...' });
+
+    fireEvent.click(guideLink);
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith('https://chu3.top/brewguide');
+      expect(execCommandMock).toHaveBeenCalledWith('copy');
     });
     expect(await screen.findByText('已复制链接，可以到浏览器粘贴展示')).toBeInTheDocument();
   });

@@ -224,7 +224,7 @@ export function RoastedBeanConnectionCard() {
   };
 
   const handleLearnMoreClick = useCallback((event: MouseEvent<HTMLAnchorElement>): void => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
       return;
     }
 
@@ -236,7 +236,7 @@ export function RoastedBeanConnectionCard() {
 
     void (async () => {
       try {
-        await brewGuideLinkService.copyUrlToClipboard(window.navigator);
+        await brewGuideLinkService.copyUrlToClipboard(document, window.navigator);
         void message.success(BREW_GUIDE_LINK_COPIED_MESSAGE);
       } catch {
         void message.error(BREW_GUIDE_LINK_COPY_FAILED_MESSAGE);
