@@ -194,7 +194,7 @@
 }
 
 .detailDrawer :global(.ant-drawer-body) {
-  padding: 0 24px 24px;
+  padding: 0 24px 0;
   overflow-x: hidden;
 }
 
@@ -229,5 +229,9 @@
 
   .creationDrawer :global(.ant-drawer-body) {
     padding: 0 16px 18px;
+  }
+
+  .detailDrawer :global(.ant-drawer-body) {
+    padding: 0 16px 0;
   }
 }

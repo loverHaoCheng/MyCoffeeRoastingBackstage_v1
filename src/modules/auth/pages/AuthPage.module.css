@@ -17,7 +17,18 @@
 .shellLogin {
   justify-items: center;
   align-content: start;
-  padding-top: min(33vh, 300px);
+  --auth-shell-block-height: 460px;
+  padding-top: max(10vh, calc(46vh - (var(--auth-shell-block-height) / 2)));
+  padding-bottom: 12vh;
+}
+
+.brandTitle {
+  color: var(--app-text);
+  font-size: clamp(26px, 4.2vw, 34px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .hero {
@@ -59,6 +70,32 @@
   box-shadow: 0 24px 64px rgb(15 23 42 / 10%);
 }
 
+.notice {
+  width: min(100%, 480px);
+  margin-bottom: 16px;
+  border-radius: 18px;
+}
+
+.formAssist {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 16px;
+}
+
+.inlineLink {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.inlineLink:hover {
+  color: var(--app-text);
+}
+
+.secondaryButton {
+  margin-top: 12px;
+}
+
 .actions {
   color: var(--app-text-secondary);
   font-size: 13px;
@@ -77,7 +114,9 @@
   }
 
   .shellLogin {
-    padding-top: min(33vh, 240px);
+    --auth-shell-block-height: 500px;
+    padding-top: max(10vh, calc(44vh - (var(--auth-shell-block-height) / 2)));
+    padding-bottom: 12vh;
   }
 
   .card {

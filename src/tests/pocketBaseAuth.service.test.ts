@@ -87,6 +87,40 @@ describe('pocketBaseAuthService', () => {
     );
   });
 
+  it('returns a verification-required registration result without auto login', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            email: 'demo@example.com',
+            message: '注册成功，验证邮件已发送，请先完成邮箱验证后再登录。',
+            verificationEmailSent: true,
+            verificationRequired: true,
+          }),
+          {
+            status: 201,
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await pocketBaseAuthService.register({
+      email: 'demo@example.com',
+      password: 'password123',
+      passwordConfirm: 'password123',
+    });
+
+    expect(result).toEqual({
+      email: 'demo@example.com',
+      message: '注册成功，验证邮件已发送，请先完成邮箱验证后再登录。',
+      verificationEmailSent: true,
+      verificationRequired: true,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pocketBaseSessionService.load()).toBeNull();
+  });
+
   it('turns upstream 5xx login failures into a gateway-specific message', async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(
@@ -142,6 +176,35 @@ describe('pocketBaseAuthService', () => {
         expect(error.message).toContain('非 JSON 错误页面');
       }
     }
+  });
+
+  it('surfaces the unverified-email login guidance from the gateway', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            code: 'EMAIL_NOT_VERIFIED',
+            email: 'demo@example.com',
+            message: '该邮箱尚未完成验证，请先前往邮箱完成验证后再登录。',
+          }),
+          {
+            status: 403,
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      pocketBaseAuthService.login({
+        email: 'demo@example.com',
+        password: 'password123',
+      }),
+    ).rejects.toMatchObject({
+      code: 'AUTH',
+      status: 403,
+      message: '该邮箱尚未完成验证，请先前往邮箱完成验证后再登录。',
+    });
   });
 
   it('restores the session from the auth gateway and keeps the current PocketBase base url', async () => {
@@ -230,6 +293,66 @@ describe('pocketBaseAuthService', () => {
     expect(pocketBaseSessionService.load()).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
+  });
+
+  it('requests a verification email through the auth gateway', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            message: '如果该邮箱已注册，验证邮件已发送，请注意查收。',
+            success: true,
+          }),
+          {
+            status: 200,
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await pocketBaseAuthService.requestVerification('demo@example.com');
+
+    expect(result).toEqual({
+      message: '如果该邮箱已注册，验证邮件已发送，请注意查收。',
+      success: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/request-verification',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
+  });
+
+  it('requests a password reset email through the auth gateway', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            message: '如果该邮箱已注册，重置密码邮件已发送，请注意查收。',
+            success: true,
+          }),
+          {
+            status: 200,
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await pocketBaseAuthService.requestPasswordReset('demo@example.com');
+
+    expect(result).toEqual({
+      message: '如果该邮箱已注册，重置密码邮件已发送，请注意查收。',
+      success: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/request-password-reset',
       expect.objectContaining({
         method: 'POST',
       }),

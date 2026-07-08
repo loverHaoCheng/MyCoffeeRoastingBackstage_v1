@@ -29,9 +29,20 @@ export function RegisterPage() {
 
   const handleFinish = async (values: RegisterFormValues) => {
     try {
-      await register(values);
-      void message.success('注册成功');
-      void navigate('/beans', { replace: true });
+      const result = await register(values);
+
+      if (result.verificationEmailSent) {
+        void message.success(result.message);
+      } else {
+        void message.warning(result.message);
+      }
+
+      const nextSearchParams = new URLSearchParams({
+        email: values.email.trim(),
+        verification: result.verificationEmailSent ? 'sent' : 'failed',
+      });
+
+      void navigate(`/login?${nextSearchParams.toString()}`, { replace: true });
     } catch (error) {
       void message.error(getUserFacingErrorMessage(error, '注册失败，请稍后重试。'));
     }
@@ -45,8 +56,9 @@ export function RegisterPage() {
           <Link to="/login">去登录</Link>
         </Space>
       }
+      brandTitle="EasyBake"
       heroHidden
-      description="创建账号后，PocketBase 会自动把你的数据范围限制在当前用户名下。"
+      description="创建账号后，我们会先向你的邮箱发送验证邮件。完成验证后，才能登录并使用系统。"
       eyebrow="PocketBase Auth"
       shellClassName={styles.shellLogin}
       title="创建账号"
@@ -90,12 +102,12 @@ export function RegisterPage() {
           rules={[
             { required: true, message: '请再次输入密码' },
             ({ getFieldValue }) => ({
-              validator: async (_, value) => {
+              validator: (_, value) => {
                 if (!value || getFieldValue('password') === value) {
-                  return;
+                  return Promise.resolve();
                 }
 
-                throw new Error('两次输入的密码不一致');
+                return Promise.reject(new Error('两次输入的密码不一致'));
               },
             }),
           ]}

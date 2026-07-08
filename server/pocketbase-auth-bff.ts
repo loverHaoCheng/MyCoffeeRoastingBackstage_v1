@@ -25,6 +25,11 @@ interface SessionUser {
   username?: string;
 }
 
+interface EmailActionResult {
+  message: string;
+  success: true;
+}
+
 const DEFAULT_POCKETBASE_URL = 'http://81.70.224.75';
 const DEFAULT_AUTH_COLLECTION = 'users';
 const DEFAULT_AUTH_COOKIE_NAME = 'easybake_pb_session';
@@ -302,6 +307,40 @@ const proxyPocketBaseRequest = async (
   };
 };
 
+const requestEmailAction = async (
+  action: 'request-password-reset' | 'request-verification',
+  email: string,
+): Promise<{ payload: unknown; response: Response }> => {
+  return proxyPocketBaseRequest(`/api/collections/${authCollection}/${action}`, {
+    body: JSON.stringify({
+      email,
+    }),
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+};
+
+const sendUnverifiedResponse = (
+  response: ServerResponse,
+  request: IncomingMessage,
+  email: string,
+): void => {
+  clearAuthCookie(response, request);
+  sendJson(response, 403, {
+    code: 'EMAIL_NOT_VERIFIED',
+    email,
+    message: '该邮箱尚未完成验证，请先前往邮箱完成验证后再登录。',
+  });
+};
+
+const toGenericEmailActionResult = (message: string): EmailActionResult => ({
+  message,
+  success: true,
+});
+
 const handleLogin = async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
   const body = await parseJsonBody(request);
 
@@ -351,6 +390,11 @@ const handleLogin = async (request: IncomingMessage, response: ServerResponse): 
     return;
   }
 
+  if (authResponse.record.verified !== true) {
+    sendUnverifiedResponse(response, request, authResponse.record.email);
+    return;
+  }
+
   setAuthCookie(response, request, authResponse.token);
   sendJson(response, 200, authResponse);
 };
@@ -394,37 +438,25 @@ const handleRegister = async (request: IncomingMessage, response: ServerResponse
     return;
   }
 
-  const loginResponse = await proxyPocketBaseRequest(
-    `/api/collections/${authCollection}/auth-with-password`,
-    {
-      body: JSON.stringify({
-        identity: email,
-        password,
-      }),
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-    },
-  );
+  const verificationResponse = await requestEmailAction('request-verification', email);
 
-  if (!loginResponse.response.ok) {
-    sendUpstreamError(response, loginResponse.response.status, loginResponse.payload);
-    return;
-  }
-
-  const authResponse = normalizeAuthResponse(loginResponse.payload);
-
-  if (!authResponse) {
-    sendJson(response, 502, {
-      message: 'PocketBase 注册后的登录响应缺少必要字段。',
+  if (!verificationResponse.response.ok) {
+    sendJson(response, 201, {
+      email,
+      message: '账号已创建，但验证邮件发送失败，请稍后在登录页重新发送验证邮件。',
+      verificationEmailSent: false,
+      verificationRequired: true,
     });
     return;
   }
 
-  setAuthCookie(response, request, authResponse.token);
-  sendJson(response, 200, authResponse);
+  clearAuthCookie(response, request);
+  sendJson(response, 201, {
+    email,
+    message: '注册成功，验证邮件已发送，请先完成邮箱验证后再登录。',
+    verificationEmailSent: true,
+    verificationRequired: true,
+  });
 };
 
 const handleSession = async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
@@ -462,8 +494,85 @@ const handleSession = async (request: IncomingMessage, response: ServerResponse)
     return;
   }
 
+  if (authResponse.record.verified !== true) {
+    sendUnverifiedResponse(response, request, authResponse.record.email);
+    return;
+  }
+
   setAuthCookie(response, request, authResponse.token);
   sendJson(response, 200, authResponse);
+};
+
+const handleRequestVerification = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
+  const body = await parseJsonBody(request);
+
+  if (!isRecord(body)) {
+    sendJson(response, 400, {
+      message: '重发验证邮件请求缺少有效参数。',
+    });
+    return;
+  }
+
+  const email = toTrimmedString(body.email);
+
+  if (!email) {
+    sendJson(response, 400, {
+      message: '邮箱不能为空。',
+    });
+    return;
+  }
+
+  const upstream = await requestEmailAction('request-verification', email);
+
+  if (!upstream.response.ok && upstream.response.status >= 500) {
+    sendUpstreamError(response, upstream.response.status, upstream.payload);
+    return;
+  }
+
+  sendJson(
+    response,
+    200,
+    toGenericEmailActionResult('如果该邮箱已注册，验证邮件已发送，请注意查收。'),
+  );
+};
+
+const handleRequestPasswordReset = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
+  const body = await parseJsonBody(request);
+
+  if (!isRecord(body)) {
+    sendJson(response, 400, {
+      message: '找回密码请求缺少有效参数。',
+    });
+    return;
+  }
+
+  const email = toTrimmedString(body.email);
+
+  if (!email) {
+    sendJson(response, 400, {
+      message: '邮箱不能为空。',
+    });
+    return;
+  }
+
+  const upstream = await requestEmailAction('request-password-reset', email);
+
+  if (!upstream.response.ok && upstream.response.status >= 500) {
+    sendUpstreamError(response, upstream.response.status, upstream.payload);
+    return;
+  }
+
+  sendJson(
+    response,
+    200,
+    toGenericEmailActionResult('如果该邮箱已注册，重置密码邮件已发送，请注意查收。'),
+  );
 };
 
 const handleLogout = (request: IncomingMessage, response: ServerResponse): void => {
@@ -510,6 +619,26 @@ const handleRequest = async (request: IncomingMessage, response: ServerResponse)
     }
 
     await handleSession(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/auth/request-verification') {
+    if (request.method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return;
+    }
+
+    await handleRequestVerification(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/auth/request-password-reset') {
+    if (request.method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return;
+    }
+
+    await handleRequestPasswordReset(request, response);
     return;
   }
 

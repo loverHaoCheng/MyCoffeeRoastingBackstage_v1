@@ -4,6 +4,7 @@ import styles from '../pages/AuthPage.module.css';
 
 interface AuthPageShellProps {
   actions?: ReactNode;
+  brandTitle?: string;
   children: ReactNode;
   description: string;
   eyebrow: string;
@@ -12,12 +13,13 @@ interface AuthPageShellProps {
   title: string;
 }
 
-const joinClassNames = (...classNames: Array<string | false | null | undefined>) => {
+const joinClassNames = (...classNames: (string | false | null | undefined)[]) => {
   return classNames.filter(Boolean).join(' ');
 };
 
 export function AuthPageShell({
   actions,
+  brandTitle,
   children,
   description,
   eyebrow,
@@ -28,6 +30,8 @@ export function AuthPageShell({
   return (
     <main className={styles.page}>
       <section className={joinClassNames(styles.shell, shellClassName)}>
+        {brandTitle ? <div className={styles.brandTitle}>{brandTitle}</div> : null}
+
         {!heroHidden ? (
           <header className={styles.hero}>
             <span className={styles.eyebrow}>{eyebrow}</span>

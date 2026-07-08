@@ -1,3 +1,4 @@
+import { pocketBaseAuthService } from '@/modules/auth/services/pocketBaseAuth.service';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
 export function useAuth() {
@@ -15,6 +16,8 @@ export function useAuth() {
     hasHydrated,
     login,
     logout,
+    requestPasswordReset: (email: string) => pocketBaseAuthService.requestPasswordReset(email),
+    requestVerification: (email: string) => pocketBaseAuthService.requestVerification(email),
     register,
     session,
     status,

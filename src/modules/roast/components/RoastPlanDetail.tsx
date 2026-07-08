@@ -80,13 +80,11 @@ export function RoastPlanDetail({ mode, onClose, onUpdate, plan }: RoastPlanDeta
   }
 
   return (
-    <section className={styles.panel}>
-      <RoastPlanForm
-        initialValues={initialValues}
-        onCancel={onClose}
-        onSubmit={handleSubmit}
-        submitLabel="保存计划"
-      />
-    </section>
+    <RoastPlanForm
+      initialValues={initialValues}
+      onCancel={onClose}
+      onSubmit={handleSubmit}
+      submitLabel="保存计划"
+    />
   );
 }

@@ -256,13 +256,6 @@ export function ProductionPage() {
             batch={selectedBatch}
             mode={detailMode}
             onClose={closeDetail}
-            onDelete={handleDelete}
-            onModeChange={(mode) => {
-              setDetailMode(mode);
-              if (mode === 'view') {
-                setSelectedBatchFieldPath(undefined);
-              }
-            }}
             onUpdate={handleUpdate}
           />
         </AppDrawer>

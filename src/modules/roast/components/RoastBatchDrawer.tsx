@@ -1,4 +1,4 @@
-import { DeleteOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
+import { SaveOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Input, InputNumber, Select } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -36,8 +36,6 @@ interface RoastBatchDrawerProps {
   batch: RoastBatchRecord | null;
   mode: DrawerMode;
   onClose: () => void;
-  onDelete?: (batch: RoastBatchRecord) => void;
-  onModeChange?: (mode: DrawerMode) => void;
   onUpdate?: (batchId: string, input: RoastBatchUpdateInput) => Promise<void> | void;
 }
 
@@ -57,7 +55,7 @@ const createFormState = (batch: RoastBatchRecord | null) => ({
   notes: batch?.notes ?? '',
 });
 
-export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange, onUpdate }: RoastBatchDrawerProps) {
+export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchDrawerProps) {
   const isView = mode === 'view';
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
@@ -147,27 +145,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
 
   return (
     <div className={styles.drawer}>
-      {/* 头部 */}
-      <header className={styles.header}>
-        <div className={styles.headerTitle}>
-          <strong>{isView ? '烘焙记录详情' : '编辑烘焙记录'}</strong>
-        </div>
-        <div className={styles.headerActions}>
-          {isView && onModeChange && (
-            <Button
-              icon={<EyeOutlined />}
-              onClick={() => {
-                onModeChange('edit');
-              }}
-              size="small"
-              type="text"
-            >
-              编辑
-            </Button>
-          )}
-        </div>
-      </header>
-
       {/* 内容区 */}
       <div className={styles.body}>
         {/* 基本信息 */}
@@ -428,21 +405,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onDelete, onModeChange,
           </DrawerActionBar>
         )}
 
-        {/* 查看模式的删除按钮 */}
-        {isView && onDelete && (
-          <DrawerActionBar compact>
-            <Button
-              block
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => {
-                onDelete(batch);
-              }}
-            >
-              删除此记录
-            </Button>
-          </DrawerActionBar>
-        )}
       </div>
     </div>
   );

@@ -8,7 +8,13 @@ import { pocketBaseConnectionSettingsService } from '@/modules/settings/services
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
-import type { AuthCredentialsInput, RegisterInput, PocketBaseUserRecord } from '../types';
+import type {
+  AuthCredentialsInput,
+  AuthEmailActionResult,
+  PocketBaseUserRecord,
+  RegisterInput,
+  RegisterResult,
+} from '../types';
 
 interface PocketBaseAuthResponse {
   record?: PocketBaseUserRecord;
@@ -321,19 +327,12 @@ const getSessionFromAuthResponse = (response: PocketBaseAuthResponse): PocketBas
 };
 
 export const pocketBaseAuthService = {
-  async register(input: RegisterInput): Promise<PocketBaseSession> {
-    await postJson('/register', {
+  async register(input: RegisterInput): Promise<RegisterResult> {
+    return (await postJson('/register', {
       email: input.email.trim(),
       password: input.password,
       passwordConfirm: input.passwordConfirm,
-    });
-
-    const loginResponse = (await postJson('/login', {
-      identity: input.email.trim(),
-      password: input.password,
-    })) as PocketBaseAuthResponse;
-
-    return getSessionFromAuthResponse(loginResponse);
+    })) as RegisterResult;
   },
   async login(input: AuthCredentialsInput): Promise<PocketBaseSession> {
     const response = (await postJson('/login', {
@@ -376,5 +375,15 @@ export const pocketBaseAuthService = {
   },
   loadSession(): PocketBaseSession | null {
     return pocketBaseSessionService.load();
+  },
+  async requestPasswordReset(email: string): Promise<AuthEmailActionResult> {
+    return (await postJson('/request-password-reset', {
+      email: email.trim(),
+    })) as AuthEmailActionResult;
+  },
+  async requestVerification(email: string): Promise<AuthEmailActionResult> {
+    return (await postJson('/request-verification', {
+      email: email.trim(),
+    })) as AuthEmailActionResult;
   },
 };

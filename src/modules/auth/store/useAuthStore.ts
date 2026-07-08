@@ -8,7 +8,7 @@ import {
 } from '@/services/pocketBaseSession.service';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
 
-import type { AuthCredentialsInput, RegisterInput } from '../types';
+import type { AuthCredentialsInput, RegisterInput, RegisterResult } from '../types';
 
 export type AuthStatus = 'authenticated' | 'hydrating' | 'unauthenticated';
 
@@ -17,7 +17,7 @@ interface AuthState {
   hasHydrated: boolean;
   login: (input: AuthCredentialsInput) => Promise<PocketBaseSession>;
   logout: () => Promise<void>;
-  register: (input: RegisterInput) => Promise<PocketBaseSession>;
+  register: (input: RegisterInput) => Promise<RegisterResult>;
   session: PocketBaseSession | null;
   status: AuthStatus;
   user: PocketBaseSessionUser | null;
@@ -125,16 +125,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   register: async (input) => {
     localStorageCleanupService.clearAppState();
-    const session = await pocketBaseAuthService.register(input);
+    const result = await pocketBaseAuthService.register(input);
 
     set({
       hasHydrated: true,
-      session,
-      status: 'authenticated',
-      user: session.user,
+      session: null,
+      status: 'unauthenticated',
+      user: null,
     });
 
-    return session;
+    return result;
   },
   session: initialSession,
   status: initialSession != null ? 'authenticated' : 'hydrating',

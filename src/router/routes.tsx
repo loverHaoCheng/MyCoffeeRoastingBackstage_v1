@@ -2,7 +2,7 @@ import { Spin } from 'antd';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, useLocation, createHashRouter, type RouteObject } from 'react-router-dom';
 
-import { LoginPage, RegisterPage } from '@/modules/auth';
+import { ForgotPasswordPage, LoginPage, RegisterPage } from '@/modules/auth';
 import { MainLayout } from '@/layouts/MainLayout';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
@@ -114,6 +114,10 @@ export const routes: RouteObject[] = [
         <RegisterPage />
       </PublicOnly>
     ),
+  },
+  {
+    path: '/forgot-password',
+    element: <ForgotPasswordPage />,
   },
   {
     path: '*',

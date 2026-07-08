@@ -30,7 +30,8 @@
 }
 
 .detailDrawer :global(.ant-drawer-body) {
-  padding: 0;
+  padding: 0 24px 0;
+  overflow-x: hidden;
 }
 
 .detailDrawer[data-placement='bottom'] {
@@ -43,5 +44,9 @@
     --page-padding-top: 12px;
     --page-padding-right: 12px;
     --page-padding-left: 12px;
+  }
+
+  .detailDrawer :global(.ant-drawer-body) {
+    padding: 0 16px 0;
   }
 }
