@@ -25,4 +25,4 @@
 - `roast_records`: 烘焙记录
 - `green_bean_inventory_overview`: 前端读取用汇总视图
 
-详细字段说明见 `docs/data-models/green-bean-supabase.md`。
+详细字段说明见 `docs/data-models/green-bean-pocketbase.md`。

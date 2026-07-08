@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { SupabaseRestClient } from '@/services/supabaseRestClient';
+import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 
-describe('SupabaseRestClient', () => {
+describe('PocketBaseRestClient', () => {
   it('falls back to the default pocketbase url when project url is omitted', async () => {
     const fetcher = vi.fn(() =>
       Promise.resolve(
@@ -11,7 +11,7 @@ describe('SupabaseRestClient', () => {
         }),
       ),
     );
-    const client = new SupabaseRestClient({
+    const client = new PocketBaseRestClient({
       fetcher,
       projectUrl: '',
       publishableKey: '',
@@ -29,15 +29,15 @@ describe('SupabaseRestClient', () => {
   });
 
   it('maps auth failures to AppError', async () => {
-    const client = new SupabaseRestClient({
+    const client = new PocketBaseRestClient({
       fetcher: () =>
         Promise.resolve(
           new Response(JSON.stringify({ message: 'Invalid API key' }), {
             status: 401,
           }),
         ),
-      projectUrl: 'https://demo.supabase.co',
-      publishableKey: 'sb_publishable_demo',
+      projectUrl: 'http://81.70.224.75',
+      publishableKey: '',
     });
 
     await expect(client.list('green_bean_inventory_overview')).rejects.toMatchObject({
@@ -47,15 +47,15 @@ describe('SupabaseRestClient', () => {
   });
 
   it('maps timeout aborts to AppError', async () => {
-    const client = new SupabaseRestClient({
+    const client = new PocketBaseRestClient({
       fetcher: (_input, init) =>
         new Promise((_resolve, reject) => {
           init?.signal?.addEventListener('abort', () => {
             reject(new DOMException('Aborted', 'AbortError'));
           });
         }),
-      projectUrl: 'https://demo.supabase.co',
-      publishableKey: 'sb_publishable_demo',
+      projectUrl: 'http://81.70.224.75',
+      publishableKey: '',
       timeoutMs: 5,
     });
 
@@ -64,7 +64,7 @@ describe('SupabaseRestClient', () => {
     });
   });
 
-  it('returns list payloads when Supabase responds with array data', async () => {
+  it('returns list payloads when PocketBase responds with array data', async () => {
     const fetcher = vi.fn(() =>
       Promise.resolve(
         new Response(JSON.stringify([{ id: 'bean-1', display_name: 'Guji' }]), {
@@ -72,10 +72,10 @@ describe('SupabaseRestClient', () => {
         }),
       ),
     );
-    const client = new SupabaseRestClient({
+    const client = new PocketBaseRestClient({
       fetcher,
-      projectUrl: 'https://demo.supabase.co',
-      publishableKey: 'sb_publishable_demo',
+      projectUrl: 'http://81.70.224.75',
+      publishableKey: '',
     });
 
     await expect(client.list<{ display_name: string; id: string }>('green_bean_inventory_overview')).resolves
@@ -91,7 +91,7 @@ describe('SupabaseRestClient', () => {
         }),
       ),
     );
-    const client = new SupabaseRestClient({
+    const client = new PocketBaseRestClient({
       fetcher,
       projectUrl: 'http://81.70.224.75',
       publishableKey: '',
@@ -104,7 +104,7 @@ describe('SupabaseRestClient', () => {
   });
 
   it('surfaces detailed PocketBase validation errors for failed inserts', async () => {
-    const client = new SupabaseRestClient({
+    const client = new PocketBaseRestClient({
       fetcher: () =>
         Promise.resolve(
           new Response(JSON.stringify({
@@ -135,7 +135,7 @@ describe('SupabaseRestClient', () => {
   });
 
   it('translates PocketBase minimum number validation messages', async () => {
-    const client = new SupabaseRestClient({
+    const client = new PocketBaseRestClient({
       fetcher: () =>
         Promise.resolve(
           new Response(JSON.stringify({

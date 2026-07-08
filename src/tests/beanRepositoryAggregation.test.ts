@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { createSupabaseGreenBeanInventoryRepository } from '@/modules/bean/services/bean.service';
+import { createGreenBeanInventoryRepository } from '@/modules/bean/services/bean.service';
 import { AppError } from '@/shared/errors/AppError';
-import { SupabaseRestClient } from '@/services/supabaseRestClient';
+import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 
-describe('createSupabaseGreenBeanInventoryRepository', () => {
+describe('createGreenBeanInventoryRepository', () => {
   it('aggregates purchase batches into weighted cost and remaining stock totals', async () => {
     const client = {
       list: <T,>(tableName: string): Promise<T[]> => {
@@ -90,9 +90,9 @@ describe('createSupabaseGreenBeanInventoryRepository', () => {
 
         return Promise.resolve([]);
       },
-    } as unknown as SupabaseRestClient;
+    } as unknown as PocketBaseRestClient;
 
-    const repository = createSupabaseGreenBeanInventoryRepository(client);
+    const repository = createGreenBeanInventoryRepository(client);
     const result = await repository.listBeans();
 
     expect(result.data).toEqual([
@@ -181,9 +181,9 @@ describe('createSupabaseGreenBeanInventoryRepository', () => {
 
         return Promise.resolve([] as T[]);
       },
-    } as unknown as SupabaseRestClient;
+    } as unknown as PocketBaseRestClient;
 
-    const repository = createSupabaseGreenBeanInventoryRepository(client);
+    const repository = createGreenBeanInventoryRepository(client);
 
     await repository.updateBean('bean-1', {
       altitudeMetersMax: null,
@@ -223,10 +223,11 @@ describe('createSupabaseGreenBeanInventoryRepository', () => {
   });
 
   it('removes roast batches before deleting the green bean record', async () => {
-    const deleteCalls: Array<{ match: Record<string, unknown>; tableName: string }> = [];
+    const deleteCalls: { match: Record<string, unknown>; tableName: string }[] = [];
     const client = {
-      delete: async (tableName: string, options: { match: Record<string, unknown> }) => {
+      delete: (tableName: string, options: { match: Record<string, unknown> }) => {
         deleteCalls.push({ match: options.match, tableName });
+        return Promise.resolve();
       },
       insert: <T,>(): Promise<T[]> => {
         return Promise.resolve([] as T[]);
@@ -237,9 +238,9 @@ describe('createSupabaseGreenBeanInventoryRepository', () => {
       update: <T,>(): Promise<T[]> => {
         return Promise.resolve([] as T[]);
       },
-    } as unknown as SupabaseRestClient;
+    } as unknown as PocketBaseRestClient;
 
-    const repository = createSupabaseGreenBeanInventoryRepository(client);
+    const repository = createGreenBeanInventoryRepository(client);
 
     await repository.deleteBean('bean-1');
 
@@ -326,9 +327,9 @@ describe('createSupabaseGreenBeanInventoryRepository', () => {
       update: <T,>(): Promise<T[]> => {
         return Promise.resolve([] as T[]);
       },
-    } as unknown as SupabaseRestClient;
+    } as unknown as PocketBaseRestClient;
 
-    const repository = createSupabaseGreenBeanInventoryRepository(client);
+    const repository = createGreenBeanInventoryRepository(client);
     const result = await repository.createBean({
       altitudeMetersMax: null,
       altitudeMetersMin: null,

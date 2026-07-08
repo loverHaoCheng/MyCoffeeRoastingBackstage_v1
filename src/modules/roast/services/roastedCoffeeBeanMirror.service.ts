@@ -5,7 +5,7 @@ import { isSupabaseProjectUrl } from '@/services/pocketBaseConfig';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
-import { SupabaseDataClient } from '@/services/supabaseDataClient';
+import { RoastedBeanSupabaseDataClient } from '@/services/roastedBeanSupabaseDataClient';
 import type { Bean } from '@/types/domain';
 
 import { normalizeRoastLevel } from '../constants/roastLevel';
@@ -102,8 +102,8 @@ const getTrimmedText = (value: string | null | undefined): string => {
   return value?.trim() ?? '';
 };
 
-const resolveMirrorName = (batch: RoastBatchRecord): string => {
-  const candidates = [batch.roastedBeanName, batch.roastPlanName, batch.greenBeanName];
+const resolveMirrorBaseName = (batch: RoastBatchRecord): string => {
+  const candidates = [batch.roastedBeanName, batch.greenBeanName, batch.roastPlanName];
 
   for (const candidate of candidates) {
     const value = getTrimmedText(candidate);
@@ -114,6 +114,17 @@ const resolveMirrorName = (batch: RoastBatchRecord): string => {
   }
 
   return batch.greenBeanName;
+};
+
+const resolveMirrorName = (batch: RoastBatchRecord, bean: Bean | null): string => {
+  const baseName = resolveMirrorBaseName(batch);
+  const process = getTrimmedText(bean?.process);
+
+  if (baseName.length === 0) {
+    return process;
+  }
+
+  return process.length > 0 ? `${baseName} ${process}` : baseName;
 };
 
 const resolveBeanType = (batch: RoastBatchRecord, bean: Bean | null): CoffeeBeanType => {
@@ -236,15 +247,14 @@ export const buildMirrorData = (
   const capacity = resolveSaleUnitWeight(bean);
   const price = resolveSaleUnitPrice(bean);
   const remaining = capacity || (batch.outputWeightGrams > 0 ? String(batch.outputWeightGrams) : '');
-  const roaster = getTrimmedText(batch.roastPlanName);
   const brand = getTrimmedText(bean?.supplierName) || getTrimmedText(bean?.name);
   const imageUrls = batch.imageUrls?.filter((url): url is string => typeof url === 'string').map((url) => url.trim()) ?? [];
 
   return {
     id: batch.id,
     timestamp: resolveTimestamp(batch),
-    name: resolveMirrorName(batch),
-    roaster,
+    name: resolveMirrorName(batch, bean),
+    roaster: '',
     image: resolveImageUrl(batch, 0),
     backImage: resolveImageUrl(batch, 1),
     capacity,
@@ -318,7 +328,7 @@ const getRoastedBeanClient = (): Pick<PocketBaseRestClient, 'insert'> => {
   const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('roastedBean');
 
   if (isSupabaseProjectUrl(connection.projectUrl)) {
-    return new SupabaseDataClient({
+    return new RoastedBeanSupabaseDataClient({
       projectUrl: connection.projectUrl,
       publishableKey: connection.publishableKey,
     });

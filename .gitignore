@@ -7,12 +7,6 @@ coverage/
 *.tsbuildinfo
 .vite/
 
-# supabase local artifacts
-.supabase/
-supabase/.branches/
-supabase/.cache/
-supabase/.temp/
-
 # environment files
 .env
 .env.*

@@ -226,7 +226,7 @@ export function useDeleteBean() {
     onSuccess: (result, beanId) => {
       if (result.synced) {
         queryClient.removeQueries({ queryKey: beanEditableDetailQueryKeys.detail(beanId), exact: true });
-        queryClient.invalidateQueries({ queryKey: beanQueryKeys.list() });
+        void queryClient.invalidateQueries({ queryKey: beanQueryKeys.list() });
       }
     },
   });

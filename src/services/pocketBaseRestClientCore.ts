@@ -125,7 +125,9 @@ const POCKETBASE_FIELD_LABELS: Record<string, string> = {
   time: '时间',
 };
 
-const parsePocketBaseFieldIssues = (payload: PocketBaseErrorPayload): Array<{ fieldName: string; issue: PocketBaseErrorFieldIssue }> => {
+const parsePocketBaseFieldIssues = (
+  payload: PocketBaseErrorPayload,
+): { fieldName: string; issue: PocketBaseErrorFieldIssue }[] => {
   if (typeof payload.data !== 'object' || payload.data == null) {
     return [];
   }
@@ -164,13 +166,13 @@ const normalizePocketBaseFieldIssueMessage = (
     return `${label}不能为空`;
   }
 
-  const minMatch = normalizedMessage.match(/greater or equal than\s+(-?\d+(?:\.\d+)?)/i);
+  const minMatch = /greater or equal than\s+(-?\d+(?:\.\d+)?)/i.exec(normalizedMessage);
 
   if (minMatch?.[1]) {
     return `${label}不能小于 ${minMatch[1]}`;
   }
 
-  const maxMatch = normalizedMessage.match(/less or equal than\s+(-?\d+(?:\.\d+)?)/i);
+  const maxMatch = /less or equal than\s+(-?\d+(?:\.\d+)?)/i.exec(normalizedMessage);
 
   if (maxMatch?.[1]) {
     return `${label}不能大于 ${maxMatch[1]}`;
@@ -692,5 +694,3 @@ export class PocketBaseRestClient {
     }
   }
 }
-
-export { PocketBaseRestClient as SupabaseRestClient };

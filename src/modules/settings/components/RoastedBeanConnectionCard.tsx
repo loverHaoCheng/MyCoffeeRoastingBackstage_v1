@@ -2,14 +2,14 @@ import { DownOutlined } from '@ant-design/icons';
 import { App, Button, Input, Tag } from 'antd';
 import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { supabaseConnectionFormSectionSchema } from '@/modules/settings/schemas';
+import { pocketBaseConnectionFormSectionSchema } from '@/modules/settings/schemas';
 import { brewGuideLinkService, brewGuideUrl } from '@/modules/settings/services/brewGuideLink.service';
 import { pocketBaseConnectionRuntimeService } from '@/modules/settings/services/pocketBaseConnectionRuntime.service';
-import { supabaseConnectionProbeService } from '@/modules/settings/services/pocketBaseConnectionProbe.service';
+import { pocketBaseConnectionProbeService } from '@/modules/settings/services/pocketBaseConnectionProbe.service';
 import {
   hasSyncableRoastedBeanConnection,
-  supabaseRoastedBeanConnectionSyncService,
-} from '@/modules/settings/services/supabaseRoastedBeanConnectionSync.service';
+  roastedBeanSupabaseConnectionSyncService,
+} from '@/modules/settings/services/roastedBeanSupabaseConnectionSync.service';
 import { useSettingsStore } from '@/modules/settings/store';
 import {
   normalizeRoastedBeanPocketBaseProjectConnection,
@@ -74,7 +74,7 @@ export function RoastedBeanConnectionCard() {
     unconfigured: '未配置',
   }[connectionStatus];
   const statusTagColor = connectionStatus === 'connected' ? 'green' : 'default';
-  const connectionSchema = useMemo(() => supabaseConnectionFormSectionSchema(false), []);
+  const connectionSchema = useMemo(() => pocketBaseConnectionFormSectionSchema(false), []);
 
   useEffect(() => {
     const nextDraft = normalizeConnectionDraft({
@@ -103,8 +103,8 @@ export function RoastedBeanConnectionCard() {
     setConnectionStatus('checking');
 
     try {
-      await supabaseConnectionProbeService.verify('roastedBean', connection);
-      await supabaseRoastedBeanConnectionSyncService.syncLocalChange(connection);
+      await pocketBaseConnectionProbeService.verify('roastedBean', connection);
+      await roastedBeanSupabaseConnectionSyncService.syncLocalChange(connection);
       pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
         connection,
         'connected',
@@ -151,7 +151,7 @@ export function RoastedBeanConnectionCard() {
 
     void (async () => {
       try {
-        await supabaseConnectionProbeService.verify('roastedBean', currentConnection);
+        await pocketBaseConnectionProbeService.verify('roastedBean', currentConnection);
         pocketBaseConnectionRuntimeService.saveRoastedBeanConnectionStatus(
           currentConnection,
           'connected',

@@ -7,7 +7,7 @@ const pocketBaseConnectionStorageSchema = z.object({
   publishableKey: z.string(),
 });
 
-const pocketBaseConnectionFormSectionSchema = (required: boolean) =>
+export const pocketBaseConnectionFormSectionSchema = (required: boolean) =>
   z
     .object({
       projectUrl: z.string().trim(),
@@ -78,10 +78,6 @@ export const pocketBaseConnectionFormSchema = z.object({
   greenBean: pocketBaseConnectionFormSectionSchema(true),
   roastedBean: pocketBaseConnectionFormSectionSchema(false),
 });
-
-export const supabaseConnectionSettingsStorageSchema = pocketBaseConnectionSettingsStorageSchema;
-export const supabaseConnectionFormSchema = pocketBaseConnectionFormSchema;
-export const supabaseConnectionFormSectionSchema = pocketBaseConnectionFormSectionSchema;
 
 const costTemplateStorageItemSchema = z.object({
   createdAt: z.string().datetime(),

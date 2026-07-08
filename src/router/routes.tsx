@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import { Spin } from 'antd';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, useLocation, createHashRouter, type RouteObject } from 'react-router-dom';

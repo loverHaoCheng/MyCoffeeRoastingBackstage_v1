@@ -19,7 +19,7 @@ describe('beanCacheService', () => {
 
   it('marks fallback without losing the cached beans', () => {
     beanCacheService.clear();
-    beanCacheService.save(seedBeans.slice(0, 2), 'supabase');
+    beanCacheService.save(seedBeans.slice(0, 2), 'remote');
 
     const cachedBeans = beanCacheService.markFallback('TIMEOUT');
 
@@ -27,7 +27,7 @@ describe('beanCacheService', () => {
     expect(beanCacheService.getStatus()).toMatchObject({
       errorCode: 'TIMEOUT',
       recordCount: 2,
-      source: 'supabase',
+      source: 'remote',
       status: 'fallback',
     });
   });
@@ -40,7 +40,7 @@ describe('beanCacheService', () => {
     expect(beanCacheService.getStatus()).toMatchObject({
       errorCode: 'NETWORK',
       recordCount: 0,
-      source: 'supabase',
+      source: 'remote',
       status: 'error',
       syncedAt: null,
     });

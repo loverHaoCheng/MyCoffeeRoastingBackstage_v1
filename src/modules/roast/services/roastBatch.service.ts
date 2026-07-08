@@ -32,6 +32,7 @@ export interface RoastBatchRepository {
 
 const STORAGE_KEY = 'coffee-roasting-backstage:roast-batches';
 let localRoastBatches: RoastBatchRecord[] = [];
+const pendingOptimisticCreateBatchIds = new Set<string>();
 
 const loadLocalBatches = (): RoastBatchRecord[] => {
   void STORAGE_KEY;
@@ -48,6 +49,10 @@ const createOptimisticLocalBatchId = (): string => {
   }
 
   return `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const isOptimisticLocalBatchId = (batchId: string): boolean => {
+  return batchId.startsWith('local-');
 };
 
 // ============ 工具函数 ============
@@ -72,7 +77,7 @@ const getBatchSyncSnapshot = (batches: RoastBatchRecord[]): string => {
   );
 };
 
-const isMissingSupabaseResourceError = (error: unknown): boolean => {
+const isMissingRemoteResourceError = (error: unknown): boolean => {
   if (!(error instanceof AppError)) {
     return false;
   }
@@ -95,8 +100,8 @@ const isMissingRoastedBeanNameColumnError = (error: unknown): boolean => {
   return message.includes("'roasted_bean_name'") && message.includes("'roast_batches'");
 };
 
-const mapUnknownSupabaseRecord = (record: unknown): RoastBatchRecord => {
-  return mapSupabaseRoastBatchRecord(record as Record<string, unknown>);
+const mapUnknownRemoteRecord = (record: unknown): RoastBatchRecord => {
+  return mapRemoteRoastBatchRecord(record as Record<string, unknown>);
 };
 
 const getLocalBatchAt = (batches: RoastBatchRecord[], index: number): RoastBatchRecord => {
@@ -292,7 +297,7 @@ const getBatchStatusField = (value: unknown): RoastBatchRecord['status'] => {
   return value === 'draft' || value === 'completed' ? value : 'completed';
 };
 
-const mapSupabaseRoastBatchRecord = (record: Record<string, unknown>): RoastBatchRecord => ({
+const mapRemoteRoastBatchRecord = (record: Record<string, unknown>): RoastBatchRecord => ({
   id: getStringField(record.id),
   roastDate: getStringField(record.roast_date),
   greenBeanId: getStringField(record.green_bean_id),
@@ -319,12 +324,12 @@ const mapSupabaseRoastBatchRecord = (record: Record<string, unknown>): RoastBatc
 
 // ============ 连接检测 ============
 
-const hasSupabaseConnection = (): boolean => {
+const hasGreenBeanConnection = (): boolean => {
   const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
   return isPocketBaseProjectConnectionConfigured(connection);
 };
 
-const getSupabaseClient = (): PocketBaseRestClient => {
+const getGreenBeanClient = (): PocketBaseRestClient => {
   const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
   return new PocketBaseRestClient({
     projectUrl: connection.projectUrl,
@@ -391,9 +396,9 @@ class MockRoastBatchRepository implements RoastBatchRepository {
   }
 }
 
-// ============ Supabase Repository ============
+// ============ Remote Repository ============
 
-class SupabaseRoastBatchRepository implements RoastBatchRepository {
+class RemoteRoastBatchRepository implements RoastBatchRepository {
   constructor(private readonly client: PocketBaseRestClient) {}
 
   async createBatch(input: RoastBatchCreateInput): Promise<ApiResponse<RoastBatchRecord>> {
@@ -419,7 +424,7 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
       throw new AppError('创建烘焙记录失败：未返回数据。', { code: 'DATA' });
     }
 
-    return ok(mapUnknownSupabaseRecord(createdRow));
+    return ok(mapUnknownRemoteRecord(createdRow));
   }
 
   async deleteBatch(batchId: string): Promise<void> {
@@ -436,10 +441,10 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
       const overviewRow = overviewRows[0];
 
       if (overviewRow) {
-        return mapUnknownSupabaseRecord(overviewRow);
+        return mapUnknownRemoteRecord(overviewRow);
       }
     } catch (overviewError) {
-      if (!isMissingSupabaseResourceError(overviewError)) {
+      if (!isMissingRemoteResourceError(overviewError)) {
         throw overviewError;
       }
     }
@@ -451,7 +456,7 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
 
     const batchRow = rows[0];
 
-    return batchRow ? mapUnknownSupabaseRecord(batchRow) : null;
+    return batchRow ? mapUnknownRemoteRecord(batchRow) : null;
   }
 
   async listBatches(): Promise<ApiResponse<RoastBatchRecord[]>> {
@@ -460,9 +465,9 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
       const rows = await this.client.list<Record<string, unknown>>('roast_batch_overview', {
         orderBy: { ascending: false, column: 'roast_date' },
       });
-      return ok(rows.map(mapUnknownSupabaseRecord));
+      return ok(rows.map(mapUnknownRemoteRecord));
     } catch (overviewError) {
-      if (!isMissingSupabaseResourceError(overviewError)) {
+      if (!isMissingRemoteResourceError(overviewError)) {
         throw overviewError;
       }
 
@@ -470,9 +475,9 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
         const rows = await this.client.list<Record<string, unknown>>('roast_batches', {
           orderBy: { ascending: false, column: 'roast_date' },
         });
-        return ok(rows.map(mapUnknownSupabaseRecord));
+        return ok(rows.map(mapUnknownRemoteRecord));
       } catch (tableError) {
-        if (isMissingSupabaseResourceError(tableError)) {
+        if (isMissingRemoteResourceError(tableError)) {
           return ok([]);
         }
 
@@ -510,7 +515,7 @@ class SupabaseRoastBatchRepository implements RoastBatchRepository {
       throw new AppError('更新失败：未找到记录。', { code: 'DATA' });
     }
 
-    return ok(mapUnknownSupabaseRecord(updatedRow));
+    return ok(mapUnknownRemoteRecord(updatedRow));
   }
 }
 
@@ -521,10 +526,10 @@ const resolveRoastBatchRepository = (): RoastBatchRepository => {
     return new MockRoastBatchRepository();
   }
 
-  if (!hasSupabaseConnection()) {
+  if (!hasGreenBeanConnection()) {
     return new MockRoastBatchRepository();
   }
-  return new SupabaseRoastBatchRepository(getSupabaseClient());
+  return new RemoteRoastBatchRepository(getGreenBeanClient());
 };
 
 // ============ Service ============
@@ -546,6 +551,7 @@ export const roastBatchService = {
       updatedAt: now,
     };
 
+    pendingOptimisticCreateBatchIds.add(record.id);
     saveBatchRecord(record);
 
     return record;
@@ -563,12 +569,14 @@ export const roastBatchService = {
     return sortBatches(loadLocalBatches());
   },
   finalizeOptimisticBatch(optimisticBatchId: string, remoteBatch: RoastBatchRecord): RoastBatchRecord[] {
+    pendingOptimisticCreateBatchIds.delete(optimisticBatchId);
     removeStoredBatch(optimisticBatchId);
     saveBatchRecord(remoteBatch);
 
     return sortBatches(loadLocalBatches());
   },
   rollbackOptimisticBatch(optimisticBatchId: string): RoastBatchRecord[] {
+    pendingOptimisticCreateBatchIds.delete(optimisticBatchId);
     removeStoredBatch(optimisticBatchId);
 
     return sortBatches(loadLocalBatches());
@@ -741,17 +749,23 @@ export const roastBatchService = {
     }
   },
   async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
-    if (!hasSupabaseConnection() || typeof navigator === 'undefined' || !navigator.onLine) {
+    if (!hasGreenBeanConnection() || typeof navigator === 'undefined' || !navigator.onLine) {
       return { downloaded: 0, uploaded: 0 };
     }
 
-    const repository = new SupabaseRoastBatchRepository(getSupabaseClient());
+    if (pendingOptimisticCreateBatchIds.size > 0) {
+      return { downloaded: 0, uploaded: 0 };
+    }
+
+    const repository = new RemoteRoastBatchRepository(getGreenBeanClient());
     const localBatchesBeforeSync = sortBatches(loadLocalBatches());
+    const optimisticLocalBatches = localBatchesBeforeSync.filter((batch) => isOptimisticLocalBatchId(batch.id));
+    const syncableLocalBatches = localBatchesBeforeSync.filter((batch) => !isOptimisticLocalBatchId(batch.id));
     const remoteBeforeSync = await repository.listBatches();
     const remoteIds = new Set(remoteBeforeSync.data.map((batch) => batch.id));
     let uploaded = 0;
 
-    for (const batch of localBatchesBeforeSync) {
+    for (const batch of syncableLocalBatches) {
       if (remoteIds.has(batch.id)) {
         continue;
       }
@@ -777,7 +791,7 @@ export const roastBatchService = {
     }
 
     const remoteAfterSync = await repository.listBatches();
-    const nextBatches = sortBatches(remoteAfterSync.data);
+    const nextBatches = sortBatches([...optimisticLocalBatches, ...remoteAfterSync.data]);
     const beforeSignature = getBatchSyncSnapshot(localBatchesBeforeSync);
     const afterSignature = getBatchSyncSnapshot(nextBatches);
 
@@ -787,5 +801,8 @@ export const roastBatchService = {
       downloaded: beforeSignature === afterSignature ? 0 : nextBatches.length,
       uploaded,
     };
+  },
+  hasPendingOptimisticCreations(): boolean {
+    return pendingOptimisticCreateBatchIds.size > 0;
   },
 };

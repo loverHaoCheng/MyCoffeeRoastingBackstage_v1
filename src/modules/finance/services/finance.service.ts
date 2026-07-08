@@ -1,11 +1,9 @@
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
-import { isSupabaseProjectUrl } from '@/services/pocketBaseConfig';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/services/api.types';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
-import { SupabaseDataClient } from '@/services/supabaseDataClient';
 
 import type {
   CostCalculationFormInput,
@@ -25,7 +23,7 @@ interface FinanceConnectionCandidate {
   dataSource: FinanceDataSource;
 }
 
-interface SupabaseCostCalculationRecord {
+interface RemoteCostCalculationRecord {
   bean_id: string;
   bean_name: string;
   calculation_name: string;
@@ -145,7 +143,7 @@ export const calculateCostMetrics = (input: CostCalculationFormInput): CostCalcu
   };
 };
 
-const mapSupabaseRecordToCostCalculation = (record: SupabaseCostCalculationRecord): CostCalculationRecord => ({
+const mapRemoteRecordToCostCalculation = (record: RemoteCostCalculationRecord): CostCalculationRecord => ({
   beanId: record.bean_id,
   beanName: record.bean_name,
   calculationName: record.calculation_name,
@@ -184,17 +182,6 @@ const resolveFinanceConnection = ():
 const resolveFinanceConnectionCandidates = (): FinanceConnectionCandidate[] => {
   const candidates: FinanceConnectionCandidate[] = [];
 
-  const roastedConnection = pocketBaseConnectionSettingsService.resolveProjectConnection('roastedBean');
-
-  if (isPocketBaseProjectConnectionConfigured(roastedConnection)) {
-    candidates.push({
-      client: isSupabaseProjectUrl(roastedConnection.projectUrl)
-        ? new SupabaseDataClient(roastedConnection)
-        : new PocketBaseRestClient(roastedConnection),
-      dataSource: 'roastedBean',
-    });
-  }
-
   const greenConnection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
   if (isPocketBaseProjectConnectionConfigured(greenConnection)) {
@@ -207,7 +194,7 @@ const resolveFinanceConnectionCandidates = (): FinanceConnectionCandidate[] => {
   return candidates;
 };
 
-const isMissingSupabaseResourceError = (error: unknown): boolean => {
+const isMissingRemoteResourceError = (error: unknown): boolean => {
   if (!(error instanceof AppError)) {
     return false;
   }
@@ -219,24 +206,24 @@ const isMissingSupabaseResourceError = (error: unknown): boolean => {
   return error.status === 404 || payload?.code?.startsWith('PGRST') === true || message.includes('不存在');
 };
 
-const createSupabaseFinanceRepository = (
+const createRemoteFinanceRepository = (
   client: Pick<PocketBaseRestClient, 'insert' | 'list'>,
   dataSource: FinanceDataSource,
 ): FinanceRepository => ({
   async listCalculations() {
-    const rows = await client.list<SupabaseCostCalculationRecord>(COST_CALCULATIONS_TABLE, {
+    const rows = await client.list<RemoteCostCalculationRecord>(COST_CALCULATIONS_TABLE, {
       orderBy: {
         ascending: false,
         column: 'updated_at',
       },
     });
 
-    return ok(rows.map(mapSupabaseRecordToCostCalculation));
+    return ok(rows.map(mapRemoteRecordToCostCalculation));
   },
   async saveCalculation(input) {
     const metrics = calculateCostMetrics(input);
     const resolvedSaleUnitPrice = metrics.suggestedSalePrice;
-    const rows = await client.insert<SupabaseCostCalculationRecord>(
+    const rows = await client.insert<RemoteCostCalculationRecord>(
       COST_CALCULATIONS_TABLE,
       {
         bean_id: input.beanId,
@@ -276,7 +263,7 @@ const createSupabaseFinanceRepository = (
       throw new AppError('成本核算保存失败：结果缺失。', { code: 'DATA' });
     }
 
-    return ok(mapSupabaseRecordToCostCalculation(savedRow));
+    return ok(mapRemoteRecordToCostCalculation(savedRow));
   },
 });
 
@@ -299,13 +286,13 @@ export const financeService = {
 
     for (const candidate of candidates) {
       try {
-        const response = await createSupabaseFinanceRepository(candidate.client, candidate.dataSource).listCalculations();
+        const response = await createRemoteFinanceRepository(candidate.client, candidate.dataSource).listCalculations();
         localCostCalculationService.replace(response.data);
         return response;
       } catch (error) {
         lastError = error;
 
-        if (!isMissingSupabaseResourceError(error)) {
+        if (!isMissingRemoteResourceError(error)) {
           break;
         }
 
@@ -331,13 +318,13 @@ export const financeService = {
 
       for (const candidate of candidates) {
         try {
-          const response = await createSupabaseFinanceRepository(candidate.client, candidate.dataSource).saveCalculation(input);
+          const response = await createRemoteFinanceRepository(candidate.client, candidate.dataSource).saveCalculation(input);
           localCostCalculationService.upsert(response.data);
           return response;
         } catch (error) {
           lastError = error;
 
-          if (!isMissingSupabaseResourceError(error)) {
+          if (!isMissingRemoteResourceError(error)) {
             break;
           }
 
@@ -372,7 +359,7 @@ export const financeService = {
 
     for (const candidate of candidates) {
       try {
-        const repository = createSupabaseFinanceRepository(candidate.client, candidate.dataSource);
+        const repository = createRemoteFinanceRepository(candidate.client, candidate.dataSource);
         const remoteBeforeSync = await repository.listCalculations();
         const remoteIds = new Set(remoteBeforeSync.data.map((record) => record.id));
         let uploaded = 0;
@@ -400,7 +387,7 @@ export const financeService = {
       } catch (error) {
         lastError = error;
 
-        if (!isMissingSupabaseResourceError(error)) {
+        if (!isMissingRemoteResourceError(error)) {
           break;
         }
 

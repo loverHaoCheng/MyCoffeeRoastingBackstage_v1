@@ -28,10 +28,10 @@ interface ApiResponse<T> {
 
 `steps` 内每一项需要包含 `time`、`event`、`operation`、`temperature`、`firePower`。
 
-## 设置模块本地配置契约
+## 设置模块运行时配置契约
 
 ```ts
-interface SupabaseConnectionSettings {
+interface PocketBaseConnectionSettings {
   greenBean: {
     projectUrl: string;
     publishableKey: string;
@@ -44,4 +44,4 @@ interface SupabaseConnectionSettings {
 }
 ```
 
-该配置当前由前端设置页维护，供后续 Repository 层分别连接生豆库和熟豆库使用。
+该配置当前由前端设置页维护：`greenBean` 用于主库 PocketBase，`roastedBean` 仅用于熟豆镜像写入与设置页探活。

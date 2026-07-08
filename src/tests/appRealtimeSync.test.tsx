@@ -56,7 +56,7 @@ class FakeEventSource {
     const event = { data } as MessageEvent;
 
     this.listeners.get(type)?.forEach((listener) => {
-      listener(event as unknown as Event);
+      listener(event);
     });
   }
 }
@@ -126,7 +126,7 @@ describe('AppRealtimeSync', () => {
       vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        text: async () => '',
+        text: () => Promise.resolve(''),
       }),
     );
   });

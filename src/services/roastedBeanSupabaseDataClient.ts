@@ -4,14 +4,14 @@ import { normalizeSupabaseProjectUrl } from './pocketBaseConfig';
 
 type Fetcher = typeof fetch;
 
-interface SupabaseDataClientOptions {
+interface RoastedBeanSupabaseDataClientOptions {
   fetcher?: Fetcher;
   projectUrl: string;
   publishableKey: string;
   timeoutMs?: number;
 }
 
-interface SupabaseDataListOptions {
+interface RoastedBeanSupabaseDataListOptions {
   limit?: number;
   match?: Record<string, boolean | number | string>;
   orderBy?: {
@@ -102,13 +102,13 @@ const toRecordArray = <T,>(payload: unknown): T[] => {
   return [payload as T];
 };
 
-export class SupabaseDataClient {
+export class RoastedBeanSupabaseDataClient {
   private readonly baseUrl: string;
   private readonly fetcher: Fetcher;
   private readonly publishableKey: string;
   private readonly timeoutMs: number;
 
-  constructor(options: SupabaseDataClientOptions) {
+  constructor(options: RoastedBeanSupabaseDataClientOptions) {
     const raw = options.fetcher ?? fetch;
 
     this.baseUrl = normalizeSupabaseProjectUrl(options.projectUrl);
@@ -124,7 +124,7 @@ export class SupabaseDataClient {
     });
   }
 
-  async list<T>(tableName: string, options: SupabaseDataListOptions = {}): Promise<T[]> {
+  async list<T>(tableName: string, options: RoastedBeanSupabaseDataListOptions = {}): Promise<T[]> {
     if (!this.isConfigured()) {
       throw new AppError('Supabase 连接配置缺失。', {
         code: 'CONFIG',

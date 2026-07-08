@@ -75,7 +75,7 @@ const savePendingOps = (ops: PendingOperation[]): void => {
 
 export const beanSyncService = {
   /**
-   * 检查当前是否可以访问 Supabase（有配置且有网络）
+   * 检查当前是否可以访问远端主库（有配置且有网络）
    */
   isOnline(): boolean {
     if (typeof navigator === 'undefined') return false;

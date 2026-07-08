@@ -52,7 +52,7 @@ export interface BeanRepository {
   deleteBean(beanId: string | number): Promise<void>;
 }
 
-export interface SupabaseBeanRecord {
+export interface RemoteBeanRecord {
   id: number;
   name: string;
   origin: string;
@@ -65,7 +65,7 @@ export interface SupabaseBeanRecord {
   updated_at: string;
 }
 
-interface SupabaseGreenBeanInventoryRecord {
+interface RemoteGreenBeanInventoryRecord {
   id: string;
   altitude_meters_max: null | number;
   altitude_meters_min: null | number;
@@ -96,7 +96,7 @@ interface SupabaseGreenBeanInventoryRecord {
   weighted_cost_per_kg: number;
 }
 
-interface SupabaseGreenBeanRecord {
+interface RemoteGreenBeanRecord {
   altitude_meters_max: null | number;
   altitude_meters_min: null | number;
   code: string;
@@ -118,7 +118,7 @@ interface SupabaseGreenBeanRecord {
   variety: string;
 }
 
-interface SupabasePurchaseBatchRecord {
+interface RemotePurchaseBatchRecord {
   created_at?: string;
   green_bean_id?: string;
   id: string;
@@ -130,7 +130,7 @@ interface SupabasePurchaseBatchRecord {
   updated_at?: string;
 }
 
-interface SupabaseSaleSpecRecord {
+interface RemoteSaleSpecRecord {
   created_at?: string;
   green_bean_id?: string;
   id: string;
@@ -140,13 +140,13 @@ interface SupabaseSaleSpecRecord {
   updated_at?: string;
 }
 
-interface SupabaseRoastBatchOverviewRecord {
+interface RemoteRoastBatchOverviewRecord {
   green_bean_id: string;
   id: string;
   updated_at?: string;
 }
 
-interface SupabaseAppSettingRecord {
+interface RemoteAppSettingRecord {
   id: string;
   key: string;
   updated_at?: null | string;
@@ -169,25 +169,25 @@ interface BeanGradeSettingValue {
   updatedAt?: null | string;
 }
 
-interface SupabaseErrorLike {
+interface RemoteErrorLike {
   message: string;
 }
 
-interface SupabaseQueryResult<T> {
+interface RemoteQueryResult<T> {
   data: T[] | null;
-  error: SupabaseErrorLike | null;
+  error: RemoteErrorLike | null;
 }
 
-interface SupabaseBeanSelectBuilder {
-  order(column: string, options?: { ascending?: boolean }): Promise<SupabaseQueryResult<SupabaseBeanRecord>>;
+interface RemoteBeanSelectBuilder {
+  order(column: string, options?: { ascending?: boolean }): Promise<RemoteQueryResult<RemoteBeanRecord>>;
 }
 
-interface SupabaseBeanTable {
-  select(columns: string): SupabaseBeanSelectBuilder;
+interface RemoteBeanTable {
+  select(columns: string): RemoteBeanSelectBuilder;
 }
 
-export interface SupabaseBeanClient {
-  from(tableName: string): SupabaseBeanTable;
+export interface RemoteBeanClient {
+  from(tableName: string): RemoteBeanTable;
 }
 
 const ok = <T,>(data: T): ApiResponse<T> => ({
@@ -232,17 +232,17 @@ const mapBeanFormInputToTableInput = (input: GreenBeanUpdateInput): GreenBeanTab
 const mergeBeans = (beans: Bean[]): Bean[] => {
   const mergedMap = new Map<string, Bean>();
 
-  // 第一遍：按 ID 合并（Supabase 记录优先）
+  // 第一遍：按 ID 合并（远端记录优先）
   [...beans, ...localGreenBeanService.listBeans()].forEach((bean) => {
     const key = String(bean.id);
     const existing = mergedMap.get(key);
-    // 非本地记录（来自 Supabase）优先于本地记录
+    // 非本地记录（来自远端主库）优先于本地记录
     if (!existing || (existing.id.toString().startsWith('local-') && !key.startsWith('local-'))) {
       mergedMap.set(key, bean);
     }
   });
 
-  // 第二遍：按名称去重本地残留（Supabase 已有的生豆，本地同名的不应再显示）
+  // 第二遍：按名称去重本地残留（远端已有的生豆，本地同名的不应再显示）
   const remoteNames = new Set<string>();
   mergedMap.forEach((bean) => {
     if (!String(bean.id).startsWith('local-')) {
@@ -273,7 +273,7 @@ const getBootstrappedBeans = (): Bean[] => {
   return mergeBeans(beanCacheService.getBeans() ?? []);
 };
 
-export const mapSupabaseBeanRecordToBean = (record: SupabaseBeanRecord): Bean => ({
+export const mapRemoteBeanRecordToBean = (record: RemoteBeanRecord): Bean => ({
   id: record.id,
   name: record.name,
   origin: record.origin,
@@ -286,8 +286,8 @@ export const mapSupabaseBeanRecordToBean = (record: SupabaseBeanRecord): Bean =>
   updatedAt: record.updated_at,
 });
 
-export const mapSupabaseGreenBeanInventoryRecordToBean = (
-  record: SupabaseGreenBeanInventoryRecord,
+export const mapRemoteGreenBeanInventoryRecordToBean = (
+  record: RemoteGreenBeanInventoryRecord,
 ): Bean => ({
   id: record.id,
   altitudeMetersMax: record.altitude_meters_max,
@@ -320,10 +320,10 @@ export const mapSupabaseGreenBeanInventoryRecordToBean = (
   variety: record.variety,
 });
 
-const mapSupabaseEditableBeanToFormInput = (
-  bean: SupabaseGreenBeanRecord,
-  latestPurchaseBatch: null | SupabasePurchaseBatchRecord,
-  defaultSaleSpec: null | SupabaseSaleSpecRecord,
+const mapRemoteEditableBeanToFormInput = (
+  bean: RemoteGreenBeanRecord,
+  latestPurchaseBatch: null | RemotePurchaseBatchRecord,
+  defaultSaleSpec: null | RemoteSaleSpecRecord,
   savedSaleDefaults: null | BeanSaleDefaultsSettingValue,
   savedCostTemplate: null | BeanCostTemplateSettingValue,
   savedGrade: null | BeanGradeSettingValue,
@@ -366,8 +366,8 @@ const compareIsoDateDesc = (left?: null | string, right?: null | string): number
 };
 
 const getLatestPurchaseBatchRecord = (
-  purchaseBatches: SupabasePurchaseBatchRecord[],
-): null | SupabasePurchaseBatchRecord => {
+  purchaseBatches: RemotePurchaseBatchRecord[],
+): null | RemotePurchaseBatchRecord => {
   return [...purchaseBatches].sort((left, right) => {
     const receivedAtComparison = compareIsoDateDesc(left.received_at, right.received_at);
 
@@ -380,7 +380,7 @@ const getLatestPurchaseBatchRecord = (
 };
 
 const getPurchaseBatchTotals = (
-  purchaseBatches: SupabasePurchaseBatchRecord[],
+  purchaseBatches: RemotePurchaseBatchRecord[],
 ): {
   totalPurchasedPrice: number;
   totalPurchasedWeightGrams: number;
@@ -403,8 +403,8 @@ const getPurchaseBatchTotals = (
 };
 
 const getDefaultSaleSpecRecord = (
-  saleSpecs: SupabaseSaleSpecRecord[],
-): null | SupabaseSaleSpecRecord => {
+  saleSpecs: RemoteSaleSpecRecord[],
+): null | RemoteSaleSpecRecord => {
   return (
     [...saleSpecs]
       .filter((saleSpec) => saleSpec.is_default !== false)
@@ -495,14 +495,14 @@ const parseBeanGradeSettingValue = (value: unknown): null | BeanGradeSettingValu
 };
 
 const buildInventoryOverviewRecordFromTables = (
-  bean: SupabaseGreenBeanRecord,
-  purchaseBatches: SupabasePurchaseBatchRecord[],
-  saleSpecs: SupabaseSaleSpecRecord[],
+  bean: RemoteGreenBeanRecord,
+  purchaseBatches: RemotePurchaseBatchRecord[],
+  saleSpecs: RemoteSaleSpecRecord[],
   roastBatchCount: number,
   savedSaleDefaults: null | BeanSaleDefaultsSettingValue,
   savedCostTemplate: null | BeanCostTemplateSettingValue,
   savedGrade: null | BeanGradeSettingValue,
-): SupabaseGreenBeanInventoryRecord => {
+): RemoteGreenBeanInventoryRecord => {
   const latestPurchaseBatch = getLatestPurchaseBatchRecord(purchaseBatches);
   const defaultSaleSpec = getDefaultSaleSpecRecord(saleSpecs);
   const purchaseBatchTotals = getPurchaseBatchTotals(purchaseBatches);
@@ -670,8 +670,8 @@ export class MockBeanRepository implements BeanRepository {
   }
 }
 
-export function createSupabaseBeanRepository(
-  client: SupabaseBeanClient,
+export function createRemoteBeanRepository(
+  client: RemoteBeanClient,
   tableName = 'beans',
 ): BeanRepository {
   return {
@@ -700,14 +700,14 @@ export function createSupabaseBeanRepository(
         });
       }
 
-      return ok((result.data ?? []).map(mapSupabaseBeanRecordToBean));
+      return ok((result.data ?? []).map(mapRemoteBeanRecordToBean));
     },
     syncBeans() {
       return this.listBeans();
     },
     updateBean(): Promise<ApiResponse<Bean>> {
-      // createSupabaseBeanRepository 使用兼容查询接口，暂不支持 update
-      // 实际更新通过 createSupabaseGreenBeanInventoryRepository 的 PocketBaseRestClient 完成
+      // createRemoteBeanRepository 使用兼容查询接口，暂不支持 update
+      // 实际更新通过 createGreenBeanInventoryRepository 的 PocketBaseRestClient 完成
       return Promise.reject(new AppError('此仓库不支持更新，请使用 PocketBaseRestClient 仓库。', {
         code: 'CONFIG',
       }));
@@ -724,7 +724,7 @@ export function createSupabaseBeanRepository(
   };
 }
 
-export function createSupabaseGreenBeanInventoryRepository(
+export function createGreenBeanInventoryRepository(
   client: PocketBaseRestClient,
   options: { tableName?: string; viewName?: string } = {},
 ): BeanRepository {
@@ -763,8 +763,8 @@ export function createSupabaseGreenBeanInventoryRepository(
     }
   };
 
-  const loadBeanSaleDefaultsRecordRaw = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
-    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+  const loadBeanSaleDefaultsRecordRaw = async (beanId: string | number): Promise<null | RemoteAppSettingRecord> => {
+    const rows = await client.list<RemoteAppSettingRecord>('app_settings', {
       limit: 1,
       match: { key: getBeanSaleDefaultsSettingKey(String(beanId)) },
       orderBy: {
@@ -776,7 +776,7 @@ export function createSupabaseGreenBeanInventoryRepository(
     return rows[0] ?? null;
   };
 
-  const loadBeanSaleDefaultsRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+  const loadBeanSaleDefaultsRecord = async (beanId: string | number): Promise<null | RemoteAppSettingRecord> => {
     return withOptionalCollectionFallback(
       'app_settings',
       'load bean sale defaults',
@@ -787,8 +787,8 @@ export function createSupabaseGreenBeanInventoryRepository(
 
   const loadBeanCostTemplateRecordRaw = async (
     beanId: string | number,
-  ): Promise<null | SupabaseAppSettingRecord> => {
-    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+  ): Promise<null | RemoteAppSettingRecord> => {
+    const rows = await client.list<RemoteAppSettingRecord>('app_settings', {
       limit: 1,
       match: { key: getBeanCostTemplateSettingKey(String(beanId)) },
       orderBy: {
@@ -800,7 +800,7 @@ export function createSupabaseGreenBeanInventoryRepository(
     return rows[0] ?? null;
   };
 
-  const loadBeanCostTemplateRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+  const loadBeanCostTemplateRecord = async (beanId: string | number): Promise<null | RemoteAppSettingRecord> => {
     return withOptionalCollectionFallback(
       'app_settings',
       'load bean cost template',
@@ -809,8 +809,8 @@ export function createSupabaseGreenBeanInventoryRepository(
     );
   };
 
-  const loadBeanGradeRecordRaw = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
-    const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+  const loadBeanGradeRecordRaw = async (beanId: string | number): Promise<null | RemoteAppSettingRecord> => {
+    const rows = await client.list<RemoteAppSettingRecord>('app_settings', {
       limit: 1,
       match: { key: getBeanGradeSettingKey(String(beanId)) },
       orderBy: {
@@ -822,7 +822,7 @@ export function createSupabaseGreenBeanInventoryRepository(
     return rows[0] ?? null;
   };
 
-  const loadBeanGradeRecord = async (beanId: string | number): Promise<null | SupabaseAppSettingRecord> => {
+  const loadBeanGradeRecord = async (beanId: string | number): Promise<null | RemoteAppSettingRecord> => {
     return withOptionalCollectionFallback(
       'app_settings',
       'load bean grade',
@@ -833,7 +833,7 @@ export function createSupabaseGreenBeanInventoryRepository(
 
   const loadBeanSaleDefaultsMap = async (): Promise<Map<string, BeanSaleDefaultsSettingValue>> => {
     return withOptionalCollectionFallback('app_settings', 'load bean sale defaults map', async () => {
-      const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+      const rows = await client.list<RemoteAppSettingRecord>('app_settings', {
         orderBy: {
           ascending: false,
           column: 'updated_at',
@@ -862,7 +862,7 @@ export function createSupabaseGreenBeanInventoryRepository(
 
   const loadBeanCostTemplateMap = async (): Promise<Map<string, BeanCostTemplateSettingValue>> => {
     return withOptionalCollectionFallback('app_settings', 'load bean cost template map', async () => {
-      const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+      const rows = await client.list<RemoteAppSettingRecord>('app_settings', {
         orderBy: {
           ascending: false,
           column: 'updated_at',
@@ -891,7 +891,7 @@ export function createSupabaseGreenBeanInventoryRepository(
 
   const loadBeanGradeMap = async (): Promise<Map<string, BeanGradeSettingValue>> => {
     return withOptionalCollectionFallback('app_settings', 'load bean grade map', async () => {
-      const rows = await client.list<SupabaseAppSettingRecord>('app_settings', {
+      const rows = await client.list<RemoteAppSettingRecord>('app_settings', {
         orderBy: {
           ascending: false,
           column: 'updated_at',
@@ -995,21 +995,21 @@ export function createSupabaseGreenBeanInventoryRepository(
   };
 
   const listSaleSpecs = async (
-    options?: Parameters<typeof client.list<SupabaseSaleSpecRecord>>[1],
-  ): Promise<SupabaseSaleSpecRecord[]> => {
+    options?: Parameters<typeof client.list<RemoteSaleSpecRecord>>[1],
+  ): Promise<RemoteSaleSpecRecord[]> => {
     return withOptionalCollectionFallback(
       'bean_sale_specs',
       'list bean sale specs',
-      () => client.list<SupabaseSaleSpecRecord>('bean_sale_specs', options),
+      () => client.list<RemoteSaleSpecRecord>('bean_sale_specs', options),
       [],
     );
   };
 
-  const listRoastBatches = async (): Promise<SupabaseRoastBatchOverviewRecord[]> => {
+  const listRoastBatches = async (): Promise<RemoteRoastBatchOverviewRecord[]> => {
     return withOptionalCollectionFallback(
       'roast_batches',
       'list roast batches for bean aggregation',
-      () => client.list<SupabaseRoastBatchOverviewRecord>('roast_batches'),
+      () => client.list<RemoteRoastBatchOverviewRecord>('roast_batches'),
       [],
     );
   };
@@ -1020,7 +1020,7 @@ export function createSupabaseGreenBeanInventoryRepository(
   ): Promise<void> => {
     await withOptionalCollectionFallback('bean_sale_specs', 'upsert default sale spec', async () => {
       if (input.defaultSaleUnitWeightGrams == null) {
-        const existingSaleSpecs = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
+        const existingSaleSpecs = await client.list<RemoteSaleSpecRecord>('bean_sale_specs', {
           match: { green_bean_id: beanId, is_default: true },
         });
         const defaultSaleSpec = getDefaultSaleSpecRecord(existingSaleSpecs);
@@ -1037,7 +1037,7 @@ export function createSupabaseGreenBeanInventoryRepository(
         return;
       }
 
-      const existingSaleSpecs = await client.list<SupabaseSaleSpecRecord>('bean_sale_specs', {
+      const existingSaleSpecs = await client.list<RemoteSaleSpecRecord>('bean_sale_specs', {
         match: { green_bean_id: beanId, is_default: true },
       });
       const defaultSaleSpec = getDefaultSaleSpecRecord(existingSaleSpecs);
@@ -1063,15 +1063,15 @@ export function createSupabaseGreenBeanInventoryRepository(
     }, undefined);
   };
 
-  const loadInventoryOverviewRecordsFromTables = async (): Promise<SupabaseGreenBeanInventoryRecord[]> => {
+  const loadInventoryOverviewRecordsFromTables = async (): Promise<RemoteGreenBeanInventoryRecord[]> => {
     const [beans, purchaseBatches, saleSpecs, roastBatches, savedSaleDefaultsMap, savedCostTemplateMap, savedGradeMap] = await Promise.all([
-      client.list<SupabaseGreenBeanRecord>(tableName, {
+      client.list<RemoteGreenBeanRecord>(tableName, {
         orderBy: {
           ascending: false,
           column: 'created_at',
         },
       }),
-      client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches'),
+      client.list<RemotePurchaseBatchRecord>('green_bean_purchase_batches'),
       listSaleSpecs(),
       listRoastBatches(),
       loadBeanSaleDefaultsMap(),
@@ -1079,9 +1079,9 @@ export function createSupabaseGreenBeanInventoryRepository(
       loadBeanGradeMap(),
     ]);
 
-    const purchaseBatchMap = new Map<string, SupabasePurchaseBatchRecord[]>();
-    const saleSpecMap = new Map<string, SupabaseSaleSpecRecord[]>();
-    const roastBatchMap = new Map<string, SupabaseRoastBatchOverviewRecord[]>();
+    const purchaseBatchMap = new Map<string, RemotePurchaseBatchRecord[]>();
+    const saleSpecMap = new Map<string, RemoteSaleSpecRecord[]>();
+    const roastBatchMap = new Map<string, RemoteRoastBatchOverviewRecord[]>();
 
     purchaseBatches.forEach((batch) => {
       if (!batch.green_bean_id) {
@@ -1130,11 +1130,11 @@ export function createSupabaseGreenBeanInventoryRepository(
       throw new AppError('未找到最新的生豆库存数据。', { code: 'DATA' });
     }
 
-    return mapSupabaseGreenBeanInventoryRecordToBean(record);
+    return mapRemoteGreenBeanInventoryRecordToBean(record);
   };
 
   const getEditableBeanDetail = async (beanId: string | number): Promise<GreenBeanEditableDetail> => {
-    const beanRows = await client.list<SupabaseGreenBeanRecord>(tableName, {
+    const beanRows = await client.list<RemoteGreenBeanRecord>(tableName, {
       limit: 1,
       match: { id: beanId },
     });
@@ -1143,7 +1143,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       throw new AppError('未找到生豆主档。', { code: 'DATA' });
     }
 
-    const purchaseRows = await client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches', {
+    const purchaseRows = await client.list<RemotePurchaseBatchRecord>('green_bean_purchase_batches', {
       match: { green_bean_id: beanId },
     });
 
@@ -1160,7 +1160,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       throw new AppError('未找到生豆主档。', { code: 'DATA' });
     }
 
-    return mapSupabaseEditableBeanToFormInput(
+    return mapRemoteEditableBeanToFormInput(
       beanRow,
       getLatestPurchaseBatchRecord(purchaseRows),
       getDefaultSaleSpecRecord(saleSpecRows),
@@ -1181,7 +1181,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       supplier_name: normalizeText(input.supplierName),
     };
 
-    const latestBatchRows = await client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches', {
+    const latestBatchRows = await client.list<RemotePurchaseBatchRecord>('green_bean_purchase_batches', {
       match: { green_bean_id: beanId },
     });
 
@@ -1215,7 +1215,7 @@ export function createSupabaseGreenBeanInventoryRepository(
       return ok(beans.data.find((bean) => String(bean.id) === String(beanId)) ?? null);
     },
     async adjustRemainingWeight(beanId, deltaGrams) {
-      const purchaseRows = await client.list<SupabasePurchaseBatchRecord>('green_bean_purchase_batches', {
+      const purchaseRows = await client.list<RemotePurchaseBatchRecord>('green_bean_purchase_batches', {
         match: { green_bean_id: beanId },
       });
 
@@ -1240,7 +1240,7 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       const bean = await getLatestInventoryBean(beanId);
 
-      beanCacheService.save([bean], 'supabase');
+      beanCacheService.save([bean], 'remote');
 
       return ok(bean);
     },
@@ -1252,9 +1252,9 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       const beans = rows
         .sort((left, right) => compareIsoDateDesc(left.created_at, right.created_at))
-        .map((record) => mapSupabaseGreenBeanInventoryRecordToBean(record));
+        .map((record) => mapRemoteGreenBeanInventoryRecordToBean(record));
 
-      beanCacheService.save(beans, 'supabase');
+      beanCacheService.save(beans, 'remote');
 
       return ok(beans);
     },
@@ -1279,7 +1279,7 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       const bean = await getLatestInventoryBean(beanId);
 
-      beanCacheService.save([bean], 'supabase');
+      beanCacheService.save([bean], 'remote');
 
       return ok(bean);
     },
@@ -1357,14 +1357,14 @@ export function createSupabaseGreenBeanInventoryRepository(
 
       const bean = await getLatestInventoryBean(newBeanId);
 
-      beanCacheService.save([bean], 'supabase');
+      beanCacheService.save([bean], 'remote');
 
       return ok(bean);
     },
   };
 }
 
-const hasSupabaseConnection = (): boolean => {
+const hasGreenBeanConnection = (): boolean => {
   const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
   return isPocketBaseProjectConnectionConfigured(connection);
@@ -1376,7 +1376,7 @@ export const resolveBeanRepository = (): BeanRepository => {
     return new MockBeanRepository();
   }
 
-  if (!hasSupabaseConnection()) {
+  if (!hasGreenBeanConnection()) {
     logger.info('bean repository: mock (missing connection)');
     return new MockBeanRepository();
   }
@@ -1387,10 +1387,10 @@ export const resolveBeanRepository = (): BeanRepository => {
     publishableKey: connection.publishableKey,
   });
 
-  logger.info('bean repository: supabase', {
+  logger.info('bean repository: remote', {
     projectUrl: connection.projectUrl,
   });
-  return createSupabaseGreenBeanInventoryRepository(client);
+  return createGreenBeanInventoryRepository(client);
 };
 
 export const beanService = {
@@ -1401,7 +1401,7 @@ export const beanService = {
   },
   prepareOptimisticDelete(beanId: Bean['id']): {
     cacheBeans: Bean[] | null;
-    cacheSource: 'mock' | 'supabase' | null;
+    cacheSource: 'mock' | 'remote' | null;
     localRecord: LocalGreenBeanRecord | null;
   } {
     const cacheBeans = beanCacheService.getBeans();
@@ -1412,7 +1412,7 @@ export const beanService = {
 
     if (cacheBeans) {
       const nextCacheBeans = cacheBeans.filter((bean) => String(bean.id) !== beanIdString);
-      beanCacheService.save(nextCacheBeans, cacheStatus.source ?? 'supabase');
+      beanCacheService.save(nextCacheBeans, cacheStatus.source ?? 'remote');
     }
 
     if (localRecord) {
@@ -1427,11 +1427,11 @@ export const beanService = {
   },
   rollbackOptimisticDelete(snapshot: {
     cacheBeans: Bean[] | null;
-    cacheSource: 'mock' | 'supabase' | null;
+    cacheSource: 'mock' | 'remote' | null;
     localRecord: LocalGreenBeanRecord | null;
   }): Bean[] {
     if (snapshot.cacheBeans) {
-      beanCacheService.save(snapshot.cacheBeans, snapshot.cacheSource ?? 'supabase');
+      beanCacheService.save(snapshot.cacheBeans, snapshot.cacheSource ?? 'remote');
     }
 
     if (snapshot.localRecord) {
@@ -1444,7 +1444,7 @@ export const beanService = {
     localGreenBeanService.removeById(optimisticBeanId);
     const nextBeans = mergeBeans([remoteBean]);
 
-    beanCacheService.save(nextBeans.filter((bean) => !String(bean.id).startsWith('local-')), 'supabase');
+    beanCacheService.save(nextBeans.filter((bean) => !String(bean.id).startsWith('local-')), 'remote');
 
     return nextBeans;
   },
@@ -1466,7 +1466,7 @@ export const beanService = {
     return resolveBeanRepository().createBean(input);
   },
   async createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
-    // 在线且已配置 Supabase：直接同步到 Supabase
+    // 在线且已配置远端主库：直接同步到远端主库
     if (beanSyncService.isOnline()) {
       try {
         const repo = resolveBeanRepository();
@@ -1612,7 +1612,7 @@ export const beanService = {
     const bootstrappedBeforeSync = getBootstrappedBeans();
     const mergedRemoteBeans = mergeBeans(remoteAfterSync.data);
 
-    beanCacheService.save(remoteAfterSync.data, 'supabase');
+    beanCacheService.save(remoteAfterSync.data, 'remote');
 
     const beforeSignature = JSON.stringify(
       bootstrappedBeforeSync.map((bean) => `${String(bean.id)}:${bean.updatedAt}`),
@@ -1635,7 +1635,7 @@ export const beanService = {
       return ok(mapLocalGreenBeanRecordToBean(updatedRecord));
     }
 
-    // 在线且已配置 Supabase：直接同步到 Supabase
+    // 在线且已配置远端主库：直接同步到远端主库
     if (beanSyncService.isOnline()) {
       try {
         return await resolveBeanRepository().updateBean(beanId, input);
@@ -1653,7 +1653,7 @@ export const beanService = {
     });
   },
   async deleteBean(beanId: string | number): Promise<{ queued: boolean; synced: boolean }> {
-    // 在线且已配置 Supabase：直接同步到 Supabase
+    // 在线且已配置远端主库：直接同步到远端主库
     if (beanSyncService.isOnline()) {
       try {
         await resolveBeanRepository().deleteBean(beanId);
@@ -1674,7 +1674,7 @@ export const beanService = {
     }
   },
   /**
-   * 同步所有待处理操作到 Supabase
+   * 同步所有待处理操作到远端主库
    * 在网络恢复时调用
    */
   async syncPendingOperations(): Promise<{ failed: number; success: number }> {
@@ -1694,7 +1694,7 @@ export const beanService = {
           try {
             await repo.createBean(input);
           } catch (createError) {
-            // 409 Conflict = 该生豆已存在于 Supabase（可能之前已同步成功）
+            // 409 Conflict = 该生豆已存在于远端主库（可能之前已同步成功）
             // 静默清理本地记录和待同步条目，不算失败
             const errMsg =
               createError instanceof Error ? createError.message : String(createError);

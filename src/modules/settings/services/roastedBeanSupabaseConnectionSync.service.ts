@@ -10,15 +10,15 @@ import { logger } from '@/shared/logger/logger';
 
 const SUPABASE_ROASTED_BEAN_CONNECTION_KEY = 'supabase_roasted_bean_connection_settings';
 
-interface SupabaseRoastedBeanConnectionRecord {
+interface RoastedBeanSupabaseConnectionRecord {
   publishableKey: string;
   projectUrl: string;
   updatedAt: string | null;
 }
 
-const isSupabaseRoastedBeanConnectionRecord = (
+const isRoastedBeanSupabaseConnectionRecord = (
   value: unknown,
-): value is SupabaseRoastedBeanConnectionRecord => {
+): value is RoastedBeanSupabaseConnectionRecord => {
   if (typeof value !== 'object' || value == null) {
     return false;
   }
@@ -32,7 +32,7 @@ const isSupabaseRoastedBeanConnectionRecord = (
   );
 };
 
-const toRecordValue = (connection: PocketBaseProjectConnection): SupabaseRoastedBeanConnectionRecord => {
+const toRecordValue = (connection: PocketBaseProjectConnection): RoastedBeanSupabaseConnectionRecord => {
   const normalized = normalizeRoastedBeanPocketBaseProjectConnection(connection);
 
   return {
@@ -43,7 +43,7 @@ const toRecordValue = (connection: PocketBaseProjectConnection): SupabaseRoasted
 };
 
 const parseRemoteConnection = (value: unknown): PocketBaseProjectConnection => {
-  if (!isSupabaseRoastedBeanConnectionRecord(value)) {
+  if (!isRoastedBeanSupabaseConnectionRecord(value)) {
     throw new AppError('熟豆连接远端数据格式无效。', {
       code: 'DATA',
     });
@@ -61,7 +61,7 @@ export const hasSyncableRoastedBeanConnection = (connection: PocketBaseProjectCo
   );
 };
 
-export const supabaseRoastedBeanConnectionSyncService = {
+export const roastedBeanSupabaseConnectionSyncService = {
   async loadRemote(): Promise<null | PocketBaseProjectConnection> {
     const record = await appSettingsSyncService.loadRecord(
       SUPABASE_ROASTED_BEAN_CONNECTION_KEY,

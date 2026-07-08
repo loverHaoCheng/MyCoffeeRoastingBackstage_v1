@@ -1,6 +1,6 @@
 import type { Bean } from '@/types/domain';
 
-type BeanCacheSource = 'mock' | 'supabase';
+type BeanCacheSource = 'mock' | 'remote';
 type BeanCacheStatusType = 'cached' | 'empty' | 'error' | 'fallback' | 'idle';
 
 interface BeanCacheSnapshot {
@@ -59,7 +59,7 @@ const isBeanCacheSnapshot = (value: unknown): value is BeanCacheSnapshot => {
     snapshot.version === BEAN_CACHE_VERSION &&
     Array.isArray(snapshot.beans) &&
     snapshot.beans.every(isBeanLike) &&
-    (snapshot.source === 'mock' || snapshot.source === 'supabase') &&
+    (snapshot.source === 'mock' || snapshot.source === 'remote') &&
     (snapshot.status === 'cached' ||
       snapshot.status === 'empty' ||
       snapshot.status === 'error' ||
@@ -138,7 +138,7 @@ export const beanCacheService = {
 
     return snapshot.beans;
   },
-  markFailure(errorCode: string, source: BeanCacheSource = 'supabase'): void {
+  markFailure(errorCode: string, source: BeanCacheSource = 'remote'): void {
     const snapshot = loadSnapshot();
 
     saveSnapshot({

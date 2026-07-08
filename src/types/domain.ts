@@ -31,7 +31,7 @@ export interface Bean extends EntityTimestamps {
   costPerKg: number;
   supplierId?: number | null;
   supplierName?: string | null;
-  // 扩展字段：从 Supabase 视图获取
+  // 扩展字段：从远端库存汇总视图获取
   variety?: string;
 }
 

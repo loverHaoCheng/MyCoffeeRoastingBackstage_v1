@@ -36,14 +36,14 @@ const { syncFromRemoteSafelyMock } = vi.hoisted(() => ({
 }));
 
 vi.mock(
-  '@/modules/settings/services/supabaseRoastedBeanConnectionSync.service',
+  '@/modules/settings/services/roastedBeanSupabaseConnectionSync.service',
   async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@/modules/settings/services/supabaseRoastedBeanConnectionSync.service')>();
+    const actual = await importOriginal<typeof import('@/modules/settings/services/roastedBeanSupabaseConnectionSync.service')>();
 
     return {
       ...actual,
-      supabaseRoastedBeanConnectionSyncService: {
-        ...actual.supabaseRoastedBeanConnectionSyncService,
+      roastedBeanSupabaseConnectionSyncService: {
+        ...actual.roastedBeanSupabaseConnectionSyncService,
         syncFromRemoteSafely: syncFromRemoteSafelyMock,
         syncLocalChange: syncLocalChangeMock,
       },
@@ -52,7 +52,7 @@ vi.mock(
 );
 
 vi.mock('@/modules/settings/services/pocketBaseConnectionProbe.service', () => ({
-  supabaseConnectionProbeService: {
+  pocketBaseConnectionProbeService: {
     verify: verifyMock,
   },
 }));

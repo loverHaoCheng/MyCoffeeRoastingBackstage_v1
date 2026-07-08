@@ -4,7 +4,7 @@ import { appDisplaySettingsService } from '@/modules/settings/services/appDispla
 import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { pocketBaseConnectionRuntimeService } from '@/modules/settings/services/pocketBaseConnectionRuntime.service';
-import { supabaseRoastedBeanConnectionSyncService } from '@/modules/settings/services/supabaseRoastedBeanConnectionSync.service';
+import { roastedBeanSupabaseConnectionSyncService } from '@/modules/settings/services/roastedBeanSupabaseConnectionSync.service';
 import {
   createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
@@ -82,7 +82,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       return;
     }
 
-    const nextValue = await supabaseRoastedBeanConnectionSyncService.syncFromRemoteSafely();
+    const nextValue = await roastedBeanSupabaseConnectionSyncService.syncFromRemoteSafely();
 
     pocketBaseConnectionRuntimeService.markPocketBaseConnectionsLoadedThisSession();
 

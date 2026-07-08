@@ -1,4 +1,4 @@
-# 生豆 Supabase 数据模型
+# 生豆 PocketBase 数据模型
 
 本方案将“生豆主数据”和“交易/执行数据”拆开，避免把采购、库存、售价、烘焙方案和烘焙记录全部塞进一张表里。
 
@@ -7,7 +7,7 @@
 - `green_beans`：保存稳定的生豆档案信息，如产地、处理法、等级、豆种、产季、含水率、海拔、密度、处理厂。
 - `green_bean_purchase_batches`：保存每次采购重量与采购总价，用于成本核算和剩余库存追踪。
 - `bean_sale_specs`：保存单份重量和单份售价，后续可扩展不同包装规格。
-- `roast_profiles`：保存烘焙方案，使用 `jsonb` 记录节点步骤。
+- `roast_profiles`：保存烘焙方案，使用 JSON 字段记录节点步骤。
 - `roast_records`：保存实际烘焙记录，记录输入重量、输出重量和损耗比。
 - `green_bean_inventory_overview`：给前端列表页和统计卡片读取的汇总视图。
 
@@ -45,16 +45,15 @@
 - 生豆详情页：读取 `green_beans` + 采购批次 + 烘焙方案 + 烘焙记录
 - 成本分析页：从采购批次、烘焙记录、销售规格继续做聚合
 
-## SQL 位置
+## 结构来源
 
-- `supabase/migrations/20260628_create_green_bean_core.sql`
-- `supabase/migrations/20260629_update_green_beans_and_create_cost_calculations.sql`
-- `supabase/migrations/20260706_add_green_bean_grade.sql`
+- `docs/pocketbase-collections.json`
+- `docs/pocketbase-server-setup.md`
 
 ## 2026-06-29 调整
 
 - `green_beans.origin_country`、`origin_region`、`harvest_season` 允许为空，前端初始化时只强制要求名称、豆种、处理法、编号、购买量、购买价格、单次烘焙量、出售单份价格。
-- 新增 `cost_calculations` 表，用于保存单锅成本核算因子与结果，字段覆盖：
+- 新增 `cost_calculations` 集合，用于保存单锅成本核算因子与结果，字段覆盖：
   - 生豆选择
   - 生豆成本
   - 脱水率

@@ -1,1 +1,1 @@
-export { PocketBaseRestClient } from './supabaseRestClient';
+export { PocketBaseRestClient } from './pocketBaseRestClientCore';

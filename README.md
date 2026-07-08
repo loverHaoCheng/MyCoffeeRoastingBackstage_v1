@@ -84,7 +84,7 @@ JSON 基础结构如下：
 
 ## 设置模块
 
-- 新增 `/settings` 页面，用于查看和调整 PocketBase 服务器连接信息与本地显示设置
+- 新增 `/settings` 页面，用于查看和调整 PocketBase 主库连接、熟豆 Supabase 镜像连接与本地显示设置
 - 发布版本不再使用 `localStorage` 保存设置、业务缓存或认证会话
 - 应用启动时会清理所有 `coffee-roasting-backstage:` 前缀的历史 `localStorage` 数据，旧数据不做迁移
 - 后续本地离线缓存统一接入 IndexedDB 缓存仓储，个人数据备份/恢复端口已预留服务层接口

@@ -4,7 +4,7 @@ import {
   type PocketBaseProjectConnection,
 } from '@/modules/settings/types';
 import { isSupabaseProjectUrl, resolvePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
-import { SupabaseDataClient } from '@/services/supabaseDataClient';
+import { RoastedBeanSupabaseDataClient } from '@/services/roastedBeanSupabaseDataClient';
 import { AppError } from '@/shared/errors/AppError';
 
 const isConfiguredConnection = (connection: PocketBaseProjectConnection): boolean => {
@@ -27,7 +27,7 @@ export const pocketBaseConnectionProbeService = {
     }
 
     if (dataSource === 'roastedBean' && isSupabaseProjectUrl(connection.projectUrl)) {
-      await new SupabaseDataClient(connection).verify();
+      await new RoastedBeanSupabaseDataClient(connection).verify();
       return;
     }
 
@@ -43,5 +43,3 @@ export const pocketBaseConnectionProbeService = {
     }
   },
 };
-
-export const supabaseConnectionProbeService = pocketBaseConnectionProbeService;

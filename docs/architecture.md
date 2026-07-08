@@ -15,11 +15,11 @@
 - 平板和桌面：侧边导航 + 内容区响应式网格。
 - 固定格式组件通过 `minmax`、`overflow-x` 和稳定间距避免布局跳动。
 
-## 双 Supabase 配置
+## 连接配置
 
-- 新增 `设置` 模块，负责维护生豆库和熟豆库两套 `Project URL` / `Publishable Key`。
+- 新增 `设置` 模块，负责维护生豆主库连接，以及熟豆 Supabase 镜像所需的 `Project URL` / `Publishable Key`。
 - 设置模块当前通过 Zustand 管理运行期状态，连接信息后续应迁移到服务端用户配置，不再写入浏览器持久存储。
-- 详细流程见 `docs/architecture/settings-and-supabase.md`。
+- 详细流程见 `docs/architecture/settings-and-roasted-bean-supabase.md`。
 
 ## 本地缓存
 

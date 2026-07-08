@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { SupabaseDataClient } from '@/services/supabaseDataClient';
+import { RoastedBeanSupabaseDataClient } from '@/services/roastedBeanSupabaseDataClient';
 
-describe('SupabaseDataClient', () => {
+describe('RoastedBeanSupabaseDataClient', () => {
   it('uses supabase rest endpoints with anon key headers', async () => {
     let capturedInput: RequestInfo | URL | undefined;
     let capturedRequestInit: RequestInit | undefined;
@@ -17,7 +17,7 @@ describe('SupabaseDataClient', () => {
         }),
       );
     });
-    const client = new SupabaseDataClient({
+    const client = new RoastedBeanSupabaseDataClient({
       fetcher,
       projectUrl: 'https://demo.supabase.co/',
       publishableKey: 'sb_publishable_demo',

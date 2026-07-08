@@ -22,7 +22,7 @@ interface RoastPlanRepository {
   updatePlan: (planId: RoastPlan['id'], input: RoastPlanJsonInput) => Promise<ApiResponse<RoastPlan>>;
 }
 
-interface SupabaseRoastPlanOverviewRecord {
+interface RemoteRoastPlanOverviewRecord {
   batch_weight_grams: number;
   bean_name: null | string;
   created_at: string;
@@ -37,15 +37,15 @@ interface SupabaseRoastPlanOverviewRecord {
   updated_at: string;
 }
 
-interface SupabaseRoastProfileMutationRecord {
+interface RemoteRoastProfileMutationRecord {
   id: string;
 }
 
-interface SupabaseGreenBeanLookupRecord {
+interface RemoteGreenBeanLookupRecord {
   id: string;
 }
 
-interface SupabaseRoastPlanStepRecord {
+interface RemoteRoastPlanStepRecord {
   event?: string;
   firePower?: string;
   note?: string;
@@ -93,6 +93,10 @@ const createOptimisticLocalPlanId = (): string => {
   return `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
+const isOptimisticLocalPlanId = (planId: RoastPlan['id']): boolean => {
+  return String(planId).startsWith('local-');
+};
+
 const getPlanSyncSnapshot = (plans: RoastPlan[]): string => {
   return JSON.stringify(
     [...plans]
@@ -103,6 +107,7 @@ const getPlanSyncSnapshot = (plans: RoastPlan[]): string => {
 
 let localRoastPlans: RoastPlan[] =
   import.meta.env.MODE === 'test' ? sortPlans(seedRoastPlans) : loadLocalPlans();
+const pendingOptimisticCreatePlanIds = new Set<string>();
 
 const normalizeRoastPlanStatus = (status: null | string | undefined): RoastPlanStatus => {
   if (!status || !ROAST_PLAN_STATUS_SET.has(status as RoastPlanStatus)) {
@@ -118,7 +123,7 @@ const mapRoastPlanSteps = (steps: unknown): RoastPlan['steps'] => {
   }
 
   return steps.map((step, index) => {
-    const record = (typeof step === 'object' && step != null ? step : {}) as SupabaseRoastPlanStepRecord;
+    const record = (typeof step === 'object' && step != null ? step : {}) as RemoteRoastPlanStepRecord;
 
     return {
       id: index + 1,
@@ -132,7 +137,7 @@ const mapRoastPlanSteps = (steps: unknown): RoastPlan['steps'] => {
   });
 };
 
-const mapSupabaseRoastPlanRecord = (record: SupabaseRoastPlanOverviewRecord): RoastPlan => ({
+const mapRemoteRoastPlanRecord = (record: RemoteRoastPlanOverviewRecord): RoastPlan => ({
   id: record.id,
   name: record.name,
   beanId: record.green_bean_id ?? GENERIC_BEAN_ID,
@@ -169,7 +174,7 @@ const resolveGreenBeanId = async (client: PocketBaseRestClient, input: RoastPlan
   }
 
   if (input.beanName.trim().length > 0) {
-    const records = await client.list<SupabaseGreenBeanLookupRecord>('green_beans', {
+    const records = await client.list<RemoteGreenBeanLookupRecord>('green_beans', {
       limit: 1,
       match: {
         display_name: input.beanName.trim(),
@@ -189,7 +194,7 @@ const resolveGreenBeanId = async (client: PocketBaseRestClient, input: RoastPlan
   });
 };
 
-const toSupabaseRoastPlanPayload = async (
+const toRemoteRoastPlanPayload = async (
   client: PocketBaseRestClient,
   input: RoastPlanJsonInput,
   status: RoastPlanStatus = 'draft',
@@ -215,13 +220,13 @@ const toSupabaseRoastPlanPayload = async (
   };
 };
 
-const hasSupabaseConnection = (): boolean => {
+const hasGreenBeanConnection = (): boolean => {
   const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
   return isPocketBaseProjectConnectionConfigured(connection);
 };
 
-const getSupabaseClient = (): PocketBaseRestClient => {
+const getGreenBeanClient = (): PocketBaseRestClient => {
   const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
 
   return new PocketBaseRestClient({
@@ -234,7 +239,7 @@ const getRoastPlanById = async (
   client: PocketBaseRestClient,
   planId: RoastPlan['id'],
 ): Promise<RoastPlan> => {
-  const records = await client.list<SupabaseRoastPlanOverviewRecord>('roast_plan_overview', {
+  const records = await client.list<RemoteRoastPlanOverviewRecord>('roast_plan_overview', {
     limit: 1,
     match: {
       id: String(planId),
@@ -249,7 +254,7 @@ const getRoastPlanById = async (
     });
   }
 
-  return mapSupabaseRoastPlanRecord(record);
+  return mapRemoteRoastPlanRecord(record);
 };
 
 class LocalRoastPlanRepository implements RoastPlanRepository {
@@ -300,13 +305,13 @@ class LocalRoastPlanRepository implements RoastPlanRepository {
   }
 }
 
-class SupabaseRoastPlanRepository implements RoastPlanRepository {
+class RemoteRoastPlanRepository implements RoastPlanRepository {
   constructor(private readonly client: PocketBaseRestClient) {}
 
   async createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
-    const insertedRows = await this.client.insert<SupabaseRoastProfileMutationRecord>(
+    const insertedRows = await this.client.insert<RemoteRoastProfileMutationRecord>(
       'roast_profiles',
-      await toSupabaseRoastPlanPayload(this.client, input),
+      await toRemoteRoastPlanPayload(this.client, input),
       {
         select: 'id',
       },
@@ -355,22 +360,22 @@ class SupabaseRoastPlanRepository implements RoastPlanRepository {
   }
 
   async listPlans(): Promise<ApiResponse<RoastPlan[]>> {
-    const records = await this.client.list<SupabaseRoastPlanOverviewRecord>('roast_plan_overview', {
+    const records = await this.client.list<RemoteRoastPlanOverviewRecord>('roast_plan_overview', {
       orderBy: {
         ascending: false,
         column: 'updated_at',
       },
     });
 
-    return ok(records.map(mapSupabaseRoastPlanRecord));
+    return ok(records.map(mapRemoteRoastPlanRecord));
   }
 
   async updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     const currentPlan = await getRoastPlanById(this.client, planId);
 
-    const updatedRows = await this.client.update<SupabaseRoastProfileMutationRecord>(
+    const updatedRows = await this.client.update<RemoteRoastProfileMutationRecord>(
       'roast_profiles',
-      await toSupabaseRoastPlanPayload(this.client, input, currentPlan.status),
+      await toRemoteRoastPlanPayload(this.client, input, currentPlan.status),
       {
         match: {
           id: String(planId),
@@ -396,11 +401,11 @@ const resolveRoastPlanRepository = (): RoastPlanRepository => {
     return new LocalRoastPlanRepository();
   }
 
-  if (!hasSupabaseConnection()) {
+  if (!hasGreenBeanConnection()) {
     return new LocalRoastPlanRepository();
   }
 
-  return new SupabaseRoastPlanRepository(getSupabaseClient());
+  return new RemoteRoastPlanRepository(getGreenBeanClient());
 };
 
 export const roastPlanService = {
@@ -415,6 +420,7 @@ export const roastPlanService = {
       updatedAt: new Date().toISOString(),
     };
 
+    pendingOptimisticCreatePlanIds.add(String(optimisticPlan.id));
     localRoastPlans = saveLocalPlans([optimisticPlan, ...localRoastPlans]);
 
     return optimisticPlan;
@@ -427,6 +433,7 @@ export const roastPlanService = {
       updatedAt: new Date().toISOString(),
     };
 
+    pendingOptimisticCreatePlanIds.add(String(optimisticPlan.id));
     localRoastPlans = saveLocalPlans([optimisticPlan, ...localRoastPlans]);
 
     return optimisticPlan;
@@ -450,6 +457,7 @@ export const roastPlanService = {
     return sortPlans(localRoastPlans);
   },
   finalizeOptimisticPlan(optimisticPlanId: RoastPlan['id'], remotePlan: RoastPlan): RoastPlan[] {
+    pendingOptimisticCreatePlanIds.delete(String(optimisticPlanId));
     localRoastPlans = saveLocalPlans([
       remotePlan,
       ...localRoastPlans.filter((plan) => String(plan.id) !== String(optimisticPlanId)),
@@ -458,6 +466,7 @@ export const roastPlanService = {
     return sortPlans(localRoastPlans);
   },
   rollbackOptimisticPlan(optimisticPlanId: RoastPlan['id']): RoastPlan[] {
+    pendingOptimisticCreatePlanIds.delete(String(optimisticPlanId));
     localRoastPlans = saveLocalPlans(
       localRoastPlans.filter((plan) => String(plan.id) !== String(optimisticPlanId)),
     );
@@ -484,17 +493,23 @@ export const roastPlanService = {
     return resolveRoastPlanRepository().updatePlan(planId, input);
   },
   async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
-    if (!hasSupabaseConnection() || typeof navigator === 'undefined' || !navigator.onLine) {
+    if (!hasGreenBeanConnection() || typeof navigator === 'undefined' || !navigator.onLine) {
       return { downloaded: 0, uploaded: 0 };
     }
 
-    const repository = new SupabaseRoastPlanRepository(getSupabaseClient());
+    if (pendingOptimisticCreatePlanIds.size > 0) {
+      return { downloaded: 0, uploaded: 0 };
+    }
+
+    const repository = new RemoteRoastPlanRepository(getGreenBeanClient());
     const localPlansBeforeSync = sortPlans(localRoastPlans);
+    const optimisticLocalPlans = localPlansBeforeSync.filter((plan) => isOptimisticLocalPlanId(plan.id));
+    const syncableLocalPlans = localPlansBeforeSync.filter((plan) => !isOptimisticLocalPlanId(plan.id));
     const remoteBeforeSync = await repository.listPlans();
     const remoteIds = new Set(remoteBeforeSync.data.map((plan) => String(plan.id)));
     let uploaded = 0;
 
-    for (const localPlan of localPlansBeforeSync) {
+    for (const localPlan of syncableLocalPlans) {
       if (remoteIds.has(String(localPlan.id))) {
         continue;
       }
@@ -504,7 +519,7 @@ export const roastPlanService = {
     }
 
     const remoteAfterSync = await repository.listPlans();
-    const nextPlans = sortPlans(remoteAfterSync.data);
+    const nextPlans = sortPlans([...optimisticLocalPlans, ...remoteAfterSync.data]);
     const beforeSignature = getPlanSyncSnapshot(localPlansBeforeSync);
     const afterSignature = getPlanSyncSnapshot(nextPlans);
 
@@ -515,5 +530,8 @@ export const roastPlanService = {
       uploaded,
     };
   },
-  hasSupabaseConnection,
+  hasPendingOptimisticCreations(): boolean {
+    return pendingOptimisticCreatePlanIds.size > 0;
+  },
+  hasGreenBeanConnection,
 };

@@ -54,12 +54,13 @@ describe('roastedCoffeeBeanMirrorService', () => {
 
     expect(serialized.startsWith('{"data":{"id":"batch-1"')).toBe(true);
     expect(serialized).not.toContain('"data":"{');
+    expect(mirrorData.name).toBe('测试熟豆 水洗');
     expect(mirrorData.sourceGreenBeanId).toBe('bean-1');
     expect(mirrorData.purchaseDate).toBe('2026-07-06T00:00:00.000Z');
     expect(mirrorData.price).toBe('10');
     expect(mirrorData.capacity).toBe('170');
     expect(mirrorData.remaining).toBe('170');
-    expect(mirrorData.roaster).toBe('测试计划');
+    expect(mirrorData.roaster).toBe('');
     expect(mirrorData.brand).toBe('耶加雪菲庄园');
     expect(mirrorData.image).toBe('https://example.com/front.jpg');
     expect(mirrorData.backImage).toBe('https://example.com/back.jpg');
@@ -73,5 +74,47 @@ describe('roastedCoffeeBeanMirrorService', () => {
     expect(mirrorData.beanState).toBe('roasted');
     expect(mirrorData.beanType).toBe('filter');
     expect(mirrorData.blendComponents[0]?.percentage).toBe(100);
+  });
+
+  it('falls back to green bean name plus process when roasted bean name is empty', () => {
+    const batch: RoastBatchRecord = {
+      id: 'batch-2',
+      greenBeanId: 'bean-2',
+      greenBeanName: '耶加雪菲 G1',
+      roastDate: '2026-07-06T10:29:00+00:00',
+      roastLevel: '浅焙',
+      inputWeightGrams: 200,
+      outputWeightGrams: 170,
+      status: 'completed',
+      roastedBeanName: '',
+      roastPlanName: '测试计划',
+      imageUrls: [],
+      notes: '',
+      createdAt: '2026-07-06T10:29:00+00:00',
+      updatedAt: '2026-07-06T10:29:00+00:00',
+    };
+
+    const bean: Bean = {
+      id: 'bean-2',
+      name: '耶加雪菲 G1',
+      origin: '埃塞俄比亚',
+      process: '日晒',
+      grade: 'G1',
+      stockKg: 8,
+      costPerKg: 120,
+      createdAt: '2026-07-06T00:00:00.000Z',
+      updatedAt: '2026-07-06T00:00:00.000Z',
+    };
+
+    const mirrorData = buildMirrorData(batch, bean, {
+      percentage: 100,
+      estate: bean.name,
+      origin: bean.origin,
+      process: bean.process,
+      variety: '',
+    });
+
+    expect(mirrorData.name).toBe('耶加雪菲 G1 日晒');
+    expect(mirrorData.roaster).toBe('');
   });
 });

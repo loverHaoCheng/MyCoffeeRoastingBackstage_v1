@@ -248,7 +248,7 @@ export const localGreenBeanService = {
     return loadSnapshot()?.records ?? [];
   },
   /**
-   * 按 code 删除本地记录（用于 Supabase 同步成功后清除重复的本地副本）
+   * 按 code 删除本地记录（用于远端同步成功后清除重复的本地副本）
    */
   removeByCode(code: string): boolean {
     const allRecords = this.listRecords();

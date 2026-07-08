@@ -84,7 +84,8 @@ describe('router', () => {
       </ConfigProvider>,
     );
 
-    expect(await screen.findByRole('heading', { name: '找回密码' })).toBeInTheDocument();
+    expect(await screen.findByText('EasyBake')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'lock 发送重置邮件' })).toBeInTheDocument();
+    expect(screen.getByText('想起密码了？')).toBeInTheDocument();
   });
 });

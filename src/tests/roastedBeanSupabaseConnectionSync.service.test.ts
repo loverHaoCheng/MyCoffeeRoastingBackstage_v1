@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { appSettingsSyncService } from '@/modules/settings/services/appSettingsSync.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
-import { supabaseRoastedBeanConnectionSyncService } from '@/modules/settings/services/supabaseRoastedBeanConnectionSync.service';
+import { roastedBeanSupabaseConnectionSyncService } from '@/modules/settings/services/roastedBeanSupabaseConnectionSync.service';
 import { createDefaultPocketBaseConnectionSettings } from '@/modules/settings/types';
 
-describe('supabaseRoastedBeanConnectionSyncService', () => {
+describe('roastedBeanSupabaseConnectionSyncService', () => {
   beforeEach(() => {
     window.localStorage.clear();
     pocketBaseConnectionSettingsService.clear();
@@ -25,7 +25,7 @@ describe('supabaseRoastedBeanConnectionSyncService', () => {
       },
     });
 
-    const result = await supabaseRoastedBeanConnectionSyncService.syncFromRemote();
+    const result = await roastedBeanSupabaseConnectionSyncService.syncFromRemote();
 
     expect(result.roastedBean.projectUrl).toBe('https://demo.supabase.co');
     expect(result.roastedBean.publishableKey).toBe('sb_publishable_demo');
