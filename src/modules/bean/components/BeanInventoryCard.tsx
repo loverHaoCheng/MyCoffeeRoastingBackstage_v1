@@ -1,3 +1,4 @@
+import { FlavorTagChips } from '@/modules/bean/components/FlavorTagChips';
 import { useCostTemplateSettings, useVisibleCardMetaItems } from '@/modules/settings/hooks';
 import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 import type { Bean } from '@/types/domain';
@@ -64,6 +65,7 @@ const normalizeText = (value: unknown): string => {
 const beanCardEditFieldPathMap: Record<string, FieldPath<GreenBeanFormInput> | undefined> = {
   altitudeMetersMax: 'altitudeMetersMax',
   altitudeMetersMin: 'altitudeMetersMin',
+  agingDays: 'agingDays',
   code: 'code',
   cost: 'purchasedTotalPrice',
   costTemplateId: 'costTemplateId',
@@ -71,6 +73,7 @@ const beanCardEditFieldPathMap: Record<string, FieldPath<GreenBeanFormInput> | u
   defaultSaleUnitPrice: 'defaultSaleUnitPrice',
   defaultSaleUnitWeight: 'defaultSaleUnitWeightGrams',
   densityGPerL: 'densityGPerL',
+  flavorTags: 'flavorTags',
   harvestSeason: 'harvestSeason',
   millName: 'millName',
   moisturePercent: 'moisturePercent',
@@ -84,6 +87,7 @@ const beanCardEditFieldPathMap: Record<string, FieldPath<GreenBeanFormInput> | u
   purchasedWeight: 'purchasedWeightGrams',
   stock: 'remainingWeightGrams',
   supplier: 'supplierName',
+  tastingEndDays: 'tastingEndDays',
   grade: 'grade',
   variety: 'variety',
 };
@@ -107,6 +111,12 @@ export function BeanInventoryCard({ bean, onDelete, onEdit, onEditAll, onView }:
     { key: 'costTemplateId', label: '成本模板', value: costTemplateText },
     { key: 'supplier', label: '供应商', value: supplierText, multiline: true },
     { key: 'process', label: '处理法', value: formatOptionalText(bean.process) },
+    {
+      key: 'flavorTags',
+      label: '风味',
+      value: <FlavorTagChips maxVisible={3} tags={bean.flavorTags} />,
+      multiline: true,
+    },
     { key: 'originCountry', label: '国家', value: formatOptionalText(bean.originCountry) },
     { key: 'originRegion', label: '产区', value: formatOptionalText(bean.originRegion) },
     { key: 'originArea', label: '小产区', value: formatOptionalText(bean.originArea) },
@@ -114,6 +124,8 @@ export function BeanInventoryCard({ bean, onDelete, onEdit, onEditAll, onView }:
     { key: 'variety', label: '品种', value: formatOptionalText(bean.variety) },
     { key: 'grade', label: '等级', value: formatOptionalText(bean.grade) },
     { key: 'harvestSeason', label: '产季', value: formatOptionalText(bean.harvestSeason) },
+    { key: 'agingDays', label: '养豆时间', value: formatOptionalDecimal(bean.agingDays, ' 天') },
+    { key: 'tastingEndDays', label: '赏味结束期', value: formatOptionalDecimal(bean.tastingEndDays, ' 天') },
     { key: 'code', label: '编号', value: formatOptionalText(bean.code) },
     {
       key: 'defaultRoastInput',

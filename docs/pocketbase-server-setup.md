@@ -70,7 +70,10 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `owner` | relation(users) | 归属用户 |
 | `code` | text | 生豆编号 |
 | `display_name` | text | 生豆名称 |
+| `flavor_tags` | text | 风味标签，使用逗号分隔存储 |
+| `aging_days` | number | 养豆时间，单位天，默认建议 14 |
 | `process_method` | text | 处理法 |
+| `tasting_end_days` | number | 赏味结束期，单位天，默认建议 40 |
 | `variety` | text | 豆种 |
 | `grade` | text | 等级 |
 | `origin_country` | text | 国家 |

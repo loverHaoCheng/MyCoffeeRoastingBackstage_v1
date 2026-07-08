@@ -63,6 +63,7 @@ const normalizeUser = (record: PocketBaseUserRecord): PocketBaseSessionUser => {
   return {
     email: record.email,
     id: record.id,
+    name: record.name?.trim() ? record.name.trim() : undefined,
     verified: record.verified,
     username: record.username,
   };
@@ -308,6 +309,17 @@ const postJson = async (path: string, body: Record<string, unknown>): Promise<un
   });
 };
 
+const patchJson = async (path: string, body: Record<string, unknown>): Promise<unknown> => {
+  return requestJson(buildAuthGatewayUrl(path), {
+    body: JSON.stringify(body),
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    method: 'PATCH',
+  });
+};
+
 const getSessionFromAuthResponse = (response: PocketBaseAuthResponse): PocketBaseSession => {
   if (!response.token || !response.record) {
     throw new AppError('PocketBase 认证响应缺少必要字段。', {
@@ -353,6 +365,13 @@ export const pocketBaseAuthService = {
     if (!response.record || !response.token) {
       return null;
     }
+
+    return getSessionFromAuthResponse(response);
+  },
+  async updateProfileName(name: string): Promise<PocketBaseSession> {
+    const response = (await patchJson('/profile', {
+      name: name.trim(),
+    })) as PocketBaseAuthResponse;
 
     return getSessionFromAuthResponse(response);
   },

@@ -5,6 +5,7 @@ import { isSupabaseProjectUrl } from '@/services/pocketBaseConfig';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
 import { RoastedBeanSupabaseDataClient } from '@/services/roastedBeanSupabaseDataClient';
 import type { Bean } from '@/types/domain';
 
@@ -209,6 +210,10 @@ const resolveSaleUnitPrice = (bean: Bean | null): string => {
   return '';
 };
 
+const resolveMirrorRoaster = (): string => {
+  return getTrimmedText(pocketBaseSessionService.getUser()?.name);
+};
+
 const resolveBlendComponent = (bean: Bean | null): CoffeeBeanBlendComponent => ({
   percentage: 100,
   estate: bean?.name ?? '',
@@ -254,7 +259,7 @@ export const buildMirrorData = (
     id: batch.id,
     timestamp: resolveTimestamp(batch),
     name: resolveMirrorName(batch, bean),
-    roaster: '',
+    roaster: resolveMirrorRoaster(),
     image: resolveImageUrl(batch, 0),
     backImage: resolveImageUrl(batch, 1),
     capacity,
@@ -262,10 +267,10 @@ export const buildMirrorData = (
     price,
     roastLevel: normalizeRoastLevel(batch.roastLevel),
     roastDate: formatDateOnly(batch.roastDate),
-    flavor: [],
+    flavor: bean?.flavorTags ?? [],
     notes: getTrimmedText(batch.notes) || getTrimmedText(bean?.notes),
-    startDay: 0,
-    endDay: 0,
+    startDay: bean?.agingDays ?? 14,
+    endDay: bean?.tastingEndDays ?? 40,
     isFrozen: false,
     isInTransit: false,
     beanType: resolveBeanType(batch, bean),

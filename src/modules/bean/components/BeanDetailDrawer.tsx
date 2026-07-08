@@ -10,6 +10,7 @@ import type { FieldPath } from 'react-hook-form';
 import type { GreenBeanFormInput } from '../types/localGreenBean';
 
 import { BeanForm } from './BeanForm';
+import { FlavorTagChips } from './FlavorTagChips';
 import styles from './BeanDetailDrawer.module.css';
 
 type DetailMode = 'view' | 'edit';
@@ -48,6 +49,7 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDe
       { label: '名称', value: bean.name },
       { label: '产地', value: bean.origin || '待补充' },
       { label: '处理法', value: bean.process },
+      { label: '风味', value: <FlavorTagChips align="start" tags={bean.flavorTags} /> },
       { label: '等级', value: bean.grade || '待补充' },
       { label: '总库存', value: `${formatKg.format(totalWeightGrams / 1000)} kg` },
       { label: '剩余库存', value: `${formatKg.format(remainingWeightGrams / 1000)} kg` },
@@ -73,6 +75,8 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDe
         label: '更新时间',
         value: new Date(bean.updatedAt).toLocaleString('zh-CN'),
       },
+      { label: '养豆时间', value: bean.agingDays != null ? `${String(bean.agingDays)} 天` : '14 天' },
+      { label: '赏味结束期', value: bean.tastingEndDays != null ? `${String(bean.tastingEndDays)} 天` : '40 天' },
     ];
 
     return (
@@ -87,13 +91,13 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDe
         </div>
 
         <div className={styles.detailSection}>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>豆种</span>
-            <span>{bean.variety ?? '-'}</span>
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>产季</span>
-            <span>{bean.harvestSeason ?? '-'}</span>
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>豆种</span>
+          <span>{bean.variety ?? '-'}</span>
+        </div>
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>产季</span>
+          <span>{bean.harvestSeason ?? '-'}</span>
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>编号</span>

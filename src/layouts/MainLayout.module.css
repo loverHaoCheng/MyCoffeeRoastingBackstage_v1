@@ -285,6 +285,30 @@
   min-width: 0;
 }
 
+.authNicknameButton {
+  display: inline-flex;
+  width: fit-content;
+  max-width: min(52vw, 240px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: left;
+  transition: opacity 160ms ease;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.authNicknameButton:hover,
+.authNicknameButton:focus-visible {
+  opacity: 0.74;
+  outline: none;
+}
+
 .authLabel {
   color: var(--app-text-secondary);
   font-size: 12px;
@@ -294,6 +318,24 @@
   color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
+}
+
+.authEmail {
+  color: var(--app-text-secondary) !important;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.authDrawerField {
+  display: grid;
+  gap: 8px;
+}
+
+.authDrawerLabel {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .authBar :global(.ant-btn) {

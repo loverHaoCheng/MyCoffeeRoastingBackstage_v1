@@ -11,8 +11,16 @@ const { refreshQuickAppDataMock } = vi.hoisted(() => ({
   refreshQuickAppDataMock: vi.fn(),
 }));
 
+const { checkForAvailableAppUpdateMock } = vi.hoisted(() => ({
+  checkForAvailableAppUpdateMock: vi.fn(),
+}));
+
 vi.mock('@/app/services/appDataRefresh.service', () => ({
   refreshQuickAppData: refreshQuickAppDataMock,
+}));
+
+vi.mock('@/app/services/appVersionCheck.service', () => ({
+  checkForAvailableAppUpdate: checkForAvailableAppUpdateMock,
 }));
 
 const renderWithProviders = (ui: ReactNode) => {
@@ -42,6 +50,8 @@ describe('GlobalPullToRefresh', () => {
       success: 0,
       uploaded: 0,
     });
+    checkForAvailableAppUpdateMock.mockReset();
+    checkForAvailableAppUpdateMock.mockResolvedValue(false);
 
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,
@@ -148,6 +158,49 @@ describe('GlobalPullToRefresh', () => {
 
     await waitFor(() => {
       expect(refreshQuickAppDataMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('reloads the page when a newer web version is detected during pull refresh', async () => {
+    const scrollContainerRef = createRef<HTMLDivElement>();
+    const scrollContainer = document.createElement('div');
+    scrollContainerRef.current = scrollContainer;
+    const reloadSpy = vi.fn();
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        href: window.location.href,
+        protocol: window.location.protocol,
+        reload: reloadSpy,
+      },
+    });
+    checkForAvailableAppUpdateMock.mockResolvedValue(true);
+
+    renderWithProviders(
+      <ViewportScrollContext.Provider value={scrollContainerRef}>
+        <GlobalPullToRefresh />
+      </ViewportScrollContext.Provider>,
+    );
+
+    fireEvent.touchStart(scrollContainer, {
+      touches: [{ clientY: 0 }],
+    });
+    fireEvent.touchMove(scrollContainer, {
+      touches: [{ clientY: 120 }],
+    });
+    fireEvent.touchEnd(scrollContainer);
+
+    await waitFor(() => {
+      expect(refreshQuickAppDataMock).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(checkForAvailableAppUpdateMock).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(reloadSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -6,7 +6,7 @@ import {
   ReloadOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import { App, Button, Grid, Layout, Menu, Space, Typography } from 'antd';
+import { App, Button, Grid, Input, Layout, Menu, Space, Typography } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, type ReactNode, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
@@ -17,7 +17,9 @@ import { isStandalonePwaRuntime, syncViewportMetrics } from '@/app/services/view
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { appNavigationItems, type AppRouteKey } from '@/router/navigation';
+import { FieldEditorDrawer } from '@/shared/components/FieldEditorDrawer';
 import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
+import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { useAppStore } from '@/stores/useAppStore';
 
 import { ViewportScrollContext } from './ViewportContext';
@@ -50,7 +52,7 @@ export function MainLayout() {
   const queryClient = useQueryClient();
   const { isRefreshing: isQuickRefreshing, refresh } = useQuickRefreshAction();
   const { setSidebarCollapsed, sidebarCollapsed } = useAppStore();
-  const { logout, user } = useAuthStore();
+  const { logout, updateProfileName, user } = useAuthStore();
   const { appDisplaySettings, loadAppDisplaySettings } = useAppDisplaySettings();
   const screens = useBreakpoint();
   const navigate = useNavigate();
@@ -85,6 +87,8 @@ export function MainLayout() {
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [routeTransitionDirection, setRouteTransitionDirection] =
     useState<RouteTransitionDirection>('forward');
+  const [isNicknameDrawerOpen, setIsNicknameDrawerOpen] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState('');
 
   const selectedKey = useMemo(() => {
     return (
@@ -121,6 +125,14 @@ export function MainLayout() {
   useEffect(() => {
     previousSelectedKeyRef.current = selectedKey;
   }, [selectedKey]);
+
+  useEffect(() => {
+    if (!isNicknameDrawerOpen) {
+      return;
+    }
+
+    setNicknameDraft(user?.name ?? '');
+  }, [isNicknameDrawerOpen, user?.name]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -283,23 +295,90 @@ export function MainLayout() {
     });
   };
 
+  const nicknameDisplayValue = user?.name?.trim() ?? '';
+  const authDisplaySeed = nicknameDisplayValue || (user?.email ?? 'U');
+
+  const handleOpenNicknameDrawer = () => {
+    if (!user) {
+      return;
+    }
+
+    setNicknameDraft(user.name ?? '');
+    setIsNicknameDrawerOpen(true);
+  };
+
+  const handleSaveNickname = async () => {
+    if (!user) {
+      setIsNicknameDrawerOpen(false);
+      return;
+    }
+
+    const normalizedName = nicknameDraft.trim();
+
+    if (normalizedName.length > 40) {
+      void message.error('昵称不能超过 40 个字符。');
+      return;
+    }
+
+    if (normalizedName === (user.name?.trim() ?? '')) {
+      setIsNicknameDrawerOpen(false);
+      return;
+    }
+
+    try {
+      await updateProfileName(normalizedName);
+      setIsNicknameDrawerOpen(false);
+      void message.success(normalizedName ? '昵称已保存。' : '昵称已清空。');
+    } catch (error) {
+      void message.error(getUserFacingErrorMessage(error, '昵称保存失败，请检查网络或稍后重试。'));
+      throw error;
+    }
+  };
+
   const renderSettingsAuthBar = () => (
-    <div className={styles.authBar}>
-      <Space align="center" size={10}>
-        <div className={styles.authAvatar}>
-          {(user?.email ?? 'U').slice(0, 1).toUpperCase()}
-        </div>
-        <div className={styles.authMeta}>
-          <Typography.Text className={styles.authLabel}>当前账号</Typography.Text>
-          <Typography.Text className={styles.authValue} ellipsis>
-            {user?.email ?? '未登录'}
-          </Typography.Text>
-        </div>
-      </Space>
-      <Button icon={<LogoutOutlined />} onClick={handleLogout} type="text">
-        退出登录
-      </Button>
-    </div>
+    <>
+      <div className={styles.authBar}>
+        <Space align="center" size={10}>
+          <div className={styles.authAvatar}>
+            {authDisplaySeed.slice(0, 1).toUpperCase()}
+          </div>
+          <div className={styles.authMeta}>
+            <button className={styles.authNicknameButton} onClick={handleOpenNicknameDrawer} type="button">
+              {nicknameDisplayValue || '设置昵称'}
+            </button>
+            <Typography.Text className={styles.authEmail} ellipsis>
+              {user?.email ?? '未登录'}
+            </Typography.Text>
+          </div>
+        </Space>
+        <Button icon={<LogoutOutlined />} onClick={handleLogout} type="text">
+          退出登录
+        </Button>
+      </div>
+      <FieldEditorDrawer
+        height="42dvh"
+        onClose={() => {
+          setIsNicknameDrawerOpen(false);
+        }}
+        onSubmit={handleSaveNickname}
+        open={isNicknameDrawerOpen}
+        submitLabel="保存昵称"
+        title="修改昵称"
+      >
+        <label className={styles.authDrawerField}>
+          <span className={styles.authDrawerLabel}>昵称</span>
+          <Input
+            autoFocus
+            maxLength={40}
+            onChange={(event) => {
+              setNicknameDraft(event.target.value);
+            }}
+            placeholder="请输入昵称，留空则不显示"
+            value={nicknameDraft}
+          />
+        </label>
+      </FieldEditorDrawer>
+    </>
   );
 
   const renderRoutePanelContent = (routeKey: AppRouteKey, outletNode: ReactNode) => (

@@ -18,6 +18,9 @@ describe('createGreenBeanInventoryRepository', () => {
               default_roast_input_grams: 200,
               density_g_per_l: null,
               display_name: '测试生豆',
+              aging_days: 14,
+              tasting_end_days: 40,
+              flavor_tags: '柑橘,花香',
               harvest_season: '2025/26',
               id: 'bean-1',
               mill_name: null,
@@ -127,6 +130,9 @@ describe('createGreenBeanInventoryRepository', () => {
               default_roast_input_grams: 200,
               density_g_per_l: null,
               display_name: '测试生豆',
+              aging_days: 14,
+              tasting_end_days: 40,
+              flavor_tags: '柑橘,花香',
               grade: null,
               harvest_season: '2025/26',
               id: 'bean-1',
@@ -186,6 +192,7 @@ describe('createGreenBeanInventoryRepository', () => {
     const repository = createGreenBeanInventoryRepository(client);
 
     await repository.updateBean('bean-1', {
+      agingDays: 14,
       altitudeMetersMax: null,
       altitudeMetersMin: null,
       code: 'GB-001',
@@ -194,6 +201,7 @@ describe('createGreenBeanInventoryRepository', () => {
       defaultSaleUnitWeightGrams: 250,
       densityGPerL: null,
       displayName: '测试生豆',
+      flavorTags: ['柑橘', '花香'],
       grade: 'SHB',
       harvestSeason: '2025/26',
       millName: '',
@@ -207,6 +215,7 @@ describe('createGreenBeanInventoryRepository', () => {
       purchasedWeightGrams: 5000,
       remainingWeightGrams: 2000,
       supplierName: '供应商 A',
+      tastingEndDays: 40,
       variety: '74110',
     });
 
@@ -331,6 +340,7 @@ describe('createGreenBeanInventoryRepository', () => {
 
     const repository = createGreenBeanInventoryRepository(client);
     const result = await repository.createBean({
+      agingDays: 14,
       altitudeMetersMax: null,
       altitudeMetersMin: null,
       code: 'GB-001',
@@ -340,6 +350,7 @@ describe('createGreenBeanInventoryRepository', () => {
       defaultSaleUnitWeightGrams: 250,
       densityGPerL: null,
       displayName: '测试生豆',
+      flavorTags: ['柑橘', '花香'],
       grade: 'G1',
       harvestSeason: '2025/26',
       millName: '',
@@ -353,6 +364,7 @@ describe('createGreenBeanInventoryRepository', () => {
       purchasedWeightGrams: 4000,
       remainingWeightGrams: 4000,
       supplierName: '供应商 A',
+      tastingEndDays: 40,
       variety: '74110',
     });
 

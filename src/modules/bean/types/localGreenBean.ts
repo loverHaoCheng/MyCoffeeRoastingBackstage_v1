@@ -1,8 +1,11 @@
 export interface GreenBeanFormInput {
+  agingDays: number;
+  tastingEndDays: number;
   costTemplateId?: null | string;
   code: string;
   defaultRoastInputGrams: number;
   displayName: string;
+  flavorTags: string[];
   grade?: null | string;
   harvestSeason?: null | string;
   millName?: null | string;

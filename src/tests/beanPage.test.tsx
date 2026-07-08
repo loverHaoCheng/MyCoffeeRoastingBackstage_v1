@@ -26,14 +26,17 @@ describe('BeanPage', () => {
     beanCacheService.save(
       [
         {
+          agingDays: 14,
           costPerKg: 86,
           createdAt: '2026-07-03T00:00:00.000Z',
+          flavorTags: ['柑橘', '花香'],
           grade: 'G1',
           id: 'bean-zero-stock',
           name: '零库存测试豆',
           origin: '埃塞俄比亚 · 古吉',
           process: '水洗',
           stockKg,
+          tastingEndDays: 40,
           updatedAt: '2026-07-03T00:00:00.000Z',
         },
       ],
@@ -45,25 +48,31 @@ describe('BeanPage', () => {
     beanCacheService.save(
       [
         {
+          agingDays: 14,
           costPerKg: 100,
           createdAt: '2026-07-03T00:00:00.000Z',
+          flavorTags: ['柑橘', '花香'],
           grade: 'G1',
           id: 'bean-a',
           name: '测试豆 A',
           origin: '埃塞俄比亚 · 古吉',
           process: '水洗',
           stockKg: 1,
+          tastingEndDays: 40,
           updatedAt: '2026-07-03T00:00:00.000Z',
         },
         {
+          agingDays: 21,
           costPerKg: 200,
           createdAt: '2026-07-03T00:00:00.000Z',
+          flavorTags: ['黑巧克力', '坚果'],
           grade: 'G1',
           id: 'bean-b',
           name: '测试豆 B',
           origin: '哥伦比亚 · 慧兰',
           process: '日晒',
           stockKg: 9,
+          tastingEndDays: 45,
           updatedAt: '2026-07-03T00:00:00.000Z',
         },
       ],
@@ -156,5 +165,18 @@ describe('BeanPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试豆 A' }));
 
     expect(await screen.findByText('编辑生豆')).toBeInTheDocument();
+  });
+
+  it('matches flavor tags with fuzzy keyword search', async () => {
+    saveBeanSummaryCache();
+
+    renderWithQuery(<BeanPage />);
+
+    fireEvent.change(screen.getByLabelText('搜索生豆'), {
+      target: { value: '柑' },
+    });
+
+    expect(await screen.findByText('测试豆 A')).toBeInTheDocument();
+    expect(screen.queryByText('测试豆 B')).not.toBeInTheDocument();
   });
 });

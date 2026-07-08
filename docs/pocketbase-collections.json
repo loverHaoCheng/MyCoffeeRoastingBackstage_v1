@@ -72,6 +72,30 @@
         },
         {
           "system": false,
+          "id": "fld_flavor_tags",
+          "name": "flavor_tags",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_aging_days",
+          "name": "aging_days",
+          "type": "number",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "noDecimal": true,
+            "min": 0,
+            "max": null
+          }
+        },
+        {
+          "system": false,
           "id": "fld_process_method",
           "name": "process_method",
           "type": "text",
@@ -89,6 +113,20 @@
           "presentable": true,
           "unique": false,
           "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_tasting_end_days",
+          "name": "tasting_end_days",
+          "type": "number",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "noDecimal": true,
+            "min": 1,
+            "max": null
+          }
         },
         {
           "system": false,

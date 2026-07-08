@@ -1,7 +1,9 @@
 export interface GreenBeanLotProfile {
   id: string;
+  agingDays?: number;
   code: string;
   displayName: string;
+  flavorTags?: string[];
   grade?: string | null;
   originCountry: string;
   originRegion: string;
@@ -16,6 +18,7 @@ export interface GreenBeanLotProfile {
   millName?: string | null;
   defaultRoastInputGrams: number;
   notes?: string | null;
+  tastingEndDays?: number;
   createdAt: string;
   updatedAt: string;
 }

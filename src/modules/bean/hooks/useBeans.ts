@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { beanEditableDetailQueryKeys } from '@/modules/bean/hooks/useBeanEditableDetail';
 import { beanService } from '@/modules/bean/services';
+import { normalizeFlavorTags } from '@/modules/bean/utils/flavorTags';
 import { AppError } from '@/shared/errors/AppError';
 import type { GreenBeanEditableDetail, GreenBeanUpdateInput } from '@/modules/bean/types';
 import type { Bean } from '@/types/domain';
@@ -29,6 +30,7 @@ const buildOptimisticBean = (currentBean: Bean, input: GreenBeanUpdateInput): Be
   const purchasedWeightGrams = Math.max(0, Math.round(input.purchasedWeightGrams));
 
   return {
+    agingDays: input.agingDays,
     ...currentBean,
     code: input.code.trim(),
     costPerKg:
@@ -40,6 +42,7 @@ const buildOptimisticBean = (currentBean: Bean, input: GreenBeanUpdateInput): Be
     defaultRoastInputGrams: input.defaultRoastInputGrams,
     defaultSaleUnitPrice: input.defaultSaleUnitPrice,
     defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
+    flavorTags: normalizeFlavorTags(input.flavorTags),
     grade: normalizeText(input.grade) ?? '',
     harvestSeason: normalizeText(input.harvestSeason) ?? undefined,
     id: currentBean.id,
@@ -48,6 +51,7 @@ const buildOptimisticBean = (currentBean: Bean, input: GreenBeanUpdateInput): Be
     process: input.processMethod.trim(),
     stockKg: Number((remainingWeightGrams / 1000).toFixed(1)),
     supplierName: normalizeText(input.supplierName),
+    tastingEndDays: input.tastingEndDays,
     updatedAt: new Date().toISOString(),
     variety: input.variety.trim(),
   };
@@ -60,6 +64,7 @@ const buildOptimisticEditableDetail = (
 ): GreenBeanEditableDetail => {
   return {
     beanId: currentDetail?.beanId ?? String(currentBean.id),
+    agingDays: input.agingDays,
     costTemplateId: input.costTemplateId ?? currentDetail?.costTemplateId ?? null,
     code: input.code.trim(),
     defaultRoastInputGrams: input.defaultRoastInputGrams,
@@ -67,6 +72,7 @@ const buildOptimisticEditableDetail = (
     defaultSaleUnitPrice: input.defaultSaleUnitPrice,
     defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
     displayName: input.displayName.trim(),
+    flavorTags: normalizeFlavorTags(input.flavorTags),
     grade: normalizeText(input.grade),
     harvestSeason: normalizeText(input.harvestSeason),
     millName: normalizeText(input.millName),
@@ -80,6 +86,7 @@ const buildOptimisticEditableDetail = (
     purchasedWeightGrams: input.purchasedWeightGrams,
     remainingWeightGrams: input.remainingWeightGrams,
     supplierName: normalizeText(input.supplierName),
+    tastingEndDays: input.tastingEndDays,
     variety: input.variety.trim(),
     altitudeMetersMax: input.altitudeMetersMax ?? null,
     altitudeMetersMin: input.altitudeMetersMin ?? null,

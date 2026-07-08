@@ -13,12 +13,14 @@ interface BeanManualCreatorProps {
 }
 
 const defaultBeanFormValues: GreenBeanCreateInput = {
+  agingDays: 14,
   costTemplateId: null,
   code: '',
   defaultRoastInputGrams: 200,
   defaultSaleUnitPrice: 0,
   defaultSaleUnitWeightGrams: null,
   displayName: '',
+  flavorTags: [],
   grade: '',
   harvestSeason: '',
   millName: '',
@@ -31,6 +33,7 @@ const defaultBeanFormValues: GreenBeanCreateInput = {
   purchasedWeightGrams: 1000,
   remainingWeightGrams: 1000,
   supplierName: '',
+  tastingEndDays: 40,
   variety: '',
   altitudeMetersMax: null,
   altitudeMetersMin: null,

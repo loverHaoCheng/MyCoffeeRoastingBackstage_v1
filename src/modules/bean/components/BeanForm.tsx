@@ -11,6 +11,11 @@ import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 
 import type { GreenBeanFormInput } from '../types/localGreenBean';
+import {
+  beanFlavorTagMaxCount,
+  beanFlavorTagTokenSeparators,
+  normalizeFlavorTags,
+} from '../utils/flavorTags';
 
 import styles from './BeanForm.module.css';
 
@@ -30,6 +35,7 @@ interface BeanFormProps {
 const fieldPathMap: Record<string, FieldPath<GreenBeanFormInput>> = {
   altitudeMetersMax: 'altitudeMetersMax',
   altitudeMetersMin: 'altitudeMetersMin',
+  agingDays: 'agingDays',
   costTemplateId: 'costTemplateId',
   code: 'code',
   defaultRoastInputGrams: 'defaultRoastInputGrams',
@@ -37,6 +43,7 @@ const fieldPathMap: Record<string, FieldPath<GreenBeanFormInput>> = {
   defaultSaleUnitWeightGrams: 'defaultSaleUnitWeightGrams',
   densityGPerL: 'densityGPerL',
   displayName: 'displayName',
+  flavorTags: 'flavorTags',
   grade: 'grade',
   harvestSeason: 'harvestSeason',
   millName: 'millName',
@@ -50,6 +57,7 @@ const fieldPathMap: Record<string, FieldPath<GreenBeanFormInput>> = {
   purchasedWeightGrams: 'purchasedWeightGrams',
   remainingWeightGrams: 'remainingWeightGrams',
   supplierName: 'supplierName',
+  tastingEndDays: 'tastingEndDays',
   variety: 'variety',
 };
 
@@ -329,6 +337,30 @@ export function BeanForm({
             </span>
           </label>
 
+          <label className={joinClassNames(styles.field, styles.fieldWide)} data-field-path="flavorTags">
+            {renderLabel('风味')}
+            <Controller
+              control={control}
+              name="flavorTags"
+              render={({ field }) => (
+                <Select
+                  aria-label="风味"
+                  mode="tags"
+                  onChange={(value) => {
+                    field.onChange(normalizeFlavorTags(value));
+                  }}
+                  open={false}
+                  placeholder="输入后按回车生成标签，也支持逗号分隔"
+                  tokenSeparators={beanFlavorTagTokenSeparators}
+                  value={field.value}
+                />
+              )}
+            />
+            <span className={joinClassNames(styles.helpText, errors.flavorTags ? styles.helpTextError : undefined)}>
+              {getErrorMessage(errors.flavorTags?.message, `用于长期风味标签、卡片展示、搜索筛选与熟豆镜像同步，最多 ${String(beanFlavorTagMaxCount)} 个`)}
+            </span>
+          </label>
+
           <label className={styles.field} data-field-path="supplierName">
             {renderLabel('生豆商')}
             <Controller
@@ -411,6 +443,60 @@ export function BeanForm({
             />
             <span className={joinClassNames(styles.helpText, errors.millName ? styles.helpTextError : undefined)}>
               {formatOptionalHelp(errors.millName?.message, '用于保留更完整的追溯信息')}
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <header className={styles.sectionHeader}>
+          <h3>烘焙后处理</h3>
+          <p>用于熟豆镜像里的养豆与赏味窗口，也可作为日常查看和后续筛选参考。</p>
+        </header>
+        <div className={styles.fieldGrid}>
+          <label className={styles.field} data-field-path="agingDays">
+            {renderLabel('养豆时间')}
+            <Controller
+              control={control}
+              name="agingDays"
+              render={({ field }) => (
+                <InputNumber
+                  aria-label="养豆时间"
+                  min={0}
+                  onChange={(value) => {
+                    field.onChange(value ?? 0);
+                  }}
+                  precision={0}
+                  suffix="天"
+                  value={field.value}
+                />
+              )}
+            />
+            <span className={joinClassNames(styles.helpText, errors.agingDays ? styles.helpTextError : undefined)}>
+              {getErrorMessage(errors.agingDays?.message, '默认 14 天，会同步到熟豆镜像的 startDay')}
+            </span>
+          </label>
+
+          <label className={styles.field} data-field-path="tastingEndDays">
+            {renderLabel('赏味结束期')}
+            <Controller
+              control={control}
+              name="tastingEndDays"
+              render={({ field }) => (
+                <InputNumber
+                  aria-label="赏味结束期"
+                  min={1}
+                  onChange={(value) => {
+                    field.onChange(value ?? 40);
+                  }}
+                  precision={0}
+                  suffix="天"
+                  value={field.value}
+                />
+              )}
+            />
+            <span className={joinClassNames(styles.helpText, errors.tastingEndDays ? styles.helpTextError : undefined)}>
+              {getErrorMessage(errors.tastingEndDays?.message, '默认 40 天，会同步到熟豆镜像的 endDay')}
             </span>
           </label>
         </div>

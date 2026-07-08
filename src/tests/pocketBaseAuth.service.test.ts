@@ -215,6 +215,7 @@ describe('pocketBaseAuthService', () => {
             record: {
               email: 'demo@example.com',
               id: 'user-1',
+              name: '烘焙师 A',
               verified: true,
               username: 'demo',
             },
@@ -246,6 +247,7 @@ describe('pocketBaseAuthService', () => {
       user: {
         email: 'demo@example.com',
         id: 'user-1',
+        name: '烘焙师 A',
         verified: true,
         username: 'demo',
       },
@@ -255,6 +257,7 @@ describe('pocketBaseAuthService', () => {
       user: {
         email: 'demo@example.com',
         id: 'user-1',
+        name: '烘焙师 A',
       },
     });
     expect(fetchMock).toHaveBeenCalledWith(
@@ -263,6 +266,54 @@ describe('pocketBaseAuthService', () => {
         method: 'GET',
       }),
     );
+  });
+
+  it('updates the current user nickname through the auth gateway and refreshes the in-memory session', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            record: {
+              email: 'demo@example.com',
+              id: 'user-1',
+              name: '新的昵称',
+              verified: true,
+              username: 'demo',
+            },
+            token: 'updated-token',
+          }),
+          {
+            status: 200,
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const session = await pocketBaseAuthService.updateProfileName('新的昵称');
+
+    expect(session).toMatchObject({
+      token: 'updated-token',
+      user: {
+        email: 'demo@example.com',
+        id: 'user-1',
+        name: '新的昵称',
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/profile',
+      expect.objectContaining({
+        body: JSON.stringify({
+          name: '新的昵称',
+        }),
+        method: 'PATCH',
+      }),
+    );
+    expect(pocketBaseSessionService.getUser()).toMatchObject({
+      email: 'demo@example.com',
+      id: 'user-1',
+      name: '新的昵称',
+    });
   });
 
   it('clears the in-memory session when logging out', async () => {

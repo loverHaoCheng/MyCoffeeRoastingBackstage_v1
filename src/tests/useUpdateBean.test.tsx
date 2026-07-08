@@ -10,12 +10,14 @@ import type { Bean } from '@/types/domain';
 
 const initialBeans: Bean[] = [
   {
+    agingDays: 14,
     code: 'GB-001',
     costPerKg: 90,
     createdAt: '2026-07-01T00:00:00.000Z',
     defaultRoastInputGrams: 200,
     defaultSaleUnitPrice: 48,
     defaultSaleUnitWeightGrams: 250,
+    flavorTags: ['柑橘'],
     grade: 'G1',
     harvestSeason: '2025/26',
     id: 'bean-1',
@@ -24,16 +26,19 @@ const initialBeans: Bean[] = [
     process: '水洗',
     stockKg: 8,
     supplierName: '供应商 A',
+    tastingEndDays: 40,
     updatedAt: '2026-07-01T00:00:00.000Z',
     variety: '74110',
   },
   {
+    agingDays: 21,
     code: 'GB-002',
     costPerKg: 100,
     createdAt: '2026-07-02T00:00:00.000Z',
     defaultRoastInputGrams: 220,
     defaultSaleUnitPrice: 52,
     defaultSaleUnitWeightGrams: 250,
+    flavorTags: ['莓果'],
     grade: 'A',
     harvestSeason: '2025/26',
     id: 'bean-2',
@@ -42,12 +47,14 @@ const initialBeans: Bean[] = [
     process: '日晒',
     stockKg: 6,
     supplierName: '供应商 B',
+    tastingEndDays: 45,
     updatedAt: '2026-07-02T00:00:00.000Z',
     variety: 'Caturra',
   },
 ];
 
 const updateInput: GreenBeanUpdateInput = {
+  agingDays: 18,
   altitudeMetersMax: null,
   altitudeMetersMin: null,
   code: 'GB-002',
@@ -56,6 +63,7 @@ const updateInput: GreenBeanUpdateInput = {
   defaultSaleUnitWeightGrams: 250,
   densityGPerL: null,
   displayName: '测试豆二',
+  flavorTags: ['黑巧克力', '坚果'],
   grade: 'SHB',
   harvestSeason: '2025/26',
   millName: '',
@@ -69,6 +77,7 @@ const updateInput: GreenBeanUpdateInput = {
   purchasedWeightGrams: 6000,
   remainingWeightGrams: 6000,
   supplierName: '供应商 B',
+  tastingEndDays: 42,
   variety: 'Caturra',
 };
 

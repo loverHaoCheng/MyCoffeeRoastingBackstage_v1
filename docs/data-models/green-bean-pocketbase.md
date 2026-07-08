@@ -4,7 +4,7 @@
 
 ## 拆表原则
 
-- `green_beans`：保存稳定的生豆档案信息，如产地、处理法、等级、豆种、产季、含水率、海拔、密度、处理厂。
+- `green_beans`：保存稳定的生豆档案信息，如产地、处理法、风味标签、烘焙后处理参数、等级、豆种、产季、含水率、海拔、密度、处理厂。
 - `green_bean_purchase_batches`：保存每次采购重量与采购总价，用于成本核算和剩余库存追踪。
 - `bean_sale_specs`：保存单份重量和单份售价，后续可扩展不同包装规格。
 - `roast_profiles`：保存烘焙方案，使用 JSON 字段记录节点步骤。
@@ -29,6 +29,9 @@
 | 含水率 | `green_beans.moisture_percent` | 百分比 |
 | 产区 | `green_beans.origin_region` / `origin_area` | 省州 / 更细分产区 |
 | 处理法 | `green_beans.process_method` | 水洗、日晒、蜜处理等 |
+| 风味标签 | `green_beans.flavor_tags` | 逗号分隔字符串，前端读取后解析为标签数组 |
+| 养豆时间 | `green_beans.aging_days` | 单位天，默认 14 |
+| 赏味结束期 | `green_beans.tasting_end_days` | 单位天，默认 40，同步到熟豆时复用为 `endDay` |
 | 海拔 | `green_beans.altitude_meters_min/max` | 用范围表达更稳妥 |
 | 密度 | `green_beans.density_g_per_l` | 适合烘焙参考 |
 | 处理厂 | `green_beans.mill_name` | 处理站 / 处理厂 |

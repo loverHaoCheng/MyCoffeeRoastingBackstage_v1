@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { App } from 'antd';
 import { useRef, useState } from 'react';
 
+import { checkForAvailableAppUpdate } from '@/app/services/appVersionCheck.service';
 import type { AppDataRefreshResult } from '@/app/services/appDataRefresh.service';
 import { refreshQuickAppData } from '@/app/services/appDataRefresh.service';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -12,6 +13,7 @@ export interface QuickRefreshFeedback {
 }
 
 interface QuickRefreshOptions {
+  checkAppUpdate?: boolean;
   onError?: (message: string) => void;
   onSuccess?: (feedback: QuickRefreshFeedback, result: AppDataRefreshResult) => void;
   silent?: boolean;
@@ -50,6 +52,13 @@ export function useQuickRefreshAction() {
 
     try {
       const result = await refreshQuickAppData(queryClient);
+      const shouldRefreshPageForUpdate = options.checkAppUpdate === true && (await checkForAvailableAppUpdate());
+
+      if (shouldRefreshPageForUpdate && typeof window !== 'undefined') {
+        window.location.reload();
+        return result;
+      }
+
       const feedback = getQuickRefreshFeedback(result);
 
       options.onSuccess?.(feedback, result);

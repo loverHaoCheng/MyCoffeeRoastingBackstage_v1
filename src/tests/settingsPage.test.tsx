@@ -171,6 +171,7 @@ describe('SettingsPage', () => {
 
     const card = await expandRoastedBeanConnectionCard();
     const guideLink = within(card).getByRole('link', { name: '进一步了解...' });
+    expect(within(card).getByRole('button', { name: /重新检测/ })).toBeInTheDocument();
 
     expect(within(card).getByText(/熟豆数据将会发送至 Brew Guide 中进行展示。/)).toBeInTheDocument();
     expect(guideLink).toHaveAttribute('href', 'https://chu3.top/brewguide');
@@ -307,6 +308,33 @@ describe('SettingsPage', () => {
 
     expect(syncFromRemoteSafelyMock).toHaveBeenCalledTimes(1);
     expect(verifyMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries roasted bean connection verification on demand even when the current config is unchanged', async () => {
+    syncFromRemoteSafelyMock.mockResolvedValue({
+      greenBean: {
+        projectUrl: 'http://81.70.224.75',
+        publishableKey: '',
+      },
+      roastedBean: {
+        projectUrl: 'https://demo.supabase.co',
+        publishableKey: 'sb_publishable_demo',
+      },
+      updatedAt: null,
+    });
+
+    renderWithQuery(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(verifyMock).toHaveBeenCalledTimes(1);
+    });
+
+    const card = await expandRoastedBeanConnectionCard();
+    fireEvent.click(within(card).getByRole('button', { name: /重新检测/ }));
+
+    await waitFor(() => {
+      expect(verifyMock).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('copies the brew guide link in standalone pwa runtime', async () => {

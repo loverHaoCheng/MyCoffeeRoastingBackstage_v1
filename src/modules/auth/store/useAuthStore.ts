@@ -21,6 +21,7 @@ interface AuthState {
   register: (input: RegisterInput) => Promise<RegisterResult>;
   session: PocketBaseSession | null;
   status: AuthStatus;
+  updateProfileName: (name: string) => Promise<PocketBaseSessionUser>;
   user: PocketBaseSessionUser | null;
 }
 
@@ -139,6 +140,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
 
     return result;
+  },
+  updateProfileName: async (name) => {
+    const session = await pocketBaseAuthService.updateProfileName(name);
+
+    set({
+      hasHydrated: true,
+      session,
+      status: 'authenticated',
+      user: session.user,
+    });
+
+    return session.user;
   },
   session: initialSession,
   status: initialSession != null ? 'authenticated' : 'hydrating',

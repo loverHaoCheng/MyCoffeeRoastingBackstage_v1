@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { checkForAvailableAppUpdate } from '@/app/services/appVersionCheck.service';
 import { appBuildVersionService } from '@/app/services/appBuildVersion.service';
 import { logger } from '@/shared/logger/logger';
 const versionCheckIntervalMs = 60_000;
@@ -13,30 +14,6 @@ type AppUpdateNotice =
       message: string;
       type: 'updated';
     };
-
-const getVersionManifestUrl = (): null | string => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const pageUrl = window.location.href.replace(/#.*$/, '');
-
-  return new URL('version.json', pageUrl).toString();
-};
-
-const readVersionFromPayload = (payload: unknown): null | string => {
-  if (typeof payload !== 'object' || payload === null) {
-    return null;
-  }
-
-  if (!('version' in payload)) {
-    return null;
-  }
-
-  const version = payload.version;
-
-  return typeof version === 'string' && version.trim().length > 0 ? version.trim() : null;
-};
 
 export function useAppUpdateNotice() {
   const [notice, setNotice] = useState<AppUpdateNotice | null>(null);
@@ -59,35 +36,13 @@ export function useAppUpdateNotice() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !/^https?:$/.test(window.location.protocol)) {
-      return;
-    }
-
-    const versionManifestUrl = getVersionManifestUrl();
-
-    if (!versionManifestUrl) {
-      return;
-    }
-
     let disposed = false;
 
     const checkForUpdate = async () => {
       try {
-        const requestUrl = new URL(versionManifestUrl);
-        requestUrl.searchParams.set('t', String(Date.now()));
+        const hasAvailableUpdate = await checkForAvailableAppUpdate();
 
-        const response = await fetch(requestUrl.toString(), {
-          cache: 'no-store',
-        });
-
-        if (!response.ok) {
-          return;
-        }
-
-        const payload: unknown = await response.json();
-        const remoteVersion = readVersionFromPayload(payload);
-
-        if (!remoteVersion || remoteVersion === __APP_BUILD_VERSION__ || disposed) {
+        if (!hasAvailableUpdate || disposed) {
           return;
         }
 

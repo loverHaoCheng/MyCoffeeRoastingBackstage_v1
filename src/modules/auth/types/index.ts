@@ -22,6 +22,7 @@ export interface RegisterResult {
 export interface PocketBaseUserRecord {
   email: string;
   id: string;
+  name?: string;
   verified?: boolean;
   username?: string;
 }

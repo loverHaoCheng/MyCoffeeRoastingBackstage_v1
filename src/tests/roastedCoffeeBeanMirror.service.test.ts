@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildMirrorData } from '@/modules/roast/services/roastedCoffeeBeanMirror.service';
+import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
 import type { Bean } from '@/types/domain';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 
 describe('roastedCoffeeBeanMirrorService', () => {
   it('serializes mirror data as a JSON object instead of a quoted JSON string', () => {
+    pocketBaseSessionService.save({
+      baseUrl: 'http://81.70.224.75',
+      token: 'test-token',
+      user: {
+        email: 'test@qq.com',
+        id: 'user-1',
+        name: '测试昵称',
+      },
+    });
+
     const batch: RoastBatchRecord = {
       id: 'batch-1',
       greenBeanId: 'bean-1',
@@ -24,14 +35,17 @@ describe('roastedCoffeeBeanMirrorService', () => {
     };
 
     const bean: Bean = {
+      agingDays: 14,
       code: 'GB-001',
       id: 'bean-1',
+      flavorTags: ['柑橘', '花香'],
       name: '测试生豆',
       origin: '埃塞俄比亚 · 古吉',
       process: '水洗',
       grade: 'G1',
       stockKg: 8,
       costPerKg: 120,
+      tastingEndDays: 40,
       createdAt: '2026-07-06T00:00:00.000Z',
       updatedAt: '2026-07-06T00:00:00.000Z',
       defaultSaleUnitPrice: 10,
@@ -60,7 +74,10 @@ describe('roastedCoffeeBeanMirrorService', () => {
     expect(mirrorData.price).toBe('10');
     expect(mirrorData.capacity).toBe('170');
     expect(mirrorData.remaining).toBe('170');
-    expect(mirrorData.roaster).toBe('');
+    expect(mirrorData.flavor).toEqual(['柑橘', '花香']);
+    expect(mirrorData.startDay).toBe(14);
+    expect(mirrorData.endDay).toBe(40);
+    expect(mirrorData.roaster).toBe('测试昵称');
     expect(mirrorData.brand).toBe('耶加雪菲庄园');
     expect(mirrorData.image).toBe('https://example.com/front.jpg');
     expect(mirrorData.backImage).toBe('https://example.com/back.jpg');
@@ -77,6 +94,8 @@ describe('roastedCoffeeBeanMirrorService', () => {
   });
 
   it('falls back to green bean name plus process when roasted bean name is empty', () => {
+    pocketBaseSessionService.clear();
+
     const batch: RoastBatchRecord = {
       id: 'batch-2',
       greenBeanId: 'bean-2',
@@ -95,13 +114,16 @@ describe('roastedCoffeeBeanMirrorService', () => {
     };
 
     const bean: Bean = {
+      agingDays: 14,
       id: 'bean-2',
+      flavorTags: [],
       name: '耶加雪菲 G1',
       origin: '埃塞俄比亚',
       process: '日晒',
       grade: 'G1',
       stockKg: 8,
       costPerKg: 120,
+      tastingEndDays: 40,
       createdAt: '2026-07-06T00:00:00.000Z',
       updatedAt: '2026-07-06T00:00:00.000Z',
     };

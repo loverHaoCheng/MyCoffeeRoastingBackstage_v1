@@ -85,6 +85,7 @@ export function GlobalPullToRefresh() {
     const handlePullRefresh = async () => {
       try {
         await refresh({
+          checkAppUpdate: true,
           onError: (errorMessage) => {
             setRefreshFeedback('warning');
             setRefreshFeedbackText(errorMessage);

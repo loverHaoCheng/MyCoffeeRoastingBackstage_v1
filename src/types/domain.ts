@@ -5,6 +5,7 @@ export interface EntityTimestamps {
 
 export interface Bean extends EntityTimestamps {
   id: number | string;
+  agingDays?: number;
   altitudeMetersMax?: number | null;
   altitudeMetersMin?: number | null;
   name: string;
@@ -13,6 +14,7 @@ export interface Bean extends EntityTimestamps {
   defaultSaleUnitPrice?: number | null;
   defaultSaleUnitWeightGrams?: number | null;
   densityGPerL?: number | null;
+  flavorTags?: string[];
   harvestSeason?: string;
   millName?: string | null;
   moisturePercent?: number | null;
@@ -29,6 +31,7 @@ export interface Bean extends EntityTimestamps {
   remainingWeightGrams?: number | null;
   stockKg: number;
   costPerKg: number;
+  tastingEndDays?: number;
   supplierId?: number | null;
   supplierName?: string | null;
   // 扩展字段：从远端库存汇总视图获取

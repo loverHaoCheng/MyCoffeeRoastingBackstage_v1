@@ -41,7 +41,7 @@ const matchesKeyword = (bean: Bean, keyword: string): boolean => {
     return true;
   }
 
-  return [bean.name, bean.origin, bean.process, bean.grade]
+  return [bean.name, bean.origin, bean.process, bean.grade, bean.flavorTags?.join(' ') ?? '']
     .join(' ')
     .toLowerCase()
     .includes(normalizedKeyword);
@@ -199,7 +199,7 @@ export function BeanPage() {
         onChange={(event) => {
           setKeyword(event.target.value);
         }}
-        placeholder="搜索生豆、产地、处理法"
+        placeholder="搜索生豆、产地、处理法、风味"
         sectionAriaLabel="生豆库存筛选"
         value={keyword}
       />

@@ -11,17 +11,21 @@ import { AppError } from '@/shared/errors/AppError';
 import type { ApiResponse } from '@/services/api.types';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import type { Bean } from '@/types/domain';
+import { parseFlavorTags, serializeFlavorTags } from '@/modules/bean/utils/flavorTags';
+import { normalizeAgingDays, normalizeTastingEndDays } from '@/modules/bean/utils/postProcessDays';
 
 import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../types';
 import type { LocalGreenBeanRecord } from '../types/localGreenBean';
 
 interface GreenBeanTableUpdateInput {
+  aging_days?: number;
   altitude_meters_max?: null | number;
   altitude_meters_min?: null | number;
   code?: string;
   default_roast_input_grams?: number;
   density_g_per_l?: null | number;
   display_name?: string;
+  flavor_tags?: null | string;
   grade?: null | string;
   harvest_season?: null | string;
   mill_name?: null | string;
@@ -31,6 +35,7 @@ interface GreenBeanTableUpdateInput {
   origin_country?: null | string;
   origin_region?: null | string;
   process_method?: string;
+  tasting_end_days?: number;
   variety?: string;
 }
 
@@ -53,19 +58,23 @@ export interface BeanRepository {
 }
 
 export interface RemoteBeanRecord {
+  aging_days?: number;
   id: number;
   name: string;
+  flavor_tags?: null | string;
   origin: string;
   process: string;
   grade: string;
   stock_kg: number;
   cost_per_kg: number;
   supplier_id: number;
+  tasting_end_days?: number;
   created_at: string;
   updated_at: string;
 }
 
 interface RemoteGreenBeanInventoryRecord {
+  aging_days?: number;
   id: string;
   altitude_meters_max: null | number;
   altitude_meters_min: null | number;
@@ -76,6 +85,7 @@ interface RemoteGreenBeanInventoryRecord {
   default_sale_unit_price: null | number;
   default_sale_unit_weight_grams: null | number;
   display_name: string;
+  flavor_tags?: null | string;
   grade: null | string;
   harvest_season: string;
   density_g_per_l: null | number;
@@ -88,6 +98,7 @@ interface RemoteGreenBeanInventoryRecord {
   origin_region: string;
   process_method: string;
   roast_record_count: number;
+  tasting_end_days?: number;
   total_purchased_price: number;
   total_purchased_weight_grams: number;
   total_remaining_weight_grams: number;
@@ -97,6 +108,7 @@ interface RemoteGreenBeanInventoryRecord {
 }
 
 interface RemoteGreenBeanRecord {
+  aging_days?: number;
   altitude_meters_max: null | number;
   altitude_meters_min: null | number;
   code: string;
@@ -104,6 +116,7 @@ interface RemoteGreenBeanRecord {
   default_roast_input_grams: number;
   density_g_per_l: null | number;
   display_name: string;
+  flavor_tags?: null | string;
   grade: null | string;
   harvest_season: null | string;
   id: string;
@@ -114,6 +127,7 @@ interface RemoteGreenBeanRecord {
   origin_country: null | string;
   origin_region: null | string;
   process_method: string;
+  tasting_end_days?: number;
   updated_at: string;
   variety: string;
 }
@@ -211,12 +225,14 @@ const normalizeRemainingWeightGrams = (input: Pick<GreenBeanUpdateInput, 'purcha
 };
 
 const mapBeanFormInputToTableInput = (input: GreenBeanUpdateInput): GreenBeanTableUpdateInput => ({
+  aging_days: Math.max(0, Math.round(input.agingDays)),
   altitude_meters_max: toNullableNumber(input.altitudeMetersMax),
   altitude_meters_min: toNullableNumber(input.altitudeMetersMin),
   code: input.code.trim(),
   default_roast_input_grams: input.defaultRoastInputGrams,
   density_g_per_l: toNullableNumber(input.densityGPerL),
   display_name: input.displayName.trim(),
+  flavor_tags: serializeFlavorTags(input.flavorTags),
   grade: normalizeText(input.grade),
   harvest_season: normalizeText(input.harvestSeason),
   mill_name: normalizeText(input.millName),
@@ -226,6 +242,7 @@ const mapBeanFormInputToTableInput = (input: GreenBeanUpdateInput): GreenBeanTab
   origin_country: normalizeText(input.originCountry),
   origin_region: normalizeText(input.originRegion),
   process_method: input.processMethod.trim(),
+  tasting_end_days: Math.max(1, Math.round(input.tastingEndDays)),
   variety: input.variety.trim(),
 });
 
@@ -274,7 +291,9 @@ const getBootstrappedBeans = (): Bean[] => {
 };
 
 export const mapRemoteBeanRecordToBean = (record: RemoteBeanRecord): Bean => ({
+  agingDays: normalizeAgingDays(record.aging_days),
   id: record.id,
+  flavorTags: parseFlavorTags(record.flavor_tags),
   name: record.name,
   origin: record.origin,
   process: record.process,
@@ -282,6 +301,7 @@ export const mapRemoteBeanRecordToBean = (record: RemoteBeanRecord): Bean => ({
   stockKg: record.stock_kg,
   costPerKg: record.cost_per_kg,
   supplierId: record.supplier_id,
+  tastingEndDays: normalizeTastingEndDays(record.tasting_end_days, record.aging_days),
   createdAt: record.created_at,
   updatedAt: record.updated_at,
 });
@@ -289,6 +309,7 @@ export const mapRemoteBeanRecordToBean = (record: RemoteBeanRecord): Bean => ({
 export const mapRemoteGreenBeanInventoryRecordToBean = (
   record: RemoteGreenBeanInventoryRecord,
 ): Bean => ({
+  agingDays: normalizeAgingDays(record.aging_days),
   id: record.id,
   altitudeMetersMax: record.altitude_meters_max,
   altitudeMetersMin: record.altitude_meters_min,
@@ -299,6 +320,7 @@ export const mapRemoteGreenBeanInventoryRecordToBean = (
   defaultSaleUnitPrice: record.default_sale_unit_price,
   defaultSaleUnitWeightGrams: record.default_sale_unit_weight_grams,
   densityGPerL: record.density_g_per_l,
+  flavorTags: parseFlavorTags(record.flavor_tags),
   harvestSeason: record.harvest_season,
   millName: record.mill_name,
   moisturePercent: record.moisture_percent,
@@ -315,6 +337,7 @@ export const mapRemoteGreenBeanInventoryRecordToBean = (
   stockKg: Number((record.total_remaining_weight_grams / 1000).toFixed(1)),
   costPerKg: record.weighted_cost_per_kg,
   supplierName: record.latest_supplier_name ?? null,
+  tastingEndDays: normalizeTastingEndDays(record.tasting_end_days, record.aging_days),
   createdAt: record.created_at,
   updatedAt: record.updated_at,
   variety: record.variety,
@@ -329,6 +352,7 @@ const mapRemoteEditableBeanToFormInput = (
   savedGrade: null | BeanGradeSettingValue,
 ): GreenBeanEditableDetail => ({
   beanId: bean.id,
+  agingDays: normalizeAgingDays(bean.aging_days),
   costTemplateId: savedCostTemplate?.costTemplateId ?? null,
   code: bean.code,
   defaultRoastInputGrams: bean.default_roast_input_grams,
@@ -337,6 +361,7 @@ const mapRemoteEditableBeanToFormInput = (
   defaultSaleUnitWeightGrams:
     savedSaleDefaults?.defaultSaleUnitWeightGrams ?? defaultSaleSpec?.unit_weight_grams ?? null,
   displayName: bean.display_name,
+  flavorTags: parseFlavorTags(bean.flavor_tags),
   grade: savedGrade?.grade ?? bean.grade,
   harvestSeason: bean.harvest_season,
   millName: bean.mill_name,
@@ -351,6 +376,7 @@ const mapRemoteEditableBeanToFormInput = (
   remainingWeightGrams:
     latestPurchaseBatch?.remaining_weight_grams ?? latestPurchaseBatch?.purchased_weight_grams ?? 0,
   supplierName: latestPurchaseBatch?.supplier_name ?? null,
+  tastingEndDays: normalizeTastingEndDays(bean.tasting_end_days, bean.aging_days),
   variety: bean.variety,
   altitudeMetersMax: bean.altitude_meters_max,
   altitudeMetersMin: bean.altitude_meters_min,
@@ -508,6 +534,7 @@ const buildInventoryOverviewRecordFromTables = (
   const purchaseBatchTotals = getPurchaseBatchTotals(purchaseBatches);
 
   return {
+    aging_days: bean.aging_days ?? 14,
     id: bean.id,
     altitude_meters_max: bean.altitude_meters_max,
     altitude_meters_min: bean.altitude_meters_min,
@@ -520,6 +547,7 @@ const buildInventoryOverviewRecordFromTables = (
     default_sale_unit_weight_grams:
       savedSaleDefaults?.defaultSaleUnitWeightGrams ?? defaultSaleSpec?.unit_weight_grams ?? null,
     display_name: bean.display_name,
+    flavor_tags: bean.flavor_tags ?? null,
     grade: savedGrade?.grade ?? bean.grade,
     harvest_season: bean.harvest_season ?? '',
     latest_supplier_name: latestPurchaseBatch?.supplier_name ?? null,
@@ -528,6 +556,7 @@ const buildInventoryOverviewRecordFromTables = (
     origin_region: bean.origin_region ?? '',
     process_method: bean.process_method,
     roast_record_count: roastBatchCount,
+    tasting_end_days: bean.tasting_end_days ?? 40,
     mill_name: bean.mill_name,
     moisture_percent: bean.moisture_percent,
     notes: bean.notes,
@@ -586,12 +615,14 @@ export class MockBeanRepository implements BeanRepository {
     return Promise.resolve(
       ok({
         beanId: String(bean.id),
+        agingDays: bean.agingDays ?? 14,
         code: bean.code ?? '',
         costTemplateId: bean.costTemplateId ?? null,
         defaultRoastInputGrams: bean.defaultRoastInputGrams ?? 200,
         defaultSaleUnitPrice: bean.defaultSaleUnitPrice ?? 0,
         defaultSaleUnitWeightGrams: bean.defaultSaleUnitWeightGrams ?? 100,
         displayName: bean.name,
+        flavorTags: bean.flavorTags ?? [],
         grade: bean.grade,
         harvestSeason: bean.harvestSeason ?? '',
         millName: null,
@@ -604,6 +635,7 @@ export class MockBeanRepository implements BeanRepository {
         purchasedWeightGrams: Math.round(bean.stockKg * 1000),
         remainingWeightGrams: Math.round(bean.stockKg * 1000),
         supplierName: bean.supplierName ?? null,
+        tastingEndDays: bean.tastingEndDays ?? 40,
         variety: bean.variety ?? bean.grade,
         altitudeMetersMax: null,
         altitudeMetersMin: null,
@@ -641,6 +673,7 @@ export class MockBeanRepository implements BeanRepository {
   createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
     const now = new Date().toISOString();
     const bean: Bean = {
+      agingDays: input.agingDays,
       id: `mock-bean-${String(Date.now())}`,
       name: input.displayName.trim(),
       origin: [input.originCountry, input.originRegion, input.originArea].filter(Boolean).join(' · '),
@@ -652,7 +685,9 @@ export class MockBeanRepository implements BeanRepository {
           ? Number(((input.purchasedTotalPrice / input.purchasedWeightGrams) * 1000).toFixed(2))
           : 0,
       supplierName: input.supplierName ?? null,
+      tastingEndDays: input.tastingEndDays,
       createdAt: now,
+      flavorTags: input.flavorTags,
       updatedAt: now,
       variety: input.variety.trim(),
       harvestSeason: normalizeText(input.harvestSeason) ?? undefined,
@@ -1298,9 +1333,11 @@ export function createGreenBeanInventoryRepository(
     },
     async createBean(input) {
       const greenBeanPayload: Record<string, unknown> = {
+        aging_days: Math.max(0, Math.round(input.agingDays)),
         code: input.code.trim(),
         default_roast_input_grams: input.defaultRoastInputGrams,
         display_name: input.displayName.trim(),
+        flavor_tags: serializeFlavorTags(input.flavorTags),
         grade: normalizeText(input.grade),
         harvest_season: normalizeText(input.harvestSeason),
         notes: normalizeText(input.notes),
@@ -1308,6 +1345,7 @@ export function createGreenBeanInventoryRepository(
         origin_country: normalizeText(input.originCountry),
         origin_region: normalizeText(input.originRegion),
         process_method: input.processMethod.trim(),
+        tasting_end_days: Math.max(1, Math.round(input.tastingEndDays)),
         variety: input.variety.trim(),
       };
 
@@ -1455,8 +1493,16 @@ export const beanService = {
   },
   persistOptimisticBeanAsPending(input: GreenBeanCreateInput): Bean[] {
     beanSyncService.recordPendingCreate(input);
+    const normalizedCode = input.code.trim();
+    const existingLocalRecord = localGreenBeanService
+      .listRecords()
+      .find((record) => record.code === normalizedCode);
+    const localRecord = existingLocalRecord ?? localGreenBeanService.create(input);
 
-    return getBootstrappedBeans();
+    return mergeBeans([
+      ...(beanCacheService.getBeans() ?? []),
+      mapLocalGreenBeanRecordToBean(localRecord),
+    ]);
   },
   async createRemoteBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
     if (!beanSyncService.isOnline()) {
@@ -1510,11 +1556,13 @@ export const beanService = {
 
       return ok({
         beanId: localRecord.id,
+        agingDays: normalizeAgingDays(localRecord.agingDays),
         code: localRecord.code,
         defaultRoastInputGrams: localRecord.defaultRoastInputGrams,
         defaultSaleUnitPrice: localRecord.defaultSaleUnitPrice,
         defaultSaleUnitWeightGrams: localRecord.defaultSaleUnitWeightGrams ?? null,
         displayName: localRecord.displayName,
+        flavorTags: localRecord.flavorTags,
         grade: localRecord.grade ?? null,
         harvestSeason: localRecord.harvestSeason ?? '',
         millName: localRecord.millName ?? null,
@@ -1527,6 +1575,7 @@ export const beanService = {
         purchasedWeightGrams: localRecord.purchasedWeightGrams,
         remainingWeightGrams: localRecord.remainingWeightGrams,
         supplierName: localRecord.supplierName ?? null,
+        tastingEndDays: normalizeTastingEndDays(localRecord.tastingEndDays, localRecord.agingDays),
         variety: localRecord.variety,
         altitudeMetersMax: localRecord.altitudeMetersMax ?? null,
         altitudeMetersMin: localRecord.altitudeMetersMin ?? null,

@@ -1,4 +1,4 @@
-import { DownOutlined } from '@ant-design/icons';
+import { DownOutlined, ReloadOutlined } from '@ant-design/icons';
 import { App, Button, Input, Tag } from 'antd';
 import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -167,7 +167,10 @@ export function RoastedBeanConnectionCard() {
     })();
   }, [persistedProjectUrl, persistedPublishableKey]);
 
-  const persistDraft = (nextDraft: PocketBaseProjectConnection = draft): void => {
+  const persistDraft = (
+    nextDraft: PocketBaseProjectConnection = draft,
+    options: { forceSync?: boolean } = {},
+  ): void => {
     const validation = connectionSchema.safeParse(nextDraft);
 
     if (!validation.success) {
@@ -194,6 +197,11 @@ export function RoastedBeanConnectionCard() {
     );
 
     if (nextSignature === currentSignature) {
+      if (options.forceSync) {
+        setErrors({});
+        void syncConnection(normalized);
+      }
+
       return;
     }
 
@@ -221,6 +229,10 @@ export function RoastedBeanConnectionCard() {
   const handleClear = () => {
     setDraft(EMPTY_CONNECTION);
     persistDraft(EMPTY_CONNECTION);
+  };
+
+  const handleRetryCheck = () => {
+    persistDraft(draft, { forceSync: true });
   };
 
   const handleLearnMoreClick = useCallback((event: MouseEvent<HTMLAnchorElement>): void => {
@@ -265,17 +277,30 @@ export function RoastedBeanConnectionCard() {
         />
       </div>
 
-      <div aria-hidden={isCollapsed} className={styles.collapse} data-collapsed={isCollapsed}>
-        <div className={styles.collapseInner}>
-          <Button
-            onClick={handleClear}
-            onMouseDown={(event) => {
-              event.preventDefault();
-            }}
-            type="default"
-          >
-            清空配置
-          </Button>
+        <div aria-hidden={isCollapsed} className={styles.collapse} data-collapsed={isCollapsed}>
+          <div className={styles.collapseInner}>
+          <div className={styles.actionRow}>
+            <Button
+              icon={<ReloadOutlined />}
+              loading={connectionStatus === 'checking'}
+              onClick={handleRetryCheck}
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              type="default"
+            >
+              重新检测
+            </Button>
+            <Button
+              onClick={handleClear}
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              type="default"
+            >
+              清空配置
+            </Button>
+          </div>
 
           <div className={styles.fieldGrid}>
             <label className={styles.field} data-field-path="projectUrl" htmlFor="roasted-bean-project-url">

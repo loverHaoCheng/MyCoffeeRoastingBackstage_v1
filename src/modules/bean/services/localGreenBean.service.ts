@@ -1,5 +1,7 @@
 import { AppError } from '@/shared/errors/AppError';
 import type { Bean } from '@/types/domain';
+import { normalizeFlavorTags } from '@/modules/bean/utils/flavorTags';
+import { normalizeAgingDays, normalizeTastingEndDays } from '@/modules/bean/utils/postProcessDays';
 
 import type {
   GreenBeanCreateInput,
@@ -36,9 +38,12 @@ const isLocalGreenBeanRecord = (value: unknown): value is LocalGreenBeanRecord =
   return (
     typeof record.id === 'string' &&
     record.source === 'local' &&
+    isFiniteNumber(record.agingDays) &&
     (record.costTemplateId == null || typeof record.costTemplateId === 'string') &&
     typeof record.code === 'string' &&
     typeof record.displayName === 'string' &&
+    Array.isArray(record.flavorTags) &&
+    record.flavorTags.every((tag) => typeof tag === 'string') &&
     typeof record.variety === 'string' &&
     typeof record.processMethod === 'string' &&
     isFiniteNumber(record.defaultRoastInputGrams) &&
@@ -46,6 +51,7 @@ const isLocalGreenBeanRecord = (value: unknown): value is LocalGreenBeanRecord =
     (record.remainingWeightGrams == null || isFiniteNumber(record.remainingWeightGrams)) &&
     isFiniteNumber(record.purchasedTotalPrice) &&
     isFiniteNumber(record.defaultSaleUnitPrice) &&
+    isFiniteNumber(record.tastingEndDays) &&
     typeof record.createdAt === 'string' &&
     typeof record.updatedAt === 'string'
   );
@@ -66,6 +72,7 @@ const normalizeLocalGreenBeanRecord = (record: LocalGreenBeanRecord): LocalGreen
   return {
     ...record,
     costTemplateId: normalizeText(record.costTemplateId),
+    flavorTags: normalizeFlavorTags(record.flavorTags),
     grade: normalizeText(record.grade),
     remainingWeightGrams: normalizeRemainingWeightGrams(
       record.purchasedWeightGrams,
@@ -135,6 +142,7 @@ const calculateStockKg = (record: GreenBeanCreateInput): number => {
 };
 
 export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bean => ({
+  agingDays: normalizeAgingDays(record.agingDays),
   id: record.id,
   altitudeMetersMax: record.altitudeMetersMax ?? null,
   altitudeMetersMin: record.altitudeMetersMin ?? null,
@@ -145,6 +153,7 @@ export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bea
   defaultSaleUnitWeightGrams: record.defaultSaleUnitWeightGrams ?? null,
   costTemplateId: normalizeText(record.costTemplateId),
   densityGPerL: record.densityGPerL ?? null,
+  flavorTags: normalizeFlavorTags(record.flavorTags),
   harvestSeason: normalizeText(record.harvestSeason) ?? undefined,
   millName: record.millName ?? null,
   moisturePercent: record.moisturePercent ?? null,
@@ -161,6 +170,7 @@ export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bea
   stockKg: calculateStockKg(record),
   costPerKg: calculateCostPerKg(record),
   supplierName: normalizeText(record.supplierName),
+  tastingEndDays: normalizeTastingEndDays(record.tastingEndDays, record.agingDays),
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
   variety: record.variety,
@@ -175,10 +185,12 @@ export const localGreenBeanService = {
     const timestamp = new Date().toISOString();
     const nextRecord: LocalGreenBeanRecord = {
       ...input,
+      agingDays: Math.max(0, Math.round(input.agingDays)),
       code: input.code.trim(),
       costTemplateId: normalizeText(input.costTemplateId),
       defaultSaleUnitWeightGrams: input.defaultSaleUnitWeightGrams ?? null,
       displayName: input.displayName.trim(),
+      flavorTags: normalizeFlavorTags(input.flavorTags),
       grade: normalizeText(input.grade),
       harvestSeason: normalizeText(input.harvestSeason),
       millName: normalizeText(input.millName),
@@ -192,6 +204,7 @@ export const localGreenBeanService = {
         input.remainingWeightGrams,
       ),
       supplierName: normalizeText(input.supplierName),
+      tastingEndDays: Math.max(1, Math.round(input.tastingEndDays)),
       variety: input.variety.trim(),
       createdAt: timestamp,
       id: createLocalBeanId(),
@@ -299,9 +312,11 @@ export const localGreenBeanService = {
     const updatedRecord = normalizeLocalGreenBeanRecord({
       ...currentRecord,
       ...input,
+      agingDays: Math.max(0, Math.round(input.agingDays)),
       code: input.code.trim(),
       costTemplateId: normalizeText(input.costTemplateId),
       displayName: input.displayName.trim(),
+      flavorTags: normalizeFlavorTags(input.flavorTags),
       grade: normalizeText(input.grade),
       harvestSeason: normalizeText(input.harvestSeason),
       millName: normalizeText(input.millName),
@@ -311,6 +326,7 @@ export const localGreenBeanService = {
       originRegion: normalizeText(input.originRegion),
       processMethod: input.processMethod.trim(),
       supplierName: normalizeText(input.supplierName),
+      tastingEndDays: Math.max(1, Math.round(input.tastingEndDays)),
       variety: input.variety.trim(),
       updatedAt: new Date().toISOString(),
     });

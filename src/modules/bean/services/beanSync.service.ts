@@ -1,5 +1,6 @@
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
+import { normalizeFlavorTags } from '@/modules/bean/utils/flavorTags';
 import type { GreenBeanCreateInput, GreenBeanUpdateInput, LocalGreenBeanRecord } from '../types/localGreenBean';
 
 let currentPendingOperations: PendingOperation[] = [];
@@ -170,6 +171,7 @@ export const beanSyncService = {
    */
   localRecordToCreateInput(record: LocalGreenBeanRecord | Record<string, unknown>): GreenBeanCreateInput {
     return {
+      agingDays: Number(record.agingDays) || 14,
       costTemplateId: toOptionalString(record.costTemplateId),
       code: toRequiredString(record.code),
       defaultRoastInputGrams: Number(record.defaultRoastInputGrams) || 200,
@@ -177,6 +179,7 @@ export const beanSyncService = {
       defaultSaleUnitWeightGrams:
         record.defaultSaleUnitWeightGrams == null ? null : Number(record.defaultSaleUnitWeightGrams) || 0,
       displayName: toRequiredString(record.displayName),
+      flavorTags: normalizeFlavorTags(Array.isArray(record.flavorTags) ? record.flavorTags : []),
       grade: toOptionalString(record.grade),
       harvestSeason: toOptionalString(record.harvestSeason),
       millName: toOptionalString(record.millName),
@@ -192,6 +195,7 @@ export const beanSyncService = {
           ? Number(record.purchasedWeightGrams) || 0
           : Number(record.remainingWeightGrams) || 0,
       supplierName: toOptionalString(record.supplierName),
+      tastingEndDays: Number(record.tastingEndDays) || 40,
       variety: toRequiredString(record.variety),
       altitudeMetersMax: toOptionalNumber(record.altitudeMetersMax),
       altitudeMetersMin: toOptionalNumber(record.altitudeMetersMin),

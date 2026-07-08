@@ -14,6 +14,7 @@ interface PocketBaseErrorPayload {
 interface PocketBaseUserRecord {
   email?: unknown;
   id?: unknown;
+  name?: unknown;
   verified?: unknown;
   username?: unknown;
 }
@@ -21,6 +22,7 @@ interface PocketBaseUserRecord {
 interface SessionUser {
   email: string;
   id: string;
+  name?: string;
   verified?: boolean;
   username?: string;
 }
@@ -123,6 +125,7 @@ const normalizeUser = (record: PocketBaseUserRecord): SessionUser | null => {
   return {
     email,
     id,
+    name: toTrimmedString(record.name) || undefined,
     verified: typeof record.verified === 'boolean' ? record.verified : undefined,
     username: toTrimmedString(record.username) || undefined,
   };
@@ -503,6 +506,107 @@ const handleSession = async (request: IncomingMessage, response: ServerResponse)
   sendJson(response, 200, authResponse);
 };
 
+const handleUpdateProfile = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
+  const token = getAuthCookieValue(request);
+
+  if (!token) {
+    clearAuthCookie(response, request);
+    sendJson(response, 401, {
+      message: '未找到登录态，请重新登录。',
+    });
+    return;
+  }
+
+  const body = await parseJsonBody(request);
+
+  if (!isRecord(body) || typeof body.name !== 'string') {
+    sendJson(response, 400, {
+      message: '昵称更新请求缺少有效参数。',
+    });
+    return;
+  }
+
+  const name = toTrimmedString(body.name);
+
+  if (name.length > 40) {
+    sendJson(response, 400, {
+      message: '昵称不能超过 40 个字符。',
+    });
+    return;
+  }
+
+  const sessionUpstream = await proxyPocketBaseRequest(`/api/collections/${authCollection}/auth-refresh`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: token,
+    },
+    method: 'POST',
+  });
+
+  if (!sessionUpstream.response.ok) {
+    clearAuthCookie(response, request);
+    sendUpstreamError(response, sessionUpstream.response.status, sessionUpstream.payload);
+    return;
+  }
+
+  const authResponse = normalizeAuthResponse(sessionUpstream.payload);
+
+  if (!authResponse) {
+    clearAuthCookie(response, request);
+    sendJson(response, 502, {
+      message: 'PocketBase 会话刷新响应缺少必要字段。',
+    });
+    return;
+  }
+
+  if (authResponse.record.verified !== true) {
+    sendUnverifiedResponse(response, request, authResponse.record.email);
+    return;
+  }
+
+  const updateUpstream = await proxyPocketBaseRequest(
+    `/api/collections/${authCollection}/records/${authResponse.record.id}`,
+    {
+      body: JSON.stringify({
+        name,
+      }),
+      headers: {
+        Accept: 'application/json',
+        Authorization: authResponse.token,
+        'Content-Type': 'application/json',
+      },
+      method: 'PATCH',
+    },
+  );
+
+  if (!updateUpstream.response.ok) {
+    sendUpstreamError(response, updateUpstream.response.status, updateUpstream.payload);
+    return;
+  }
+
+  const updatedRecord = isRecord(updateUpstream.payload)
+    ? normalizeUser(updateUpstream.payload)
+    : null;
+
+  if (!updatedRecord) {
+    sendJson(response, 502, {
+      message: 'PocketBase 昵称更新响应缺少必要字段。',
+    });
+    return;
+  }
+
+  const nextAuthResponse: PocketBaseSessionResponse = {
+    record: updatedRecord,
+    token: authResponse.token,
+  };
+
+  setAuthCookie(response, request, authResponse.token);
+  sendJson(response, 200, nextAuthResponse);
+};
+
 const handleRequestVerification = async (
   request: IncomingMessage,
   response: ServerResponse,
@@ -639,6 +743,16 @@ const handleRequest = async (request: IncomingMessage, response: ServerResponse)
     }
 
     await handleRequestPasswordReset(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/auth/profile') {
+    if (request.method !== 'PATCH') {
+      sendMethodNotAllowed(response, ['PATCH']);
+      return;
+    }
+
+    await handleUpdateProfile(request, response);
     return;
   }
 

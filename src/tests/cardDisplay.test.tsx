@@ -7,6 +7,7 @@ import { createDefaultAppDisplaySettings, createDefaultCostTemplateSettings } fr
 import type { Bean } from '@/types/domain';
 
 const createBean = (): Bean => ({
+  agingDays: 14,
   costPerKg: 86,
   createdAt: '2026-06-28T10:00:00.000Z',
   grade: 'G1',
@@ -16,6 +17,7 @@ const createBean = (): Bean => ({
   process: '水洗',
   stockKg: 12.5,
   supplierName: '示例供应商',
+  tastingEndDays: 40,
   variety: '74110',
   updatedAt: '2026-06-28T10:00:00.000Z',
 });

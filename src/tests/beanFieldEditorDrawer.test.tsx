@@ -143,4 +143,46 @@ describe('BeanFieldEditorDrawer', () => {
       }),
     );
   });
+
+  it('repairs invalid tasting end days from legacy data before saving another field', async () => {
+    const bean = {
+      ...createBean(),
+      agingDays: 0,
+      tastingEndDays: 0,
+    };
+    vi.spyOn(beanService, 'getEditableBean').mockReturnValue(new Promise<ApiResponse<GreenBeanEditableDetail>>(() => undefined));
+    const updateBeanSpy = vi.spyOn(beanService, 'updateBean').mockResolvedValue({
+      code: 0,
+      data: {
+        ...bean,
+        agingDays: 7,
+        tastingEndDays: 40,
+      },
+      message: 'ok',
+    });
+
+    renderWithQuery(
+      <BeanFieldEditorDrawer
+        bean={bean}
+        fieldPath="agingDays"
+        onClose={() => undefined}
+        open
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: /保存养豆时间/ }));
+
+    await waitFor(() => {
+      expect(updateBeanSpy).toHaveBeenCalledTimes(1);
+    });
+
+    expect(updateBeanSpy).toHaveBeenCalledWith(
+      bean.id,
+      expect.objectContaining({
+        agingDays: 7,
+        tastingEndDays: 40,
+      }),
+    );
+  });
 });

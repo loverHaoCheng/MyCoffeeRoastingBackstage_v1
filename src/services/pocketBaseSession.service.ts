@@ -5,6 +5,7 @@ const pocketBaseSessionStorageKey = 'coffee-roasting-backstage:pocketbase-sessio
 export interface PocketBaseSessionUser {
   email: string;
   id: string;
+  name?: string;
   verified?: boolean;
   username?: string;
 }
@@ -34,6 +35,7 @@ const normalizeSessionUser = (value: unknown): PocketBaseSessionUser | null => {
   return {
     email,
     id,
+    name: typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : undefined,
     verified: typeof record.verified === 'boolean' ? record.verified : undefined,
     username: typeof record.username === 'string' ? record.username : undefined,
   };
