@@ -222,6 +222,37 @@ describe('createSupabaseGreenBeanInventoryRepository', () => {
     );
   });
 
+  it('removes roast batches before deleting the green bean record', async () => {
+    const deleteCalls: Array<{ match: Record<string, unknown>; tableName: string }> = [];
+    const client = {
+      delete: async (tableName: string, options: { match: Record<string, unknown> }) => {
+        deleteCalls.push({ match: options.match, tableName });
+      },
+      insert: <T,>(): Promise<T[]> => {
+        return Promise.resolve([] as T[]);
+      },
+      list: <T,>(): Promise<T[]> => {
+        return Promise.resolve([] as T[]);
+      },
+      update: <T,>(): Promise<T[]> => {
+        return Promise.resolve([] as T[]);
+      },
+    } as unknown as SupabaseRestClient;
+
+    const repository = createSupabaseGreenBeanInventoryRepository(client);
+
+    await repository.deleteBean('bean-1');
+
+    expect(deleteCalls).toEqual([
+      { match: { green_bean_id: 'bean-1' }, tableName: 'roast_batches' },
+      { match: { green_bean_id: 'bean-1' }, tableName: 'green_bean_purchase_batches' },
+      { match: { green_bean_id: 'bean-1' }, tableName: 'roast_records' },
+      { match: { green_bean_id: 'bean-1' }, tableName: 'roast_profiles' },
+      { match: { green_bean_id: 'bean-1' }, tableName: 'bean_sale_specs' },
+      { match: { id: 'bean-1' }, tableName: 'green_beans' },
+    ]);
+  });
+
   it('creates beans successfully when optional bean settings collections are unavailable', async () => {
     const missingOptionalCollectionError = new AppError('PocketBase 记录或集合不存在，请先执行初始化。', {
       code: 'HTTP',

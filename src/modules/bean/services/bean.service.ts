@@ -1285,6 +1285,8 @@ export function createSupabaseGreenBeanInventoryRepository(
     },
     async deleteBean(beanId) {
       // 按外键依赖顺序删除关联数据（避免 409 Conflict）
+      // roast_batches 同样引用 green_beans，必须先清理，否则 green_beans 会因 restrict 删除失败
+      await client.delete('roast_batches', { match: { green_bean_id: beanId } });
       // purchase_batches 和 roast_records 对 green_beans 是 ON DELETE RESTRICT
       await client.delete('green_bean_purchase_batches', { match: { green_bean_id: beanId } });
       await client.delete('roast_records', { match: { green_bean_id: beanId } });
