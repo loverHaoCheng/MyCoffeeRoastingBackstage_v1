@@ -8,6 +8,7 @@ import { ForgotPasswordPage, LoginPage, RegisterPage } from '@/modules/auth';
 import { MainLayout } from '@/layouts/MainLayout';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
+const LegalPage = lazy(() => import('@/modules/legal').then((module) => ({ default: module.LegalPage })));
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));
 const RoastPage = lazy(() =>
   import('@/modules/roast').then((module) => ({ default: module.RoastPage })),
@@ -127,6 +128,18 @@ export const routes: RouteObject[] = [
   {
     path: '/forgot-password',
     element: <ForgotPasswordPage />,
+  },
+  {
+    path: '/terms',
+    element: withPageFallback(<LegalPage kind="terms" />),
+  },
+  {
+    path: '/privacy',
+    element: withPageFallback(<LegalPage kind="privacy" />),
+  },
+  {
+    path: '/data-deletion',
+    element: withPageFallback(<LegalPage kind="dataDeletion" />),
   },
   {
     path: '*',

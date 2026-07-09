@@ -3,6 +3,7 @@ import { Alert, App, Button, Form, Input, Space } from 'antd';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
+import { AgreementCheckbox } from '@/modules/auth/components/AgreementCheckbox';
 import { AuthPageShell } from '@/modules/auth/components/AuthPageShell';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -10,6 +11,7 @@ import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import styles from './AuthPage.module.css';
 
 interface LoginFormValues {
+  agreementAccepted: boolean;
   email: string;
   password: string;
 }
@@ -148,6 +150,8 @@ export function LoginPage() {
             忘记密码
           </Link>
         </div>
+
+        <AgreementCheckbox />
 
         <Button block htmlType="submit" icon={<LoginOutlined />} type="primary">
           登录

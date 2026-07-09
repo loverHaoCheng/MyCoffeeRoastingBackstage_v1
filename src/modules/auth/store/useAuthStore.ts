@@ -15,6 +15,7 @@ export type AuthStatus = 'authenticated' | 'hydrating' | 'unauthenticated';
 
 interface AuthState {
   bootstrapSession: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   hasHydrated: boolean;
   login: (input: AuthCredentialsInput) => Promise<PocketBaseSession>;
   logout: () => Promise<void>;
@@ -102,6 +103,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return bootstrapSessionPromise;
   },
   hasHydrated: initialHasHydrated,
+  deleteAccount: async () => {
+    await pocketBaseAuthService.deleteAccount();
+    localStorageCleanupService.clearAppState();
+    pocketBaseConnectionSettingsService.clear();
+    set({
+      hasHydrated: true,
+      session: null,
+      status: 'unauthenticated',
+      user: null,
+    });
+  },
   login: async (input) => {
     localStorageCleanupService.clearAppState();
     pocketBaseConnectionSettingsService.clear();

@@ -12,6 +12,11 @@ export interface AuthEmailActionResult {
   success: true;
 }
 
+export interface AuthAccountDeletionResult {
+  message: string;
+  success: true;
+}
+
 export interface RegisterResult {
   email: string;
   message: string;

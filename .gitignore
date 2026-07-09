@@ -1,8 +1,13 @@
 # dependencies
 node_modules/
+.pnp/
+.pnp.*
 
 # build output
 dist/
+dist-ssr/
+build/
+out/
 coverage/
 *.tsbuildinfo
 .vite/
@@ -12,16 +17,26 @@ coverage/
 .env.*
 !.env.example
 !.env.sample
+*.local
+
+# secrets and local certificates
+*.pem
+*.key
+*.crt
+*.p12
+certs/
 
 # logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 *.log
 
 # editor and OS files
 .DS_Store
+._*
 .idea/
 .vscode/
 *.swp
@@ -30,5 +45,16 @@ pnpm-debug.log*
 # test and tooling artifacts
 playwright-report/
 test-results/
+blob-report/
+.nyc_output/
+.vitest/
+vitest.workspace.tsbuildinfo
 .eslintcache
+.stylelintcache
+.cache/
+.turbo/
 .workbuddy/
+
+# deploy platform state
+.vercel/
+.netlify/

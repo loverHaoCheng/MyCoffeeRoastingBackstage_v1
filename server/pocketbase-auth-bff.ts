@@ -32,6 +32,27 @@ interface EmailActionResult {
   success: true;
 }
 
+interface AccountDeletionResult {
+  message: string;
+  success: true;
+}
+
+class PocketBaseGatewayError extends Error {
+  payload: unknown;
+  status: number;
+
+  constructor(status: number, payload: unknown, message?: string) {
+    super(message ?? `PocketBase 请求失败：${String(status)}`);
+    this.name = 'PocketBaseGatewayError';
+    this.payload = payload;
+    this.status = status;
+  }
+}
+
+interface PocketBaseListResponseItem {
+  id?: unknown;
+}
+
 const DEFAULT_POCKETBASE_URL = 'http://81.70.224.75';
 const DEFAULT_AUTH_COLLECTION = 'users';
 const DEFAULT_AUTH_COOKIE_NAME = 'easybake_pb_session';
@@ -163,6 +184,30 @@ const normalizeErrorPayload = (payload: unknown): PocketBaseErrorPayload => {
   return {
     data: isRecord(payload.data) ? payload.data : undefined,
     message: toTrimmedString(payload.message) || undefined,
+  };
+};
+
+const normalizeListResponse = (payload: unknown): { items: { id: string }[]; totalPages: number } | null => {
+  if (!isRecord(payload) || !Array.isArray(payload.items)) {
+    return null;
+  }
+
+  const items = payload.items
+    .map((item) => {
+      const record = isRecord(item) ? (item as PocketBaseListResponseItem) : null;
+      const id = record ? toTrimmedString(record.id) : '';
+
+      return id ? { id } : null;
+    })
+    .filter((item): item is { id: string } => item != null);
+  const totalPages =
+    typeof payload.totalPages === 'number' && Number.isFinite(payload.totalPages) && payload.totalPages > 0
+      ? Math.floor(payload.totalPages)
+      : 1;
+
+  return {
+    items,
+    totalPages,
   };
 };
 
@@ -343,6 +388,143 @@ const toGenericEmailActionResult = (message: string): EmailActionResult => ({
   message,
   success: true,
 });
+
+const toAccountDeletionResult = (message: string): AccountDeletionResult => ({
+  message,
+  success: true,
+});
+
+const escapeFilterValue = (value: string): string => {
+  return `'${value.replaceAll("'", "\\'")}'`;
+};
+
+const buildRecordListPath = (
+  collectionName: string,
+  options: {
+    filter?: string;
+    page?: number;
+    perPage?: number;
+  } = {},
+): string => {
+  const searchParams = new URLSearchParams({
+    fields: 'id',
+    page: String(options.page ?? 1),
+    perPage: String(options.perPage ?? 200),
+  });
+
+  if (options.filter) {
+    searchParams.set('filter', options.filter);
+  }
+
+  return `/api/collections/${collectionName}/records?${searchParams.toString()}`;
+};
+
+const isOptionalCollectionMissing = (statusCode: number, payload: unknown): boolean => {
+  if (statusCode === 404) {
+    return true;
+  }
+
+  const message = normalizeErrorPayload(payload).message?.trim().toLowerCase() ?? '';
+
+  return message.includes('not found') || message.includes('missing');
+};
+
+const listRecordIdsByFilter = async (
+  token: string,
+  collectionName: string,
+  filter: string,
+): Promise<string[]> => {
+  const recordIds: string[] = [];
+  let currentPage = 1;
+  let totalPages = 1;
+
+  do {
+    const upstream = await proxyPocketBaseRequest(buildRecordListPath(collectionName, {
+      filter,
+      page: currentPage,
+    }), {
+      headers: {
+        Accept: 'application/json',
+        Authorization: token,
+      },
+      method: 'GET',
+    });
+
+    if (!upstream.response.ok) {
+      throw new PocketBaseGatewayError(upstream.response.status, upstream.payload);
+    }
+
+    const normalizedResponse = normalizeListResponse(upstream.payload);
+
+    if (!normalizedResponse) {
+      throw new PocketBaseGatewayError(502, {
+          message: `${collectionName} 列表响应缺少必要字段。`,
+        });
+    }
+
+    normalizedResponse.items.forEach((item) => {
+      recordIds.push(item.id);
+    });
+    totalPages = normalizedResponse.totalPages;
+    currentPage += 1;
+  } while (currentPage <= totalPages);
+
+  return recordIds;
+};
+
+const deleteRecordById = async (
+  token: string,
+  collectionName: string,
+  recordId: string,
+): Promise<void> => {
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${collectionName}/records/${recordId}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: token,
+    },
+    method: 'DELETE',
+  });
+
+  if (!upstream.response.ok && upstream.response.status !== 404) {
+    throw new PocketBaseGatewayError(upstream.response.status, upstream.payload);
+  }
+};
+
+const deleteRecordsByOwner = async (
+  token: string,
+  collectionName: string,
+  ownerId: string,
+  options: {
+    filterField?: string;
+    optional?: boolean;
+  } = {},
+): Promise<void> => {
+  const filterField = options.filterField ?? 'owner';
+  const filter = `${filterField} = ${escapeFilterValue(ownerId)}`;
+
+  try {
+    const recordIds = await listRecordIdsByFilter(token, collectionName, filter);
+
+    for (const recordId of recordIds) {
+      await deleteRecordById(token, collectionName, recordId);
+    }
+  } catch (error) {
+    const upstreamError =
+      error instanceof PocketBaseGatewayError
+        ? error
+        : null;
+
+    if (
+      options.optional === true &&
+      upstreamError &&
+      isOptionalCollectionMissing(upstreamError.status, upstreamError.payload)
+    ) {
+      return;
+    }
+
+    throw error;
+  }
+};
 
 const handleLogin = async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
   const body = await parseJsonBody(request);
@@ -686,6 +868,107 @@ const handleLogout = (request: IncomingMessage, response: ServerResponse): void 
   });
 };
 
+const handleDeleteAccount = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
+  const token = getAuthCookieValue(request);
+
+  if (!token) {
+    clearAuthCookie(response, request);
+    sendJson(response, 401, {
+      message: '未找到登录态，请重新登录。',
+    });
+    return;
+  }
+
+  const sessionUpstream = await proxyPocketBaseRequest(`/api/collections/${authCollection}/auth-refresh`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: token,
+    },
+    method: 'POST',
+  });
+
+  if (!sessionUpstream.response.ok) {
+    clearAuthCookie(response, request);
+    sendUpstreamError(response, sessionUpstream.response.status, sessionUpstream.payload);
+    return;
+  }
+
+  const authResponse = normalizeAuthResponse(sessionUpstream.payload);
+
+  if (!authResponse) {
+    clearAuthCookie(response, request);
+    sendJson(response, 502, {
+      message: 'PocketBase 会话刷新响应缺少必要字段。',
+    });
+    return;
+  }
+
+  if (authResponse.record.verified !== true) {
+    sendUnverifiedResponse(response, request, authResponse.record.email);
+    return;
+  }
+
+  const deletionTargets: { filterField?: string; name: string; optional?: boolean }[] = [
+    { name: 'finance_expense_records' },
+    { name: 'finance_income_records', optional: true },
+    { name: 'cost_calculations' },
+    { name: 'coffee_beans', optional: true },
+    { name: 'bean_sale_specs', optional: true },
+    { name: 'roast_batches', optional: true },
+    { name: 'roast_profiles' },
+    { name: 'roast_records' },
+    { name: 'green_bean_purchase_batches' },
+    { name: 'green_beans' },
+    { name: 'app_settings', optional: true },
+  ];
+
+  try {
+    for (const target of deletionTargets) {
+      await deleteRecordsByOwner(authResponse.token, target.name, authResponse.record.id, {
+        filterField: target.filterField,
+        optional: target.optional,
+      });
+    }
+
+    const deleteUserUpstream = await proxyPocketBaseRequest(
+      `/api/collections/${authCollection}/records/${authResponse.record.id}`,
+      {
+        headers: {
+          Accept: 'application/json',
+          Authorization: authResponse.token,
+        },
+        method: 'DELETE',
+      },
+    );
+
+    if (!deleteUserUpstream.response.ok && deleteUserUpstream.response.status !== 404) {
+      sendUpstreamError(response, deleteUserUpstream.response.status, deleteUserUpstream.payload);
+      return;
+    }
+  } catch (error) {
+    const upstreamError =
+      error instanceof PocketBaseGatewayError
+        ? error
+        : null;
+
+    if (upstreamError) {
+      sendUpstreamError(response, upstreamError.status, upstreamError.payload);
+      return;
+    }
+
+    sendJson(response, 500, {
+      message: '账号注销失败，请稍后重试。',
+    });
+    return;
+  }
+
+  clearAuthCookie(response, request);
+  sendJson(response, 200, toAccountDeletionResult('账号已注销，所有关联数据已删除。'));
+};
+
 const handleRequest = async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
   const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
 
@@ -763,6 +1046,16 @@ const handleRequest = async (request: IncomingMessage, response: ServerResponse)
     }
 
     handleLogout(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/auth/account') {
+    if (request.method !== 'DELETE') {
+      sendMethodNotAllowed(response, ['DELETE']);
+      return;
+    }
+
+    await handleDeleteAccount(request, response);
     return;
   }
 

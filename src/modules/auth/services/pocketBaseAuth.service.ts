@@ -9,6 +9,7 @@ import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
 import type {
+  AuthAccountDeletionResult,
   AuthCredentialsInput,
   AuthEmailActionResult,
   PocketBaseUserRecord,
@@ -320,6 +321,15 @@ const patchJson = async (path: string, body: Record<string, unknown>): Promise<u
   });
 };
 
+const deleteJson = async (path: string): Promise<unknown> => {
+  return requestJson(buildAuthGatewayUrl(path), {
+    headers: {
+      Accept: 'application/json',
+    },
+    method: 'DELETE',
+  });
+};
+
 const getSessionFromAuthResponse = (response: PocketBaseAuthResponse): PocketBaseSession => {
   if (!response.token || !response.record) {
     throw new AppError('PocketBase 认证响应缺少必要字段。', {
@@ -391,6 +401,14 @@ export const pocketBaseAuthService = {
       pocketBaseSessionService.clear();
       logger.info('pocketbase session cleared');
     }
+  },
+  async deleteAccount(): Promise<AuthAccountDeletionResult> {
+    const result = (await deleteJson('/account')) as AuthAccountDeletionResult;
+
+    pocketBaseSessionService.clear();
+    logger.info('pocketbase account deleted and session cleared');
+
+    return result;
   },
   loadSession(): PocketBaseSession | null {
     return pocketBaseSessionService.load();

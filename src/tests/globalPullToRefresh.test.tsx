@@ -81,10 +81,10 @@ describe('GlobalPullToRefresh', () => {
     const sectionElement = section;
 
     fireEvent.touchStart(scrollContainer, {
-      touches: [{ clientY: 0 }],
+      touches: [{ clientX: 40, clientY: 0 }],
     });
     fireEvent.touchMove(scrollContainer, {
-      touches: [{ clientY: 119 }],
+      touches: [{ clientX: 40, clientY: 119 }],
     });
     fireEvent.touchEnd(scrollContainer);
 
@@ -93,10 +93,10 @@ describe('GlobalPullToRefresh', () => {
     });
 
     fireEvent.touchStart(scrollContainer, {
-      touches: [{ clientY: 0 }],
+      touches: [{ clientX: 40, clientY: 0 }],
     });
     fireEvent.touchMove(scrollContainer, {
-      touches: [{ clientY: 120 }],
+      touches: [{ clientX: 40, clientY: 120 }],
     });
 
     await waitFor(() => {
@@ -136,10 +136,10 @@ describe('GlobalPullToRefresh', () => {
     }
 
     fireEvent.touchStart(scrollContainer, {
-      touches: [{ clientY: 0 }],
+      touches: [{ clientX: 40, clientY: 0 }],
     });
     fireEvent.touchMove(scrollContainer, {
-      touches: [{ clientY: 100 }],
+      touches: [{ clientX: 40, clientY: 100 }],
     });
 
     await waitFor(() => {
@@ -147,7 +147,7 @@ describe('GlobalPullToRefresh', () => {
     });
 
     fireEvent.touchMove(scrollContainer, {
-      touches: [{ clientY: 500 }],
+      touches: [{ clientX: 40, clientY: 500 }],
     });
 
     await waitFor(() => {
@@ -184,10 +184,10 @@ describe('GlobalPullToRefresh', () => {
     );
 
     fireEvent.touchStart(scrollContainer, {
-      touches: [{ clientY: 0 }],
+      touches: [{ clientX: 40, clientY: 0 }],
     });
     fireEvent.touchMove(scrollContainer, {
-      touches: [{ clientY: 120 }],
+      touches: [{ clientX: 40, clientY: 120 }],
     });
     fireEvent.touchEnd(scrollContainer);
 
@@ -202,5 +202,74 @@ describe('GlobalPullToRefresh', () => {
     await waitFor(() => {
       expect(reloadSpy).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('does not trigger pull refresh during a horizontal swipe with slight downward movement', async () => {
+    const scrollContainerRef = createRef<HTMLDivElement>();
+    const scrollContainer = document.createElement('div');
+    scrollContainerRef.current = scrollContainer;
+
+    const { container } = renderWithProviders(
+      <ViewportScrollContext.Provider value={scrollContainerRef}>
+        <GlobalPullToRefresh />
+      </ViewportScrollContext.Provider>,
+    );
+
+    const section = container.querySelector('section');
+
+    expect(section).not.toBeNull();
+    if (section == null) {
+      throw new Error('pull refresh section not found');
+    }
+
+    fireEvent.touchStart(scrollContainer, {
+      touches: [{ clientX: 40, clientY: 0 }],
+    });
+    fireEvent.touchMove(scrollContainer, {
+      touches: [{ clientX: 160, clientY: 24 }],
+    });
+    fireEvent.touchMove(scrollContainer, {
+      touches: [{ clientX: 230, clientY: 130 }],
+    });
+    fireEvent.touchEnd(scrollContainer);
+
+    await waitFor(() => {
+      expect(section).toHaveAttribute('data-ready', 'false');
+    });
+
+    expect(refreshQuickAppDataMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks diagonal gestures when the horizontal movement dominates', async () => {
+    const scrollContainerRef = createRef<HTMLDivElement>();
+    const scrollContainer = document.createElement('div');
+    scrollContainerRef.current = scrollContainer;
+
+    const { container } = renderWithProviders(
+      <ViewportScrollContext.Provider value={scrollContainerRef}>
+        <GlobalPullToRefresh />
+      </ViewportScrollContext.Provider>,
+    );
+
+    const section = container.querySelector('section');
+
+    expect(section).not.toBeNull();
+    if (section == null) {
+      throw new Error('pull refresh section not found');
+    }
+
+    fireEvent.touchStart(scrollContainer, {
+      touches: [{ clientX: 40, clientY: 0 }],
+    });
+    fireEvent.touchMove(scrollContainer, {
+      touches: [{ clientX: 160, clientY: 80 }],
+    });
+    fireEvent.touchEnd(scrollContainer);
+
+    await waitFor(() => {
+      expect(section).toHaveAttribute('data-ready', 'false');
+    });
+
+    expect(refreshQuickAppDataMock).not.toHaveBeenCalled();
   });
 });

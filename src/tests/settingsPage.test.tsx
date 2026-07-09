@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { appBuildVersionService } from '@/app/services/appBuildVersion.service';
+import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { SettingsPage } from '@/modules/settings';
 import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
@@ -120,6 +121,14 @@ describe('SettingsPage', () => {
       appDisplaySettings: createDefaultAppDisplaySettings(),
       costTemplateSettings: createDefaultCostTemplateSettings(),
       pocketBaseConnections: createDefaultPocketBaseConnectionSettings(),
+    });
+    useAuthStore.setState({
+      hasHydrated: true,
+      status: 'authenticated',
+      user: {
+        email: 'tester@example.com',
+        id: 'test-user',
+      },
     });
   });
 
@@ -391,12 +400,39 @@ describe('SettingsPage', () => {
 
     renderWithQuery(<SettingsPage />);
 
-    expect(screen.getByText('当前 Web 上传版本：0.1.0-initial')).toBeInTheDocument();
+    const buildVersion = screen.getByText('当前 Web 上传版本：0.1.0-initial');
+    const deleteButtonLabel = screen.getByText('注销账号');
+    const deleteButton = deleteButtonLabel.closest('button');
+
+    expect(buildVersion).toBeInTheDocument();
+    expect(deleteButton).not.toBeNull();
+
+    if (deleteButton != null) {
+      expect(deleteButton).toBeDisabled();
+      expect(deleteButton.compareDocumentPosition(buildVersion)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    }
 
     act(() => {
       appBuildVersionService.save('0.1.0-updated');
     });
 
     expect(await screen.findByText('当前 Web 上传版本：0.1.0-updated')).toBeInTheDocument();
+  });
+
+  it('keeps account deletion disabled before the formal release', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    const deleteButtonLabel = await screen.findByText('注销账号');
+    const deleteButton = deleteButtonLabel.closest('button');
+
+    expect(deleteButton).not.toBeNull();
+
+    if (deleteButton == null) {
+      throw new Error('delete account button not found');
+    }
+
+    expect(deleteButton).toBeDisabled();
+    fireEvent.click(deleteButton);
+    expect(screen.queryByText('确认注销账号？')).not.toBeInTheDocument();
   });
 });

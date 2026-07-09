@@ -25,6 +25,7 @@ import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonPro
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { useAppStore } from '@/stores/useAppStore';
 
+import { useMobileSwipeNavigation } from './hooks/useMobileSwipeNavigation';
 import { ViewportScrollContext } from './ViewportContext';
 import floatingActionStyles from '@/shared/components/ViewportFloatingActionButton.module.css';
 import styles from './MainLayout.module.css';
@@ -68,6 +69,7 @@ export function MainLayout() {
   const location = useLocation();
   const outlet = useOutlet();
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const mobileSettingsPanelScrollRef = useRef<HTMLDivElement | null>(null);
   const currentOutletRef = useRef(outlet);
   const floatingActionCleanupTimerRef = useRef<number | null>(null);
   const floatingActionRegistrationIdRef = useRef(0);
@@ -346,7 +348,7 @@ export function MainLayout() {
     }, MOBILE_ROUTE_TRANSITION_MS);
   }, [getPathIndex, isWide, location.pathname, outlet]);
 
-  const navigateByKey = (key: string) => {
+  const navigateByKey = useCallback((key: AppRouteKey) => {
     if (!isWide && key === 'settings') {
       openMobileSettingsPanel();
       return;
@@ -365,7 +367,7 @@ export function MainLayout() {
     startTransition(() => {
       void navigate(target.path);
     });
-  };
+  }, [closeMobileSettingsPanel, isWide, navigate, openMobileSettingsPanel]);
 
   const nicknameDisplayValue = user?.name?.trim() ?? '';
   const authDisplaySeed = nicknameDisplayValue || (user?.email ?? 'U');
@@ -534,6 +536,28 @@ export function MainLayout() {
     openMobileSettingsPanel();
   };
 
+  useMobileSwipeNavigation({
+    bottomNavItems,
+    containerRef: scrollViewportRef,
+    enabled: !isWide,
+    isMobileSettingsOpen,
+    navigateByKey,
+    onCloseSettings: closeMobileSettingsPanel,
+    onOpenSettings: openMobileSettingsPanel,
+    selectedKey,
+  });
+
+  useMobileSwipeNavigation({
+    bottomNavItems,
+    containerRef: mobileSettingsPanelScrollRef,
+    enabled: !isWide && isMobileSettingsOpen,
+    isMobileSettingsOpen,
+    navigateByKey,
+    onCloseSettings: closeMobileSettingsPanel,
+    onOpenSettings: openMobileSettingsPanel,
+    selectedKey,
+  });
+
   return (
     <ViewportScrollContext.Provider value={scrollViewportRef}>
       <Layout className={styles.shell} data-mobile={!isWide} data-standalone-pwa={isStandalonePwa}>
@@ -588,7 +612,7 @@ export function MainLayout() {
               items={menuItems}
               mode="inline"
               onClick={({ key }) => {
-                navigateByKey(key);
+                navigateByKey(key as AppRouteKey);
               }}
               selectedKeys={[selectedKey]}
             />
@@ -708,7 +732,7 @@ export function MainLayout() {
               type="button"
             />
             <aside className={styles.mobileSettingsPanel} data-visible={isMobileSettingsPanelVisible}>
-              <div className={styles.mobileSettingsPanelScroll}>
+              <div className={styles.mobileSettingsPanelScroll} ref={mobileSettingsPanelScrollRef}>
                 {renderSettingsAuthBar()}
                 <Suspense
                   fallback={

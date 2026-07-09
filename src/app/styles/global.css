@@ -71,6 +71,8 @@ html {
   min-height: 100vh;
   min-width: 320px;
   background: var(--app-bg);
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -83,6 +85,7 @@ body {
   background: var(--app-bg);
   overflow: hidden;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -104,6 +107,8 @@ a {
   height: 100vh;
   min-height: 100vh;
   background: var(--app-bg);
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 input,

@@ -9,6 +9,13 @@ import styles from './GlobalPullToRefresh.module.css';
 const PULL_TRIGGER_RATIO = 0.15;
 const PULL_VISUAL_MAX_DISTANCE = 72;
 const REFRESH_FEEDBACK_DURATION_MS = 720;
+const PULL_HORIZONTAL_LOCK_DISTANCE = 12;
+const PULL_AXIS_LOCK_RATIO = 1.35;
+
+interface PullTouchSnapshot {
+  x: number;
+  y: number;
+}
 
 const getPullTriggerDistance = (): number => {
   if (typeof window === 'undefined') {
@@ -44,7 +51,9 @@ export function GlobalPullToRefresh() {
   const [refreshFeedbackText, setRefreshFeedbackText] = useState('');
   const isRefreshingRef = useRef(false);
   const pullDistanceRef = useRef(0);
-  const touchStartYRef = useRef<null | number>(null);
+  const touchStartRef = useRef<null | PullTouchSnapshot>(null);
+  const isHorizontalGestureRef = useRef(false);
+  const isPullGestureBlockedRef = useRef(false);
   const pullTriggeredRef = useRef(false);
 
   useEffect(() => {
@@ -82,6 +91,19 @@ export function GlobalPullToRefresh() {
       return scrollContainer.scrollTop <= 0 && !isRefreshingRef.current;
     };
 
+    const setSyncedPullDistance = (nextPullDistance: number) => {
+      pullDistanceRef.current = nextPullDistance;
+      setPullDistance(nextPullDistance);
+    };
+
+    const resetPullGesture = () => {
+      touchStartRef.current = null;
+      isHorizontalGestureRef.current = false;
+      isPullGestureBlockedRef.current = false;
+      pullTriggeredRef.current = false;
+      setSyncedPullDistance(0);
+    };
+
     const handlePullRefresh = async () => {
       try {
         await refresh({
@@ -97,9 +119,7 @@ export function GlobalPullToRefresh() {
           silent: true,
         });
       } finally {
-        touchStartYRef.current = null;
-        pullTriggeredRef.current = false;
-        setPullDistance(0);
+        resetPullGesture();
         window.setTimeout(() => {
           setRefreshFeedback(null);
           setRefreshFeedbackText('');
@@ -108,17 +128,28 @@ export function GlobalPullToRefresh() {
     };
 
     const handleTouchStart = (event: TouchEvent) => {
+      isHorizontalGestureRef.current = false;
+      isPullGestureBlockedRef.current = isInteractiveOverlayTarget(event.target);
+
       if (isInteractiveOverlayTarget(event.target)) {
-        touchStartYRef.current = null;
+        touchStartRef.current = null;
         return;
       }
 
       if (!canTriggerPullRefresh()) {
-        touchStartYRef.current = null;
+        touchStartRef.current = null;
+        isPullGestureBlockedRef.current = true;
         return;
       }
 
-      touchStartYRef.current = event.touches[0]?.clientY ?? null;
+      const firstTouch = event.touches[0];
+
+      touchStartRef.current = firstTouch == null
+        ? null
+        : {
+            x: firstTouch.clientX,
+            y: firstTouch.clientY,
+          };
     };
 
     const handleTouchMove = (event: TouchEvent) => {
@@ -126,31 +157,65 @@ export function GlobalPullToRefresh() {
         return;
       }
 
-      if (touchStartYRef.current == null || pullTriggeredRef.current || scrollContainer.scrollTop > 0) {
+      if (
+        touchStartRef.current == null ||
+        isPullGestureBlockedRef.current ||
+        pullTriggeredRef.current ||
+        scrollContainer.scrollTop > 0
+      ) {
         return;
       }
 
-      const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
-      const deltaY = Math.max(0, currentY - touchStartYRef.current);
+      const currentTouch = event.touches[0];
 
-      if (deltaY <= 0) {
-        setPullDistance(0);
+      if (currentTouch == null) {
         return;
       }
 
-      setPullDistance(Math.min(pullTriggerDistance, deltaY));
+      const deltaX = currentTouch.clientX - touchStartRef.current.x;
+      const deltaY = currentTouch.clientY - touchStartRef.current.y;
+      const absDeltaX = Math.abs(deltaX);
+      const absDeltaY = Math.abs(deltaY);
+
+      if (
+        !isHorizontalGestureRef.current &&
+        absDeltaX >= PULL_HORIZONTAL_LOCK_DISTANCE &&
+        absDeltaX > absDeltaY * PULL_AXIS_LOCK_RATIO
+      ) {
+        isHorizontalGestureRef.current = true;
+        isPullGestureBlockedRef.current = true;
+        setSyncedPullDistance(0);
+        return;
+      }
+
+      if (isHorizontalGestureRef.current) {
+        setSyncedPullDistance(0);
+        return;
+      }
+
+      const pullDeltaY = Math.max(0, deltaY);
+
+      if (pullDeltaY <= 0) {
+        setSyncedPullDistance(0);
+        return;
+      }
+
+      setSyncedPullDistance(Math.min(pullTriggerDistance, pullDeltaY));
     };
 
     const handleTouchEnd = () => {
-      if (pullDistanceRef.current >= pullTriggerDistance && !pullTriggeredRef.current) {
+      if (
+        pullDistanceRef.current >= pullTriggerDistance &&
+        !isPullGestureBlockedRef.current &&
+        !isHorizontalGestureRef.current &&
+        !pullTriggeredRef.current
+      ) {
         pullTriggeredRef.current = true;
         void handlePullRefresh();
         return;
       }
 
-      touchStartYRef.current = null;
-      pullTriggeredRef.current = false;
-      setPullDistance(0);
+      resetPullGesture();
     };
 
     scrollContainer.addEventListener('touchstart', handleTouchStart, { passive: true });

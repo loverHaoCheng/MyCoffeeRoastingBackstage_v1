@@ -3,6 +3,7 @@ import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
 export function useAuth() {
   const bootstrapSession = useAuthStore((state) => state.bootstrapSession);
+  const deleteAccount = useAuthStore((state) => state.deleteAccount);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const login = useAuthStore((state) => state.login);
   const logout = useAuthStore((state) => state.logout);
@@ -13,6 +14,7 @@ export function useAuth() {
 
   return {
     bootstrapSession,
+    deleteAccount,
     hasHydrated,
     login,
     logout,

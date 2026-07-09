@@ -350,6 +350,45 @@ describe('pocketBaseAuthService', () => {
     );
   });
 
+  it('clears the in-memory session when deleting the account through the auth gateway', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            message: '账号已注销，所有关联数据已删除。',
+            success: true,
+          }),
+          {
+            status: 200,
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    pocketBaseSessionService.save({
+      baseUrl: 'http://81.70.224.75',
+      token: 'stored-token',
+      user: {
+        email: 'demo@example.com',
+        id: 'user-1',
+      },
+    });
+
+    const result = await pocketBaseAuthService.deleteAccount();
+
+    expect(result).toEqual({
+      message: '账号已注销，所有关联数据已删除。',
+      success: true,
+    });
+    expect(pocketBaseSessionService.load()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/account',
+      expect.objectContaining({
+        method: 'DELETE',
+      }),
+    );
+  });
+
   it('requests a verification email through the auth gateway', async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(

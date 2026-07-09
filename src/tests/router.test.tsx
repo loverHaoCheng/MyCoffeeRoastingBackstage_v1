@@ -117,4 +117,33 @@ describe('router', () => {
     expect(screen.getByRole('button', { name: 'lock 发送重置邮件' })).toBeInTheDocument();
     expect(screen.getByText('想起密码了？')).toBeInTheDocument();
   });
+
+  it('opens the public privacy policy route', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/privacy'],
+    });
+
+    render(
+      <ConfigProvider>
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </AntApp>
+      </ConfigProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '隐私政策' })).toBeInTheDocument();
+    expect(screen.getByLabelText('文档信息')).toHaveTextContent('zhc1501705072@163.com');
+    expect(screen.getByRole('link', { name: '用户协议' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '数据删除机制' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'close 退出' })).toHaveAttribute('href', '#/login');
+  });
 });

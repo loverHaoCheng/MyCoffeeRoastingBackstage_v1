@@ -6,7 +6,7 @@
   --page-padding-bottom: 0;
   --page-padding-left: 16px;
   min-width: 0;
-  min-height: 100%;
+  min-height: 0;
   width: 100%;
   max-width: var(--page-max-width);
   margin: 0 auto;

@@ -3,6 +3,7 @@ import { App, Button, Form, Input, Space } from 'antd';
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { AgreementCheckbox } from '@/modules/auth/components/AgreementCheckbox';
 import { AuthPageShell } from '@/modules/auth/components/AuthPageShell';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -10,6 +11,7 @@ import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import styles from './AuthPage.module.css';
 
 interface RegisterFormValues {
+  agreementAccepted: boolean;
   email: string;
   password: string;
   passwordConfirm: string;
@@ -114,6 +116,8 @@ export function RegisterPage() {
         >
           <Input.Password prefix={<LockOutlined />} placeholder="请再次输入密码" />
         </Form.Item>
+
+        <AgreementCheckbox />
 
         <Button block htmlType="submit" icon={<UserAddOutlined />} type="primary">
           注册
