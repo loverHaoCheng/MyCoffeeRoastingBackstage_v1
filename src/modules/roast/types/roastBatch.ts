@@ -1,4 +1,6 @@
 /** 烘焙记录领域类型 */
+export type RoastBatchSalesMode = 'sale' | 'selfUse';
+
 export interface RoastBatchRecord {
   id: string;
   /** 烘焙日期 */
@@ -31,6 +33,8 @@ export interface RoastBatchRecord {
   imageUrls?: string[];
   /** 状态 */
   status: 'completed' | 'draft';
+  /** 去向 */
+  salesMode: RoastBatchSalesMode;
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +56,7 @@ export interface RoastBatchCreateInput {
   notes?: string;
   imageUrls?: string[];
   status?: 'completed' | 'draft';
+  salesMode?: RoastBatchSalesMode;
 }
 
 /** 更新烘焙记录的输入 */
@@ -71,4 +76,5 @@ export interface RoastBatchUpdateInput {
   notes?: string;
   imageUrls?: string[];
   status?: 'completed' | 'draft';
+  salesMode?: RoastBatchSalesMode;
 }

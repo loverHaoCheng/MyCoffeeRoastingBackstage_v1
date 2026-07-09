@@ -188,6 +188,7 @@ export const beanSyncService = {
       originCountry: toOptionalString(record.originCountry),
       originRegion: toOptionalString(record.originRegion),
       processMethod: toRequiredString(record.processMethod),
+      purchaseDate: toRequiredString(record.purchaseDate),
       purchasedTotalPrice: Number(record.purchasedTotalPrice) || 0,
       purchasedWeightGrams: Number(record.purchasedWeightGrams) || 0,
       remainingWeightGrams:

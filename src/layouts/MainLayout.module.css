@@ -18,15 +18,15 @@
   --shell-floating-bottom-offset: calc(var(--app-shell-bottom-nav-height) + 16px);
 }
 
-.mobileBrand {
+.mobileHeader {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 70;
+  z-index: 110;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   height: var(--app-shell-header-height);
   width: 100%;
   padding:
@@ -34,17 +34,65 @@
     calc(var(--app-safe-right) + 16px)
     0
     calc(var(--app-safe-left) + 16px);
-  border: 0;
   background: var(--app-bg-elevated);
+  box-shadow: 0 1px 0 rgb(229 229 231 / 28%);
+}
+
+.mobileHeaderButton {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--app-text);
+  cursor: pointer;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.mobileHeaderButton :global(.anticon) {
+  font-size: 18px;
+}
+
+.mobileBrand {
+  border: 0;
+  background: transparent;
   color: var(--app-text);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  box-shadow: 0 1px 0 rgb(229 229 231 / 28%);
   appearance: none;
   -webkit-appearance: none;
+}
+
+.mobileHeaderSpacer {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+}
+
+.mobileHeaderAction {
+  display: inline-grid !important;
+  place-items: center;
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  color: var(--app-text) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.mobileHeaderAction :global(.anticon) {
+  font-size: 18px;
 }
 
 .sider {
@@ -244,59 +292,59 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
   width: min(
     calc(100% - (var(--content-page-inline-padding) * 2)),
     var(--content-page-max-width)
   );
-  margin: 14px auto 18px;
-  padding: 14px 18px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: 22px;
-  background:
-    linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
-  box-shadow: inset 0 1px 0 var(--app-card-inset-highlight);
-  backdrop-filter: blur(18px);
+  margin: 14px auto 5px;
+  padding: 18px 22px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--app-bg);
+  box-shadow: none;
+  backdrop-filter: none;
   color: var(--app-text);
 }
 
-@media (max-width: 767px) {
-  .authBar {
-    margin-bottom: 0;
-  }
+.authBar[data-settings-auth-bar='true'] {
+  width: min(
+    calc(100% - (var(--content-page-inline-padding) * 2)),
+    780px
+  );
 }
 
 .authAvatar {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 56px;
+  height: 56px;
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--app-text);
   color: var(--app-bg);
-  font-size: 14px;
+  font-size: 26px;
   font-weight: 700;
 }
 
 .authMeta {
   display: grid;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
 }
 
 .authNicknameButton {
   display: inline-flex;
   width: fit-content;
-  max-width: min(52vw, 240px);
+  max-width: min(58vw, 280px);
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--app-text);
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
   text-align: left;
   transition: opacity 160ms ease;
   appearance: none;
@@ -322,9 +370,9 @@
 
 .authEmail {
   color: var(--app-text-secondary) !important;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .authDrawerField {
@@ -340,6 +388,7 @@
 
 .authBar :global(.ant-btn) {
   color: var(--app-text);
+  font-size: 16px;
 }
 
 .authBar :global(.ant-btn:hover),
@@ -398,6 +447,11 @@
   isolation: isolate;
   transform: none;
   transition: box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.bottomNav[data-dimmed='true'] {
+  pointer-events: none;
+  opacity: 0.28;
 }
 
 .bottomNav::before {
@@ -543,6 +597,74 @@
   transition: opacity 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.mobileSettingsOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+}
+
+.mobileSettingsBackdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(15 23 42 / 18%);
+  opacity: 0;
+  transition: opacity 260ms ease;
+  cursor: pointer;
+}
+
+.mobileSettingsPanel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: linear-gradient(180deg, var(--app-bg-elevated) 0%, var(--app-bg-surface) 100%);
+  box-shadow: 20px 0 40px rgb(15 23 42 / 16%);
+  transform: translate3d(-100%, 0, 0);
+  opacity: 0;
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 260ms ease;
+  overflow: hidden;
+}
+
+.mobileSettingsPanelScroll {
+  height: 100%;
+  overflow-y: auto;
+  padding:
+    calc(var(--app-shell-header-height) + 8px)
+    0
+    calc(var(--app-shell-bottom-nav-height) + 16px);
+  scrollbar-width: none;
+}
+
+.mobileSettingsPanelScroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.mobileSettingsLoading {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+}
+
+.mobileSettingsOverlay[data-visible='true'] {
+  pointer-events: auto;
+}
+
+.mobileSettingsOverlay[data-visible='true'] .mobileSettingsBackdrop {
+  opacity: 1;
+}
+
+.mobileSettingsPanel[data-visible='true'] {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+}
+
 .floatingActionRoot[data-visible="true"] {
   opacity: 1;
   transform: translate3d(0, 0, 0);
@@ -565,8 +687,8 @@
   background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
 }
 
-:global(:root[data-standalone-pwa="true"]) .mobileBrand,
-.shell[data-standalone-pwa='true'] .mobileBrand {
+:global(:root[data-standalone-pwa="true"]) .mobileHeader,
+.shell[data-standalone-pwa='true'] .mobileHeader {
   height: calc(58px + var(--app-safe-top));
   padding:
     var(--app-safe-top)
@@ -592,6 +714,11 @@
 }
 
 @media (max-width: 767px) {
+  .mobileSettingsPanel {
+    background: var(--app-bg);
+    box-shadow: none;
+  }
+
   .content {
     --content-page-inline-padding: 12px;
   }
@@ -685,7 +812,7 @@
     background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
   }
 
-  .mobileBrand {
+  .mobileHeader {
     height: calc(58px + var(--app-safe-top));
     padding:
       var(--app-safe-top)

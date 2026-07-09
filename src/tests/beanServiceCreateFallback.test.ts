@@ -26,6 +26,7 @@ const createInput = () => ({
   originCountry: '埃塞俄比亚',
   originRegion: '古吉',
   processMethod: '水洗',
+  purchaseDate: '2026-07-01',
   purchasedTotalPrice: 0,
   purchasedWeightGrams: 1000,
   remainingWeightGrams: 1000,

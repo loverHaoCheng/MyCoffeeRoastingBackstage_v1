@@ -1,0 +1,83 @@
+.presetGroup {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 430px);
+  margin: 0 auto;
+  column-gap: 25px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.presetGroup::-webkit-scrollbar {
+  display: none;
+}
+
+.presetButton {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0;
+  padding-inline: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #6e6e73;
+  box-shadow: none;
+  font-weight: 700;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: color 180ms ease;
+}
+
+.presetButton[data-active='true'] {
+  color: #1d1d1f;
+}
+
+.presetButton:hover,
+.presetButton:focus,
+.presetButton:focus-visible,
+.presetButton:active {
+  outline: none;
+  color: #6e6e73;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.presetButton[data-active='true']:hover,
+.presetButton[data-active='true']:focus,
+.presetButton[data-active='true']:focus-visible,
+.presetButton[data-active='true']:active {
+  color: #1d1d1f;
+}
+
+.activeIndicator {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: #1d1d1f;
+  pointer-events: none;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bar {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding-inline: 4px;
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .presetGroup {
+    column-gap: 25px;
+  }
+}

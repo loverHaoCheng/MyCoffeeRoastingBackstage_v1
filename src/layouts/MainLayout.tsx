@@ -1,14 +1,17 @@
 import {
+  CalculatorOutlined,
+  CloseOutlined,
   DatabaseOutlined,
   FireOutlined,
   FundOutlined,
   LogoutOutlined,
+  MenuOutlined,
   ReloadOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import { App, Button, Grid, Input, Layout, Menu, Space, Typography } from 'antd';
+import { App, Button, Grid, Input, Layout, Menu, Space, Spin, Typography } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
-import { type CSSProperties, type ReactNode, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, lazy, Suspense, type ReactNode, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 
 import { GlobalPullToRefresh } from '@/app/components/GlobalPullToRefresh';
@@ -30,11 +33,17 @@ const { Content, Sider } = Layout;
 const { useBreakpoint } = Grid;
 const MOBILE_ROUTE_TRANSITION_MS = 300;
 const FLOATING_ACTION_VISIBILITY_TRANSITION_MS = 220;
+const MOBILE_SETTINGS_PANEL_TRANSITION_MS = 260;
+const MOBILE_SETTINGS_FALLBACK_PATH = '/production';
+const MobileSettingsPage = lazy(() =>
+  import('@/modules/settings').then((module) => ({ default: module.SettingsPage })),
+);
 
 type RouteTransitionDirection = 'backward' | 'forward';
 
 const iconByRoute: Record<AppRouteKey, ReactNode> = {
   bean: <DatabaseOutlined />,
+  finance: <CalculatorOutlined />,
   roast: <FundOutlined />,
   production: <FireOutlined />,
   settings: <SettingOutlined />,
@@ -63,7 +72,11 @@ export function MainLayout() {
   const floatingActionCleanupTimerRef = useRef<number | null>(null);
   const floatingActionRegistrationIdRef = useRef(0);
   const routeTransitionTimerRef = useRef<number | null>(null);
+  const mobileSettingsPanelTimerRef = useRef<number | null>(null);
   const previousPathnameRef = useRef(location.pathname);
+  const lastNonSettingsPathRef = useRef(
+    location.pathname === '/settings' ? MOBILE_SETTINGS_FALLBACK_PATH : location.pathname,
+  );
   const isWide = screens.md ?? false;
   const bottomNavItems = useMemo(
     () => appNavigationItems.filter((item) => item.showInBottomNav !== false),
@@ -89,6 +102,8 @@ export function MainLayout() {
     useState<RouteTransitionDirection>('forward');
   const [isNicknameDrawerOpen, setIsNicknameDrawerOpen] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
+  const [isMobileSettingsPanelMounted, setIsMobileSettingsPanelMounted] = useState(false);
+  const [isMobileSettingsPanelVisible, setIsMobileSettingsPanelVisible] = useState(false);
 
   const selectedKey = useMemo(() => {
     return (
@@ -221,8 +236,56 @@ export function MainLayout() {
       if (routeTransitionTimerRef.current != null) {
         window.clearTimeout(routeTransitionTimerRef.current);
       }
+
+      if (mobileSettingsPanelTimerRef.current != null) {
+        window.clearTimeout(mobileSettingsPanelTimerRef.current);
+      }
     };
   }, []);
+
+  const openMobileSettingsPanel = useCallback(() => {
+    if (mobileSettingsPanelTimerRef.current != null) {
+      window.clearTimeout(mobileSettingsPanelTimerRef.current);
+      mobileSettingsPanelTimerRef.current = null;
+    }
+
+    setIsMobileSettingsPanelMounted(true);
+
+    window.requestAnimationFrame(() => {
+      setIsMobileSettingsPanelVisible(true);
+    });
+  }, []);
+
+  const closeMobileSettingsPanel = useCallback(() => {
+    if (mobileSettingsPanelTimerRef.current != null) {
+      window.clearTimeout(mobileSettingsPanelTimerRef.current);
+    }
+
+    setIsMobileSettingsPanelVisible(false);
+    mobileSettingsPanelTimerRef.current = window.setTimeout(() => {
+      setIsMobileSettingsPanelMounted(false);
+      mobileSettingsPanelTimerRef.current = null;
+    }, MOBILE_SETTINGS_PANEL_TRANSITION_MS);
+  }, []);
+
+  useEffect(() => {
+    if (isWide) {
+      closeMobileSettingsPanel();
+    }
+  }, [closeMobileSettingsPanel, isWide]);
+
+  useEffect(() => {
+    if (location.pathname !== '/settings') {
+      lastNonSettingsPathRef.current = location.pathname;
+      return;
+    }
+
+    if (isWide) {
+      return;
+    }
+
+    openMobileSettingsPanel();
+  }, [isWide, location.pathname, openMobileSettingsPanel]);
 
   useEffect(() => {
     if (floatingActionCleanupTimerRef.current != null) {
@@ -284,6 +347,15 @@ export function MainLayout() {
   }, [getPathIndex, isWide, location.pathname, outlet]);
 
   const navigateByKey = (key: string) => {
+    if (!isWide && key === 'settings') {
+      openMobileSettingsPanel();
+      return;
+    }
+
+    if (!isWide) {
+      closeMobileSettingsPanel();
+    }
+
     const target = appNavigationItems.find((item) => item.key === key);
 
     if (!target) {
@@ -337,7 +409,7 @@ export function MainLayout() {
 
   const renderSettingsAuthBar = () => (
     <>
-      <div className={styles.authBar}>
+      <div className={styles.authBar} data-settings-auth-bar={!isWide ? undefined : 'true'}>
         <Space align="center" size={10}>
           <div className={styles.authAvatar}>
             {authDisplaySeed.slice(0, 1).toUpperCase()}
@@ -444,20 +516,57 @@ export function MainLayout() {
     })();
   };
   const shouldShowWebRefreshAction = !supportsTouchPullRefresh;
-  const shouldShowFloatingActions = isFloatingActionVisible || shouldShowWebRefreshAction;
+  const shouldShowFloatingActions = isWide && (isFloatingActionVisible || shouldShowWebRefreshAction);
+  const isMobileSettingsRoute = !isWide && location.pathname === '/settings';
+  const isMobileSettingsOpen = !isWide && isMobileSettingsPanelMounted;
+  const shouldShowMobileHeaderAction = !isWide && !isMobileSettingsOpen && renderedFloatingActionConfig != null;
+  const handleMobileHeaderLeftButtonClick = () => {
+    if (isMobileSettingsOpen) {
+      if (isMobileSettingsRoute) {
+        startTransition(() => {
+          void navigate(lastNonSettingsPathRef.current, { replace: true });
+        });
+      }
+      closeMobileSettingsPanel();
+      return;
+    }
+
+    openMobileSettingsPanel();
+  };
 
   return (
     <ViewportScrollContext.Provider value={scrollViewportRef}>
       <Layout className={styles.shell} data-mobile={!isWide} data-standalone-pwa={isStandalonePwa}>
         {!isWide ? (
-          <button
-            className={styles.mobileBrand}
-            data-app-shell-header="true"
-            onClick={scrollToTop}
-            type="button"
-          >
-            EasyBake
-          </button>
+          <header className={styles.mobileHeader} data-app-shell-header="true">
+            <button
+              aria-label={isMobileSettingsOpen ? '收起设置面板' : '打开设置面板'}
+              className={styles.mobileHeaderButton}
+              onClick={handleMobileHeaderLeftButtonClick}
+              type="button"
+            >
+              {isMobileSettingsOpen ? <CloseOutlined /> : <MenuOutlined />}
+            </button>
+            <button
+              className={styles.mobileBrand}
+              onClick={scrollToTop}
+              type="button"
+            >
+              EasyBake
+            </button>
+            {shouldShowMobileHeaderAction ? (
+              <Button
+                aria-label={renderedFloatingActionConfig.ariaLabel}
+                className={styles.mobileHeaderAction}
+                icon={renderedFloatingActionConfig.icon}
+                onClick={renderedFloatingActionConfig.onClick}
+                shape="circle"
+                type="text"
+              />
+            ) : (
+              <span aria-hidden="true" className={styles.mobileHeaderSpacer} />
+            )}
+          </header>
         ) : null}
 
         {isWide ? (
@@ -537,7 +646,7 @@ export function MainLayout() {
                     ) : (
                       <FloatingActionRegistrationContext.Provider value={enabledFloatingActionRegistration}>
                         <div className={styles.routePanel} data-role="current" key={location.pathname}>
-                          {renderRoutePanelContent(selectedKey, currentOutlet)}
+                          {isMobileSettingsRoute ? null : renderRoutePanelContent(selectedKey, currentOutlet)}
                         </div>
                       </FloatingActionRegistrationContext.Provider>
                     )}
@@ -552,6 +661,7 @@ export function MainLayout() {
           <nav
             aria-label="主导航"
             className={styles.bottomNav}
+            data-dimmed={isMobileSettingsOpen}
             style={
               {
                 '--bottom-nav-active-index': activeBottomNavIndex,
@@ -583,6 +693,35 @@ export function MainLayout() {
               </div>
             </div>
           </nav>
+        ) : null}
+
+        {!isWide && isMobileSettingsPanelMounted ? (
+          <div
+            aria-hidden={!isMobileSettingsPanelVisible}
+            className={styles.mobileSettingsOverlay}
+            data-visible={isMobileSettingsPanelVisible}
+          >
+            <button
+              aria-label="关闭设置面板"
+              className={styles.mobileSettingsBackdrop}
+              onClick={closeMobileSettingsPanel}
+              type="button"
+            />
+            <aside className={styles.mobileSettingsPanel} data-visible={isMobileSettingsPanelVisible}>
+              <div className={styles.mobileSettingsPanelScroll}>
+                {renderSettingsAuthBar()}
+                <Suspense
+                  fallback={
+                    <div className={styles.mobileSettingsLoading}>
+                      <Spin />
+                    </div>
+                  }
+                >
+                  <MobileSettingsPage />
+                </Suspense>
+              </div>
+            </aside>
+          </div>
         ) : null}
 
         <div

@@ -8,6 +8,7 @@ import type { CostCalculationFormInput } from '../types';
 export const financeQueryKeys = {
   all: ['finance'] as const,
   calculations: () => [...financeQueryKeys.all, 'calculations'] as const,
+  expenses: () => [...financeQueryKeys.all, 'expenses'] as const,
 };
 
 export function useCostCalculations(enabled = true) {

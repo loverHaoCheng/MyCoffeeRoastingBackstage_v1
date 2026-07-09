@@ -45,3 +45,31 @@ interface PocketBaseConnectionSettings {
 ```
 
 该配置当前由前端设置页维护：`greenBean` 用于主库 PocketBase，`roastedBean` 仅用于熟豆镜像写入与设置页探活。
+
+## 财务模块台账契约
+
+当前 `#/finance` 页面分两类数据源：
+
+- `cost_calculations`：继续走 PocketBase 主库同步，用于直接成本汇总。
+- `finance_expense_records`：走 PocketBase 主库同步，用于手工经营费用台账。
+- `已实现收入`：不再走手工台账集合，而是根据烘焙历史中去向为“销售”的记录实时聚合。
+
+相关前端表单输入契约：
+
+```ts
+interface FinanceExpenseFormInput {
+  title: string;
+  expenseDate: string;
+  amount: number;
+  category:
+    | 'beanPurchase'
+    | 'packaging'
+    | 'shipping'
+    | 'custom'
+    | 'depreciation'
+    | 'other';
+  customCategoryLabel?: string | null;
+  status: 'paid' | 'pending';
+  notes?: string | null;
+}
+```

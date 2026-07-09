@@ -11,7 +11,6 @@ import type {
   CostCalculationRecord,
   FinanceDataSource,
 } from '../types';
-import { localCostCalculationService } from './localCostCalculation.service';
 
 interface FinanceRepository {
   listCalculations(): Promise<ApiResponse<CostCalculationRecord[]>>;
@@ -53,6 +52,7 @@ interface RemoteCostCalculationRecord {
 }
 
 const COST_CALCULATIONS_TABLE = 'cost_calculations';
+let currentCostCalculationRecords: CostCalculationRecord[] = [];
 
 const ok = <T,>(data: T): ApiResponse<T> => ({
   code: 0,
@@ -73,44 +73,6 @@ const getCalculationSyncSnapshot = (records: CostCalculationRecord[]): string =>
       .map((record) => `${record.id}:${record.updatedAt}`),
   );
 };
-
-const mapFormInputToLocalRecord = (
-  input: CostCalculationFormInput,
-  dataSource: FinanceDataSource,
-): CostCalculationRecord => {
-  const metrics = calculateCostMetrics(input);
-  const timestamp = new Date().toISOString();
-  const resolvedSaleUnitPrice = input.saleUnitPrice > 0 ? input.saleUnitPrice : metrics.suggestedSalePrice;
-
-  return {
-    ...input,
-    ...metrics,
-    calculationName: input.calculationName.trim(),
-    createdAt: timestamp,
-    dataSource,
-    id: localCostCalculationService.createLocalId(),
-    notes: normalizeText(input.notes),
-    saleUnitPrice: resolvedSaleUnitPrice,
-    updatedAt: timestamp,
-  };
-};
-
-const mapCostCalculationRecordToFormInput = (record: CostCalculationRecord): CostCalculationFormInput => ({
-  beanId: record.beanId,
-  beanName: record.beanName,
-  calculationName: record.calculationName,
-  dehydrationRate: record.dehydrationRate,
-  energyCost: record.energyCost,
-  laborCost: record.laborCost,
-  notes: record.notes,
-  otherCost: record.otherCost,
-  packagingCost: record.packagingCost,
-  purchaseCostPerKg: record.purchaseCostPerKg,
-  roastInputWeightGrams: record.roastInputWeightGrams,
-  saleUnitPrice: record.saleUnitPrice,
-  saleUnitWeightGrams: record.saleUnitWeightGrams,
-  targetProfitRate: record.targetProfitRate,
-});
 
 export const calculateCostMetrics = (input: CostCalculationFormInput): CostCalculationMetrics => {
   const safeSaleUnitWeightGrams = input.saleUnitWeightGrams > 0 ? input.saleUnitWeightGrams : 1;
@@ -172,6 +134,14 @@ const mapRemoteRecordToCostCalculation = (record: RemoteCostCalculationRecord): 
   totalBatchCost: record.total_batch_cost,
   updatedAt: record.updated_at,
 });
+
+const setCurrentCostCalculationRecords = (records: CostCalculationRecord[]): CostCalculationRecord[] => {
+  currentCostCalculationRecords = [...records].sort((left, right) => {
+    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  });
+
+  return currentCostCalculationRecords;
+};
 
 const resolveFinanceConnection = ():
   | FinanceConnectionCandidate
@@ -268,18 +238,20 @@ const createRemoteFinanceRepository = (
 });
 
 export const financeService = {
+  clear(): void {
+    currentCostCalculationRecords = [];
+  },
   getBootstrappedCalculations(): CostCalculationRecord[] {
-    return localCostCalculationService.list();
+    return currentCostCalculationRecords;
   },
   getResolvedDataSource(): FinanceDataSource | null {
     return resolveFinanceConnection()?.dataSource ?? null;
   },
   async listCalculations(): Promise<ApiResponse<CostCalculationRecord[]>> {
-    const cachedRecords = localCostCalculationService.list();
     const candidates = resolveFinanceConnectionCandidates();
 
     if (candidates.length === 0) {
-      return ok(cachedRecords);
+      throw new AppError('PocketBase 连接配置缺失。', { code: 'CONFIG' });
     }
 
     let lastError: unknown = null;
@@ -287,7 +259,7 @@ export const financeService = {
     for (const candidate of candidates) {
       try {
         const response = await createRemoteFinanceRepository(candidate.client, candidate.dataSource).listCalculations();
-        localCostCalculationService.replace(response.data);
+        setCurrentCostCalculationRecords(response.data);
         return response;
       } catch (error) {
         lastError = error;
@@ -303,45 +275,44 @@ export const financeService = {
       }
     }
 
-    if (cachedRecords.length > 0) {
-      logger.warn('finance list failed, falling back to local cache', { error: lastError });
-      return ok(cachedRecords);
-    }
-
     throw lastError;
   },
   async saveCalculation(input: CostCalculationFormInput): Promise<ApiResponse<CostCalculationRecord>> {
     const candidates = resolveFinanceConnectionCandidates();
 
-    if (candidates.length > 0 && (typeof navigator === 'undefined' || navigator.onLine)) {
-      let lastError: unknown = null;
-
-      for (const candidate of candidates) {
-        try {
-          const response = await createRemoteFinanceRepository(candidate.client, candidate.dataSource).saveCalculation(input);
-          localCostCalculationService.upsert(response.data);
-          return response;
-        } catch (error) {
-          lastError = error;
-
-          if (!isMissingRemoteResourceError(error)) {
-            break;
-          }
-
-          logger.warn('finance save missing remote table, trying fallback source', {
-            dataSource: candidate.dataSource,
-            error,
-          });
-        }
-      }
-
-      logger.warn('finance save failed, falling back to local cache', { error: lastError });
+    if (candidates.length === 0) {
+      throw new AppError('PocketBase 连接配置缺失。', { code: 'CONFIG' });
     }
 
-    const localRecord = mapFormInputToLocalRecord(input, candidates[0]?.dataSource ?? 'greenBean');
-    localCostCalculationService.upsert(localRecord);
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      throw new AppError('当前网络不可用，无法保存成本核算。', { code: 'NETWORK' });
+    }
 
-    return ok(localRecord);
+    let lastError: unknown = null;
+
+    for (const candidate of candidates) {
+      try {
+        const response = await createRemoteFinanceRepository(candidate.client, candidate.dataSource).saveCalculation(input);
+        setCurrentCostCalculationRecords([
+          response.data,
+          ...currentCostCalculationRecords.filter((record) => record.id !== response.data.id),
+        ]);
+        return response;
+      } catch (error) {
+        lastError = error;
+
+        if (!isMissingRemoteResourceError(error)) {
+          break;
+        }
+
+        logger.warn('finance save missing remote table, trying fallback source', {
+          dataSource: candidate.dataSource,
+          error,
+        });
+      }
+    }
+
+    throw lastError;
   },
   async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -354,35 +325,22 @@ export const financeService = {
       return { downloaded: 0, uploaded: 0 };
     }
 
-    const localRecordsBeforeSync = localCostCalculationService.list();
+    const localRecordsBeforeSync = currentCostCalculationRecords;
     let lastError: unknown = null;
 
     for (const candidate of candidates) {
       try {
         const repository = createRemoteFinanceRepository(candidate.client, candidate.dataSource);
-        const remoteBeforeSync = await repository.listCalculations();
-        const remoteIds = new Set(remoteBeforeSync.data.map((record) => record.id));
-        let uploaded = 0;
-
-        for (const record of localRecordsBeforeSync) {
-          if (remoteIds.has(record.id)) {
-            continue;
-          }
-
-          await repository.saveCalculation(mapCostCalculationRecordToFormInput(record));
-          uploaded += 1;
-        }
-
         const remoteAfterSync = await repository.listCalculations();
         const nextRecords = remoteAfterSync.data;
         const beforeSignature = getCalculationSyncSnapshot(localRecordsBeforeSync);
         const afterSignature = getCalculationSyncSnapshot(nextRecords);
 
-        localCostCalculationService.replace(nextRecords);
+        setCurrentCostCalculationRecords(nextRecords);
 
         return {
           downloaded: beforeSignature === afterSignature ? 0 : nextRecords.length,
-          uploaded,
+          uploaded: 0,
         };
       } catch (error) {
         lastError = error;

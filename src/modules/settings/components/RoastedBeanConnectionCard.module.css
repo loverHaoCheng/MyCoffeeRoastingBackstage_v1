@@ -2,13 +2,10 @@
   display: grid;
   gap: 0;
   padding: 20px;
-  border: 1px solid var(--app-border);
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
-  box-shadow:
-    0 8px 18px -14px rgb(15 23 42 / 10%),
-    0 24px 54px -36px rgb(15 23 42 / 14%);
+  border: 1px solid var(--app-border-soft);
+  border-radius: 15px;
+  background: var(--app-bg);
+  box-shadow: none;
 }
 
 .header {
@@ -157,7 +154,7 @@
 @media (max-width: 767px) {
   .card {
     padding: 18px;
-    border-radius: 22px;
+    border-radius: 15px;
   }
 
   .header {

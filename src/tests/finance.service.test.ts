@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { financeService } from '@/modules/finance/services';
-import { localCostCalculationService } from '@/modules/finance/services/localCostCalculation.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { createDefaultPocketBaseConnectionSettings } from '@/modules/settings/types';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 
 describe('financeService', () => {
   beforeEach(() => {
-    localCostCalculationService.clear();
+    financeService.clear();
     pocketBaseConnectionSettingsService.clear();
     pocketBaseConnectionSettingsService.save(createDefaultPocketBaseConnectionSettings());
     vi.restoreAllMocks();

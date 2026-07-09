@@ -37,6 +37,7 @@ export const greenBeanCreateFormSchema = z
     originCountry: z.string().trim().max(80, '产地国家长度不能超过 80 个字符').nullable().optional(),
     originRegion: z.string().trim().max(80, '产区长度不能超过 80 个字符').nullable().optional(),
     processMethod: z.string().trim().min(1, '请输入处理法').max(80, '处理法长度不能超过 80 个字符'),
+    purchaseDate: z.string().trim().min(1, '请选择采购日期'),
     purchasedTotalPrice: z.number().positive('请输入有效的购买总价'),
     purchasedWeightGrams: z.number().int().positive('请输入有效的购买重量'),
     remainingWeightGrams: z.number().int().nonnegative('请输入有效的剩余重量'),

@@ -16,3 +16,5 @@ export const costCalculationFormSchema = z.object({
   targetProfitRate: z.number().min(0, '目标利润率不能为负数').max(1000, '目标利润率过高'),
   notes: z.string().trim().max(2000, '备注长度不能超过 2000 个字符').nullable().optional(),
 });
+
+export { financeExpenseFormSchema, financeIncomeFormSchema } from './financeLedger.schema';

@@ -67,7 +67,6 @@ const beanCardEditFieldPathMap: Record<string, FieldPath<GreenBeanFormInput> | u
   altitudeMetersMin: 'altitudeMetersMin',
   agingDays: 'agingDays',
   code: 'code',
-  cost: 'purchasedTotalPrice',
   costTemplateId: 'costTemplateId',
   defaultRoastInput: 'defaultRoastInputGrams',
   defaultSaleUnitPrice: 'defaultSaleUnitPrice',

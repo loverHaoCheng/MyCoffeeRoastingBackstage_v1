@@ -20,6 +20,7 @@
 - 前端已经会自动补 `created_at` 和 `updated_at` 字段。
 - 当前代码把 `roast_plan_overview` 视为 `roast_profiles` 的兼容别名。
 - 当前代码把 `roast_batch_overview` 视为 `roast_batches` 的兼容别名。
+- 若继续保留 `roast_batch_overview` 视图，请确保它至少暴露 `sales_mode` 字段；否则前端会自动回退到 `roast_batches` 读取真实去向数据。
 
 ## 认证集合
 
@@ -258,6 +259,30 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 
 - `owner,bean_id,updated_at`
 
+### `finance_expense_records`
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `title` | text | 支出标题 |
+| `expense_date` | date | 支出日期 |
+| `category` | select | `beanPurchase / packaging / shipping / custom / depreciation / other` |
+| `custom_category_label` | text | 自定义类别名称 |
+| `amount` | number | 支出金额 |
+| `status` | select | `paid / pending` |
+| `notes` | text | 备注 |
+| `source` | select | `auto-bean-purchase / manual` |
+| `source_entity_id` | text | 来源实体 ID |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+建议索引：
+
+- `owner,updated_at`
+- `owner,expense_date`
+
 ### `coffee_beans`
 
 字段建议：
@@ -277,7 +302,22 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 1. 先建 `users` auth collection。
 2. 再建 `green_beans`、`green_bean_purchase_batches`、`bean_sale_specs`、`app_settings`。
 3. 接着建 `roast_profiles`、`roast_batches`、`roast_records`。
-4. 最后建 `cost_calculations` 和 `coffee_beans`。
+4. 最后建 `cost_calculations`、`finance_expense_records` 和 `coffee_beans`。
+
+## 推荐初始化方式
+
+优先推荐：
+
+1. 打开 PocketBase Dashboard。
+2. 进入 `Collections`。
+3. 使用 `Import collections` 导入 [docs/pocketbase-collections.import.json](/Users/keepwatchthemoon/个人/gitProject/MyCoffeeRoastingBackstage_v1/docs/pocketbase-collections.import.json)。
+4. 确认新增了 `finance_expense_records` 集合。
+
+说明：
+
+- 当前项目已经按当前 PocketBase Dashboard 导出格式维护了可直接导入的文件。
+- 现有导入 JSON 中如果仍包含历史 `finance_income_records` 集合，可保留但前端已不再使用；当前财务页只依赖 `finance_expense_records`。
+- 相比直接改底层 SQLite 系统表，这种方式更安全，也更符合 PocketBase 的集合管理方式。
 
 ## 腾讯云部署建议
 

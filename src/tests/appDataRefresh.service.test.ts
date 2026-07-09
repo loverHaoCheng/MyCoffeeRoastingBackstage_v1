@@ -6,7 +6,7 @@ import { beanQueryKeys } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services/bean.service';
 import { beanSyncService } from '@/modules/bean/services/beanSync.service';
 import { financeQueryKeys } from '@/modules/finance/hooks';
-import { financeService } from '@/modules/finance/services';
+import { financeLedgerService, financeService } from '@/modules/finance/services';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastPlanQueryKeys } from '@/modules/roast/hooks/useRoastPlans';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
@@ -96,6 +96,7 @@ describe('appDataRefresh.service', () => {
     vi.spyOn(roastPlanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 0, uploaded: 0 });
     vi.spyOn(roastBatchService, 'syncLocalAndRemote').mockRejectedValue(new Error('熟豆库表结构不匹配'));
     vi.spyOn(financeService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 0, uploaded: 0 });
+    vi.spyOn(financeLedgerService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 0, uploaded: 0 });
     vi.spyOn(costTemplateSyncService, 'syncFromRemoteSafely').mockResolvedValue({
       defaultTemplateId: null,
       templates: [],

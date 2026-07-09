@@ -73,6 +73,7 @@ const updateInput: GreenBeanUpdateInput = {
   originCountry: '哥伦比亚',
   originRegion: '慧兰',
   processMethod: '日晒',
+  purchaseDate: '2026-07-02',
   purchasedTotalPrice: 600,
   purchasedWeightGrams: 6000,
   remainingWeightGrams: 6000,

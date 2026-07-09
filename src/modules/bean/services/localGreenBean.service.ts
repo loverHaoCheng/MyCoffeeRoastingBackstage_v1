@@ -46,6 +46,7 @@ const isLocalGreenBeanRecord = (value: unknown): value is LocalGreenBeanRecord =
     record.flavorTags.every((tag) => typeof tag === 'string') &&
     typeof record.variety === 'string' &&
     typeof record.processMethod === 'string' &&
+    typeof record.purchaseDate === 'string' &&
     isFiniteNumber(record.defaultRoastInputGrams) &&
     isFiniteNumber(record.purchasedWeightGrams) &&
     (record.remainingWeightGrams == null || isFiniteNumber(record.remainingWeightGrams)) &&
@@ -164,6 +165,7 @@ export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bea
   originRegion: record.originRegion ?? null,
   process: record.processMethod,
   grade: normalizeText(record.grade) ?? '',
+  purchaseDate: record.purchaseDate,
   purchasedTotalPrice: record.purchasedTotalPrice,
   purchasedWeightGrams: record.purchasedWeightGrams,
   remainingWeightGrams: record.remainingWeightGrams,
@@ -199,6 +201,7 @@ export const localGreenBeanService = {
       originCountry: normalizeText(input.originCountry),
       originRegion: normalizeText(input.originRegion),
       processMethod: input.processMethod.trim(),
+      purchaseDate: input.purchaseDate,
       remainingWeightGrams: normalizeRemainingWeightGrams(
         input.purchasedWeightGrams,
         input.remainingWeightGrams,
@@ -325,6 +328,7 @@ export const localGreenBeanService = {
       originCountry: normalizeText(input.originCountry),
       originRegion: normalizeText(input.originRegion),
       processMethod: input.processMethod.trim(),
+      purchaseDate: input.purchaseDate,
       supplierName: normalizeText(input.supplierName),
       tastingEndDays: Math.max(1, Math.round(input.tastingEndDays)),
       variety: input.variety.trim(),

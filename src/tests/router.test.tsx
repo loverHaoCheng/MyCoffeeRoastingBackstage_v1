@@ -32,7 +32,8 @@ describe('router', () => {
     expect(await screen.findByLabelText('生豆库存概览')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'dashboard 工作台' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'database 生豆库存' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'setting 设置' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'setting 设置' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '打开设置面板' })).toBeInTheDocument();
   });
 
   it('opens the settings route', async () => {
@@ -60,6 +61,34 @@ describe('router', () => {
     expect(await screen.findByRole('heading', { name: '界面外观' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '当前数据同步状态' })).not.toBeInTheDocument();
     expect(screen.queryByText('同步状态')).not.toBeInTheDocument();
+  });
+
+  it('opens the finance route', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/finance'],
+    });
+
+    render(
+      <ConfigProvider>
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </AntApp>
+      </ConfigProvider>,
+    );
+
+    expect(await screen.findByLabelText('财务时间筛选')).toBeInTheDocument();
+    expect(screen.getByText('全部花费')).toBeInTheDocument();
+    expect(screen.getByText('已实现收入')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '成本模板' })).toBeInTheDocument();
   });
 
   it('opens the forgot password route', async () => {

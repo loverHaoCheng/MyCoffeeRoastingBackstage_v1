@@ -1,0 +1,288 @@
+.panel {
+  width: 100%;
+  box-sizing: border-box;
+  padding-inline: 4px;
+  display: grid;
+  gap: 0;
+}
+
+.panel[data-collapsed='false'] {
+  gap: 14px;
+}
+
+.header {
+  padding: 0 18px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.titleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  min-width: 0;
+}
+
+.titleGroup h2 {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.collapse {
+  display: block;
+}
+
+.collapseInner {
+  display: grid;
+  gap: 14px;
+}
+
+.collapseFooter {
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+}
+
+.collapseToggle:global(.ant-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.collapseToggle:global(.ant-btn .anticon) {
+  font-size: 10px;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.collapseToggle:global(.ant-btn[aria-expanded='true'] .anticon) {
+  transform: rotate(180deg);
+}
+
+.collapseToggle:global(.ant-btn:hover),
+.collapseToggle:global(.ant-btn:focus-visible),
+.collapseToggle:global(.ant-btn:active) {
+  color: var(--app-text);
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.actionButtonFull:global(.ant-btn) {
+  width: 100%;
+}
+
+.emptyState {
+  padding: 18px;
+  border: 1px dashed var(--app-border-soft);
+  border-radius: 20px;
+  background: var(--app-bg-soft);
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.templateCard {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 15px;
+  background: linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.templateCard[data-active='true'] {
+  border-color: rgb(29 29 31 / 18%);
+  box-shadow:
+    0 8px 18px -14px rgb(15 23 42 / 12%),
+    0 24px 44px -32px rgb(15 23 42 / 16%);
+  transform: translateY(-1px);
+}
+
+.templateCardHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.templateTitleBlock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.templateTitleBlock strong {
+  color: var(--app-text);
+  font-size: 16px;
+}
+
+.templateMeta {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.templateStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.templateStats span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--app-muted-surface);
+  color: var(--app-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.templateNotes {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.templateActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.templateDrawer:global(.ant-drawer) :global(.ant-drawer-content) {
+  border-radius: 0;
+}
+
+.templateDrawer[data-placement='bottom'] :global(.ant-drawer-content) {
+  border-radius: 20px 20px 0 0;
+}
+
+.templateDrawer:global(.ant-drawer) :global(.ant-drawer-header) {
+  padding: 18px 24px 10px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.templateDrawer:global(.ant-drawer) :global(.ant-drawer-title) {
+  color: var(--app-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.templateDrawer:global(.ant-drawer) :global(.ant-drawer-body) {
+  padding: 0 24px 24px;
+  overflow-x: hidden;
+}
+
+.templateDrawerPanel {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.templateEditorHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.templateEditorHint {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldCompact {
+  align-content: start;
+}
+
+.field :global(.ant-input),
+.field :global(.ant-input-number),
+.field :global(.ant-input-affix-wrapper) {
+  width: 100%;
+}
+
+.field label {
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.helpText {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 767px) {
+  .panel[data-collapsed='false'] {
+    gap: 12px;
+  }
+
+  .titleGroup h2 {
+    font-size: 16px;
+  }
+
+  .templateGrid,
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldCompact :global(.ant-input-number),
+  .fieldCompact :global(.ant-input-number-affix-wrapper) {
+    width: max(50%, 10rem);
+    max-width: 100%;
+  }
+
+  .templateDrawer:global(.ant-drawer) :global(.ant-drawer-header) {
+    padding: 16px 16px 8px;
+  }
+
+  .templateDrawer:global(.ant-drawer) :global(.ant-drawer-body) {
+    padding: 0 16px 18px;
+  }
+}

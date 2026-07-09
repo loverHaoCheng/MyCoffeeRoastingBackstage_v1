@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
 import { useRoastPlans } from '@/modules/roast/hooks';
-import type { RoastBatchCreateInput } from '@/modules/roast/types/roastBatch';
+import type { RoastBatchCreateInput, RoastBatchSalesMode } from '@/modules/roast/types/roastBatch';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 
@@ -36,6 +36,23 @@ interface RoastBatchCreatorProps {
   onCreate: (input: RoastBatchCreateInput) => void;
 }
 
+interface RoastBatchCreatorFormState {
+  roastDate: string;
+  greenBeanId: string;
+  greenBeanName: string;
+  roastedBeanName: string;
+  salesMode: RoastBatchSalesMode;
+  roastPlanId: string;
+  roastPlanName: string;
+  inputWeightGrams: number;
+  outputWeightGrams: number;
+  roastLevel: string;
+  developmentRatio: number | undefined;
+  firstCrackTime: number | undefined;
+  totalRoastTime: number | undefined;
+  notes: string;
+}
+
 export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps) {
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
@@ -43,11 +60,12 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
   const roastLevelManualOverrideRef = useRef(false);
 
   // 表单状态
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<RoastBatchCreatorFormState>({
     roastDate: dayjs().second(0).millisecond(0).toISOString(),
     greenBeanId: '',
     greenBeanName: '',
     roastedBeanName: '',
+    salesMode: 'sale',
     roastPlanId: '',
     roastPlanName: '',
     inputWeightGrams: 200,
@@ -115,6 +133,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
       greenBeanId: form.greenBeanId,
       greenBeanName: form.greenBeanName,
       roastedBeanName: form.roastedBeanName.trim() || form.greenBeanName,
+      salesMode: form.salesMode,
       roastPlanId: form.roastPlanId === '' ? undefined : form.roastPlanId,
       roastPlanName: form.roastPlanName === '' ? undefined : form.roastPlanName,
       inputWeightGrams: form.inputWeightGrams,
@@ -196,6 +215,21 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
             setForm((f) => ({ ...f, roastedBeanName: event.target.value }));
           }}
           placeholder={form.greenBeanName === '' ? '未填写时默认继承生豆名称' : form.greenBeanName}
+        />
+      </section>
+
+      <section className={styles.section} data-field-path="salesMode">
+        <h4>去向</h4>
+        <Select
+          value={form.salesMode}
+          onChange={(value: 'sale' | 'selfUse') => {
+            setForm((current) => ({ ...current, salesMode: value }));
+          }}
+          options={[
+            { label: '销售', value: 'sale' },
+            { label: '自留', value: 'selfUse' },
+          ]}
+          style={{ width: '100%' }}
         />
       </section>
 

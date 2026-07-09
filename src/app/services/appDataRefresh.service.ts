@@ -4,7 +4,7 @@ import { beanEditableDetailQueryKeys, beanQueryKeys } from '@/modules/bean/hooks
 import { beanService } from '@/modules/bean/services/bean.service';
 import { beanSyncService } from '@/modules/bean/services/beanSync.service';
 import { financeQueryKeys } from '@/modules/finance/hooks';
-import { financeService } from '@/modules/finance/services';
+import { financeLedgerService, financeService } from '@/modules/finance/services';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastPlanQueryKeys } from '@/modules/roast/hooks/useRoastPlans';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
@@ -52,6 +52,10 @@ const getScopeFromPathname = (pathname: string): AppRefreshScope => {
 
   if (pathname.startsWith('/production')) {
     return 'production';
+  }
+
+  if (pathname.startsWith('/finance')) {
+    return 'finance';
   }
 
   if (pathname.startsWith('/settings')) {
@@ -137,6 +141,7 @@ const getSyncJobsForScope = (scope: AppRefreshScope): NamedSyncJob[] => {
       { label: '烘焙计划', promise: roastPlanService.syncLocalAndRemote() },
       { label: '烘焙记录', promise: roastBatchService.syncLocalAndRemote() },
       { label: '成本核算', promise: financeService.syncLocalAndRemote() },
+      { label: '财务台账', promise: financeLedgerService.syncLocalAndRemote() },
     ];
   }
 
@@ -148,6 +153,14 @@ const getSyncJobsForScope = (scope: AppRefreshScope): NamedSyncJob[] => {
     return [
       { label: '生豆', promise: beanService.syncLocalAndRemote() },
       { label: '烘焙记录', promise: roastBatchService.syncLocalAndRemote() },
+    ];
+  }
+
+  if (scope === 'finance') {
+    return [
+      { label: '生豆', promise: beanService.syncLocalAndRemote() },
+      { label: '成本核算', promise: financeService.syncLocalAndRemote() },
+      { label: '财务台账', promise: financeLedgerService.syncLocalAndRemote() },
     ];
   }
 
@@ -167,6 +180,10 @@ const hydrateAppQueryCaches = (queryClient: QueryClient, scope: AppRefreshScope)
     queryClient.setQueryData(beanQueryKeys.list(), beanService.getBootstrappedBeans());
   }
 
+  if (scope === 'finance') {
+    queryClient.setQueryData(beanQueryKeys.list(), beanService.getBootstrappedBeans());
+  }
+
   if (scope === 'all' || scope === 'roast') {
     queryClient.setQueryData(roastPlanQueryKeys.list(), roastPlanService.getBootstrappedPlans());
   }
@@ -175,8 +192,9 @@ const hydrateAppQueryCaches = (queryClient: QueryClient, scope: AppRefreshScope)
     queryClient.setQueryData(roastBatchQueryKeys.list(), roastBatchService.getBootstrappedBatches());
   }
 
-  if (scope === 'all') {
+  if (scope === 'all' || scope === 'finance') {
     queryClient.setQueryData(financeQueryKeys.calculations(), financeService.getBootstrappedCalculations());
+    queryClient.setQueryData(financeQueryKeys.expenses(), financeLedgerService.getBootstrappedExpenseRecords());
   }
 
   if (scope === 'all' || scope === 'bean') {

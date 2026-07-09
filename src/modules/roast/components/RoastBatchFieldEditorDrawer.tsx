@@ -23,6 +23,7 @@ export type RoastBatchEditableFieldPath =
   | 'roastLevel'
   | 'roastPlanId'
   | 'roastedBeanName'
+  | 'salesMode'
   | 'status'
   | 'totalRoastTime';
 
@@ -56,6 +57,7 @@ const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | nu
     roastPlanId: batch.roastPlanId,
     roastPlanName: batch.roastPlanName,
     roastedBeanName: batch.roastedBeanName,
+    salesMode: batch.salesMode,
     status: batch.status,
     totalRoastTime: batch.totalRoastTime,
   };
@@ -109,6 +111,8 @@ export function RoastBatchFieldEditorDrawer({
         return '烘焙计划';
       case 'roastedBeanName':
         return '熟豆名称';
+      case 'salesMode':
+        return '去向';
       case 'status':
         return '状态';
       case 'totalRoastTime':
@@ -219,6 +223,7 @@ export function RoastBatchFieldEditorDrawer({
       roastPlanId: draft.roastPlanId,
       roastPlanName: draft.roastPlanName,
       roastedBeanName: draft.roastedBeanName,
+      salesMode: draft.salesMode,
       status: draft.status,
       totalRoastTime: draft.totalRoastTime,
     };
@@ -268,6 +273,19 @@ export function RoastBatchFieldEditorDrawer({
             }}
             placeholder="未填写时默认继承生豆名称"
             value={draft.roastedBeanName ?? ''}
+          />
+        );
+      case 'salesMode':
+        return (
+          <Select
+            onChange={(value) => {
+              updateDraft('salesMode', value);
+            }}
+            options={[
+              { label: '销售', value: 'sale' },
+              { label: '自留', value: 'selfUse' },
+            ]}
+            value={draft.salesMode ?? 'sale'}
           />
         );
       case 'roastPlanId':

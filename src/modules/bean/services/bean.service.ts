@@ -40,6 +40,7 @@ interface GreenBeanTableUpdateInput {
 }
 
 interface EditablePurchaseBatchInput {
+  purchase_date: string;
   purchased_total_price: number;
   purchased_weight_grams: number;
   remaining_weight_grams: number;
@@ -88,6 +89,7 @@ interface RemoteGreenBeanInventoryRecord {
   flavor_tags?: null | string;
   grade: null | string;
   harvest_season: string;
+  latest_purchase_date?: null | string;
   density_g_per_l: null | number;
   mill_name: null | string;
   moisture_percent: null | number;
@@ -331,6 +333,7 @@ export const mapRemoteGreenBeanInventoryRecordToBean = (
   originRegion: record.origin_region,
   process: record.process_method,
   grade: normalizeText(record.grade) ?? '',
+  purchaseDate: record.latest_purchase_date ?? record.created_at.slice(0, 10),
   purchasedTotalPrice: record.total_purchased_price,
   purchasedWeightGrams: record.total_purchased_weight_grams,
   remainingWeightGrams: record.total_remaining_weight_grams,
@@ -370,6 +373,7 @@ const mapRemoteEditableBeanToFormInput = (
   originCountry: bean.origin_country,
   originRegion: bean.origin_region,
   processMethod: bean.process_method,
+  purchaseDate: latestPurchaseBatch?.received_at ?? bean.created_at.slice(0, 10),
   purchaseBatchId: latestPurchaseBatch?.id ?? null,
   purchasedTotalPrice: latestPurchaseBatch?.purchased_total_price ?? 0,
   purchasedWeightGrams: latestPurchaseBatch?.purchased_weight_grams ?? 0,
@@ -550,6 +554,7 @@ const buildInventoryOverviewRecordFromTables = (
     flavor_tags: bean.flavor_tags ?? null,
     grade: savedGrade?.grade ?? bean.grade,
     harvest_season: bean.harvest_season ?? '',
+    latest_purchase_date: latestPurchaseBatch?.received_at ?? null,
     latest_supplier_name: latestPurchaseBatch?.supplier_name ?? null,
     origin_area: bean.origin_area,
     origin_country: bean.origin_country ?? '',
@@ -631,6 +636,7 @@ export class MockBeanRepository implements BeanRepository {
         originCountry: bean.origin.split(' · ')[0] ?? '',
         originRegion: bean.origin.split(' · ')[1] ?? '',
         processMethod: bean.process,
+        purchaseDate: bean.purchaseDate ?? bean.createdAt.slice(0, 10),
         purchasedTotalPrice: Math.round(bean.costPerKg * bean.stockKg),
         purchasedWeightGrams: Math.round(bean.stockKg * 1000),
         remainingWeightGrams: Math.round(bean.stockKg * 1000),
@@ -678,6 +684,10 @@ export class MockBeanRepository implements BeanRepository {
       name: input.displayName.trim(),
       origin: [input.originCountry, input.originRegion, input.originArea].filter(Boolean).join(' · '),
       process: input.processMethod.trim(),
+      purchaseDate: input.purchaseDate,
+      purchasedTotalPrice: input.purchasedTotalPrice,
+      purchasedWeightGrams: input.purchasedWeightGrams,
+      remainingWeightGrams: input.remainingWeightGrams,
       grade: normalizeText(input.grade) ?? '',
       stockKg: Number((input.remainingWeightGrams / 1000).toFixed(1)),
       costPerKg:
@@ -1210,6 +1220,7 @@ export function createGreenBeanInventoryRepository(
     input: GreenBeanUpdateInput,
   ): Promise<void> => {
     const payload: EditablePurchaseBatchInput = {
+      purchase_date: input.purchaseDate,
       purchased_total_price: input.purchasedTotalPrice,
       purchased_weight_grams: input.purchasedWeightGrams,
       remaining_weight_grams: normalizeRemainingWeightGrams(input),
@@ -1227,7 +1238,7 @@ export function createGreenBeanInventoryRepository(
         green_bean_id: beanId,
         purchased_total_price: payload.purchased_total_price,
         purchased_weight_grams: payload.purchased_weight_grams,
-        received_at: new Date().toISOString().slice(0, 10),
+        received_at: payload.purchase_date,
         remaining_weight_grams: payload.remaining_weight_grams,
         supplier_name: payload.supplier_name ?? null,
       });
@@ -1571,6 +1582,7 @@ export const beanService = {
         originCountry: localRecord.originCountry ?? '',
         originRegion: localRecord.originRegion ?? '',
         processMethod: localRecord.processMethod,
+        purchaseDate: localRecord.purchaseDate,
         purchasedTotalPrice: localRecord.purchasedTotalPrice,
         purchasedWeightGrams: localRecord.purchasedWeightGrams,
         remainingWeightGrams: localRecord.remainingWeightGrams,

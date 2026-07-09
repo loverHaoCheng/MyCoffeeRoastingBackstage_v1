@@ -24,10 +24,7 @@ const sortBatchesByRoastDate = (batches: RoastBatchRecord[]): RoastBatchRecord[]
 };
 
 export function useRoastBatches() {
-  const initialBatches = roastBatchService.getBootstrappedBatches();
-
   return useQuery({
-    initialData: initialBatches.length > 0 ? initialBatches : undefined,
     queryKey: roastBatchQueryKeys.list(),
     queryFn: async () => {
       const response = await roastBatchService.listBatches();
@@ -66,6 +63,12 @@ export function useUpdateRoastBatch() {
       await queryClient.cancelQueries({ queryKey: roastBatchQueryKeys.list() });
 
       const previousBatches = queryClient.getQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list());
+      const isSalesModeUpdate = variables.input.salesMode !== undefined;
+
+      if (isSalesModeUpdate) {
+        return { previousBatches };
+      }
+
       const currentBatch = previousBatches?.find((batch) => batch.id === variables.batchId);
 
       if (currentBatch) {
@@ -74,6 +77,7 @@ export function useUpdateRoastBatch() {
           ...variables.input,
           roastedBeanName:
             variables.input.roastedBeanName ?? currentBatch.roastedBeanName ?? currentBatch.greenBeanName,
+          salesMode: variables.input.salesMode ?? currentBatch.salesMode,
           status: variables.input.status ?? currentBatch.status,
           updatedAt: new Date().toISOString(),
         };
@@ -96,6 +100,7 @@ export function useUpdateRoastBatch() {
       queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), (current = []) =>
         sortBatchesByRoastDate(current.map((batch) => (batch.id === variables.batchId ? nextBatch : batch))),
       );
+      void queryClient.invalidateQueries({ queryKey: roastBatchQueryKeys.list() });
     },
   });
 }

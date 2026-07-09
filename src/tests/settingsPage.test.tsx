@@ -57,28 +57,6 @@ vi.mock('@/modules/settings/services/pocketBaseConnectionProbe.service', () => (
   },
 }));
 
-const expandSection = async (headingName: string): Promise<HTMLElement> => {
-  const section = screen.getByRole('heading', { name: headingName }).closest('section');
-
-  expect(section).not.toBeNull();
-
-  if (section == null) {
-    throw new Error(`Section not found for heading: ${headingName}`);
-  }
-
-  const resolvedSection = section;
-  const expandButton = within(resolvedSection).queryByRole('button', { name: '展开' });
-
-  if (expandButton) {
-    fireEvent.click(expandButton);
-    await waitFor(() => {
-      expect(resolvedSection.getAttribute('data-collapsed')).toBe('false');
-    });
-  }
-
-  return resolvedSection;
-};
-
 const expandRoastedBeanConnectionCard = async (): Promise<HTMLElement> => {
   const card = screen.getByRole('heading', { name: '熟豆 Supabase 连接' }).closest('article');
 
@@ -158,7 +136,6 @@ describe('SettingsPage', () => {
 
     expect(await screen.findByRole('heading', { name: '熟豆 Supabase 连接' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: '界面外观' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '成本模板' })).toBeInTheDocument();
     expect(within(card).getByRole('button', { name: '展开' })).toBeInTheDocument();
     expect(card.getAttribute('data-collapsed')).toBe('true');
     expect(document.getElementById('roasted-bean-project-url')).toHaveValue('');
@@ -407,49 +384,6 @@ describe('SettingsPage', () => {
       expect(execCommandMock).toHaveBeenCalledWith('copy');
     });
     expect(await screen.findByText('已复制链接，可以到浏览器粘贴展示')).toBeInTheDocument();
-  });
-
-  it('allows clearing the default cost template without removing the template', async () => {
-    costTemplateSettingsService.save({
-      defaultTemplateId: 'template-default',
-      templates: [
-        {
-          createdAt: '2026-07-07T10:00:00.000Z',
-          dehydrationRate: 14,
-          energyCost: 0,
-          id: 'template-default',
-          laborCost: 0,
-          name: 'test-成本',
-          notes: '',
-          otherCost: 0,
-          packagingCost: 0,
-          roastInputWeightGrams: 200,
-          saleUnitWeightGrams: 100,
-          targetProfitRate: 30,
-          updatedAt: '2026-07-07T10:00:00.000Z',
-        },
-      ],
-      updatedAt: '2026-07-07T10:00:00.000Z',
-    });
-
-    renderWithQuery(<SettingsPage />);
-    const section = await expandSection('成本模板');
-    const templateCard = within(section).getByText('test-成本').closest('article');
-
-    expect(templateCard).not.toBeNull();
-
-    if (templateCard == null) {
-      throw new Error('template card not found');
-    }
-
-    fireEvent.click(within(templateCard).getByRole('button', { name: '取消默认' }));
-
-    await waitFor(() => {
-      expect(useSettingsStore.getState().costTemplateSettings.defaultTemplateId).toBeNull();
-    });
-
-    expect(within(templateCard).queryByText('默认模板')).not.toBeInTheDocument();
-    expect(within(templateCard).getByRole('button', { name: '设为默认' })).toBeInTheDocument();
   });
 
   it('keeps the build version label in sync with runtime version updates', async () => {

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RoastPage } from '@/modules/roast';
@@ -128,6 +128,13 @@ const getStepTimeValue = (index: number) => {
   return input.value;
 };
 
+const performUiUpdate = async (action: () => void) => {
+  await act(async () => {
+    action();
+    await Promise.resolve();
+  });
+};
+
 describe('RoastPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -212,11 +219,13 @@ describe('RoastPage', () => {
       }),
     );
 
-    useSettingsStore.getState().loadPocketBaseConnections();
-    useSettingsStore.getState().loadCostTemplates();
+    act(() => {
+      useSettingsStore.getState().loadPocketBaseConnections();
+      useSettingsStore.getState().loadCostTemplates();
+    });
   });
 
-  it('renders roast plan cards and opens detail drawer for editing', () => {
+  it('renders roast plan cards and opens detail drawer for editing', async () => {
     renderWithQuery(<RoastPage />);
 
     expect(screen.getByLabelText('烘焙计划列表')).toBeInTheDocument();
@@ -238,7 +247,9 @@ describe('RoastPage', () => {
       throw new Error('edit step button not found');
     }
 
-    fireEvent.click(firstEditStepButton);
+    await performUiUpdate(() => {
+      fireEvent.click(firstEditStepButton);
+    });
 
     expect(screen.getByText('编辑烘焙计划')).toBeInTheDocument();
     expect(screen.queryByText('肯尼亚 柏拉 AA Plus SL28 SL34 水洗（200g，手冲浅烘）')).not.toBeInTheDocument();
@@ -254,26 +265,38 @@ describe('RoastPage', () => {
 
     expect(getStepTimeValue(0)).toBe('0:00');
 
-    fireEvent.click(screen.getByRole('button', { name: '下移节点 1' }));
+    await performUiUpdate(() => {
+      fireEvent.click(screen.getByRole('button', { name: '下移节点 1' }));
+    });
 
     expect(getStepTimeValue(0)).toBe('1:20~1:30');
 
-    fireEvent.click(screen.getByRole('button', { name: '上移节点 2' }));
+    await performUiUpdate(() => {
+      fireEvent.click(screen.getByRole('button', { name: '上移节点 2' }));
+    });
 
     expect(getStepTimeValue(0)).toBe('0:00');
 
-    fireEvent.change(screen.getByPlaceholderText('例如 肯尼亚 柏拉 AA Plus 水洗'), {
-      target: { value: '更新后的肯尼亚测试计划' },
+    await performUiUpdate(() => {
+      fireEvent.change(screen.getByPlaceholderText('例如 肯尼亚 柏拉 AA Plus 水洗'), {
+        target: { value: '更新后的肯尼亚测试计划' },
+      });
     });
-    fireEvent.click(screen.getByRole('button', { name: '添加节点' }));
+    await performUiUpdate(() => {
+      fireEvent.click(screen.getByRole('button', { name: '添加节点' }));
+    });
 
     expect(screen.getByText('节点 3')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '删除节点 3' }));
+    await performUiUpdate(() => {
+      fireEvent.click(screen.getByRole('button', { name: '删除节点 3' }));
+    });
 
     expect(screen.queryByText('节点 3')).not.toBeInTheDocument();
 
-    fireEvent.click(saveButton);
+    await performUiUpdate(() => {
+      fireEvent.click(saveButton);
+    });
   });
 
   it('opens a read-only detail drawer for viewing', () => {

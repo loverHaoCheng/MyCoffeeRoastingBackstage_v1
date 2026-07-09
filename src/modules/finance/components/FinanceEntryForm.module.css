@@ -1,0 +1,206 @@
+.panel {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid #e5e5ea;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgb(244 244 245 / 86%), transparent 30%),
+    linear-gradient(180deg, rgb(255 255 255 / 99%) 0%, rgb(247 247 248 / 98%) 100%);
+  box-shadow:
+    0 18px 42px rgb(15 23 42 / 0.05),
+    inset 0 1px 0 rgb(255 255 255 / 0.72);
+}
+
+.panelEmbedded {
+  gap: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.header {
+  display: grid;
+  gap: 6px;
+}
+
+.header h2 {
+  margin: 0;
+  color: #6e6e73;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.header p {
+  margin: 0;
+  color: #6e6e73;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.embeddedDescription {
+  margin: 0;
+  color: #6e6e73;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.groupStack {
+  display: grid;
+  gap: 14px;
+}
+
+.groupPanel {
+  padding: 14px;
+  border: 1px solid rgb(229 229 234 / 0.92);
+  border-radius: 15px;
+  background: #f7f7f8;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 12px;
+}
+
+.field {
+  display: grid;
+  grid-template-rows: auto minmax(48px, auto) minmax(18px, auto);
+  align-content: start;
+  row-gap: 8px;
+  min-width: 0;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.field > span:first-child {
+  color: #6e6e73;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.field :global(.ant-input),
+.field :global(.ant-input-number),
+.field :global(.ant-input-number-affix-wrapper),
+.field :global(.ant-picker),
+.field :global(.ant-select) {
+  align-self: start;
+}
+
+.field :global(.ant-select-selector),
+.field :global(.ant-picker) {
+  min-height: 48px;
+  border-radius: 14px;
+  border-color: rgb(214 214 219 / 0.9);
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: none;
+}
+
+.field :global(.ant-input),
+.field :global(.ant-input-number),
+.field :global(.ant-input-number-affix-wrapper),
+.field :global(.ant-picker),
+.field :global(.ant-select),
+.field :global(.ant-input-affix-wrapper) {
+  inline-size: 100%;
+  width: 100%;
+}
+
+.field :global(.ant-input),
+.field :global(.ant-input-affix-wrapper) {
+  padding-inline: 14px;
+}
+
+.field :global(.ant-input-number-input) {
+  height: 46px;
+}
+
+.field :global(.ant-input-number),
+.field :global(.ant-input-affix-wrapper),
+.field :global(.ant-input),
+.field :global(.ant-picker),
+.field :global(.ant-select) {
+  margin: 0;
+}
+
+.field :global(.ant-select-selector) {
+  display: flex;
+  align-items: center;
+  padding-inline: 14px !important;
+}
+
+.field :global(.ant-picker) {
+  padding-inline: 14px;
+}
+
+.field :global(.ant-picker .ant-picker-input > input) {
+  font-size: 16px;
+  text-align: left;
+}
+
+.field :global(.ant-input:focus),
+.field :global(.ant-picker-focused),
+.field :global(.ant-input-affix-wrapper-focused),
+.field :global(.ant-input-number-affix-wrapper-focused),
+.field :global(.ant-input-number-focused),
+.field :global(.ant-select-focused .ant-select-selector) {
+  border-color: #1d1d1f;
+  box-shadow: 0 0 0 2px rgb(29 29 31 / 0.06);
+}
+
+.helpText {
+  display: block;
+  min-height: 18px;
+  margin: 0;
+  color: #6e6e73;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.errorText {
+  color: #d13d32;
+}
+
+.actions {
+  display: grid;
+}
+
+.actions :global(.ant-btn) {
+  min-height: 50px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.panelEmbedded .actions :global(.ant-btn) {
+  min-height: 52px;
+}
+
+@media (max-width: 767px) {
+  .panel {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .panelEmbedded {
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .groupPanel {
+    padding: 12px;
+    border-radius: 15px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    row-gap: 16px;
+  }
+}

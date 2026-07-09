@@ -14,6 +14,7 @@ export interface GreenBeanFormInput {
   originCountry?: null | string;
   originRegion?: null | string;
   processMethod: string;
+  purchaseDate: string;
   purchasedTotalPrice: number;
   purchasedWeightGrams: number;
   remainingWeightGrams: number;

@@ -29,6 +29,7 @@ const defaultBeanFormValues: GreenBeanCreateInput = {
   originCountry: '',
   originRegion: '',
   processMethod: '',
+  purchaseDate: new Date().toISOString().slice(0, 10),
   purchasedTotalPrice: 0,
   purchasedWeightGrams: 1000,
   remainingWeightGrams: 1000,

@@ -1,5 +1,6 @@
 export type AppRouteKey =
   | 'bean'
+  | 'finance'
   | 'roast'
   | 'production'
   | 'settings';
@@ -32,9 +33,16 @@ export const appNavigationItems: AppNavigationItem[] = [
     path: '/production',
   },
   {
+    key: 'finance',
+    label: '财务',
+    shortLabel: '财务',
+    path: '/finance',
+  },
+  {
     key: 'settings',
     label: '设置',
     shortLabel: '设置',
     path: '/settings',
+    showInBottomNav: false,
   },
 ];

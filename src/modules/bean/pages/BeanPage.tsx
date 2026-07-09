@@ -184,7 +184,7 @@ export function BeanPage() {
     }
 
     if (costTemplateSettings.templates.length === 0) {
-      void message.warning('请先前往设置页创建至少一个成本模板，再新增生豆。');
+      void message.warning('请先前往财务页创建至少一个成本模板，再新增生豆。');
       return;
     }
 

@@ -132,6 +132,7 @@ const createFallbackEditableDetail = (bean: Bean): GreenBeanFormInput => {
     originCountry: bean.originCountry?.trim() ? bean.originCountry : parseOriginCountry(bean.origin),
     originRegion: bean.originRegion ?? '',
     processMethod: bean.process,
+    purchaseDate: bean.purchaseDate ?? bean.createdAt.slice(0, 10),
     purchasedTotalPrice: totalPurchasedPrice,
     purchasedWeightGrams,
     remainingWeightGrams,

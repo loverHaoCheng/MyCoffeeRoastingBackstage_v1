@@ -53,6 +53,7 @@ const fieldPathMap: Record<string, FieldPath<GreenBeanFormInput>> = {
   originCountry: 'originCountry',
   originRegion: 'originRegion',
   processMethod: 'processMethod',
+  purchaseDate: 'purchaseDate',
   purchasedTotalPrice: 'purchasedTotalPrice',
   purchasedWeightGrams: 'purchasedWeightGrams',
   remainingWeightGrams: 'remainingWeightGrams',
@@ -694,6 +695,18 @@ export function BeanForm({
               </div>
             </label>
           ) : null}
+
+          <label className={styles.field} data-field-path="purchaseDate">
+            {renderLabel('采购日期', true)}
+            <Controller
+              control={control}
+              name="purchaseDate"
+              render={({ field }) => <Input {...field} aria-label="采购日期" type="date" />}
+            />
+            <span className={joinClassNames(styles.helpText, errors.purchaseDate ? styles.helpTextError : undefined)}>
+              {getErrorMessage(errors.purchaseDate?.message, '会作为生豆采购支出的统计日期')}
+            </span>
+          </label>
 
           <label className={styles.field} data-field-path="purchasedWeightGrams">
             {renderLabel('购买重量', true)}

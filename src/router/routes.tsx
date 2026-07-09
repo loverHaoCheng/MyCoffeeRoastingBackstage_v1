@@ -15,6 +15,9 @@ const RoastPage = lazy(() =>
 const ProductionPage = lazy(() =>
   import('@/modules/production').then((module) => ({ default: module.ProductionPage })),
 );
+const FinancePage = lazy(() =>
+  import('@/modules/finance').then((module) => ({ default: module.FinancePage })),
+);
 const SettingsPage = lazy(() =>
   import('@/modules/settings').then((module) => ({ default: module.SettingsPage })),
 );
@@ -35,7 +38,7 @@ const withPageFallback = (children: ReactNode) => {
 
 const authLoadingFallback = (
   <div style={{ display: 'grid', minHeight: '100vh', placeItems: 'center' }}>
-    <Spin tip="正在恢复登录态" />
+    <Spin fullscreen tip="正在恢复登录态" />
   </div>
 );
 
@@ -94,6 +97,10 @@ export const routes: RouteObject[] = [
       {
         path: 'production',
         element: withPageFallback(<ProductionPage />),
+      },
+      {
+        path: 'finance',
+        element: withPageFallback(<FinancePage />),
       },
       {
         path: 'settings',

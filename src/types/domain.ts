@@ -26,6 +26,7 @@ export interface Bean extends EntityTimestamps {
   originRegion?: string | null;
   process: string;
   grade: string;
+  purchaseDate?: string | null;
   purchasedTotalPrice?: number | null;
   purchasedWeightGrams?: number | null;
   remainingWeightGrams?: number | null;

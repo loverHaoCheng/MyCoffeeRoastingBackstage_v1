@@ -28,6 +28,7 @@ describe('roastBatchService inventory sync', () => {
       originCountry: '埃塞俄比亚',
       originRegion: '古吉',
       processMethod: '水洗',
+      purchaseDate: '2026-07-03',
       purchasedTotalPrice: 2100,
       purchasedWeightGrams: 1000,
       remainingWeightGrams: 1000,

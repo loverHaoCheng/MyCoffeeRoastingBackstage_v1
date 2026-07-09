@@ -128,4 +128,18 @@ describe('card display settings', () => {
 
     expect(onEditAll).toHaveBeenCalledWith(1);
   });
+
+  it('does not expose the computed cost row as an editable field', () => {
+    const onEdit = vi.fn();
+    const nextSettings = createDefaultAppDisplaySettings();
+    nextSettings.cardDisplaySettings.beanInventory = {
+      displayCount: 2,
+      visibleMetaKeys: ['cost', 'stock'],
+    };
+    useSettingsStore.setState({ appDisplaySettings: nextSettings });
+
+    render(<BeanInventoryCard bean={createBean()} onEdit={onEdit} />);
+
+    expect(screen.queryByRole('button', { name: '修改 成本' })).not.toBeInTheDocument();
+  });
 });

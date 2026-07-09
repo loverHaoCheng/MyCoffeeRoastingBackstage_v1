@@ -1458,6 +1458,315 @@
       "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
       "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
       "options": {}
+    },
+    {
+      "id": "col_fin_expense",
+      "name": "finance_expense_records",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_fe_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fe_title",
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fe_date",
+          "name": "expense_date",
+          "type": "date",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "min": "",
+            "max": ""
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fe_cat",
+          "name": "category",
+          "type": "select",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "maxSelect": 1,
+            "values": [
+              "beanPurchase",
+              "packaging",
+              "shipping",
+              "custom",
+              "depreciation",
+              "other"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fe_cat_lbl",
+          "name": "custom_category_label",
+          "type": "text",
+          "required": false,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fe_amount",
+          "name": "amount",
+          "type": "number",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "min": 0,
+            "noDecimal": false
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fe_status",
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "maxSelect": 1,
+            "values": [
+              "paid",
+              "pending"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fe_notes",
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fe_source",
+          "name": "source",
+          "type": "select",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "maxSelect": 1,
+            "values": [
+              "auto-bean-purchase",
+              "manual"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fe_src_id",
+          "name": "source_entity_id",
+          "type": "text",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fe_created",
+          "name": "created_at",
+          "type": "text",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fe_updated",
+          "name": "updated_at",
+          "type": "text",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_finance_expense_owner_updated` ON `finance_expense_records` (`owner`, `updated_at`)",
+        "CREATE INDEX `idx_finance_expense_owner_date` ON `finance_expense_records` (`owner`, `expense_date`)"
+      ],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
+    },
+    {
+      "id": "col_fin_income",
+      "name": "finance_income_records",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "system": false,
+          "id": "fld_fi_owner",
+          "name": "owner",
+          "type": "relation",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_users_auth",
+            "cascadeDelete": false,
+            "minSelect": 1,
+            "maxSelect": 1,
+            "displayFields": [
+              "email"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fi_title",
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fi_date",
+          "name": "income_date",
+          "type": "date",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "min": "",
+            "max": ""
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fi_channel",
+          "name": "channel",
+          "type": "select",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "maxSelect": 1,
+            "values": [
+              "retail",
+              "wholesale",
+              "other"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fi_amount",
+          "name": "amount",
+          "type": "number",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "min": 0,
+            "noDecimal": false
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fi_status",
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "presentable": true,
+          "unique": false,
+          "options": {
+            "maxSelect": 1,
+            "values": [
+              "received",
+              "pending"
+            ]
+          }
+        },
+        {
+          "system": false,
+          "id": "fld_fi_notes",
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fi_created",
+          "name": "created_at",
+          "type": "text",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fi_updated",
+          "name": "updated_at",
+          "type": "text",
+          "required": true,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_finance_income_owner_updated` ON `finance_income_records` (`owner`, `updated_at`)",
+        "CREATE INDEX `idx_finance_income_owner_date` ON `finance_income_records` (`owner`, `income_date`)"
+      ],
+      "listRule": "owner = @request.auth.id",
+      "viewRule": "owner = @request.auth.id",
+      "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+      "options": {}
     }
   ]
 }

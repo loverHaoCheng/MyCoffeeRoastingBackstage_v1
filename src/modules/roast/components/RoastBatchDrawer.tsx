@@ -44,6 +44,7 @@ const createFormState = (batch: RoastBatchRecord | null) => ({
   greenBeanId: batch?.greenBeanId ?? '',
   greenBeanName: batch?.greenBeanName ?? '',
   roastedBeanName: batch?.roastedBeanName ?? '',
+  salesMode: batch?.salesMode ?? 'sale',
   roastPlanId: batch?.roastPlanId ?? '',
   roastPlanName: batch?.roastPlanName ?? '',
   inputWeightGrams: batch?.inputWeightGrams ?? 0,
@@ -123,6 +124,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
       greenBeanId: form.greenBeanId,
       greenBeanName: form.greenBeanName,
       roastedBeanName: form.roastedBeanName.trim() || form.greenBeanName,
+      salesMode: form.salesMode,
       roastPlanId: form.roastPlanId === '' ? undefined : form.roastPlanId,
       roastPlanName: form.roastPlanName === '' ? undefined : form.roastPlanName,
       inputWeightGrams: form.inputWeightGrams,
@@ -236,6 +238,24 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                     setForm((f) => ({ ...f, roastedBeanName: event.target.value }));
                   }}
                   placeholder={form.greenBeanName === '' ? '未填写时默认继承生豆名称' : form.greenBeanName}
+                />
+              )}
+            </div>
+            <div className={styles.field} data-field-path="salesMode">
+              <span className={styles.fieldLabel}>去向</span>
+              {isView ? (
+                <span className={styles.fieldValue}>{batch.salesMode === 'selfUse' ? '自留' : '销售'}</span>
+              ) : (
+                <Select
+                  value={form.salesMode}
+                  onChange={(value: 'sale' | 'selfUse') => {
+                    setForm((current) => ({ ...current, salesMode: value }));
+                  }}
+                  options={[
+                    { label: '销售', value: 'sale' },
+                    { label: '自留', value: 'selfUse' },
+                  ]}
+                  style={{ width: '100%' }}
                 />
               )}
             </div>

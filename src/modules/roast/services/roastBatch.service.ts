@@ -104,6 +104,10 @@ const mapUnknownRemoteRecord = (record: unknown): RoastBatchRecord => {
   return mapRemoteRoastBatchRecord(record as Record<string, unknown>);
 };
 
+const hasOverviewSalesModeField = (record: Record<string, unknown>): boolean => {
+  return Object.prototype.hasOwnProperty.call(record, 'sales_mode');
+};
+
 const getLocalBatchAt = (batches: RoastBatchRecord[], index: number): RoastBatchRecord => {
   const batch = batches[index];
 
@@ -213,6 +217,7 @@ const getNextBatchState = (
     input.inputWeightGrams ?? currentBatch.inputWeightGrams,
     input.outputWeightGrams ?? currentBatch.outputWeightGrams,
   ),
+  salesMode: input.salesMode ?? currentBatch.salesMode,
   status: input.status ?? currentBatch.status,
 });
 
@@ -239,6 +244,7 @@ export const toPocketBaseRoastBatchPayload = (
   if (input.totalRoastTime !== undefined) payload.total_roast_time = input.totalRoastTime;
   if (input.notes !== undefined) payload.notes = toNullableStringValue(input.notes);
   if (input.imageUrls !== undefined) payload.image_urls = input.imageUrls ?? [];
+  if (input.salesMode !== undefined) payload.sales_mode = input.salesMode;
   if (input.status !== undefined) payload.status = input.status;
 
   return payload;
@@ -297,6 +303,10 @@ const getBatchStatusField = (value: unknown): RoastBatchRecord['status'] => {
   return value === 'draft' || value === 'completed' ? value : 'completed';
 };
 
+const getSalesModeField = (value: unknown): RoastBatchRecord['salesMode'] => {
+  return value === 'selfUse' ? 'selfUse' : 'sale';
+};
+
 const mapRemoteRoastBatchRecord = (record: Record<string, unknown>): RoastBatchRecord => ({
   id: getStringField(record.id),
   roastDate: getStringField(record.roast_date),
@@ -317,6 +327,7 @@ const mapRemoteRoastBatchRecord = (record: Record<string, unknown>): RoastBatchR
   totalRoastTime: getOptionalNumberField(record.total_roast_time),
   notes: getOptionalStringField(record.notes),
   imageUrls: getStringArrayField(record.image_urls),
+  salesMode: getSalesModeField(record.sales_mode),
   status: getBatchStatusField(record.status),
   createdAt: getStringField(record.created_at),
   updatedAt: getStringField(record.updated_at),
@@ -348,6 +359,7 @@ class MockRoastBatchRepository implements RoastBatchRepository {
       roastedBeanName: resolveRoastedBeanName(input.roastedBeanName, input.greenBeanName),
       roastLevel: resolveNormalizedRoastLevel(input.roastLevel, input.inputWeightGrams, input.outputWeightGrams),
       id: `local-${Date.now().toString()}`,
+      salesMode: input.salesMode ?? 'sale',
       status: input.status ?? 'completed',
       imageUrls: input.imageUrls ?? [],
       createdAt: now,
@@ -388,6 +400,7 @@ class MockRoastBatchRepository implements RoastBatchRepository {
         input.outputWeightGrams ?? currentBatch.outputWeightGrams,
       ),
       id: currentBatch.id,
+      salesMode: input.salesMode ?? currentBatch.salesMode,
       updatedAt: new Date().toISOString(),
     };
     batches[index] = updated;
@@ -440,7 +453,7 @@ class RemoteRoastBatchRepository implements RoastBatchRepository {
 
       const overviewRow = overviewRows[0];
 
-      if (overviewRow) {
+      if (overviewRow && hasOverviewSalesModeField(overviewRow)) {
         return mapUnknownRemoteRecord(overviewRow);
       }
     } catch (overviewError) {
@@ -465,24 +478,27 @@ class RemoteRoastBatchRepository implements RoastBatchRepository {
       const rows = await this.client.list<Record<string, unknown>>('roast_batch_overview', {
         orderBy: { ascending: false, column: 'roast_date' },
       });
-      return ok(rows.map(mapUnknownRemoteRecord));
+
+      if (rows.length === 0 || rows.every(hasOverviewSalesModeField)) {
+        return ok(rows.map(mapUnknownRemoteRecord));
+      }
     } catch (overviewError) {
       if (!isMissingRemoteResourceError(overviewError)) {
         throw overviewError;
       }
+    }
 
-      try {
-        const rows = await this.client.list<Record<string, unknown>>('roast_batches', {
-          orderBy: { ascending: false, column: 'roast_date' },
-        });
-        return ok(rows.map(mapUnknownRemoteRecord));
-      } catch (tableError) {
-        if (isMissingRemoteResourceError(tableError)) {
-          return ok([]);
-        }
-
-        throw tableError;
+    try {
+      const rows = await this.client.list<Record<string, unknown>>('roast_batches', {
+        orderBy: { ascending: false, column: 'roast_date' },
+      });
+      return ok(rows.map(mapUnknownRemoteRecord));
+    } catch (tableError) {
+      if (isMissingRemoteResourceError(tableError)) {
+        return ok([]);
       }
+
+      throw tableError;
     }
   }
 
@@ -545,6 +561,7 @@ export const roastBatchService = {
       roastedBeanName: resolveRoastedBeanName(input.roastedBeanName, input.greenBeanName),
       roastLevel: resolveNormalizedRoastLevel(input.roastLevel, input.inputWeightGrams, input.outputWeightGrams),
       id: createOptimisticLocalBatchId(),
+      salesMode: input.salesMode ?? 'sale',
       status: input.status ?? 'completed',
       imageUrls: input.imageUrls ?? [],
       createdAt: now,
@@ -784,6 +801,7 @@ export const roastBatchService = {
         roastPlanId: batch.roastPlanId,
         roastPlanName: batch.roastPlanName,
         roastedBeanName: batch.roastedBeanName,
+        salesMode: batch.salesMode,
         status: batch.status,
         totalRoastTime: batch.totalRoastTime,
       });
