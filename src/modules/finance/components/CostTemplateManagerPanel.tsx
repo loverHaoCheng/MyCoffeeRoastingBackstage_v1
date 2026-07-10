@@ -60,7 +60,7 @@ export function CostTemplateManagerPanel({ createRequestKey = 0 }: CostTemplateM
   const secondaryTemplates = primaryTemplate
     ? costTemplateSettings.templates.filter((template) => template.id !== primaryTemplate.id)
     : [];
-  const visibleTemplates = primaryTemplate ? [primaryTemplate, ...(isCollapsed ? [] : secondaryTemplates)] : [];
+  const visibleTemplates = primaryTemplate ? [primaryTemplate, ...secondaryTemplates] : [];
   const shouldShowCollapseToggle = secondaryTemplates.length > 0;
 
   useEffect(() => {
@@ -238,9 +238,16 @@ export function CostTemplateManagerPanel({ createRequestKey = 0 }: CostTemplateM
                 {visibleTemplates.map((template) => {
                   const isDefault = template.id === costTemplateSettings.defaultTemplateId;
                   const isEditing = isTemplateDrawerOpen && !isCreatingTemplate && template.id === editingTemplateId;
+                  const isSecondaryTemplate = template.id !== primaryTemplate?.id;
 
                   return (
-                    <article className={styles.templateCard} data-active={isEditing} key={template.id}>
+                    <div
+                      className={styles.templateItem}
+                      data-collapsed={isSecondaryTemplate && isCollapsed}
+                      key={template.id}
+                    >
+                      <div className={styles.templateItemInner}>
+                        <article className={styles.templateCard} data-active={isEditing}>
                       <div className={styles.templateCardHeader}>
                         <div className={styles.templateTitleBlock}>
                           <strong>{template.name}</strong>
@@ -287,7 +294,9 @@ export function CostTemplateManagerPanel({ createRequestKey = 0 }: CostTemplateM
                           </Button>
                         </Popconfirm>
                       </div>
-                    </article>
+                        </article>
+                      </div>
+                    </div>
                   );
                 })}
               </div>

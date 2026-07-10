@@ -57,10 +57,7 @@
   box-sizing: border-box;
   padding-inline: 4px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--card-column-min-width)), 1fr));
   gap: var(--card-grid-gap);
-  align-items: stretch;
-  justify-content: center;
   margin: 0 auto;
 }
 

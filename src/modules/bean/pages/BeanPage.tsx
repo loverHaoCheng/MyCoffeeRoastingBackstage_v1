@@ -16,6 +16,7 @@ import { beanAiRecognitionService, beanService } from '@/modules/bean/services';
 import { useCostTemplateSettings, usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import { AppError } from '@/shared/errors/AppError';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
@@ -374,18 +375,20 @@ export function BeanPage() {
           <Empty className={styles.empty} description="没有匹配的生豆批次" />
         ) : null}
 
-        {activeBeans.map((bean) => (
-          <BeanInventoryCard
-            bean={bean}
-            key={bean.id}
-            onDelete={() => {
-              handleDeleteBean(bean);
-            }}
-            onEdit={handleEditBean}
-            onEditAll={handleEditBeanAll}
-            onView={handleViewBean}
-          />
-        ))}
+        <ResponsiveMasonry ariaLabel="有库存生豆列表">
+          {activeBeans.map((bean) => (
+            <BeanInventoryCard
+              bean={bean}
+              key={bean.id}
+              onDelete={() => {
+                handleDeleteBean(bean);
+              }}
+              onEdit={handleEditBean}
+              onEditAll={handleEditBeanAll}
+              onView={handleViewBean}
+            />
+          ))}
+        </ResponsiveMasonry>
 
         {zeroStockBeans.length > 0 ? (
           <section
@@ -416,7 +419,7 @@ export function BeanPage() {
                 aria-hidden={isZeroStockCollapsed}
                 aria-label="零库存生豆列表"
               >
-                <div className={styles.list}>
+                <ResponsiveMasonry>
                   {zeroStockBeans.map((bean) => (
                     <BeanInventoryCard
                       bean={bean}
@@ -429,7 +432,7 @@ export function BeanPage() {
                       onView={handleViewBean}
                     />
                   ))}
-                </div>
+                </ResponsiveMasonry>
               </div>
             </div>
           </section>

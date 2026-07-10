@@ -1,6 +1,7 @@
 import { useVisibleCardMetaItems } from '@/modules/settings/hooks';
 import { roastPlanStatusLabelMap } from '@/modules/roast/constants/roastPlanStatus';
 import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
+import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import type { RoastPlan } from '@/types/domain';
 
 import type { RoastPlanEditableFieldPath } from './RoastPlanFieldEditorDrawer';
@@ -103,7 +104,7 @@ function RoastPlanCard({ onDelete, onEdit, onEditAll, onView, plan }: RoastPlanC
 
 export function RoastPlanList({ plans, onDelete, onEdit, onEditAll, onView }: RoastPlanListProps) {
   return (
-    <div className={styles.list} aria-label="烘焙计划列表">
+    <ResponsiveMasonry ariaLabel="烘焙计划列表" className={styles.list}>
       {plans.map((plan) => (
         <RoastPlanCard
           key={plan.id}
@@ -114,6 +115,6 @@ export function RoastPlanList({ plans, onDelete, onEdit, onEditAll, onView }: Ro
           plan={plan}
         />
       ))}
-    </div>
+    </ResponsiveMasonry>
   );
 }

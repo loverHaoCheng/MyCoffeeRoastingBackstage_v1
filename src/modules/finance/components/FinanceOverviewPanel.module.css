@@ -88,10 +88,10 @@
 
 .rowValue {
   color: #1d1d1f;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.05;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .rowArrow {

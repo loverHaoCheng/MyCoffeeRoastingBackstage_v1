@@ -21,6 +21,7 @@ import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
 import { usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
@@ -198,18 +199,20 @@ export function ProductionPage() {
           <Empty className={styles.empty} description="没有匹配的烘焙记录" />
         ) : null}
 
-        {filteredBatches.map((batch) => (
-          <RoastBatchCard
-            batch={batch}
-            key={batch.id}
-            onDelete={() => {
-              handleDelete(batch);
-            }}
-            onEdit={handleEdit}
-            onEditAll={handleEditAll}
-            onView={handleView}
-          />
-        ))}
+        <ResponsiveMasonry ariaLabel="烘焙历史卡片列表">
+          {filteredBatches.map((batch) => (
+            <RoastBatchCard
+              batch={batch}
+              key={batch.id}
+              onDelete={() => {
+                handleDelete(batch);
+              }}
+              onEdit={handleEdit}
+              onEditAll={handleEditAll}
+              onView={handleView}
+            />
+          ))}
+        </ResponsiveMasonry>
       </section>
 
       {/* FAB */}
