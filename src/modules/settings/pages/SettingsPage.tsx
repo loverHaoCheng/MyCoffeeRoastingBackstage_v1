@@ -61,9 +61,6 @@ const themeModeOptions: { label: string; value: AppThemeMode }[] = [
   { label: '深色', value: 'dark' },
 ];
 
-// Release gate: keep account deletion disabled until the formal production launch.
-const isAccountDeletionEnabled = false;
-
 const getCardDisplayModuleDefinition = (moduleKey: AppCardModuleKey) => {
   return cardDisplayModules.find((module) => module.key === moduleKey);
 };
@@ -506,7 +503,6 @@ export function SettingsPage() {
             <Button
               block
               danger
-              disabled={!isAccountDeletionEnabled}
               icon={<DeleteOutlined />}
               loading={isDeletingAccount}
               onClick={handleDeleteAccount}

@@ -408,7 +408,7 @@ describe('SettingsPage', () => {
     expect(deleteButton).not.toBeNull();
 
     if (deleteButton != null) {
-      expect(deleteButton).toBeDisabled();
+      expect(deleteButton).toBeEnabled();
       expect(deleteButton.compareDocumentPosition(buildVersion)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     }
 
@@ -419,7 +419,7 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('当前 Web 上传版本：0.1.0-updated')).toBeInTheDocument();
   });
 
-  it('keeps account deletion disabled before the formal release', async () => {
+  it('opens the account deletion confirmation when clicking the enabled danger button', async () => {
     renderWithQuery(<SettingsPage />);
 
     const deleteButtonLabel = await screen.findByText('注销账号');
@@ -431,8 +431,9 @@ describe('SettingsPage', () => {
       throw new Error('delete account button not found');
     }
 
-    expect(deleteButton).toBeDisabled();
+    expect(deleteButton).toBeEnabled();
     fireEvent.click(deleteButton);
-    expect(screen.queryByText('确认注销账号？')).not.toBeInTheDocument();
+    expect(await screen.findAllByText('确认注销账号？')).not.toHaveLength(0);
+    expect(screen.getByRole('button', { name: /确认注销（5s）/ })).toBeDisabled();
   });
 });
