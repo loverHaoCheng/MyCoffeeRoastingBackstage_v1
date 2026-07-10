@@ -73,7 +73,10 @@
 .field :global(.ant-input-number-affix-wrapper),
 .field :global(.ant-select),
 .field :global(.ant-input-affix-wrapper) {
+  min-width: 0;
+  max-width: 100%;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .field :global(.ant-input),
@@ -86,6 +89,14 @@
 
 .field :global(.ant-input-number-affix-wrapper .ant-input-number) {
   width: 100%;
+}
+
+.field :global(.ant-input[type='date']) {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .helpText {

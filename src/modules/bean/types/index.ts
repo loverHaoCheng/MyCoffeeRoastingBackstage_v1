@@ -15,3 +15,8 @@ export type {
   GreenBeanUpdateInput,
   LocalGreenBeanRecord,
 } from './localGreenBean';
+export type {
+  BeanImageRecognitionUsage,
+  BeanImageRecognitionResponse,
+  BeanImageRecognitionResult,
+} from './beanAiRecognition';

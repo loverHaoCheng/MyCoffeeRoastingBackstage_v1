@@ -1,5 +1,7 @@
 import { App } from 'antd';
+import { useMemo } from 'react';
 
+import { createDefaultBeanFormValues } from '@/modules/bean/constants';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { AppError } from '@/shared/errors/AppError';
 
@@ -8,43 +10,15 @@ import type { GreenBeanCreateInput } from '../types/localGreenBean';
 import { BeanForm } from './BeanForm';
 
 interface BeanManualCreatorProps {
+  initialValues?: GreenBeanCreateInput;
   onCancel?: () => void;
   onCreate: (input: GreenBeanCreateInput) => Promise<void> | void;
 }
 
-const defaultBeanFormValues: GreenBeanCreateInput = {
-  agingDays: 14,
-  costTemplateId: null,
-  code: '',
-  defaultRoastInputGrams: 200,
-  defaultSaleUnitPrice: 0,
-  defaultSaleUnitWeightGrams: null,
-  displayName: '',
-  flavorTags: [],
-  grade: '',
-  harvestSeason: '',
-  millName: '',
-  notes: '',
-  originArea: '',
-  originCountry: '',
-  originRegion: '',
-  processMethod: '',
-  purchaseDate: new Date().toISOString().slice(0, 10),
-  purchasedTotalPrice: 0,
-  purchasedWeightGrams: 1000,
-  remainingWeightGrams: 1000,
-  supplierName: '',
-  tastingEndDays: 40,
-  variety: '',
-  altitudeMetersMax: null,
-  altitudeMetersMin: null,
-  densityGPerL: null,
-  moisturePercent: null,
-};
-
-export function BeanManualCreator({ onCancel, onCreate }: BeanManualCreatorProps) {
+export function BeanManualCreator({ initialValues, onCancel, onCreate }: BeanManualCreatorProps) {
   const { message } = App.useApp();
   const { costTemplateSettings } = useCostTemplateSettings();
+  const defaultBeanFormValues = useMemo(() => initialValues ?? createDefaultBeanFormValues(), [initialValues]);
 
   const submitForm = async (values: GreenBeanCreateInput) => {
     if (costTemplateSettings.templates.length === 0) {

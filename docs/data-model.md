@@ -10,6 +10,8 @@
 - `ProductionBatch`: 生产批次。
 - `CostRecord`: 成本记录。
 - `FinanceExpenseRecord`: 经营费用台账记录，覆盖房租、水电、工资、营销、物流、折旧等支出。
+- `AiUsageLimit`: 用户级 AI 功能月度额度配置。
+- `AiUsageLog`: AI 功能成功/失败调用日志，成功记录参与月度额度统计。
 
 所有持久化实体统一包含 `id`、`createdAt`、`updatedAt`。
 
@@ -21,6 +23,12 @@
 - `经营费用`：手工录入的房租、水电、工资、营销、物流、折旧等费用。
 - `已实现收入`：来自烘焙历史中去向为“销售”的烘焙记录，每条销售记录按 `1 份 × 默认单份售价` 计入。
 - `当前库存预估收入`：按剩余生豆、默认售价和最近一次核算脱水率估算的潜在收入。
+
+AI 图片识别当前采用服务端辅助口径：
+
+- `ai_usage_limits`：由 PocketBase Dashboard 维护用户额度，`feature = bean_image_recognition` 表示生豆图片识别。
+- `ai_usage_logs`：由 BFF 写入调用结果，按 `owner + feature + month + status = success` 统计当月已用次数。
+- 失败记录只用于排查，不参与月度额度扣减。
 
 ## 生豆未来拆表
 

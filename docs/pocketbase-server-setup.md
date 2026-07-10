@@ -13,6 +13,19 @@
 - 服务器上已经有可访问的 PocketBase 服务。
 - 可通过 PocketBase Dashboard 或 API 管理集合与权限。
 - 前端通过 `VITE_PB_URL=http://81.70.224.75` 连接服务器服务。
+- BFF 通过服务端环境变量保存 `PB_SUPERUSER_EMAIL`、`PB_SUPERUSER_PASSWORD`、`QINIU_QWEN_API_KEY`、`QINIU_QWEN_BASE_URL`、`QINIU_QWEN_MODEL`，这些值不得写入前端 `VITE_` 环境变量。
+- 本地 `npm run dev` 会读取 `.env.local` 中的 BFF 服务端变量，并仅注入 Node dev middleware 的 `process.env`，不得把私密变量命名为 `VITE_` 前缀。
+
+本地 `.env.local` 示例：
+
+```bash
+PB_BASE_URL=http://81.70.224.75
+PB_SUPERUSER_EMAIL=你的 PocketBase 管理员邮箱
+PB_SUPERUSER_PASSWORD=你的 PocketBase 管理员密码
+QINIU_QWEN_API_KEY=你的七牛云 API Key
+QINIU_QWEN_BASE_URL=https://api.qnaigc.com/v1
+QINIU_QWEN_MODEL=qwen/qwen3.6-27b
+```
 
 ## 当前客户端兼容约定
 
@@ -297,12 +310,63 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `created_at` | text | 兼容前端时间戳 |
 | `updated_at` | text | 兼容前端时间戳 |
 
+### `ai_usage_limits`
+
+用途：控制每个用户每月可使用的 AI 图片识别次数，当前由 PocketBase Dashboard 直接维护。
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户，单选，必填 |
+| `feature` | text | 功能码，生豆图片识别固定为 `bean_image_recognition` |
+| `monthly_limit` | number | 月度成功识别次数上限，默认建议 10，允许 0 |
+| `enabled` | bool | 是否启用该用户的功能 |
+| `created_at` | date | 创建时间 |
+| `updated_at` | date | 更新时间 |
+
+权限规则：
+
+```text
+listRule: 留空
+viewRule: 留空
+createRule: 留空
+updateRule: 留空
+deleteRule: 留空
+```
+
+建议索引：
+
+- `owner,feature` 唯一索引
+
+### `ai_usage_logs`
+
+用途：记录 AI 图片识别成功/失败结果。只有 `status = success` 会参与额度统计，失败不扣次数。
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户，单选，必填 |
+| `feature` | text | 功能码，生豆图片识别固定为 `bean_image_recognition` |
+| `month` | text | 月份，格式如 `2026-07` |
+| `status` | select | `success / failed`，单选 |
+| `error_message` | text | 失败原因，成功时为空 |
+| `created_at` | date | 创建时间 |
+| `updated_at` | date | 更新时间 |
+
+权限规则同样全部留空，仅允许 superuser 与 BFF 服务端维护。
+
+建议索引：
+
+- `owner,feature,month,status`
+
 ## 推荐实施顺序
 
 1. 先建 `users` auth collection。
 2. 再建 `green_beans`、`green_bean_purchase_batches`、`bean_sale_specs`、`app_settings`。
 3. 接着建 `roast_profiles`、`roast_batches`、`roast_records`。
-4. 最后建 `cost_calculations`、`finance_expense_records` 和 `coffee_beans`。
+4. 最后建 `cost_calculations`、`finance_expense_records`、`coffee_beans`、`ai_usage_limits` 和 `ai_usage_logs`。
 
 ## 推荐初始化方式
 

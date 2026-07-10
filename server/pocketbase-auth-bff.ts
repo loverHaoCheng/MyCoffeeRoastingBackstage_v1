@@ -37,6 +37,26 @@ interface AccountDeletionResult {
   success: true;
 }
 
+interface BeanImageRecognitionResult {
+  altitudeMetersMax: null | number;
+  altitudeMetersMin: null | number;
+  code: string;
+  densityGPerL: null | number;
+  displayName: string;
+  flavorTags: string[];
+  grade: string;
+  harvestSeason: string;
+  millName: string;
+  moisturePercent: null | number;
+  notes: string;
+  originArea: string;
+  originCountry: string;
+  originRegion: string;
+  processMethod: string;
+  supplierName: string;
+  variety: string;
+}
+
 class PocketBaseGatewayError extends Error {
   payload: unknown;
   status: number;
@@ -53,19 +73,41 @@ interface PocketBaseListResponseItem {
   id?: unknown;
 }
 
+interface AiUsageLimitRecord {
+  enabled?: unknown;
+  monthly_limit?: unknown;
+}
+
+interface AiUsageState {
+  enabled: boolean;
+  monthlyLimit: number;
+  remainingUses: number;
+  usedThisMonth: number;
+}
+
 const DEFAULT_POCKETBASE_URL = 'http://81.70.224.75';
 const DEFAULT_AUTH_COLLECTION = 'users';
 const DEFAULT_AUTH_COOKIE_NAME = 'easybake_pb_session';
 const DEFAULT_AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const DEFAULT_PORT = 3001;
+const DEFAULT_SUPERUSER_COLLECTION = '_superusers';
+const DEFAULT_AI_USAGE_LIMIT = 10;
+const DEFAULT_AI_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
+const AI_FEATURE_BEAN_IMAGE_RECOGNITION = 'bean_image_recognition';
+const AI_USAGE_LIMITS_COLLECTION = 'ai_usage_limits';
+const AI_USAGE_LOGS_COLLECTION = 'ai_usage_logs';
+const QINIU_DEFAULT_BASE_URL = 'https://api.qnaigc.com/v1';
+const QINIU_DEFAULT_MODEL = 'qwen/qwen3.6-27b';
 
-const normalizeBaseUrl = (value: string): string => {
+const normalizeBaseUrl = (value: string, fallback: string): string => {
   const trimmed = value.trim();
 
-  return trimmed.length > 0 ? trimmed.replace(/\/+$/, '') : DEFAULT_POCKETBASE_URL;
+  return trimmed.length > 0 ? trimmed.replace(/\/+$/, '') : fallback;
 };
 
 const authCollection = (process.env.PB_AUTH_COLLECTION ?? DEFAULT_AUTH_COLLECTION).trim() || DEFAULT_AUTH_COLLECTION;
+const superuserCollection =
+  (process.env.PB_SUPERUSER_COLLECTION ?? DEFAULT_SUPERUSER_COLLECTION).trim() || DEFAULT_SUPERUSER_COLLECTION;
 const authCookieName =
   (process.env.PB_AUTH_COOKIE_NAME ?? DEFAULT_AUTH_COOKIE_NAME).trim() || DEFAULT_AUTH_COOKIE_NAME;
 const cookieMaxAgeCandidate = Number.parseInt(
@@ -76,9 +118,19 @@ const cookieMaxAgeSeconds =
   Number.isFinite(cookieMaxAgeCandidate) && cookieMaxAgeCandidate >= 0
     ? cookieMaxAgeCandidate
     : DEFAULT_AUTH_COOKIE_MAX_AGE_SECONDS;
-const pocketBaseBaseUrl = normalizeBaseUrl(process.env.PB_BASE_URL ?? DEFAULT_POCKETBASE_URL);
+const pocketBaseBaseUrl = normalizeBaseUrl(process.env.PB_BASE_URL ?? DEFAULT_POCKETBASE_URL, DEFAULT_POCKETBASE_URL);
 const portCandidate = Number.parseInt((process.env.PORT ?? String(DEFAULT_PORT)).trim(), 10);
 const port = Number.isFinite(portCandidate) && portCandidate > 0 ? portCandidate : DEFAULT_PORT;
+const aiImageMaxBytesCandidate = Number.parseInt(
+  (process.env.AI_IMAGE_MAX_BYTES ?? String(DEFAULT_AI_IMAGE_MAX_BYTES)).trim(),
+  10,
+);
+const aiImageMaxBytes =
+  Number.isFinite(aiImageMaxBytesCandidate) && aiImageMaxBytesCandidate > 0
+    ? aiImageMaxBytesCandidate
+    : DEFAULT_AI_IMAGE_MAX_BYTES;
+const qiniuQwenBaseUrl = normalizeBaseUrl(process.env.QINIU_QWEN_BASE_URL ?? QINIU_DEFAULT_BASE_URL, QINIU_DEFAULT_BASE_URL);
+const qiniuQwenModel = (process.env.QINIU_QWEN_MODEL ?? QINIU_DEFAULT_MODEL).trim() || QINIU_DEFAULT_MODEL;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value != null;
@@ -133,6 +185,739 @@ const parseJsonResponse = async (response: Response): Promise<unknown> => {
   } catch {
     return rawBody;
   }
+};
+
+const readRequestBuffer = async (
+  request: IncomingMessage,
+  options: {
+    maxBytes: number;
+  },
+): Promise<Buffer> => {
+  const chunks: Buffer[] = [];
+  let receivedBytes = 0;
+
+  for await (const chunkValue of request) {
+    const chunk =
+      typeof chunkValue === 'string'
+        ? Buffer.from(chunkValue)
+        : chunkValue instanceof Uint8Array
+          ? Buffer.from(chunkValue)
+          : Buffer.alloc(0);
+
+    receivedBytes += chunk.byteLength;
+
+    if (receivedBytes > options.maxBytes) {
+      throw new Error('图片数据过大，请压缩到 6MB 以内后重试。');
+    }
+
+    chunks.push(chunk);
+  }
+
+  return Buffer.concat(chunks);
+};
+
+const parseLimitedJsonBody = async (
+  request: IncomingMessage,
+  options: {
+    maxBytes: number;
+  },
+): Promise<unknown> => {
+  const rawBody = (await readRequestBuffer(request, options)).toString('utf8').trim();
+
+  if (!rawBody) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawBody) as unknown;
+  } catch {
+    throw new Error('请求体不是有效的 JSON。');
+  }
+};
+
+const sendApiSuccess = (response: ServerResponse, data: unknown): void => {
+  sendJson(response, 200, {
+    code: 0,
+    data,
+    message: 'ok',
+  });
+};
+
+const sendApiError = (
+  response: ServerResponse,
+  statusCode: number,
+  message: string,
+  data: Record<string, unknown> = {},
+): void => {
+  sendJson(response, statusCode, {
+    code: statusCode,
+    data,
+    message,
+  });
+};
+
+const buildQiniuQwenUrl = (path: string): string => {
+  return new URL(path.replace(/^\//, ''), `${qiniuQwenBaseUrl}/`).toString();
+};
+
+const formatShanghaiMonth = (date: Date): string => {
+  return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 7);
+};
+
+const getConfiguredSuperuserCredentials = (): { email: string; password: string } | null => {
+  const email = (process.env.PB_SUPERUSER_EMAIL ?? '').trim();
+  const password = (process.env.PB_SUPERUSER_PASSWORD ?? '').trim();
+
+  if (!email || !password) {
+    return null;
+  }
+
+  return {
+    email,
+    password,
+  };
+};
+
+const getRequiredSuperuserToken = async (): Promise<string> => {
+  const credentials = getConfiguredSuperuserCredentials();
+
+  if (!credentials) {
+    throw new PocketBaseGatewayError(500, {
+      message: '服务器未配置 PocketBase 管理员账号，无法使用 AI 识别。',
+    });
+  }
+
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${superuserCollection}/auth-with-password`, {
+    body: JSON.stringify({
+      identity: credentials.email,
+      password: credentials.password,
+    }),
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+
+  if (!upstream.response.ok) {
+    throw new PocketBaseGatewayError(upstream.response.status, upstream.payload);
+  }
+
+  const authResponse = normalizeAuthResponse(upstream.payload);
+
+  if (!authResponse) {
+    throw new PocketBaseGatewayError(502, {
+      message: 'PocketBase 管理员登录响应缺少必要字段。',
+    });
+  }
+
+  return authResponse.token;
+};
+
+const getOptionalSuperuserToken = async (): Promise<null | string> => {
+  if (!getConfiguredSuperuserCredentials()) {
+    return null;
+  }
+
+  return getRequiredSuperuserToken();
+};
+
+const normalizeMonthlyLimit = (value: unknown): number => {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : DEFAULT_AI_USAGE_LIMIT;
+};
+
+const listPocketBaseRecords = async (
+  token: string,
+  collectionName: string,
+  options: {
+    fields?: string;
+    filter?: string;
+    page?: number;
+    perPage?: number;
+  } = {},
+): Promise<unknown> => {
+  const searchParams = new URLSearchParams({
+    fields: options.fields ?? 'id',
+    page: String(options.page ?? 1),
+    perPage: String(options.perPage ?? 200),
+  });
+
+  if (options.filter) {
+    searchParams.set('filter', options.filter);
+  }
+
+  const upstream = await proxyPocketBaseRequest(
+    `/api/collections/${collectionName}/records?${searchParams.toString()}`,
+    {
+      headers: {
+        Accept: 'application/json',
+        Authorization: token,
+      },
+      method: 'GET',
+    },
+  );
+
+  if (!upstream.response.ok) {
+    throw new PocketBaseGatewayError(upstream.response.status, upstream.payload);
+  }
+
+  return upstream.payload;
+};
+
+const getFirstListItem = (payload: unknown): Record<string, unknown> | null => {
+  if (!isRecord(payload) || !Array.isArray(payload.items)) {
+    return null;
+  }
+
+  const firstItem = payload.items[0] as unknown;
+
+  return isRecord(firstItem) ? firstItem : null;
+};
+
+const getAiUsageLimit = async (
+  superuserToken: string,
+  ownerId: string,
+  feature: string,
+): Promise<{ enabled: boolean; monthlyLimit: number }> => {
+  const payload = await listPocketBaseRecords(superuserToken, AI_USAGE_LIMITS_COLLECTION, {
+    fields: 'enabled,monthly_limit',
+    filter: `owner = ${escapeFilterValue(ownerId)} && feature = ${escapeFilterValue(feature)}`,
+    perPage: 1,
+  });
+  const record = getFirstListItem(payload) as AiUsageLimitRecord | null;
+
+  if (!record) {
+    return {
+      enabled: true,
+      monthlyLimit: DEFAULT_AI_USAGE_LIMIT,
+    };
+  }
+
+  return {
+    enabled: record.enabled !== false,
+    monthlyLimit: normalizeMonthlyLimit(record.monthly_limit),
+  };
+};
+
+const countSuccessfulAiUsage = async (
+  superuserToken: string,
+  ownerId: string,
+  feature: string,
+  month: string,
+): Promise<number> => {
+  const recordIds = await listRecordIdsByFilter(
+    superuserToken,
+    AI_USAGE_LOGS_COLLECTION,
+    [
+      `owner = ${escapeFilterValue(ownerId)}`,
+      `feature = ${escapeFilterValue(feature)}`,
+      `month = ${escapeFilterValue(month)}`,
+      `status = ${escapeFilterValue('success')}`,
+    ].join(' && '),
+  );
+
+  return recordIds.length;
+};
+
+const createAiUsageLog = async (
+  superuserToken: string,
+  input: {
+    errorMessage?: string;
+    feature: string;
+    month: string;
+    ownerId: string;
+    status: 'failed' | 'success';
+  },
+): Promise<void> => {
+  const now = new Date().toISOString();
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${AI_USAGE_LOGS_COLLECTION}/records`, {
+    body: JSON.stringify({
+      created_at: now,
+      error_message: input.errorMessage ?? '',
+      feature: input.feature,
+      month: input.month,
+      owner: input.ownerId,
+      status: input.status,
+      updated_at: now,
+    }),
+    headers: {
+      Accept: 'application/json',
+      Authorization: superuserToken,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+
+  if (!upstream.response.ok) {
+    throw new PocketBaseGatewayError(upstream.response.status, upstream.payload);
+  }
+};
+
+const parseImageRecognitionRequest = async (request: IncomingMessage): Promise<{ imageDataUrl: string }> => {
+  const contentType = request.headers['content-type'] ?? '';
+  const normalizedContentType = Array.isArray(contentType) ? '' : contentType.toLowerCase();
+  const binaryImageMimeTypeMatch = /^image\/(?:jpeg|jpg|png|webp)(?:\s*;.*)?$/.exec(normalizedContentType);
+
+  if (binaryImageMimeTypeMatch) {
+    const binaryImage = await readRequestBuffer(request, {
+      maxBytes: aiImageMaxBytes,
+    });
+
+    if (binaryImage.byteLength <= 0) {
+      throw new Error('图片内容为空，请重新上传。');
+    }
+
+    return {
+      imageDataUrl: `data:${normalizedContentType.split(';')[0]};base64,${binaryImage.toString('base64')}`,
+    };
+  }
+
+  if (!normalizedContentType.includes('application/json')) {
+    throw new Error('请使用 JSON 请求体或 jpeg、png、webp 二进制图片提交图片数据。');
+  }
+
+  const body = await parseLimitedJsonBody(request, {
+    maxBytes: Math.ceil(aiImageMaxBytes * 1.5) + 2048,
+  });
+
+  if (!isRecord(body)) {
+    throw new Error('AI 图片识别请求缺少有效参数。');
+  }
+
+  const imageDataUrl = toTrimmedString(body.imageDataUrl);
+  const imageBase64 = toTrimmedString(body.imageBase64);
+  const mimeType = toTrimmedString(body.mimeType) || 'image/jpeg';
+  const normalizedDataUrl = imageDataUrl || `data:${mimeType};base64,${imageBase64}`;
+  const dataUrlMatch = /^data:(image\/(?:jpeg|jpg|png|webp));base64,([a-zA-Z0-9+/=\r\n]+)$/.exec(normalizedDataUrl);
+
+  if (!dataUrlMatch) {
+    throw new Error('请提交 jpeg、png 或 webp 格式的 base64 图片。');
+  }
+
+  const binaryImage = Buffer.from(dataUrlMatch[2].replaceAll(/\s/g, ''), 'base64');
+
+  if (binaryImage.byteLength <= 0) {
+    throw new Error('图片内容为空，请重新上传。');
+  }
+
+  if (binaryImage.byteLength > aiImageMaxBytes) {
+    throw new Error('图片数据过大，请压缩到 6MB 以内后重试。');
+  }
+
+  return {
+    imageDataUrl: `data:${dataUrlMatch[1]};base64,${binaryImage.toString('base64')}`,
+  };
+};
+
+const getOptionalStringField = (record: Record<string, unknown>, fieldName: string): string => {
+  return typeof record[fieldName] === 'string' ? record[fieldName].trim() : '';
+};
+
+const getOptionalNumberField = (record: Record<string, unknown>, fieldName: string): null | number => {
+  const value = record[fieldName];
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value;
+};
+
+const normalizeFlavorTagList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => item.length > 0)
+    .slice(0, 12);
+};
+
+const normalizeHarvestSeasonShortYear = (value: string): string => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  const fullYearMatch = /(?:19|20)\d{2}/.exec(trimmed);
+
+  if (fullYearMatch) {
+    return fullYearMatch[0].slice(-2);
+  }
+
+  const twoDigitMatch = /\d{2}/.exec(trimmed);
+
+  return twoDigitMatch ? twoDigitMatch[0] : trimmed;
+};
+
+const normalizeRecognitionPayload = (payload: unknown): BeanImageRecognitionResult | null => {
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  return {
+    altitudeMetersMax: getOptionalNumberField(payload, 'altitudeMetersMax'),
+    altitudeMetersMin: getOptionalNumberField(payload, 'altitudeMetersMin'),
+    code: getOptionalStringField(payload, 'code'),
+    densityGPerL: getOptionalNumberField(payload, 'densityGPerL'),
+    displayName: getOptionalStringField(payload, 'displayName'),
+    flavorTags: normalizeFlavorTagList(payload.flavorTags),
+    grade: getOptionalStringField(payload, 'grade'),
+    harvestSeason: normalizeHarvestSeasonShortYear(getOptionalStringField(payload, 'harvestSeason')),
+    millName: getOptionalStringField(payload, 'millName'),
+    moisturePercent: getOptionalNumberField(payload, 'moisturePercent'),
+    notes: getOptionalStringField(payload, 'notes'),
+    originArea: getOptionalStringField(payload, 'originArea'),
+    originCountry: getOptionalStringField(payload, 'originCountry'),
+    originRegion: getOptionalStringField(payload, 'originRegion'),
+    processMethod: getOptionalStringField(payload, 'processMethod'),
+    supplierName: getOptionalStringField(payload, 'supplierName'),
+    variety: getOptionalStringField(payload, 'variety'),
+  };
+};
+
+const parseJsonCandidate = (candidate: string): unknown => {
+  const normalizedCandidate = candidate
+    .trim()
+    .replace(/^\uFEFF/, '')
+    .replace(/,\s*([}\]])/g, '$1');
+
+  return JSON.parse(normalizedCandidate) as unknown;
+};
+
+const extractBalancedJsonObject = (text: string): string => {
+  const startIndex = text.indexOf('{');
+
+  if (startIndex < 0) {
+    return '';
+  }
+
+  let depth = 0;
+  let isEscaped = false;
+  let isInString = false;
+
+  for (let index = startIndex; index < text.length; index += 1) {
+    const char = text[index];
+
+    if (isEscaped) {
+      isEscaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      isEscaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      isInString = !isInString;
+      continue;
+    }
+
+    if (isInString) {
+      continue;
+    }
+
+    if (char === '{') {
+      depth += 1;
+    }
+
+    if (char === '}') {
+      depth -= 1;
+
+      if (depth === 0) {
+        return text.slice(startIndex, index + 1);
+      }
+    }
+  }
+
+  return '';
+};
+
+const extractJsonFromModelText = (text: string): unknown => {
+  const trimmedText = text.trim();
+  const fencedJsonMatch = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmedText);
+  const candidates = [
+    fencedJsonMatch?.[1] ?? '',
+    trimmedText,
+    extractBalancedJsonObject(trimmedText),
+  ].filter((candidate) => candidate.trim().length > 0);
+
+  for (const candidate of candidates) {
+    const balancedCandidate = candidate.trim().startsWith('{')
+      ? candidate
+      : extractBalancedJsonObject(candidate);
+
+    if (!balancedCandidate) {
+      continue;
+    }
+
+    try {
+      return parseJsonCandidate(balancedCandidate);
+    } catch {
+      // 继续尝试其他候选片段；最终统一抛出业务错误。
+    }
+  }
+
+  throw new Error('AI 返回内容不是有效的 JSON。');
+};
+
+const getContentPartText = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (!isRecord(value)) {
+    return '';
+  }
+
+  const text = toTrimmedString(value.text) || toTrimmedString(value.output_text);
+
+  if (text) {
+    return text;
+  }
+
+  if ('code' in value || 'displayName' in value || 'originCountry' in value) {
+    return JSON.stringify(value);
+  }
+
+  return '';
+};
+
+const getModelContentText = (payload: unknown): string => {
+  if (!isRecord(payload)) {
+    return '';
+  }
+
+  const directOutputText = getContentPartText(payload.output_text);
+
+  if (directOutputText) {
+    return directOutputText;
+  }
+
+  if (!Array.isArray(payload.choices)) {
+    return '';
+  }
+
+  for (const choice of payload.choices) {
+    if (!isRecord(choice)) {
+      continue;
+    }
+
+    const choiceText = getContentPartText(choice.text);
+
+    if (choiceText) {
+      return choiceText;
+    }
+
+    if (!isRecord(choice.message)) {
+      continue;
+    }
+
+    const content = choice.message.content;
+
+    if (Array.isArray(content)) {
+      const joinedContent = content
+        .map((part) => getContentPartText(part))
+        .filter((part) => part.length > 0)
+        .join('\n')
+        .trim();
+
+      if (joinedContent) {
+        return joinedContent;
+      }
+    }
+
+    const contentText = getContentPartText(content);
+
+    if (contentText) {
+      return contentText;
+    }
+
+    const reasoningContent = getContentPartText(choice.message.reasoning_content);
+
+    if (reasoningContent) {
+      return reasoningContent;
+    }
+  }
+
+  return '';
+};
+
+const getModelResponseDiagnostics = (payload: unknown): string => {
+  if (!isRecord(payload) || !Array.isArray(payload.choices)) {
+    return 'choices:missing';
+  }
+
+  const firstChoice = payload.choices[0] as unknown;
+
+  if (!isRecord(firstChoice) || !isRecord(firstChoice.message)) {
+    return 'message:missing';
+  }
+
+  const finishReason = toTrimmedString(firstChoice.finish_reason);
+  const messageKeys = Object.keys(firstChoice.message).sort().join(',');
+  const content = firstChoice.message.content;
+  const contentType = Array.isArray(content) ? 'array' : typeof content;
+
+  return [
+    finishReason ? `finish_reason:${finishReason}` : '',
+    messageKeys ? `message_keys:${messageKeys}` : '',
+    `content_type:${contentType}`,
+  ].filter((item) => item.length > 0).join('；') || 'unknown';
+};
+
+const getQiniuErrorMessage = (payload: unknown): string => {
+  if (!isRecord(payload)) {
+    return '';
+  }
+
+  const directMessage = toTrimmedString(payload.message);
+
+  if (directMessage) {
+    return directMessage;
+  }
+
+  if (isRecord(payload.error)) {
+    return toTrimmedString(payload.error.message) || toTrimmedString(payload.error.code);
+  }
+
+  return toTrimmedString(payload.code) || toTrimmedString(payload.error);
+};
+
+const formatQiniuRequestError = (status: number, payload: unknown, action: string): string => {
+  const upstreamMessage = getQiniuErrorMessage(payload);
+  const suffix = upstreamMessage ? `上游信息：${upstreamMessage}` : '上游未返回可读错误信息。';
+
+  if (status === 401 || status === 403) {
+    return (
+      `七牛云 Qwen ${action}被拒绝：${String(status)}。` +
+      `请检查 QINIU_QWEN_API_KEY 是否有效且已开通当前模型，` +
+      `QINIU_QWEN_MODEL=${qiniuQwenModel} 是否与七牛云控制台模型 ID 完全一致，` +
+      `以及该模型是否允许当前账号调用视觉/多模态能力。${suffix}`
+    );
+  }
+
+  return `七牛云 Qwen ${action}失败：${String(status)}。${suffix}`;
+};
+
+const requestQiniuJsonRepair = async (apiKey: string, modelText: string): Promise<unknown> => {
+  const upstream = await fetch(buildQiniuQwenUrl('/chat/completions'), {
+    body: JSON.stringify({
+      enable_thinking: false,
+      max_tokens: 1024,
+      messages: [
+        {
+          content:
+            '你是严格 JSON 格式化器。把用户提供的咖啡生豆识别文本转换成一个 JSON 对象。不要解释，不要 Markdown，不要输出 JSON 以外的任何内容。',
+          role: 'system',
+        },
+        {
+          content:
+            `请只返回这些字段：code, displayName, originCountry, originRegion, originArea, processMethod, variety, grade, harvestSeason, millName, flavorTags, altitudeMetersMin, altitudeMetersMax, moisturePercent, densityGPerL, supplierName, notes。\n` +
+            '字符串字段无法确认时返回空字符串；数值字段无法确认时返回 null；flavorTags 返回字符串数组；harvestSeason 只返回年份后两位，例如 2026 返回 26。\n\n' +
+            `待整理文本：\n${modelText.slice(0, 6000)}`,
+          role: 'user',
+        },
+      ],
+      model: qiniuQwenModel,
+      temperature: 0,
+    }),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+  const payload = await parseJsonResponse(upstream);
+
+  if (!upstream.ok) {
+    throw new Error(formatQiniuRequestError(upstream.status, payload, 'JSON 整理'));
+  }
+
+  const contentText = getModelContentText(payload);
+
+  if (!contentText) {
+    throw new Error(`AI JSON 整理返回内容为空（${getModelResponseDiagnostics(payload)}）。`);
+  }
+
+  return extractJsonFromModelText(contentText);
+};
+
+const requestQiniuBeanImageRecognition = async (imageDataUrl: string): Promise<BeanImageRecognitionResult> => {
+  const apiKey = (process.env.QINIU_QWEN_API_KEY ?? '').trim();
+
+  if (!apiKey) {
+    throw new Error('服务器未配置七牛云 Qwen API Key。');
+  }
+
+  const upstream = await fetch(buildQiniuQwenUrl('/chat/completions'), {
+    body: JSON.stringify({
+      enable_thinking: false,
+      max_tokens: 2048,
+      messages: [
+        {
+          content:
+            '你是咖啡生豆标签识别助手。只根据图片内容提取字段，无法确认的字段返回空字符串、空数组或 null。必须只输出一个 JSON 对象，不要输出解释，不要使用 Markdown 代码块。',
+          role: 'system',
+        },
+        {
+          content: [
+            {
+              text:
+                '识别这张生豆标签、袋标或采购单图片，返回一个 JSON 对象，字段固定为：code, displayName, originCountry, originRegion, originArea, processMethod, variety, grade, harvestSeason, millName, flavorTags, altitudeMetersMin, altitudeMetersMax, moisturePercent, densityGPerL, supplierName, notes。数值字段只返回数字或 null；flavorTags 返回字符串数组；harvestSeason 只返回年份后两位，例如 2026 返回 26；没有识别到的字符串字段返回空字符串。',
+              type: 'text',
+            },
+            {
+              image_url: {
+                url: imageDataUrl,
+              },
+              type: 'image_url',
+            },
+          ],
+          role: 'user',
+        },
+      ],
+      model: qiniuQwenModel,
+      temperature: 0.1,
+    }),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+  const payload = await parseJsonResponse(upstream);
+
+  if (!upstream.ok) {
+    throw new Error(formatQiniuRequestError(upstream.status, payload, '请求'));
+  }
+
+  const contentText = getModelContentText(payload);
+
+  if (!contentText) {
+    throw new Error(`AI 返回内容为空（${getModelResponseDiagnostics(payload)}）。`);
+  }
+
+  let recognitionPayload: unknown;
+
+  try {
+    recognitionPayload = extractJsonFromModelText(contentText);
+  } catch {
+    recognitionPayload = await requestQiniuJsonRepair(apiKey, contentText);
+  }
+
+  const normalizedRecognition = normalizeRecognitionPayload(recognitionPayload);
+
+  if (!normalizedRecognition) {
+    throw new Error('AI 返回字段格式不符合要求。');
+  }
+
+  return normalizedRecognition;
 };
 
 const normalizeUser = (record: PocketBaseUserRecord): SessionUser | null => {
@@ -868,6 +1653,201 @@ const handleLogout = (request: IncomingMessage, response: ServerResponse): void 
   });
 };
 
+const refreshAuthenticatedSession = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<PocketBaseSessionResponse | null> => {
+  const token = getAuthCookieValue(request);
+
+  if (!token) {
+    clearAuthCookie(response, request);
+    sendApiError(response, 401, '未找到登录态，请重新登录。');
+    return null;
+  }
+
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${authCollection}/auth-refresh`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: token,
+    },
+    method: 'POST',
+  });
+
+  if (!upstream.response.ok) {
+    clearAuthCookie(response, request);
+    sendApiError(response, upstream.response.status, normalizeErrorPayload(upstream.payload).message ?? '登录态已失效。');
+    return null;
+  }
+
+  const authResponse = normalizeAuthResponse(upstream.payload);
+
+  if (!authResponse) {
+    clearAuthCookie(response, request);
+    sendApiError(response, 502, 'PocketBase 会话刷新响应缺少必要字段。');
+    return null;
+  }
+
+  if (authResponse.record.verified !== true) {
+    sendUnverifiedResponse(response, request, authResponse.record.email);
+    return null;
+  }
+
+  setAuthCookie(response, request, authResponse.token);
+
+  return authResponse;
+};
+
+const logAiRecognitionFailure = async (
+  superuserToken: string,
+  input: {
+    errorMessage: string;
+    month: string;
+    ownerId: string;
+  },
+): Promise<void> => {
+  await createAiUsageLog(superuserToken, {
+    errorMessage: input.errorMessage.slice(0, 500),
+    feature: AI_FEATURE_BEAN_IMAGE_RECOGNITION,
+    month: input.month,
+    ownerId: input.ownerId,
+    status: 'failed',
+  }).catch(() => {
+    // 失败日志不能影响原始错误返回；成功日志则必须写入后才会扣次。
+  });
+};
+
+const readBeanImageRecognitionUsageState = async (
+  superuserToken: string,
+  ownerId: string,
+  month: string,
+): Promise<AiUsageState> => {
+  const usageLimit = await getAiUsageLimit(superuserToken, ownerId, AI_FEATURE_BEAN_IMAGE_RECOGNITION);
+  const usedThisMonth = await countSuccessfulAiUsage(
+    superuserToken,
+    ownerId,
+    AI_FEATURE_BEAN_IMAGE_RECOGNITION,
+    month,
+  );
+
+  return {
+    enabled: usageLimit.enabled,
+    monthlyLimit: usageLimit.monthlyLimit,
+    remainingUses: usageLimit.enabled ? Math.max(usageLimit.monthlyLimit - usedThisMonth, 0) : 0,
+    usedThisMonth,
+  };
+};
+
+const handleBeanImageRecognitionUsage = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
+  const authResponse = await refreshAuthenticatedSession(request, response);
+
+  if (!authResponse) {
+    return;
+  }
+
+  let superuserToken = '';
+
+  try {
+    superuserToken = await getRequiredSuperuserToken();
+  } catch (error) {
+    const statusCode = error instanceof PocketBaseGatewayError ? error.status : 500;
+    const message =
+      error instanceof PocketBaseGatewayError
+        ? normalizeErrorPayload(error.payload).message ?? error.message
+        : 'PocketBase 管理员登录失败，无法使用 AI 识别。';
+
+    sendApiError(response, statusCode, message);
+    return;
+  }
+
+  const month = formatShanghaiMonth(new Date());
+  const ownerId = authResponse.record.id;
+  let usageState: AiUsageState;
+
+  try {
+    usageState = await readBeanImageRecognitionUsageState(superuserToken, ownerId, month);
+  } catch (error) {
+    const statusCode = error instanceof PocketBaseGatewayError ? error.status : 500;
+    const message =
+      error instanceof PocketBaseGatewayError
+        ? normalizeErrorPayload(error.payload).message ?? error.message
+        : 'AI 使用额度读取失败。';
+
+    sendApiError(response, statusCode, message);
+    return;
+  }
+
+  if (request.method === 'GET') {
+    sendApiSuccess(response, usageState);
+    return;
+  }
+
+  if (!usageState.enabled) {
+    sendApiError(response, 403, '当前账号的 AI 图片识别功能已关闭。', {
+      monthlyLimit: usageState.monthlyLimit,
+      remainingUses: 0,
+      usedThisMonth: usageState.usedThisMonth,
+    });
+    return;
+  }
+
+  if (usageState.remainingUses <= 0) {
+    sendApiError(response, 429, '本月 AI 图片识别次数已用完。', {
+      monthlyLimit: usageState.monthlyLimit,
+      remainingUses: 0,
+      usedThisMonth: usageState.usedThisMonth,
+    });
+    return;
+  }
+
+  let imageDataUrl = '';
+
+  try {
+    imageDataUrl = (await parseImageRecognitionRequest(request)).imageDataUrl;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'AI 图片识别请求参数无效。';
+
+    await logAiRecognitionFailure(superuserToken, {
+      errorMessage: message,
+      month,
+      ownerId,
+    });
+    sendApiError(response, 400, message);
+    return;
+  }
+
+  try {
+    const recognition = await requestQiniuBeanImageRecognition(imageDataUrl);
+
+    await createAiUsageLog(superuserToken, {
+      feature: AI_FEATURE_BEAN_IMAGE_RECOGNITION,
+      month,
+      ownerId,
+      status: 'success',
+    });
+
+    const nextUsedThisMonth = usageState.usedThisMonth + 1;
+
+    sendApiSuccess(response, {
+      monthlyLimit: usageState.monthlyLimit,
+      recognition,
+      remainingUses: Math.max(usageState.monthlyLimit - nextUsedThisMonth, 0),
+      usedThisMonth: nextUsedThisMonth,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'AI 图片识别失败。';
+
+    await logAiRecognitionFailure(superuserToken, {
+      errorMessage: message,
+      month,
+      ownerId,
+    });
+    sendApiError(response, 502, message);
+  }
+};
+
 const handleDeleteAccount = async (
   request: IncomingMessage,
   response: ServerResponse,
@@ -933,6 +1913,17 @@ const handleDeleteAccount = async (
       });
     }
 
+    const optionalSuperuserToken = await getOptionalSuperuserToken();
+
+    if (optionalSuperuserToken) {
+      await deleteRecordsByOwner(optionalSuperuserToken, AI_USAGE_LOGS_COLLECTION, authResponse.record.id, {
+        optional: true,
+      });
+      await deleteRecordsByOwner(optionalSuperuserToken, AI_USAGE_LIMITS_COLLECTION, authResponse.record.id, {
+        optional: true,
+      });
+    }
+
     const deleteUserUpstream = await proxyPocketBaseRequest(
       `/api/collections/${authCollection}/records/${authResponse.record.id}`,
       {
@@ -976,6 +1967,16 @@ const handleRequest = async (request: IncomingMessage, response: ServerResponse)
     sendJson(response, 200, {
       ok: true,
     });
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/ai/bean-image-recognition') {
+    if (request.method !== 'GET' && request.method !== 'POST') {
+      sendMethodNotAllowed(response, ['GET', 'POST']);
+      return;
+    }
+
+    await handleBeanImageRecognitionUsage(request, response);
     return;
   }
 

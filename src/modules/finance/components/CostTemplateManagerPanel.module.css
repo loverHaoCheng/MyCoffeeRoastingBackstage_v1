@@ -3,10 +3,6 @@
   box-sizing: border-box;
   padding-inline: 4px;
   display: grid;
-  gap: 0;
-}
-
-.panel[data-collapsed='false'] {
   gap: 14px;
 }
 
@@ -259,7 +255,7 @@
 }
 
 @media (max-width: 767px) {
-  .panel[data-collapsed='false'] {
+  .panel {
     gap: 12px;
   }
 

@@ -1,5 +1,14 @@
 # 变更记录
 
+## 2026-07-10 - 生豆 AI 图片识别服务端基础
+
+- 新增 `/api/ai/bean-image-recognition` BFF 接口，服务端代调用七牛云 OpenAI 兼容 Qwen 多模态接口
+- 新增按用户月度额度控制的服务端流程，读取 `ai_usage_limits`，默认 `10 次/月`
+- 新增 AI 使用日志写入规则，只有 `success` 计入额度，失败写 `failed` 但不扣次数
+- 账号注销时同步清理 `ai_usage_limits` 与 `ai_usage_logs`
+- 生豆新增抽屉的 AI 图片识别 Tab 支持上传图片、预览识别字段，并一键回填到手动创建表单
+- 更新 API、PocketBase 集合说明与生豆新增交互文档
+
 ## 2026-07-09 - 财务总览落地
 
 - 新增 `#/finance` 一级页面，提供经营总览、手工收入台账、经营费用台账与成本核算记录入口
@@ -30,7 +39,7 @@
 - 新增同源 `/api/auth/*` 登录态网关，使用 `HttpOnly Cookie` 保存 PocketBase token
 - 前端启动时自动请求会话接口，恢复浏览器关闭后的登录状态
 - 新增 auth BFF 的构建、启动、开发脚本和 Nginx 代理说明
-- 修复开发环境登录接口 500：Vite 直接挂载 auth BFF，并强制刷新 BFF 构建产物
+- 调整开发环境 API 链路：Vite 不再挂载本地 BFF，统一把 `/api/*` 代理到云端 BFF，并清理本地 `.env.local` 中的服务端密钥
 
 ## 2026-07-08 - 熟豆连接运行时缓存
 

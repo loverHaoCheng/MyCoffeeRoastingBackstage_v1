@@ -312,7 +312,7 @@
 .authBar[data-settings-auth-bar='true'] {
   width: min(
     calc(100% - (var(--content-page-inline-padding) * 2)),
-    780px
+    var(--content-page-max-width)
   );
 }
 

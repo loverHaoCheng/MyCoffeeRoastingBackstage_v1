@@ -1,9 +1,12 @@
 import { fireEvent, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { BeanPage } from '@/modules/bean';
-import { beanCacheService } from '@/modules/bean/services';
+import { createDefaultBeanCode } from '@/modules/bean/constants';
+import { beanAiRecognitionService, beanCacheService } from '@/modules/bean/services';
 import { useSettingsStore } from '@/modules/settings/store';
+import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
 import {
   createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
@@ -11,8 +14,34 @@ import {
 } from '@/modules/settings/types';
 import { renderWithQuery } from '@/tests/renderWithProviders';
 
+function FloatingActionTestHost({ children }: { children: ReactNode }) {
+  const [actionConfig, setActionConfig] = useState<ViewportFloatingActionButtonProps | null>(null);
+  const contextValue = useMemo(() => ({
+    enabled: true,
+    register(config: ViewportFloatingActionButtonProps) {
+      setActionConfig(config);
+
+      return () => {
+        setActionConfig(null);
+      };
+    },
+  }), []);
+
+  return (
+    <FloatingActionRegistrationContext.Provider value={contextValue}>
+      {children}
+      {actionConfig ? (
+        <button aria-label={actionConfig.ariaLabel} onClick={actionConfig.onClick} type="button">
+          {actionConfig.ariaLabel}
+        </button>
+      ) : null}
+    </FloatingActionRegistrationContext.Provider>
+  );
+}
+
 describe('BeanPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     window.localStorage.clear();
     beanCacheService.clear();
     useSettingsStore.setState({
@@ -80,6 +109,36 @@ describe('BeanPage', () => {
     );
   };
 
+  const enableBeanCreationPrerequisites = (): void => {
+    useSettingsStore.setState({
+      costTemplateSettings: {
+        defaultTemplateId: 'template-1',
+        templates: [
+          {
+            createdAt: '2026-07-10T00:00:00.000Z',
+            dehydrationRate: 14,
+            energyCost: 1,
+            id: 'template-1',
+            laborCost: 4,
+            name: '默认模板',
+            notes: '',
+            otherCost: 0,
+            packagingCost: 1,
+            roastInputWeightGrams: 200,
+            saleUnitWeightGrams: 160,
+            targetProfitRate: 30,
+            updatedAt: '2026-07-10T00:00:00.000Z',
+          },
+        ],
+        updatedAt: null,
+      },
+    });
+  };
+
+  it('formats the default bean code with two digit date and time parts', () => {
+    expect(createDefaultBeanCode(new Date(2026, 6, 10, 5, 8))).toBe('EB-2607100508');
+  });
+
   it('renders the bean inventory workspace with the current simplified search layout', async () => {
     renderWithQuery(<BeanPage />);
 
@@ -106,6 +165,79 @@ describe('BeanPage', () => {
 
     expect(await screen.findByText('没有匹配的生豆批次')).toBeInTheDocument();
     expect(screen.getByLabelText('生豆库存筛选')).toBeInTheDocument();
+  });
+
+  it('opens a create method action sheet before showing the bean creator', async () => {
+    enableBeanCreationPrerequisites();
+    vi.spyOn(beanAiRecognitionService, 'getUsage').mockResolvedValue({
+      enabled: true,
+      monthlyLimit: 10,
+      remainingUses: 3,
+      usedThisMonth: 7,
+    });
+
+    renderWithQuery(
+      <FloatingActionTestHost>
+        <BeanPage />
+      </FloatingActionTestHost>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '新增生豆' }));
+
+    const createMethodDialog = await screen.findByRole('dialog', { name: '选择创建方式' });
+
+    expect(within(createMethodDialog).getByRole('button', { name: '手动创建' })).toBeInTheDocument();
+    expect(within(createMethodDialog).getByRole('button', { name: 'AI 图片识别' })).toBeInTheDocument();
+    expect(await within(createMethodDialog).findByText('本月剩余 3 / 10')).toBeInTheDocument();
+    expect(within(createMethodDialog).getByRole('button', { name: '取消' })).toBeInTheDocument();
+
+    fireEvent.click(within(createMethodDialog).getByRole('button', { name: 'AI 图片识别' }));
+
+    expect(await screen.findByText('上传袋标、采购单或生豆标签')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '手动创建' })).not.toBeInTheDocument();
+  });
+
+  it('disables AI image recognition from the create method sheet when quota is exhausted', async () => {
+    enableBeanCreationPrerequisites();
+    vi.spyOn(beanAiRecognitionService, 'getUsage').mockResolvedValue({
+      enabled: true,
+      monthlyLimit: 10,
+      remainingUses: 0,
+      usedThisMonth: 10,
+    });
+
+    renderWithQuery(
+      <FloatingActionTestHost>
+        <BeanPage />
+      </FloatingActionTestHost>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '新增生豆' }));
+
+    const createMethodDialog = await screen.findByRole('dialog', { name: '选择创建方式' });
+    const aiRecognitionButton = within(createMethodDialog).getByRole('button', { name: 'AI 图片识别' });
+
+    expect(await within(createMethodDialog).findByText('本月剩余 0 / 10')).toBeInTheDocument();
+    expect(aiRecognitionButton).toBeDisabled();
+  });
+
+  it('shows the server reason when AI recognition quota loading fails', async () => {
+    enableBeanCreationPrerequisites();
+    vi.spyOn(beanAiRecognitionService, 'getUsage').mockRejectedValue(new Error('ai_usage_limits 字段配置错误'));
+
+    renderWithQuery(
+      <FloatingActionTestHost>
+        <BeanPage />
+      </FloatingActionTestHost>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '新增生豆' }));
+
+    const createMethodDialog = await screen.findByRole('dialog', { name: '选择创建方式' });
+    const aiRecognitionButton = within(createMethodDialog).getByRole('button', { name: 'AI 图片识别' });
+
+    expect(await within(createMethodDialog).findByText('额度读取失败：ai_usage_limits 字段配置错误')).toBeInTheDocument();
+    expect(aiRecognitionButton).toBeDisabled();
   });
 
   it('puts zero-stock beans into a collapsed bottom section and removes them after stock changes', () => {

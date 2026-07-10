@@ -1,5 +1,5 @@
 import { DownOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
-import { App, Button, Grid, Input, InputNumber, Popconfirm, Tag } from 'antd';
+import { App, Button, Input, InputNumber, Popconfirm, Tag } from 'antd';
 import { useEffect, useId, useState } from 'react';
 
 import { costTemplateFormSchema } from '@/modules/settings/schemas';
@@ -39,8 +39,6 @@ interface CostTemplateManagerPanelProps {
 
 export function CostTemplateManagerPanel({ createRequestKey = 0 }: CostTemplateManagerPanelProps) {
   const { message } = App.useApp();
-  const screens = Grid.useBreakpoint();
-  const isWide = screens.md ?? false;
   const {
     costTemplateSettings,
     deleteCostTemplate,
@@ -315,12 +313,11 @@ export function CostTemplateManagerPanel({ createRequestKey = 0 }: CostTemplateM
 
       <AppDrawer
         className={styles.templateDrawer}
+        height="82dvh"
         onClose={handleCloseTemplateDrawer}
         open={isTemplateDrawerOpen}
-        placement={isWide ? 'right' : 'bottom'}
+        placement="bottom"
         title={isCreatingTemplate ? '新建模板' : '编辑模板'}
-        width={isWide ? 460 : undefined}
-        height={isWide ? undefined : '82vh'}
       >
         <section className={styles.templateDrawerPanel}>
           <header className={styles.templateEditorHeader}>

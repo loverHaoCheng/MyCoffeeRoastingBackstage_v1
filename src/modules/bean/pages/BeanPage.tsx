@@ -1,6 +1,6 @@
 import { DownOutlined, PlusOutlined } from '@ant-design/icons';
-import { App, Button, Empty, Grid, Spin, Tabs } from 'antd';
-import { useMemo, useState } from 'react';
+import { App, Button, Drawer, Empty, Grid, Spin } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -10,8 +10,9 @@ import {
   BeanInventoryCard,
   BeanManualCreator,
 } from '@/modules/bean/components';
+import { createDefaultBeanFormValues } from '@/modules/bean/constants';
 import { beanQueryKeys, useBeans, useDeleteBean } from '@/modules/bean/hooks';
-import { beanService } from '@/modules/bean/services';
+import { beanAiRecognitionService, beanService } from '@/modules/bean/services';
 import { useCostTemplateSettings, usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -21,7 +22,7 @@ import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloati
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
 import type { Bean } from '@/types/domain';
-import type { GreenBeanCreateInput } from '@/modules/bean/types';
+import type { BeanImageRecognitionResult, BeanImageRecognitionUsage, GreenBeanCreateInput } from '@/modules/bean/types';
 import type { FieldPath } from 'react-hook-form';
 
 import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';
@@ -29,6 +30,7 @@ import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';
 import styles from './BeanPage.module.css';
 
 type BeanDetailMode = 'view' | 'edit';
+type BeanCreationMode = 'ai' | 'manual';
 
 const formatKg = new Intl.NumberFormat('zh-CN', {
   maximumFractionDigits: 1,
@@ -53,13 +55,59 @@ const sortBeansByCreatedAt = (beans: Bean[]): Bean[] => {
   });
 };
 
+const normalizeAiHarvestSeason = (value: string): string => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  const fullYearMatch = /(?:19|20)\d{2}/.exec(trimmed);
+
+  if (fullYearMatch) {
+    return fullYearMatch[0].slice(-2);
+  }
+
+  const twoDigitMatch = /\d{2}/.exec(trimmed);
+
+  return twoDigitMatch ? twoDigitMatch[0] : trimmed;
+};
+
+const mapAiRecognitionToBeanCreateInput = (recognition: BeanImageRecognitionResult): GreenBeanCreateInput => {
+  return {
+    ...createDefaultBeanFormValues(),
+    altitudeMetersMax: recognition.altitudeMetersMax,
+    altitudeMetersMin: recognition.altitudeMetersMin,
+    densityGPerL: recognition.densityGPerL,
+    displayName: recognition.displayName,
+    flavorTags: recognition.flavorTags,
+    grade: recognition.grade,
+    harvestSeason: normalizeAiHarvestSeason(recognition.harvestSeason),
+    millName: recognition.millName,
+    moisturePercent: recognition.moisturePercent,
+    notes: recognition.notes,
+    originArea: recognition.originArea,
+    originCountry: recognition.originCountry,
+    originRegion: recognition.originRegion,
+    processMethod: recognition.processMethod,
+    supplierName: recognition.supplierName,
+    variety: recognition.variety,
+  };
+};
+
 export function BeanPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
   const { costTemplateSettings } = useCostTemplateSettings();
   const { pocketBaseConnections } = usePocketBaseConnectionSettings();
+  const [isCreateActionSheetOpen, setIsCreateActionSheetOpen] = useState(false);
+  const [aiRecognitionUsage, setAiRecognitionUsage] = useState<BeanImageRecognitionUsage | null>(null);
+  const [aiRecognitionUsageError, setAiRecognitionUsageError] = useState('');
+  const [isAiRecognitionUsageLoading, setIsAiRecognitionUsageLoading] = useState(false);
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
+  const [creationMode, setCreationMode] = useState<BeanCreationMode>('manual');
+  const [recognizedBeanInitialValues, setRecognizedBeanInitialValues] = useState<GreenBeanCreateInput | undefined>();
   const [keyword, setKeyword] = useState('');
   const [isZeroStockCollapsed, setIsZeroStockCollapsed] = useState(true);
   const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
@@ -96,6 +144,79 @@ export function BeanPage() {
 
   const isWide = screens.md ?? false;
   const hasGreenBeanConnection = isPocketBaseProjectConnectionConfigured(pocketBaseConnections.greenBean);
+  const actionSheetStyles = {
+    content: {
+      borderRadius: '28px 28px 0 0',
+      overflow: 'hidden',
+    },
+    wrapper: {
+      borderRadius: '28px 28px 0 0',
+      overflow: 'hidden',
+    },
+  };
+  const aiRecognitionQuotaText = (() => {
+    if (isAiRecognitionUsageLoading) {
+      return '额度读取中';
+    }
+
+    if (aiRecognitionUsageError) {
+      return aiRecognitionUsageError;
+    }
+
+    if (!aiRecognitionUsage) {
+      return '剩余额度待检测';
+    }
+
+    if (!aiRecognitionUsage.enabled) {
+      return '当前账号已关闭';
+    }
+
+    return `本月剩余 ${String(aiRecognitionUsage.remainingUses)} / ${String(aiRecognitionUsage.monthlyLimit)}`;
+  })();
+  const isAiRecognitionActionDisabled =
+    isAiRecognitionUsageLoading ||
+    aiRecognitionUsageError.length > 0 ||
+    (aiRecognitionUsage != null && (!aiRecognitionUsage.enabled || aiRecognitionUsage.remainingUses <= 0));
+
+  useEffect(() => {
+    if (!isCreateActionSheetOpen) {
+      return;
+    }
+
+    let shouldIgnore = false;
+
+    setIsAiRecognitionUsageLoading(true);
+    setAiRecognitionUsageError('');
+
+    void beanAiRecognitionService
+      .getUsage()
+      .then((usage) => {
+        if (shouldIgnore) {
+          return;
+        }
+
+        setAiRecognitionUsage(usage);
+      })
+      .catch((error: unknown) => {
+        if (shouldIgnore) {
+          return;
+        }
+
+        setAiRecognitionUsage(null);
+        setAiRecognitionUsageError(`额度读取失败：${getUserFacingErrorMessage(error, '请检查登录态或服务器额度配置')}`);
+      })
+      .finally(() => {
+        if (shouldIgnore) {
+          return;
+        }
+
+        setIsAiRecognitionUsageLoading(false);
+      });
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [isCreateActionSheetOpen]);
 
   const handleViewBean = (beanId: Bean['id']) => {
     setSelectedBeanId(beanId);
@@ -141,6 +262,8 @@ export function BeanPage() {
 
   const handleCreateBean = (input: GreenBeanCreateInput) => {
     setCreationDrawerOpen(false);
+    setCreationMode('manual');
+    setRecognizedBeanInitialValues(undefined);
     submissionBackupService.save('create', input, 'bean');
     const optimisticBean = beanService.createOptimisticBean(input);
 
@@ -177,7 +300,7 @@ export function BeanPage() {
     void createTask;
   };
 
-  const handleOpenCreateDrawer = () => {
+  const handleOpenCreateFlow = () => {
     if (!hasGreenBeanConnection) {
       void message.warning('请先前往设置页创建并连接生豆数据库，完成后才能新增数据。');
       return;
@@ -188,7 +311,32 @@ export function BeanPage() {
       return;
     }
 
+    setAiRecognitionUsage(null);
+    setAiRecognitionUsageError('');
+    setIsCreateActionSheetOpen(true);
+  };
+
+  const handleOpenCreationDrawer = (mode: BeanCreationMode) => {
+    if (mode === 'ai' && isAiRecognitionActionDisabled) {
+      return;
+    }
+
+    setIsCreateActionSheetOpen(false);
+    setCreationMode(mode);
+    setRecognizedBeanInitialValues(undefined);
     setCreationDrawerOpen(true);
+  };
+
+  const handleCloseCreationDrawer = () => {
+    setCreationDrawerOpen(false);
+    setCreationMode('manual');
+    setRecognizedBeanInitialValues(undefined);
+  };
+
+  const handleApplyAiRecognition = (recognition: BeanImageRecognitionResult) => {
+    setRecognizedBeanInitialValues(mapAiRecognitionToBeanCreateInput(recognition));
+    setCreationMode('manual');
+    void message.success('识别结果已回填，请确认后创建。');
   };
 
   return (
@@ -291,43 +439,82 @@ export function BeanPage() {
       <ViewportFloatingActionButton
         ariaLabel="新增生豆"
         icon={<PlusOutlined />}
-        onClick={handleOpenCreateDrawer}
+        onClick={handleOpenCreateFlow}
       />
+
+      <Drawer
+        closable={false}
+        className={styles.actionSheet}
+        height={176}
+        onClose={() => {
+          setIsCreateActionSheetOpen(false);
+        }}
+        open={isCreateActionSheetOpen}
+        placement="bottom"
+        styles={actionSheetStyles}
+        title="选择创建方式"
+      >
+        <div className={styles.actionSheetBody}>
+          <div className={styles.actionSheetGroup}>
+            <Button
+              block
+              className={styles.actionSheetButton}
+              onClick={() => {
+                handleOpenCreationDrawer('manual');
+              }}
+            >
+              手动创建
+            </Button>
+            <Button
+              aria-label="AI 图片识别"
+              block
+              className={styles.actionSheetButton}
+              disabled={isAiRecognitionActionDisabled}
+              onClick={() => {
+                handleOpenCreationDrawer('ai');
+              }}
+            >
+              <span className={styles.actionSheetButtonContent}>
+                <span className={styles.actionSheetButtonTitle}>AI 图片识别</span>
+                <span className={styles.actionSheetButtonMeta}>{aiRecognitionQuotaText}</span>
+              </span>
+            </Button>
+          </div>
+          <div aria-hidden="true" className={styles.actionSheetSpacer} />
+          <div className={styles.actionSheetCancelGroup}>
+            <Button
+              aria-label="取消"
+              block
+              className={styles.actionSheetButton}
+              onClick={() => {
+                setIsCreateActionSheetOpen(false);
+              }}
+            >
+              取消
+            </Button>
+          </div>
+        </div>
+      </Drawer>
 
       <AppDrawer
         className={styles.creationDrawer}
         height="84dvh"
-        onClose={() => {
-          setCreationDrawerOpen(false);
-        }}
+        onClose={handleCloseCreationDrawer}
         open={creationDrawerOpen}
         placement="bottom"
-        title="新增生豆"
+        title={creationMode === 'manual' ? '新增生豆' : 'AI 图片识别'}
       >
-        <Tabs
-          defaultActiveKey="manual"
-          items={[
-            {
-              key: 'manual',
-              label: '界面创建',
-              children: (
-                <BeanManualCreator
-                  onCancel={() => {
-                    setCreationDrawerOpen(false);
-                  }}
-                  onCreate={(input) => {
-                    handleCreateBean(input);
-                  }}
-                />
-              ),
-            },
-            {
-              key: 'ai',
-              label: 'AI 图片识别',
-              children: <BeanAiRecognitionPlaceholder />,
-            },
-          ]}
-        />
+        {creationMode === 'manual' ? (
+          <BeanManualCreator
+            initialValues={recognizedBeanInitialValues}
+            onCancel={handleCloseCreationDrawer}
+            onCreate={(input) => {
+              handleCreateBean(input);
+            }}
+          />
+        ) : (
+          <BeanAiRecognitionPlaceholder onApplyRecognition={handleApplyAiRecognition} />
+        )}
       </AppDrawer>
 
       <AppDrawer

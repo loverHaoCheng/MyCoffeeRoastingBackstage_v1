@@ -166,6 +166,109 @@
   border-radius: 18px;
 }
 
+.actionSheet :global(.ant-drawer-header) {
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.actionSheet :global(.ant-drawer-content-wrapper) {
+  box-shadow: none;
+  border-radius: 28px 28px 0 0 !important;
+  overflow: hidden;
+}
+
+.actionSheet :global(.ant-drawer-content) {
+  overflow: hidden;
+  border-radius: 28px 28px 0 0 !important;
+  background: #fff;
+}
+
+.actionSheet :global(.ant-drawer-title) {
+  display: none;
+}
+
+.actionSheet :global(.ant-drawer-body) {
+  padding: 0;
+  background: #fff;
+  overflow: hidden;
+}
+
+.actionSheetBody {
+  display: grid;
+  width: 100%;
+  gap: 0;
+  background: transparent;
+}
+
+.actionSheetGroup,
+.actionSheetCancelGroup {
+  display: grid;
+  width: 100%;
+  background: #fff;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.actionSheetSpacer {
+  height: 8px;
+  background: rgb(242 242 247 / 0.94);
+}
+
+.actionSheetButton:global(.ant-btn) {
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #1d1d1f;
+  box-shadow: none;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.actionSheetButton:global(.ant-btn[disabled]) {
+  background: #fff !important;
+  color: rgb(142 142 147 / 0.7) !important;
+  cursor: not-allowed;
+}
+
+.actionSheetButton:global(.ant-btn + .ant-btn) {
+  border-top: 1px solid rgb(229 229 234 / 0.9);
+}
+
+.actionSheetButton:global(.ant-btn:hover),
+.actionSheetButton:global(.ant-btn:focus-visible),
+.actionSheetButton:global(.ant-btn:active) {
+  border-color: transparent !important;
+  background: #fff !important;
+  color: #1d1d1f !important;
+  box-shadow: none !important;
+}
+
+.actionSheetButtonContent {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  justify-items: center;
+  line-height: 1.2;
+}
+
+.actionSheetButtonTitle,
+.actionSheetButtonMeta {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.actionSheetButtonMeta {
+  color: var(--app-text-tertiary);
+  font-size: 12px;
+}
+
+.actionSheetButton:global(.ant-btn[disabled]) .actionSheetButtonMeta {
+  color: rgb(142 142 147 / 0.66);
+}
+
 .creationDrawer :global(.ant-drawer-content) {
   border-radius: 20px 20px 0 0;
 }

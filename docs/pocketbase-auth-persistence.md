@@ -34,7 +34,25 @@ npm run auth:bff:start
 把下面这段加到你站点的 `server` 配置里：
 
 ```nginx
-location /api/auth/ {
+location ^~ /api/auth/ {
+    proxy_pass http://127.0.0.1:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location ^~ /api/ai/ {
+    proxy_pass http://127.0.0.1:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location = /api/health {
     proxy_pass http://127.0.0.1:3001;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
@@ -43,6 +61,8 @@ location /api/auth/ {
     proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
+
+`/api/auth/`、`/api/ai/` 和 `/api/health` 必须由 BFF 承接，避免请求被 PocketBase 接走并返回 `File not found.`。
 
 ### 4. 重新加载 Nginx
 
@@ -66,9 +86,18 @@ systemctl reload nginx
 npm run dev
 ```
 
-开发环境下，Vite 会直接挂载同一套 `/api/auth/*` 网关处理器，不需要额外启动 `auth:bff:start`。前提是服务器上的 PocketBase 已可访问。
+开发环境下，Vite 会把同源 `/api/*` 请求代理到云端 BFF，不再挂载或启动本地 BFF。前提是服务器上的 PocketBase 与云端 BFF 已可访问。
 
-如果要验证服务器部署形态，可以单独运行：
+本地 `.env.local` 只需要保留非敏感前端配置：
+
+```bash
+VITE_API_BASE_URL=/api
+VITE_DEV_API_PROXY_TARGET=http://81.70.224.75
+```
+
+不要在本地 `.env.local` 写入 `PB_SUPERUSER_EMAIL`、`PB_SUPERUSER_PASSWORD`、`QINIU_QWEN_API_KEY` 等服务端密钥。
+
+如果要在服务器上验证 BFF 部署形态，可以在云端 BFF 目录运行：
 
 ```bash
 npm run auth:bff:build

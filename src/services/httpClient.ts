@@ -29,12 +29,40 @@ const isApiResponse = <T,>(payload: unknown): payload is ApiResponse<T> => {
   return typeof candidate.code === 'number' && typeof candidate.message === 'string' && 'data' in candidate;
 };
 
+const getPayloadMessage = (payload: unknown): string => {
+  if (typeof payload !== 'object' || payload === null) {
+    return '';
+  }
+
+  const candidate = payload as { message?: unknown };
+
+  return typeof candidate.message === 'string' ? candidate.message.trim() : '';
+};
+
 const buildUrl = (baseUrl: string, path: string): string => {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
 
   return `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+};
+
+export const resolveHttpClientUrl = (path: string, baseUrl = defaultBaseUrl): string => {
+  return buildUrl(baseUrl, path);
+};
+
+export const resolveHttpClientAbsoluteUrl = (path: string, baseUrl = defaultBaseUrl): string => {
+  const resolvedUrl = resolveHttpClientUrl(path, baseUrl);
+
+  if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
+    return resolvedUrl;
+  }
+
+  if (typeof window === 'undefined') {
+    return resolvedUrl;
+  }
+
+  return new URL(resolvedUrl, window.location.origin).toString();
 };
 
 const serializeBody = (body: unknown): BodyInit | undefined => {
@@ -117,7 +145,9 @@ export class HttpClient {
       const payload = await parseJson(response);
 
       if (!response.ok) {
-        throw new AppError(`请求失败：${String(response.status)}`, {
+        const payloadMessage = getPayloadMessage(payload);
+
+        throw new AppError(payloadMessage || `请求失败：${String(response.status)}`, {
           code: 'HTTP',
           status: response.status,
           cause: payload,

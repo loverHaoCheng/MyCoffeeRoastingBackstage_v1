@@ -41,18 +41,16 @@ export function FinancePage() {
   const { beans, calculations, expenseRecords, isFetching, overview, range, roastBatches } = useFinanceOverview(preset, null);
   const saveExpenseRecordMutation = useSaveFinanceExpenseRecord();
   const deleteExpenseRecordMutation = useDeleteFinanceExpenseRecord();
-  const actionSheetStyles = isWide
-    ? undefined
-    : {
-        content: {
-          borderRadius: '28px 28px 0 0',
-          overflow: 'hidden',
-        },
-        wrapper: {
-          borderRadius: '28px 28px 0 0',
-          overflow: 'hidden',
-        },
-      };
+  const actionSheetStyles = {
+    content: {
+      borderRadius: '28px 28px 0 0',
+      overflow: 'hidden',
+    },
+    wrapper: {
+      borderRadius: '28px 28px 0 0',
+      overflow: 'hidden',
+    },
+  };
 
   const customCategorySuggestions = useMemo(() => {
     return Array.from(
@@ -167,15 +165,14 @@ export function FinancePage() {
       <Drawer
         closable={false}
         className={styles.actionSheet}
-        height={isWide ? undefined : 176}
+        height={176}
         onClose={() => {
           setIsActionSheetOpen(false);
         }}
         open={isActionSheetOpen}
-        placement={isWide ? 'right' : 'bottom'}
+        placement="bottom"
         styles={actionSheetStyles}
         title="选择创建项"
-        width={isWide ? 360 : undefined}
       >
         <div className={styles.actionSheetBody}>
           <div className={styles.actionSheetGroup}>
@@ -203,14 +200,13 @@ export function FinancePage() {
 
       <AppDrawer
         className={styles.expenseDrawer}
-        height={isWide ? undefined : '78dvh'}
+        height="78dvh"
         onClose={() => {
           setIsExpenseDrawerOpen(false);
         }}
         open={isExpenseDrawerOpen}
-        placement={isWide ? 'right' : 'bottom'}
+        placement="bottom"
         title="新增支出"
-        width={isWide ? 460 : undefined}
       >
         <FinanceExpenseForm
           customCategorySuggestions={customCategorySuggestions}

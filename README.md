@@ -21,15 +21,18 @@ npm install
 npm run dev
 ```
 
-开发环境下，Vite 会直接挂载同源 `/api/auth/*` 登录态网关，不需要额外启动 `auth:bff:start`。前提是服务器上的 PocketBase 与线上 auth BFF 配置可访问。
+开发环境下，Vite 会把同源 `/api/*` 请求代理到云端 BFF，不需要额外启动 `auth:bff:start`。前提是服务器上的 PocketBase 与线上 auth BFF 配置可访问。
 
-默认 PocketBase 地址通过 `.env` 配置，开发和生产构建都默认指向服务器 PocketBase：
+开发环境不再启动或挂载本地 BFF，所有 `/api/*` 请求都会由 Vite 代理到云端 BFF。`.env.local` 只允许保留前端公开配置，不得写入 `PB_SUPERUSER_EMAIL`、`PB_SUPERUSER_PASSWORD`、`QINIU_QWEN_API_KEY` 等服务端密钥。
+
+默认 API 配置见 `.env.example`：
 
 ```bash
-VITE_PB_URL=http://81.70.224.75
+VITE_API_BASE_URL=/api
+VITE_DEV_API_PROXY_TARGET=http://81.70.224.75
 ```
 
-如果线上 PocketBase 地址变化，可以重新在部署环境里覆盖 `VITE_PB_URL`。
+如果云端 BFF 地址变化，可以在本地 `.env.local` 里只覆盖 `VITE_DEV_API_PROXY_TARGET`。
 
 ## 质量检查
 

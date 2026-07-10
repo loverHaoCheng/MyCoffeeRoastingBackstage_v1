@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AppError } from '@/shared/errors/AppError';
-import { HttpClient } from '@/services/httpClient';
+import { HttpClient, resolveHttpClientAbsoluteUrl } from '@/services/httpClient';
 
 describe('HttpClient', () => {
   it('returns unified API payloads', async () => {
@@ -50,5 +50,17 @@ describe('HttpClient', () => {
     await client.post<{ id: number }>('/beans', { name: 'Guji' });
 
     expect(capturedBody).toBe(JSON.stringify({ name: 'Guji' }));
+  });
+
+  it('resolves relative request urls against the current browser origin', () => {
+    expect(resolveHttpClientAbsoluteUrl('/ai/bean-image-recognition')).toBe(
+      'http://localhost:3000/api/ai/bean-image-recognition',
+    );
+  });
+
+  it('keeps absolute request urls unchanged', () => {
+    expect(resolveHttpClientAbsoluteUrl('/health', 'https://api.example.test/api')).toBe(
+      'https://api.example.test/api/health',
+    );
   });
 });

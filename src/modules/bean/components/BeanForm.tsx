@@ -145,10 +145,20 @@ export function BeanForm({
   });
   const templateSyncShouldDirtyRef = useRef(false);
   const lastPurchasedWeightRef = useRef(initialValues.purchasedWeightGrams);
+  const lastAutoSaleDefaultsRef = useRef<{ price: null | number; weight: null | number }>({
+    price: null,
+    weight: null,
+  });
+  const manualSaleDefaultsRef = useRef({
+    price: false,
+    weight: false,
+  });
   const currentRoastInputGrams = watch('defaultRoastInputGrams');
   const currentPurchasedTotalPrice = watch('purchasedTotalPrice');
   const currentPurchasedWeightGrams = watch('purchasedWeightGrams');
   const currentRemainingWeightGrams = watch('remainingWeightGrams');
+  const currentDefaultSaleUnitPrice = watch('defaultSaleUnitPrice');
+  const currentDefaultSaleUnitWeightGrams = watch('defaultSaleUnitWeightGrams');
   const selectedTemplate = useMemo(() => {
     if (!enableCostTemplateSelection) {
       return null;
@@ -169,6 +179,14 @@ export function BeanForm({
   useEffect(() => {
     reset(initialValues);
     lastPurchasedWeightRef.current = initialValues.purchasedWeightGrams;
+    lastAutoSaleDefaultsRef.current = {
+      price: null,
+      weight: null,
+    };
+    manualSaleDefaultsRef.current = {
+      price: false,
+      weight: false,
+    };
     templateSyncShouldDirtyRef.current = false;
     setSelectedTemplateId(
       enableCostTemplateSelection
@@ -254,6 +272,42 @@ export function BeanForm({
       purchasedWeightGrams: currentPurchasedWeightGrams,
     });
   }, [currentPurchasedTotalPrice, currentPurchasedWeightGrams, currentRoastInputGrams, selectedTemplate]);
+
+  useEffect(() => {
+    if (!autoApplyDefaultCostTemplate || !enableCostTemplateSelection || !selectedTemplate || !templatePreview) {
+      return;
+    }
+
+    const shouldDirty = templateSyncShouldDirtyRef.current;
+    const nextWeight = templatePreview.defaultSaleUnitWeightGrams;
+    const nextPrice = templatePreview.defaultSaleUnitPrice;
+    const lastAutoDefaults = lastAutoSaleDefaultsRef.current;
+
+    if (
+      !manualSaleDefaultsRef.current.weight ||
+      currentDefaultSaleUnitWeightGrams == null ||
+      currentDefaultSaleUnitWeightGrams === lastAutoDefaults.weight
+    ) {
+      setValue('defaultSaleUnitWeightGrams', nextWeight, { shouldDirty });
+      lastAutoDefaults.weight = nextWeight;
+    }
+
+    if (
+      !manualSaleDefaultsRef.current.price ||
+      Math.abs(currentDefaultSaleUnitPrice - (lastAutoDefaults.price ?? Number.NaN)) < 0.005
+    ) {
+      setValue('defaultSaleUnitPrice', nextPrice, { shouldDirty });
+      lastAutoDefaults.price = nextPrice;
+    }
+  }, [
+    autoApplyDefaultCostTemplate,
+    currentDefaultSaleUnitPrice,
+    currentDefaultSaleUnitWeightGrams,
+    enableCostTemplateSelection,
+    selectedTemplate,
+    setValue,
+    templatePreview,
+  ]);
 
   const submitForm = async (values: GreenBeanFormInput) => {
     clearErrors();
@@ -665,6 +719,10 @@ export function BeanForm({
                 allowClear={!autoApplyDefaultCostTemplate}
                 onChange={(value: string | undefined) => {
                   templateSyncShouldDirtyRef.current = true;
+                  manualSaleDefaultsRef.current = {
+                    price: false,
+                    weight: false,
+                  };
                   setSelectedTemplateId(value ?? null);
                 }}
                 options={costTemplateSettings.templates.map((template) => ({
@@ -768,7 +826,7 @@ export function BeanForm({
                   }}
                   precision={2}
                   prefix="¥"
-                  value={field.value}
+                  value={field.value > 0 ? field.value : null}
                 />
               )}
             />
@@ -787,7 +845,13 @@ export function BeanForm({
                   aria-label="最终单份出售重量"
                   min={1}
                   onChange={(value) => {
-                    field.onChange(toNullableNumber(value));
+                    const nextValue = toNullableNumber(value);
+
+                    if (nextValue !== lastAutoSaleDefaultsRef.current.weight) {
+                      manualSaleDefaultsRef.current.weight = true;
+                    }
+
+                    field.onChange(nextValue);
                   }}
                   precision={0}
                   suffix="g"
@@ -813,7 +877,13 @@ export function BeanForm({
                   aria-label="最终定价"
                   min={0.01}
                   onChange={(value) => {
-                    field.onChange(value ?? 0);
+                    const nextValue = value ?? 0;
+
+                    if (Math.abs(nextValue - (lastAutoSaleDefaultsRef.current.price ?? Number.NaN)) >= 0.005) {
+                      manualSaleDefaultsRef.current.price = true;
+                    }
+
+                    field.onChange(nextValue);
                   }}
                   precision={2}
                   prefix="¥"
