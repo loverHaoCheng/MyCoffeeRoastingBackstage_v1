@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BeanInventoryCard } from '@/modules/bean/components/BeanInventoryCard';
 import { useSettingsStore } from '@/modules/settings/store';
+import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 import { createDefaultAppDisplaySettings, createDefaultCostTemplateSettings } from '@/modules/settings/types';
 import type { Bean } from '@/types/domain';
 
@@ -141,5 +142,36 @@ describe('card display settings', () => {
     render(<BeanInventoryCard bean={createBean()} onEdit={onEdit} />);
 
     expect(screen.queryByRole('button', { name: '修改 成本' })).not.toBeInTheDocument();
+  });
+
+  it('keeps card row labels on one line when the value is multiline', () => {
+    render(
+      <UnifiedDataCard
+        metaItems={[
+          {
+            key: 'bean',
+            label: '生豆',
+            multiline: true,
+            value: '埃塞俄比亚 Alo Main Station 74158 日晒 Lot.3 空运批次',
+          },
+        ]}
+        title="日晒"
+      />,
+    );
+
+    const labelStyles = window.getComputedStyle(screen.getByText('生豆'));
+    const row = screen.getByText('生豆').parentElement;
+
+    expect(row).not.toBeNull();
+
+    if (row == null) {
+      throw new Error('card row not found');
+    }
+
+    const rowStyles = window.getComputedStyle(row);
+
+    expect(labelStyles.whiteSpace).toBe('nowrap');
+    expect(labelStyles.minWidth).toBe('6em');
+    expect(rowStyles.gap).toBe('12px');
   });
 });

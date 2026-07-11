@@ -10,7 +10,7 @@ const packageJson = JSON.parse(
 const buildTimestamp = new Date().toISOString();
 const buildVersion = `${packageJson.version ?? '0.0.0'}-${buildTimestamp}`;
 
-const defaultDevApiProxyTarget = 'http://81.70.224.75';
+const defaultDevApiProxyTarget = 'https://www.easybake.top';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');

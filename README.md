@@ -29,10 +29,19 @@ npm run dev
 
 ```bash
 VITE_API_BASE_URL=/api
-VITE_DEV_API_PROXY_TARGET=http://81.70.224.75
+VITE_DEV_API_PROXY_TARGET=https://www.easybake.top
 ```
 
 如果云端 BFF 地址变化，可以在本地 `.env.local` 里只覆盖 `VITE_DEV_API_PROXY_TARGET`。
+业务数据的 PocketBase 地址默认使用当前浏览器同源地址；生产站点会自动请求 `https://www.easybake.top/api/collections/...`。只有 PocketBase 与前端分域部署时，才需要显式配置 `VITE_PB_URL`。
+
+## 正式发布
+
+```bash
+./deploy.sh
+```
+
+发布脚本会构建前端、通过 SSH/rsync 上传 `dist/`，并验证 `https://www.easybake.top/version.json` 与 `https://www.easybake.top/api/health`。验证通过后，用户只需要通过 HTTPS 443 访问 `https://www.easybake.top`。
 
 ## 质量检查
 
@@ -84,7 +93,7 @@ JSON 基础结构如下：
 
 ## PocketBase 服务器连接
 
-- 前端通过 `VITE_PB_URL` 连接服务器上的 PocketBase，默认地址为 `http://81.70.224.75`。
+- 前端通过当前浏览器同源地址连接服务器上的 PocketBase 业务接口；只有 PocketBase 与前端分域部署时，才需要设置 `VITE_PB_URL`。
 - 注册、登录和登出通过同源 `/api/auth/*` 网关完成，浏览器关闭后仍可通过 `HttpOnly Cookie` 恢复会话。
 - 所有业务记录按 `owner` 字段进行用户隔离。
 - 可直接导入的 collection JSON 见 [docs/pocketbase-collections.json](/Users/keepwatchthemoon/个人/gitProject/MyCoffeeRoastingBackstage_v1/docs/pocketbase-collections.json)。

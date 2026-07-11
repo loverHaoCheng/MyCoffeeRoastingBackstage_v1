@@ -7,6 +7,7 @@ import {
   type PocketBaseSession,
   type PocketBaseSessionUser,
 } from '@/services/pocketBaseSession.service';
+import { browserDataCleanupService } from '@/shared/services/browserDataCleanup.service';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
 
 import type { AuthCredentialsInput, RegisterInput, RegisterResult } from '../types';
@@ -105,7 +106,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   hasHydrated: initialHasHydrated,
   deleteAccount: async () => {
     await pocketBaseAuthService.deleteAccount();
-    localStorageCleanupService.clearAppState();
+    await browserDataCleanupService.clearCurrentOriginData();
     pocketBaseConnectionSettingsService.clear();
     set({
       hasHydrated: true,
@@ -129,9 +130,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return session;
   },
   logout: async () => {
-    localStorageCleanupService.clearAppState();
-    pocketBaseConnectionSettingsService.clear();
     await pocketBaseAuthService.logout();
+    await browserDataCleanupService.clearCurrentOriginData();
+    pocketBaseConnectionSettingsService.clear();
     set({
       hasHydrated: true,
       session: null,

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 
 describe('pocketBaseConnectionSettingsService', () => {
+  const defaultPocketBaseUrl = window.location.origin;
+
   beforeEach(() => {
     window.localStorage.clear();
     pocketBaseConnectionSettingsService.clear();
@@ -11,7 +13,7 @@ describe('pocketBaseConnectionSettingsService', () => {
   it('returns default PocketBase server settings without reading localStorage', () => {
     const result = pocketBaseConnectionSettingsService.load();
 
-    expect(result.greenBean.projectUrl).toBe('http://81.70.224.75');
+    expect(result.greenBean.projectUrl).toBe(defaultPocketBaseUrl);
     expect(result.roastedBean.projectUrl).toBe('');
     expect(result.roastedBean.publishableKey).toBe('');
   });
@@ -31,7 +33,7 @@ describe('pocketBaseConnectionSettingsService', () => {
 
     const result = pocketBaseConnectionSettingsService.load();
 
-    expect(result.greenBean.projectUrl).toBe('http://81.70.224.75');
+    expect(result.greenBean.projectUrl).toBe(defaultPocketBaseUrl);
     expect(result.roastedBean.projectUrl).toBe('');
   });
 
@@ -72,5 +74,24 @@ describe('pocketBaseConnectionSettingsService', () => {
 
     expect(result.roastedBean.projectUrl).toBe('https://demo.supabase.co');
     expect(result.roastedBean.publishableKey).toBe('sb_publishable_demo');
+  });
+
+  it('clears legacy pocketbase default urls from roasted bean settings after same-origin migration', () => {
+    pocketBaseConnectionSettingsService.save({
+        greenBean: {
+          projectUrl: '',
+          publishableKey: '',
+        },
+        roastedBean: {
+          projectUrl: 'http://81.70.224.75',
+          publishableKey: 'legacy-key',
+        },
+        updatedAt: '2026-07-07T12:00:00.000Z',
+      });
+
+    const result = pocketBaseConnectionSettingsService.load();
+
+    expect(result.roastedBean.projectUrl).toBe('');
+    expect(result.roastedBean.publishableKey).toBe('');
   });
 });

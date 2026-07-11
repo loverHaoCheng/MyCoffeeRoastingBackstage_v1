@@ -6,6 +6,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBeans } from '@/modules/bean/hooks';
 import { useRoastPlans } from '@/modules/roast/hooks';
 import type { RoastBatchCreateInput, RoastBatchSalesMode } from '@/modules/roast/types/roastBatch';
+import {
+  getSelectableRoastPlans,
+  isGenericRoastPlan,
+} from '@/modules/roast/utils/roastPlanSelection';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 
@@ -19,8 +23,6 @@ import {
 import styles from './RoastBatchCreator.module.css';
 
 const ROAST_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm';
-const GENERIC_BEAN_ID = 'generic';
-
 const toPickerValue = (value: string) => {
   if (!value) {
     return null;
@@ -56,7 +58,11 @@ interface RoastBatchCreatorFormState {
 export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps) {
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
-  const hasBeanOptions = beans.length > 0;
+  const roastableBeans = useMemo(
+    () => beans.filter((bean) => (bean.remainingWeightGrams ?? bean.stockKg * 1000) > 0),
+    [beans],
+  );
+  const hasBeanOptions = roastableBeans.length > 0;
   const roastLevelManualOverrideRef = useRef(false);
 
   // 表单状态
@@ -76,13 +82,10 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
     totalRoastTime: undefined as number | undefined,
     notes: '',
   });
-  const availablePlans = form.greenBeanId
-    ? plans.filter((plan) => {
-        const planBeanId = String(plan.beanId);
-
-        return planBeanId === GENERIC_BEAN_ID || planBeanId === form.greenBeanId;
-      })
-    : [];
+  const availablePlans = useMemo(
+    () => getSelectableRoastPlans(plans, form.greenBeanId),
+    [form.greenBeanId, plans],
+  );
   const dehydrationRate = useMemo(
     () => calculateDehydrationRate(form.inputWeightGrams, form.outputWeightGrams),
     [form.inputWeightGrams, form.outputWeightGrams],
@@ -191,7 +194,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
         <Select
           value={form.greenBeanId === '' ? undefined : form.greenBeanId}
           onChange={(beanId) => {
-            const bean = beans.find((b) => String(b.id) === beanId);
+            const bean = roastableBeans.find((b) => String(b.id) === beanId);
             setForm((f) => ({
               ...f,
               greenBeanId: beanId,
@@ -201,7 +204,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
             }));
           }}
           placeholder="选择生豆"
-          options={beans.map((b) => ({ label: b.name, value: String(b.id) }))}
+          options={roastableBeans.map((b) => ({ label: b.name, value: String(b.id) }))}
           disabled={!hasBeanOptions}
           style={{ width: '100%' }}
         />
@@ -245,13 +248,13 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
               roastPlanName: plan?.name ?? '',
             }));
           }}
-          placeholder={form.greenBeanId ? '选择通用计划或当前生豆对应计划' : '请先选择生豆'}
+          placeholder={form.greenBeanId ? '选择通用计划或当前生豆对应计划' : '可先选择通用计划'}
           options={availablePlans.map((plan) => ({
-            label: `${plan.name}${String(plan.beanId) === GENERIC_BEAN_ID ? ' · 通用' : ''}`,
+            label: `${plan.name}${isGenericRoastPlan(plan) ? ' · 通用' : ''}`,
             value: String(plan.id),
           }))}
           allowClear
-          disabled={!form.greenBeanId}
+          disabled={availablePlans.length === 0}
           style={{ width: '100%' }}
         />
       </section>

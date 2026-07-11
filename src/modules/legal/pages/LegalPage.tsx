@@ -2,6 +2,8 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { Link, useLocation } from 'react-router-dom';
 
+import { LegalFooter } from '@/modules/legal/components';
+
 import {
   dataDeletionDocument,
   legalContactEmail,
@@ -99,6 +101,8 @@ export function LegalPage({ kind }: LegalPageProps) {
             </Button>
           </div>
         </article>
+
+        <LegalFooter />
       </div>
     </main>
   );

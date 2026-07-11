@@ -21,6 +21,7 @@ import {
 import authorCodeImage from '@/assets/settings-codes/author-code.png';
 import sponsorCodeImage from '@/assets/settings-codes/sponsor-code.png';
 import { useAppBuildVersion } from '@/app/hooks/useAppBuildVersion';
+import { LegalFooter } from '@/modules/legal/components';
 import { RoastedBeanConnectionCard } from '@/modules/settings/components/RoastedBeanConnectionCard';
 
 import styles from './SettingsPage.module.css';
@@ -515,6 +516,8 @@ export function SettingsPage() {
             当前 Web 上传版本：
             {appBuildVersion}
           </p>
+
+          <LegalFooter />
         </div>
       </form>
 

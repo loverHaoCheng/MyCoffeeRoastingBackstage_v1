@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { LegalFooter } from '@/modules/legal/components';
+
 import styles from '../pages/AuthPage.module.css';
 
 interface AuthPageShellProps {
@@ -43,6 +45,8 @@ export function AuthPageShell({
         <div className={styles.card}>{children}</div>
 
         {actions ? <div className={styles.actions}>{actions}</div> : null}
+
+        <LegalFooter />
       </section>
     </main>
   );

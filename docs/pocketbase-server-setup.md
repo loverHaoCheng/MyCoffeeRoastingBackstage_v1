@@ -12,14 +12,14 @@
 
 - 服务器上已经有可访问的 PocketBase 服务。
 - 可通过 PocketBase Dashboard 或 API 管理集合与权限。
-- 前端通过 `VITE_PB_URL=http://81.70.224.75` 连接服务器服务。
+- 前端默认通过当前浏览器同源地址连接服务器服务；只有 PocketBase 与前端分域部署时才需要设置 `VITE_PB_URL`。
 - BFF 通过服务端环境变量保存 `PB_SUPERUSER_EMAIL`、`PB_SUPERUSER_PASSWORD`、`QINIU_QWEN_API_KEY`、`QINIU_QWEN_BASE_URL`、`QINIU_QWEN_MODEL`，这些值不得写入前端 `VITE_` 环境变量。
 - 本地 `npm run dev` 会读取 `.env.local` 中的 BFF 服务端变量，并仅注入 Node dev middleware 的 `process.env`，不得把私密变量命名为 `VITE_` 前缀。
 
 本地 `.env.local` 示例：
 
 ```bash
-PB_BASE_URL=http://81.70.224.75
+PB_BASE_URL=https://www.easybake.top
 PB_SUPERUSER_EMAIL=你的 PocketBase 管理员邮箱
 PB_SUPERUSER_PASSWORD=你的 PocketBase 管理员密码
 QINIU_QWEN_API_KEY=你的七牛云 API Key
@@ -387,5 +387,5 @@ deleteRule: 留空
 
 - 服务器侧数据目录单独挂载持久化盘
 - 前面挂 Nginx，统一做 HTTPS 和域名
-- 前端或 BFF 部署后只需要切 `VITE_PB_URL` / `PB_BASE_URL`
+- 前端与 PocketBase 分域部署时切 `VITE_PB_URL`；BFF 切 `PB_BASE_URL`
 - 备份以服务器上的 PocketBase 数据目录为准

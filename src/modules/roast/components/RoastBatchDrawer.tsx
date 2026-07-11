@@ -15,12 +15,12 @@ import {
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
+import { getSelectableRoastPlans, isGenericRoastPlan } from '@/modules/roast/utils/roastPlanSelection';
 
 import styles from './RoastBatchDrawer.module.css';
 
 type DrawerMode = 'view' | 'edit';
 const ROAST_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm';
-const GENERIC_BEAN_ID = 'generic';
 
 const toPickerValue = (value: string) => {
   if (!value) {
@@ -64,13 +64,10 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
 
   // 编辑模式下的表单状态
   const [form, setForm] = useState(() => createFormState(batch));
-  const availablePlans = form.greenBeanId
-    ? plans.filter((plan) => {
-        const planBeanId = String(plan.beanId);
-
-        return planBeanId === GENERIC_BEAN_ID || planBeanId === form.greenBeanId;
-      })
-    : [];
+  const availablePlans = useMemo(
+    () => getSelectableRoastPlans(plans, form.greenBeanId),
+    [form.greenBeanId, plans],
+  );
 
   useEffect(() => {
     setForm(createFormState(batch));
@@ -275,11 +272,12 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                       roastPlanName: plan?.name ?? '',
                     }));
                   }}
-                  placeholder={form.greenBeanId ? '选择通用计划或当前生豆对应计划' : '请先选择生豆'}
+                  placeholder={form.greenBeanId ? '选择通用计划或当前生豆对应计划' : '可先选择通用计划'}
                   options={availablePlans.map((plan) => ({
-                    label: `${plan.name}${String(plan.beanId) === GENERIC_BEAN_ID ? ' · 通用' : ''}`,
+                    label: `${plan.name}${isGenericRoastPlan(plan) ? ' · 通用' : ''}`,
                     value: String(plan.id),
                   }))}
+                  disabled={availablePlans.length === 0}
                   style={{ width: '100%' }}
                 />
               )}

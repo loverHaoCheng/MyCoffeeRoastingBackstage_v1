@@ -58,6 +58,8 @@ describe('roast optimistic sync guard', () => {
     expect(listSpy).not.toHaveBeenCalled();
     expect(insertSpy).not.toHaveBeenCalled();
     expect(roastBatchService.getBootstrappedBatches().some((batch) => batch.id === optimisticBatch.id)).toBe(true);
+
+    roastBatchService.rollbackOptimisticBatch(optimisticBatch.id);
   });
 
   it('does not upload optimistic local roast plans during background sync', async () => {
@@ -91,5 +93,89 @@ describe('roast optimistic sync guard', () => {
     expect(listSpy).not.toHaveBeenCalled();
     expect(insertSpy).not.toHaveBeenCalled();
     expect(roastPlanService.getBootstrappedPlans().some((plan) => String(plan.id) === String(optimisticPlan.id))).toBe(true);
+
+    roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
+  });
+
+  it('does not recreate a roast plan while its remote deletion is pending', async () => {
+    const optimisticPlan = roastPlanService.createOptimisticPlan({
+      batchWeightGrams: 200,
+      beanId: 'bean-1',
+      beanName: '测试生豆',
+      name: '待删除计划',
+      purpose: '手冲',
+      roastLevel: '中焙',
+      steps: [
+        {
+          event: '入豆',
+          firePower: '80%',
+          operation: '入豆',
+          temperature: '200',
+          time: '0:00',
+        },
+      ],
+    });
+    const remotePlan = {
+      ...optimisticPlan,
+      id: 'plan-delete-1',
+    };
+
+    roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, remotePlan);
+
+    const removedPlan = roastPlanService.beginOptimisticDelete(remotePlan.id);
+    const listSpy = vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([]);
+    const insertSpy = vi.spyOn(PocketBaseRestClient.prototype, 'insert').mockResolvedValue([]);
+
+    await expect(roastPlanService.syncLocalAndRemote()).resolves.toEqual({
+      downloaded: 0,
+      uploaded: 0,
+    });
+
+    expect(removedPlan?.id).toBe(remotePlan.id);
+    expect(roastPlanService.hasPendingOptimisticDeletions()).toBe(true);
+    expect(roastPlanService.getBootstrappedPlans()).not.toContainEqual(remotePlan);
+    expect(listSpy).not.toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
+
+    roastPlanService.finalizeOptimisticDelete(remotePlan.id);
+    expect(roastPlanService.hasPendingOptimisticDeletions()).toBe(false);
+  });
+
+  it('treats PocketBase as authoritative when a plan is deleted outside the current client', async () => {
+    const optimisticPlan = roastPlanService.createOptimisticPlan({
+      batchWeightGrams: 200,
+      beanId: 'bean-1',
+      beanName: '测试生豆',
+      name: '后台删除计划',
+      purpose: '手冲',
+      roastLevel: '中焙',
+      steps: [
+        {
+          event: '入豆',
+          firePower: '80%',
+          operation: '入豆',
+          temperature: '200',
+          time: '0:00',
+        },
+      ],
+    });
+    const remotePlan = {
+      ...optimisticPlan,
+      id: 'plan-deleted-remotely',
+    };
+
+    roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, remotePlan);
+
+    const listSpy = vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([]);
+    const insertSpy = vi.spyOn(PocketBaseRestClient.prototype, 'insert').mockResolvedValue([]);
+
+    await expect(roastPlanService.syncLocalAndRemote()).resolves.toEqual({
+      downloaded: 0,
+      uploaded: 0,
+    });
+
+    expect(listSpy).toHaveBeenCalledTimes(1);
+    expect(insertSpy).not.toHaveBeenCalled();
+    expect(roastPlanService.getBootstrappedPlans()).not.toContainEqual(remotePlan);
   });
 });

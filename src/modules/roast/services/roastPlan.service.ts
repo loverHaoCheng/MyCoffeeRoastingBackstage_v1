@@ -9,7 +9,6 @@ import { seedRoastPlans } from '@/modules/roast/constants/roastPlan.mock';
 import {
   createRoastPlan,
   createRoastPlanFromJson,
-  roastPlanToJsonInput,
   updateRoastPlanFromInput,
 } from './roastPlanJson.service';
 import type { RoastPlanJsonInput } from '../types';
@@ -38,6 +37,10 @@ interface RemoteRoastPlanOverviewRecord {
 }
 
 interface RemoteRoastProfileMutationRecord {
+  id: string;
+}
+
+interface RemoteRoastBatchPlanRelationRecord {
   id: string;
 }
 
@@ -108,6 +111,7 @@ const getPlanSyncSnapshot = (plans: RoastPlan[]): string => {
 let localRoastPlans: RoastPlan[] =
   import.meta.env.MODE === 'test' ? sortPlans(seedRoastPlans) : loadLocalPlans();
 const pendingOptimisticCreatePlanIds = new Set<string>();
+const pendingOptimisticDeletePlanIds = new Set<string>();
 
 const normalizeRoastPlanStatus = (status: null | string | undefined): RoastPlanStatus => {
   if (!status || !ROAST_PLAN_STATUS_SET.has(status as RoastPlanStatus)) {
@@ -350,6 +354,26 @@ class RemoteRoastPlanRepository implements RoastPlanRepository {
   }
 
   async deletePlan(planId: RoastPlan['id']): Promise<ApiResponse<null>> {
+    const linkedBatches = await this.client.list<RemoteRoastBatchPlanRelationRecord>('roast_batches', {
+      match: {
+        roast_plan_id: String(planId),
+      },
+      select: 'id',
+    });
+
+    await Promise.all(
+      linkedBatches.map((batch) =>
+        this.client.update<RemoteRoastBatchPlanRelationRecord>(
+          'roast_batches',
+          { roast_plan_id: null },
+          {
+            match: { id: batch.id },
+            select: 'id',
+          },
+        ),
+      ),
+    );
+
     await this.client.delete('roast_profiles', {
       match: {
         id: String(planId),
@@ -448,6 +472,24 @@ export const roastPlanService = {
 
     return removedPlan;
   },
+  beginOptimisticDelete(planId: RoastPlan['id']): RoastPlan | null {
+    const nextPlanId = String(planId);
+
+    pendingOptimisticDeletePlanIds.add(nextPlanId);
+
+    return this.removeOptimisticPlan(planId);
+  },
+  finalizeOptimisticDelete(planId: RoastPlan['id']): RoastPlan[] {
+    pendingOptimisticDeletePlanIds.delete(String(planId));
+    this.removeOptimisticPlan(planId);
+
+    return sortPlans(localRoastPlans);
+  },
+  rollbackOptimisticDelete(planId: RoastPlan['id'], plan: RoastPlan | null): RoastPlan[] {
+    pendingOptimisticDeletePlanIds.delete(String(planId));
+
+    return plan ? this.restoreOptimisticPlan(plan) : sortPlans(localRoastPlans);
+  },
   restoreOptimisticPlan(plan: RoastPlan): RoastPlan[] {
     localRoastPlans = saveLocalPlans([
       plan,
@@ -484,10 +526,16 @@ export const roastPlanService = {
   },
   async listPlans(): Promise<ApiResponse<RoastPlan[]>> {
     const response = await resolveRoastPlanRepository().listPlans();
+    const visiblePlans = response.data.filter(
+      (plan) => !pendingOptimisticDeletePlanIds.has(String(plan.id)),
+    );
 
-    localRoastPlans = saveLocalPlans(response.data);
+    localRoastPlans = saveLocalPlans(visiblePlans);
 
-    return response;
+    return {
+      ...response,
+      data: visiblePlans,
+    };
   },
   updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     return resolveRoastPlanRepository().updatePlan(planId, input);
@@ -497,29 +545,18 @@ export const roastPlanService = {
       return { downloaded: 0, uploaded: 0 };
     }
 
-    if (pendingOptimisticCreatePlanIds.size > 0) {
+    if (pendingOptimisticCreatePlanIds.size > 0 || pendingOptimisticDeletePlanIds.size > 0) {
       return { downloaded: 0, uploaded: 0 };
     }
 
     const repository = new RemoteRoastPlanRepository(getGreenBeanClient());
     const localPlansBeforeSync = sortPlans(localRoastPlans);
     const optimisticLocalPlans = localPlansBeforeSync.filter((plan) => isOptimisticLocalPlanId(plan.id));
-    const syncableLocalPlans = localPlansBeforeSync.filter((plan) => !isOptimisticLocalPlanId(plan.id));
-    const remoteBeforeSync = await repository.listPlans();
-    const remoteIds = new Set(remoteBeforeSync.data.map((plan) => String(plan.id)));
-    let uploaded = 0;
-
-    for (const localPlan of syncableLocalPlans) {
-      if (remoteIds.has(String(localPlan.id))) {
-        continue;
-      }
-
-      await repository.createPlan(roastPlanToJsonInput(localPlan));
-      uploaded += 1;
-    }
-
-    const remoteAfterSync = await repository.listPlans();
-    const nextPlans = sortPlans([...optimisticLocalPlans, ...remoteAfterSync.data]);
+    const remotePlans = await repository.listPlans();
+    const visibleRemotePlans = remotePlans.data.filter(
+      (plan) => !pendingOptimisticDeletePlanIds.has(String(plan.id)),
+    );
+    const nextPlans = sortPlans([...optimisticLocalPlans, ...visibleRemotePlans]);
     const beforeSignature = getPlanSyncSnapshot(localPlansBeforeSync);
     const afterSignature = getPlanSyncSnapshot(nextPlans);
 
@@ -527,11 +564,14 @@ export const roastPlanService = {
 
     return {
       downloaded: beforeSignature === afterSignature ? 0 : nextPlans.length,
-      uploaded,
+      uploaded: 0,
     };
   },
   hasPendingOptimisticCreations(): boolean {
     return pendingOptimisticCreatePlanIds.size > 0;
+  },
+  hasPendingOptimisticDeletions(): boolean {
+    return pendingOptimisticDeletePlanIds.size > 0;
   },
   hasGreenBeanConnection,
 };

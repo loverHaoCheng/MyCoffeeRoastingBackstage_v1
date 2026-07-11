@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 
 describe('PocketBaseRestClient', () => {
-  it('falls back to the default pocketbase url when project url is omitted', async () => {
+  it('falls back to the current origin when project url is omitted', async () => {
     const fetcher = vi.fn(() =>
       Promise.resolve(
         new Response(JSON.stringify([{ id: 'bean-default', display_name: 'Default URL Bean' }]), {
@@ -21,7 +21,7 @@ describe('PocketBaseRestClient', () => {
       { id: 'bean-default', display_name: 'Default URL Bean' },
     ]);
     expect(fetcher).toHaveBeenCalledWith(
-      expect.stringContaining('http://81.70.224.75/api/collections/green_beans/records'),
+      expect.stringContaining(`${window.location.origin}/api/collections/green_beans/records`),
       expect.objectContaining({
         method: 'GET',
       }),

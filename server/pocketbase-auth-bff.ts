@@ -85,7 +85,7 @@ interface AiUsageState {
   usedThisMonth: number;
 }
 
-const DEFAULT_POCKETBASE_URL = 'http://81.70.224.75';
+const DEFAULT_POCKETBASE_URL = 'https://www.easybake.top';
 const DEFAULT_AUTH_COLLECTION = 'users';
 const DEFAULT_AUTH_COOKIE_NAME = 'easybake_pb_session';
 const DEFAULT_AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -1393,6 +1393,7 @@ const handleRegister = async (request: IncomingMessage, response: ServerResponse
   const createResponse = await proxyPocketBaseRequest(`/api/collections/${authCollection}/records`, {
     body: JSON.stringify({
       email,
+      name: email,
       password,
       passwordConfirm,
     }),

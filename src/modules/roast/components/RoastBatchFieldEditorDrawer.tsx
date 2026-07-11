@@ -7,6 +7,7 @@ import { ROAST_LEVEL_OPTIONS, normalizeRoastLevel } from '@/modules/roast/consta
 import { useRoastPlans } from '@/modules/roast/hooks';
 import { useUpdateRoastBatch } from '@/modules/roast/hooks/useRoastBatches';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
+import { getSelectableRoastPlans, isGenericRoastPlan } from '@/modules/roast/utils/roastPlanSelection';
 import { FieldEditorDrawer } from '@/shared/components/FieldEditorDrawer';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -37,7 +38,6 @@ interface RoastBatchFieldEditorDrawerProps {
   width?: number;
 }
 
-const GENERIC_BEAN_ID = 'generic';
 
 const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | null => {
   if (!batch) {
@@ -122,17 +122,10 @@ export function RoastBatchFieldEditorDrawer({
     }
   }, [editableFieldPath]);
 
-  const availablePlans = useMemo(() => {
-    if (!draft?.greenBeanId) {
-      return [];
-    }
-
-    return plans.filter((plan) => {
-      const planBeanId = String(plan.beanId);
-
-      return planBeanId === GENERIC_BEAN_ID || planBeanId === draft.greenBeanId;
-    });
-  }, [draft?.greenBeanId, plans]);
+  const availablePlans = useMemo(
+    () => getSelectableRoastPlans(plans, draft?.greenBeanId),
+    [draft?.greenBeanId, plans],
+  );
 
   useEffect(() => {
     setDraft(createDraft(batch));
@@ -297,10 +290,11 @@ export function RoastBatchFieldEditorDrawer({
               updateDraft('roastPlanId', nextPlanId);
             }}
             options={availablePlans.map((plan) => ({
-              label: `${plan.name}${String(plan.beanId) === GENERIC_BEAN_ID ? ' · 通用' : ''}`,
+              label: `${plan.name}${isGenericRoastPlan(plan) ? ' · 通用' : ''}`,
               value: String(plan.id),
             }))}
-            placeholder={draft.greenBeanId ? '选择通用计划或当前生豆对应计划' : '请先选择生豆'}
+            disabled={availablePlans.length === 0}
+            placeholder={draft.greenBeanId ? '选择通用计划或当前生豆对应计划' : '可先选择通用计划'}
             showSearch
             value={draft.roastPlanId}
           />

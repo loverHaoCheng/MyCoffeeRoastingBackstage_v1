@@ -119,6 +119,17 @@ describe('pocketBaseAuthService', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(pocketBaseSessionService.load()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/register',
+      expect.objectContaining({
+        body: JSON.stringify({
+          email: 'demo@example.com',
+          password: 'password123',
+          passwordConfirm: 'password123',
+        }),
+        method: 'POST',
+      }),
+    );
   });
 
   it('turns upstream 5xx login failures into a gateway-specific message', async () => {

@@ -92,7 +92,7 @@ npm run dev
 
 ```bash
 VITE_API_BASE_URL=/api
-VITE_DEV_API_PROXY_TARGET=http://81.70.224.75
+VITE_DEV_API_PROXY_TARGET=https://www.easybake.top
 ```
 
 不要在本地 `.env.local` 写入 `PB_SUPERUSER_EMAIL`、`PB_SUPERUSER_PASSWORD`、`QINIU_QWEN_API_KEY` 等服务端密钥。

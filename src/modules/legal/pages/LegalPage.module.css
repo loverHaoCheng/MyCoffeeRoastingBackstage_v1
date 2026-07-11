@@ -67,6 +67,7 @@
 
 .document {
   min-width: 0;
+  margin-bottom: 20px;
   padding: 32px;
   border: 1px solid var(--app-border-soft);
   border-radius: 8px;

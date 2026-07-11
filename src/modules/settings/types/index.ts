@@ -1,4 +1,5 @@
 import {
+  isLegacyPocketBaseDefaultUrl,
   isSupabaseProjectUrl,
   normalizePocketBaseBaseUrl,
   normalizeSupabaseProjectUrl,
@@ -37,6 +38,10 @@ const isLegacyRoastedBeanProjectUrl = (value: string): boolean => {
 
   if (isSupabaseProjectUrl(normalizedValue)) {
     return false;
+  }
+
+  if (isLegacyPocketBaseDefaultUrl(normalizedValue)) {
+    return true;
   }
 
   if (normalizedValue === resolvePocketBaseBaseUrl()) {

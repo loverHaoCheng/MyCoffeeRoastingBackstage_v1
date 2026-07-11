@@ -139,9 +139,9 @@ export function useDeleteRoastPlan() {
       await queryClient.cancelQueries({ queryKey: roastPlanQueryKeys.list() });
 
       const previousPlans = queryClient.getQueryData<RoastPlan[]>(roastPlanQueryKeys.list());
-      const removedPlan =
-        previousPlans?.find((plan) => String(plan.id) === String(planId)) ??
-        roastPlanService.removeOptimisticPlan(planId);
+      const cachedPlan = previousPlans?.find((plan) => String(plan.id) === String(planId)) ?? null;
+      const localPlan = roastPlanService.beginOptimisticDelete(planId);
+      const removedPlan = cachedPlan ?? localPlan;
       queryClient.setQueryData<RoastPlan[]>(
         roastPlanQueryKeys.list(),
         (current = []) => current.filter((plan) => String(plan.id) !== String(planId)),
@@ -149,16 +149,15 @@ export function useDeleteRoastPlan() {
 
       return { previousPlans, removedPlan };
     },
-    onError: (_error, _planId, context) => {
+    onError: (_error, planId, context) => {
       if (context?.previousPlans) {
         queryClient.setQueryData(roastPlanQueryKeys.list(), context.previousPlans);
       }
 
-      if (context?.removedPlan) {
-        roastPlanService.restoreOptimisticPlan(context.removedPlan);
-      }
+      roastPlanService.rollbackOptimisticDelete(planId, context?.removedPlan ?? null);
     },
     onSuccess: (_result, planId) => {
+      roastPlanService.finalizeOptimisticDelete(planId);
       queryClient.setQueryData<RoastPlan[]>(
         roastPlanQueryKeys.list(),
         (current = []) => current.filter((plan) => String(plan.id) !== String(planId)),
