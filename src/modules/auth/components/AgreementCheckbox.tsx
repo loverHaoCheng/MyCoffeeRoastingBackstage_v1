@@ -1,4 +1,5 @@
-import { Checkbox, Form } from 'antd';
+import Checkbox from 'antd/es/checkbox';
+import Form from 'antd/es/form';
 import { Link } from 'react-router-dom';
 
 import styles from '../pages/AuthPage.module.css';

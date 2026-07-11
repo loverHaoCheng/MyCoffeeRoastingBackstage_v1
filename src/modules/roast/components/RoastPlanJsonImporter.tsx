@@ -1,5 +1,8 @@
-import { ImportOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, Button, Input } from 'antd';
+import ImportOutlined from "@ant-design/icons/ImportOutlined";
+import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
+import Alert from "antd/es/alert";
+import Button from "antd/es/button";
+import Input from "antd/es/input";
 import { useState } from 'react';
 
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';

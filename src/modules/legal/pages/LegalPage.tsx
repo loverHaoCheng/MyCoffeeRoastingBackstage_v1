@@ -1,5 +1,5 @@
-import { CloseOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import CloseOutlined from "@ant-design/icons/CloseOutlined";
+import Button from "antd/es/button";
 import { Link, useLocation } from 'react-router-dom';
 
 import { LegalFooter } from '@/modules/legal/components';

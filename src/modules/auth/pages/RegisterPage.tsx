@@ -1,5 +1,11 @@
-import { LockOutlined, MailOutlined, UserAddOutlined } from '@ant-design/icons';
-import { App, Button, Form, Input, Space } from 'antd';
+import LockOutlined from '@ant-design/icons/LockOutlined';
+import MailOutlined from '@ant-design/icons/MailOutlined';
+import UserAddOutlined from '@ant-design/icons/UserAddOutlined';
+import App from 'antd/es/app';
+import Button from 'antd/es/button';
+import Form from 'antd/es/form';
+import Input from 'antd/es/input';
+import Space from 'antd/es/space';
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 

@@ -1,4 +1,4 @@
-import { RightOutlined } from '@ant-design/icons';
+import RightOutlined from "@ant-design/icons/RightOutlined";
 
 import type { FinanceOverviewDrilldownKey, FinanceOverviewMetrics } from '@/modules/finance/types';
 

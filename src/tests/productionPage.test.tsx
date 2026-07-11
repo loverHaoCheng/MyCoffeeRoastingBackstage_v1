@@ -8,6 +8,7 @@ import {
   createDefaultPocketBaseConnectionSettings,
 } from '@/modules/settings/types';
 import { ProductionPage } from '@/modules/production';
+import { RoastBatchCreator } from '@/modules/roast/components';
 import { renderWithQuery } from '@/tests/renderWithProviders';
 
 vi.mock('@/modules/bean/hooks', () => ({
@@ -113,5 +114,31 @@ describe('ProductionPage (烘焙历史)', () => {
 
     expect(screen.getAllByText('编辑烘焙记录').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /保存烘焙记录/ })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '烘焙程度' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '去向' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '烘焙计划' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '入豆量' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '出豆量' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '发展比' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '一爆时间' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '总烘焙时间' })).toBeInTheDocument();
+  });
+
+  it('gives every roast batch creator control an accessible name', () => {
+    renderWithQuery(<RoastBatchCreator onCreate={vi.fn()} />);
+
+    expect(screen.getByRole('textbox', { name: '烘焙日期' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '烘焙程度' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '熟豆名称' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '去向' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '烘焙计划' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '入豆量' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '出豆量' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '发展比' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '一爆时间' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '总烘焙时间' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '备注' })).toBeInTheDocument();
   });
 });

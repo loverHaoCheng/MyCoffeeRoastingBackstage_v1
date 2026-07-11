@@ -1,4 +1,5 @@
-import { CheckOutlined, LoadingOutlined } from '@ant-design/icons';
+import CheckOutlined from '@ant-design/icons/CheckOutlined';
+import LoadingOutlined from '@ant-design/icons/LoadingOutlined';
 import { useEffect, useRef, useState } from 'react';
 
 import { useQuickRefreshAction } from '@/app/hooks/useQuickRefreshAction';

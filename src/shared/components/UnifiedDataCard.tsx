@@ -1,5 +1,9 @@
-import { DeleteOutlined, DownOutlined, EditOutlined, ReadOutlined, RightOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import DeleteOutlined from "@ant-design/icons/DeleteOutlined";
+import DownOutlined from "@ant-design/icons/DownOutlined";
+import EditOutlined from "@ant-design/icons/EditOutlined";
+import ReadOutlined from "@ant-design/icons/ReadOutlined";
+import RightOutlined from "@ant-design/icons/RightOutlined";
+import Button from "antd/es/button";
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import styles from './UnifiedDataCard.module.css';

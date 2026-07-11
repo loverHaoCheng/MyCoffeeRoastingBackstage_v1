@@ -1,4 +1,9 @@
-import { App, DatePicker, Input, InputNumber, Select, Spin } from 'antd';
+import { App } from 'antd';
+import DatePicker from "antd/es/date-picker";
+import Input from "antd/es/input";
+import InputNumber from "antd/es/input-number";
+import Select from "antd/es/select";
+import Spin from "antd/es/spin";
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -238,6 +243,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'roastDate':
         return (
           <DatePicker
+            aria-label={fieldLabel}
             format="YYYY-MM-DD HH:mm"
             onChange={(date: Dayjs | null) => {
               updateDraft('roastDate', date ? date.second(0).millisecond(0).toISOString() : '');
@@ -250,6 +256,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'greenBeanId':
         return (
           <Select
+            aria-label={fieldLabel}
             onChange={(value) => {
               updateDraft('greenBeanId', value);
             }}
@@ -261,6 +268,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'roastedBeanName':
         return (
           <Input
+            aria-label={fieldLabel}
             onChange={(event) => {
               updateDraft('roastedBeanName', event.target.value);
             }}
@@ -271,6 +279,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'salesMode':
         return (
           <Select
+            aria-label={fieldLabel}
             onChange={(value) => {
               updateDraft('salesMode', value);
             }}
@@ -284,6 +293,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'roastPlanId':
         return (
           <Select
+            aria-label={fieldLabel}
             allowClear
             onChange={(value) => {
               const nextPlanId = value;
@@ -302,6 +312,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'inputWeightGrams':
         return (
           <InputNumber
+            aria-label={fieldLabel}
             min={0}
             onChange={(value) => {
               updateDraft('inputWeightGrams', value ?? 0);
@@ -315,6 +326,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'outputWeightGrams':
         return (
           <InputNumber
+            aria-label={fieldLabel}
             min={0}
             onChange={(value) => {
               updateDraft('outputWeightGrams', value ?? 0);
@@ -328,6 +340,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'roastLevel':
         return (
           <Select
+            aria-label={fieldLabel}
             onChange={(value) => {
               updateDraft('roastLevel', value);
             }}
@@ -338,6 +351,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'developmentRatio':
         return (
           <InputNumber
+            aria-label={fieldLabel}
             max={100}
             min={0}
             onChange={(value) => {
@@ -352,6 +366,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'firstCrackTime':
         return (
           <InputNumber
+            aria-label={fieldLabel}
             min={0}
             onChange={(value) => {
               updateDraft('firstCrackTime', value ?? undefined);
@@ -365,6 +380,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'totalRoastTime':
         return (
           <InputNumber
+            aria-label={fieldLabel}
             min={0}
             onChange={(value) => {
               updateDraft('totalRoastTime', value ?? undefined);
@@ -378,6 +394,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'notes':
         return (
           <Input.TextArea
+            aria-label={fieldLabel}
             autoSize={{ minRows: 3, maxRows: 6 }}
             onChange={(event) => {
               updateDraft('notes', event.target.value || undefined);
@@ -389,6 +406,7 @@ export function RoastBatchFieldEditorDrawer({
       case 'status':
         return (
           <Select
+            aria-label={fieldLabel}
             onChange={(value) => {
               updateDraft('status', value);
             }}

@@ -97,6 +97,33 @@ describe('card display settings', () => {
     expect(screen.getByText('轻度成本模板')).toBeInTheDocument();
   });
 
+  it('treats non-positive quality metrics as missing values', () => {
+    const nextSettings = createDefaultAppDisplaySettings();
+    nextSettings.cardDisplaySettings.beanInventory = {
+      displayCount: 4,
+      visibleMetaKeys: ['altitudeMetersMin', 'altitudeMetersMax', 'moisturePercent', 'densityGPerL'],
+    };
+    useSettingsStore.setState({ appDisplaySettings: nextSettings });
+
+    render(
+      <BeanInventoryCard
+        bean={{
+          ...createBean(),
+          altitudeMetersMax: 0,
+          altitudeMetersMin: 0,
+          densityGPerL: 0,
+          moisturePercent: 0,
+        }}
+        onEdit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '修改 海拔下限' })).toHaveTextContent('待补充');
+    expect(screen.getByRole('button', { name: '修改 海拔上限' })).toHaveTextContent('待补充');
+    expect(screen.getByRole('button', { name: '修改 含水率' })).toHaveTextContent('待补充');
+    expect(screen.getByRole('button', { name: '修改 密度' })).toHaveTextContent('待补充');
+  });
+
   it('shows all editable fields for newly created local beans', () => {
     const nextSettings = createDefaultAppDisplaySettings();
     nextSettings.cardDisplaySettings.beanInventory = {

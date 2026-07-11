@@ -33,7 +33,7 @@ VITE_DEV_API_PROXY_TARGET=https://www.easybake.top
 ```
 
 如果云端 BFF 地址变化，可以在本地 `.env.local` 里只覆盖 `VITE_DEV_API_PROXY_TARGET`。
-业务数据的 PocketBase 地址默认使用当前浏览器同源地址；生产站点会自动请求 `https://www.easybake.top/api/collections/...`。只有 PocketBase 与前端分域部署时，才需要显式配置 `VITE_PB_URL`。
+业务数据默认使用当前浏览器同源 BFF 地址；生产站点会请求 `https://www.easybake.top/api/collections/...`，由 BFF 转发到 PocketBase。主库不支持由浏览器直接切换到外部 PocketBase 地址，避免绕过 HttpOnly Cookie 认证边界。
 
 ## 正式发布
 
@@ -41,7 +41,11 @@ VITE_DEV_API_PROXY_TARGET=https://www.easybake.top
 ./deploy.sh
 ```
 
-发布脚本会构建前端、通过 SSH/rsync 上传 `dist/`，并验证 `https://www.easybake.top/version.json` 与 `https://www.easybake.top/api/health`。验证通过后，用户只需要通过 HTTPS 443 访问 `https://www.easybake.top`。
+发布脚本会先保存前端构建快照，再构建、上传并验证服务器 BFF；BFF 探测失败时自动恢复前一个服务端文件。前端发布使用版本目录和原子入口链接切换，公网验收失败会自动切回上一版本。随后验证版本号、`/api/health` 以及无凭据认证端点。验证通过后，用户只需要通过 HTTPS 443 访问 `https://www.easybake.top`。
+
+前端版本目录默认最多保留 `5` 个，其中当前版本（`/var/www/easybake`）与上一版本（`/var/www/easybake.previous`）始终受保护；其余版本按修改时间从新到旧保留，超出的目录在发布验收成功后清理。需要调整数量时可执行 `FRONTEND_RELEASES_TO_KEEP=8 ./deploy.sh`；该值不得小于 `2`。
+
+发布阶段通过服务器发布目录中的原子锁互斥。已有发布任务时，后发任务不会修改 BFF、前端入口或版本目录，而是立即退出并显示锁持有者、创建时间、最后更新时间和发布阶段；正常结束或脚本异常退出都会尝试释放自己的锁。若电脑被强制关闭或连接中断，必须先确认原发布任务已停止，再按部署文档移除精确锁目录，脚本不会自动抢占锁。
 
 ## 质量检查
 
@@ -93,8 +97,8 @@ JSON 基础结构如下：
 
 ## PocketBase 服务器连接
 
-- 前端通过当前浏览器同源地址连接服务器上的 PocketBase 业务接口；只有 PocketBase 与前端分域部署时，才需要设置 `VITE_PB_URL`。
-- 注册、登录和登出通过同源 `/api/auth/*` 网关完成，浏览器关闭后仍可通过 `HttpOnly Cookie` 恢复会话。
+- 前端通过当前浏览器同源 BFF 连接服务器上的 PocketBase 业务接口；BFF 再访问 PocketBase 内网地址。
+- 注册、登录和登出通过同源 `/api/auth/*` 网关完成，浏览器关闭后仍可通过 `HttpOnly Cookie` 恢复会话；PocketBase Token 不会返回或存储在前端。
 - 所有业务记录按 `owner` 字段进行用户隔离。
 - 可直接导入的 collection JSON 见 [docs/pocketbase-collections.json](/Users/keepwatchthemoon/个人/gitProject/MyCoffeeRoastingBackstage_v1/docs/pocketbase-collections.json)。
 - collection 和权限规则清单见 [docs/pocketbase-server-setup.md](/Users/keepwatchthemoon/个人/gitProject/MyCoffeeRoastingBackstage_v1/docs/pocketbase-server-setup.md)。

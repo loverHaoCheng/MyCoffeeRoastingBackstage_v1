@@ -26,14 +26,14 @@
 | 等级 | `green_beans.grade` | 供应商等级、杯测等级或贸易分级 |
 | 豆种 | `green_beans.variety` | 当前按文本存储，后续可拆字典表 |
 | 产季 | `green_beans.harvest_season` | 如 `2025/2026` |
-| 含水率 | `green_beans.moisture_percent` | 百分比 |
+| 含水率 | `green_beans.moisture_percent` | 百分比，可为空，最小值 0.01 |
 | 产区 | `green_beans.origin_region` / `origin_area` | 省州 / 更细分产区 |
 | 处理法 | `green_beans.process_method` | 水洗、日晒、蜜处理等 |
 | 风味标签 | `green_beans.flavor_tags` | 逗号分隔字符串，前端读取后解析为标签数组 |
 | 养豆时间 | `green_beans.aging_days` | 单位天，默认 14 |
 | 赏味结束期 | `green_beans.tasting_end_days` | 单位天，默认 40，同步到熟豆时复用为 `endDay` |
-| 海拔 | `green_beans.altitude_meters_min/max` | 用范围表达更稳妥 |
-| 密度 | `green_beans.density_g_per_l` | 适合烘焙参考 |
+| 海拔 | `green_beans.altitude_meters_min/max` | 用范围表达更稳妥，可为空，最小值 1 |
+| 密度 | `green_beans.density_g_per_l` | 适合烘焙参考，可为空，最小值 0.1 |
 | 处理厂 | `green_beans.mill_name` | 处理站 / 处理厂 |
 
 ## 为什么不直接一张表存完

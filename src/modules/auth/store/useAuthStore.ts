@@ -38,8 +38,6 @@ const loadInitialSession = (): PocketBaseSession | null => {
 
   if (import.meta.env.MODE === 'test') {
     return {
-      baseUrl: pocketBaseSessionService.getBaseUrl(),
-      token: 'test-token',
       updatedAt: new Date().toISOString(),
       user: {
         email: 'tester@example.com',

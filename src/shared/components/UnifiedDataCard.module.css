@@ -72,9 +72,9 @@
 
 .headerActionBtn:global(.ant-btn) {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
+  width: var(--app-touch-target-size);
+  height: var(--app-touch-target-size);
+  min-width: var(--app-touch-target-size);
   border: 0;
   background: var(--app-card-button-surface);
   box-shadow:
@@ -83,16 +83,18 @@
 }
 
 .headerActionBtn:global(.ant-btn):hover,
-.headerActionBtn:global(.ant-btn):active,
-.headerActionBtn:global(.ant-btn):focus,
-.headerActionBtn:global(.ant-btn):focus-visible {
+.headerActionBtn:global(.ant-btn):active {
   background: var(--app-card-button-surface) !important;
   box-shadow:
     var(--app-card-button-shadow) !important,
     inset 0 1px 0 var(--app-card-inset-highlight) !important;
   border-color: transparent !important;
-  outline: none !important;
   transform: none !important;
+}
+
+.headerActionBtn:global(.ant-btn):focus-visible {
+  outline: 2px solid var(--app-focus-ring) !important;
+  outline-offset: 2px;
 }
 
 .viewBtn:global(.ant-btn) {
@@ -214,8 +216,8 @@
   justify-content: center;
   gap: 4px;
   width: 100%;
-  min-height: 24px;
-  height: 24px;
+  min-height: var(--app-touch-target-size);
+  height: var(--app-touch-target-size);
   padding: 0;
   padding-inline: 0;
   border: 0;
@@ -233,15 +235,17 @@
 }
 
 .expandButton:global(.ant-btn):hover,
-.expandButton:global(.ant-btn):active,
-.expandButton:global(.ant-btn):focus,
-.expandButton:global(.ant-btn):focus-visible {
+.expandButton:global(.ant-btn):active {
   background: transparent !important;
   box-shadow: none !important;
   border-color: transparent !important;
   color: var(--app-text-secondary) !important;
-  outline: none !important;
   transform: none !important;
+}
+
+.expandButton:global(.ant-btn):focus-visible {
+  outline: 2px solid var(--app-focus-ring) !important;
+  outline-offset: -2px;
 }
 
 .expandIcon {
@@ -331,8 +335,8 @@
   }
 
   .expandButton:global(.ant-btn) {
-    min-height: 22px;
-    height: 22px;
+    min-height: var(--app-touch-target-size);
+    height: var(--app-touch-target-size);
     font-size: 8px;
   }
 }

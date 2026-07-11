@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { App } from 'antd';
+import App from 'antd/es/app';
 
 import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';

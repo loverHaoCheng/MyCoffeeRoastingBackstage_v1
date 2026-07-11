@@ -95,10 +95,10 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `origin_area` | text | 更细分产区 |
 | `harvest_season` | text | 产季 |
 | `default_roast_input_grams` | number | 默认单次投豆量 |
-| `altitude_meters_min` | number | 最低海拔 |
-| `altitude_meters_max` | number | 最高海拔 |
-| `moisture_percent` | number | 含水率 |
-| `density_g_per_l` | number | 密度 |
+| `altitude_meters_min` | number | 最低海拔，可为空，最小值 1 |
+| `altitude_meters_max` | number | 最高海拔，可为空，最小值 1 |
+| `moisture_percent` | number | 含水率，可为空，最小值 0.01 |
+| `density_g_per_l` | number | 密度，可为空，最小值 0.1 |
 | `mill_name` | text | 处理厂 |
 | `notes` | text | 备注 |
 | `created_at` | text | 兼容前端时间戳 |

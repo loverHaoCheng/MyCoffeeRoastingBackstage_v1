@@ -8,8 +8,6 @@ import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 describe('roastedCoffeeBeanMirrorService', () => {
   it('serializes mirror data as a JSON object instead of a quoted JSON string', () => {
     pocketBaseSessionService.save({
-      baseUrl: 'http://81.70.224.75',
-      token: 'test-token',
       user: {
         email: 'test@qq.com',
         id: 'user-1',

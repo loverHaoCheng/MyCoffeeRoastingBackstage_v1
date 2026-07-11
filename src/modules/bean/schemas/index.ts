@@ -13,7 +13,7 @@ export const beanSchema = z.object({
 });
 
 const optionalTrimmedText = z.string().trim().max(200).nullable().optional();
-const optionalNonnegativeNumber = z.number().nonnegative().nullable().optional();
+const optionalPositiveNumber = z.number().positive('请输入大于 0 的数值').nullable().optional();
 const flavorTagsSchema = z.preprocess(
   (value) => normalizeFlavorTags(Array.isArray(value) ? value : []),
   z
@@ -46,10 +46,10 @@ export const greenBeanCreateFormSchema = z
     defaultSaleUnitPrice: z.number().positive('请输入有效的出售单份售价'),
     defaultSaleUnitWeightGrams: z.number().int().positive('请输入有效的出售单份重量').nullable().optional(),
     variety: z.string().trim().min(1, '请输入豆种').max(120, '豆种长度不能超过 120 个字符'),
-    altitudeMetersMax: optionalNonnegativeNumber,
-    altitudeMetersMin: optionalNonnegativeNumber,
-    densityGPerL: optionalNonnegativeNumber,
-    moisturePercent: z.number().min(0, '含水率不能小于 0').max(100, '含水率不能大于 100').nullable().optional(),
+    altitudeMetersMax: optionalPositiveNumber,
+    altitudeMetersMin: optionalPositiveNumber,
+    densityGPerL: optionalPositiveNumber,
+    moisturePercent: z.number().positive('含水率必须大于 0').max(100, '含水率不能大于 100').nullable().optional(),
   })
   .superRefine((value, context) => {
     if (

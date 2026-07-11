@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SaveOutlined } from '@ant-design/icons';
-import { Button, Input, InputNumber, Select } from 'antd';
+import SaveOutlined from "@ant-design/icons/SaveOutlined";
+import Button from "antd/es/button";
+import Input from "antd/es/input";
+import InputNumber from "antd/es/input-number";
+import Select from "antd/es/select";
 import { Controller, type FieldPath, useForm } from 'react-hook-form';
 
 import { greenBeanCreateFormSchema } from '@/modules/bean/schemas';
@@ -619,7 +622,7 @@ export function BeanForm({
                 <InputNumber
                   aria-label="含水率"
                   max={100}
-                  min={0}
+                  min={0.01}
                   onChange={(value) => {
                     field.onChange(toNullableNumber(value));
                   }}
@@ -642,7 +645,7 @@ export function BeanForm({
               render={({ field }) => (
                 <InputNumber
                   aria-label="海拔下限"
-                  min={0}
+                  min={1}
                   onChange={(value) => {
                     field.onChange(toNullableNumber(value));
                   }}
@@ -665,7 +668,7 @@ export function BeanForm({
               render={({ field }) => (
                 <InputNumber
                   aria-label="海拔上限"
-                  min={0}
+                  min={1}
                   onChange={(value) => {
                     field.onChange(toNullableNumber(value));
                   }}
@@ -688,7 +691,7 @@ export function BeanForm({
               render={({ field }) => (
                 <InputNumber
                   aria-label="密度"
-                  min={0}
+                  min={0.1}
                   onChange={(value) => {
                     field.onChange(toNullableNumber(value));
                   }}

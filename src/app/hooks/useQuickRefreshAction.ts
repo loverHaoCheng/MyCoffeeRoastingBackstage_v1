@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { App } from 'antd';
+import App from 'antd/es/app';
 import { useRef, useState } from 'react';
 
 import { checkForAvailableAppUpdate } from '@/app/services/appVersionCheck.service';

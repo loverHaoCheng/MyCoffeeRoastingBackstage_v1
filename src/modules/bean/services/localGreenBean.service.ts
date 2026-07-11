@@ -28,6 +28,10 @@ const isFiniteNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);
 };
 
+const normalizeOptionalPositiveNumber = (value: null | number | undefined): null | number => {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
+};
+
 const isLocalGreenBeanRecord = (value: unknown): value is LocalGreenBeanRecord => {
   if (typeof value !== 'object' || value == null) {
     return false;
@@ -73,8 +77,12 @@ const normalizeLocalGreenBeanRecord = (record: LocalGreenBeanRecord): LocalGreen
   return {
     ...record,
     costTemplateId: normalizeText(record.costTemplateId),
+    altitudeMetersMax: normalizeOptionalPositiveNumber(record.altitudeMetersMax),
+    altitudeMetersMin: normalizeOptionalPositiveNumber(record.altitudeMetersMin),
+    densityGPerL: normalizeOptionalPositiveNumber(record.densityGPerL),
     flavorTags: normalizeFlavorTags(record.flavorTags),
     grade: normalizeText(record.grade),
+    moisturePercent: normalizeOptionalPositiveNumber(record.moisturePercent),
     remainingWeightGrams: normalizeRemainingWeightGrams(
       record.purchasedWeightGrams,
       record.remainingWeightGrams,
@@ -145,19 +153,19 @@ const calculateStockKg = (record: GreenBeanCreateInput): number => {
 export const mapLocalGreenBeanRecordToBean = (record: LocalGreenBeanRecord): Bean => ({
   agingDays: normalizeAgingDays(record.agingDays),
   id: record.id,
-  altitudeMetersMax: record.altitudeMetersMax ?? null,
-  altitudeMetersMin: record.altitudeMetersMin ?? null,
+  altitudeMetersMax: normalizeOptionalPositiveNumber(record.altitudeMetersMax),
+  altitudeMetersMin: normalizeOptionalPositiveNumber(record.altitudeMetersMin),
   name: record.displayName,
   code: record.code,
   defaultRoastInputGrams: record.defaultRoastInputGrams,
   defaultSaleUnitPrice: record.defaultSaleUnitPrice,
   defaultSaleUnitWeightGrams: record.defaultSaleUnitWeightGrams ?? null,
   costTemplateId: normalizeText(record.costTemplateId),
-  densityGPerL: record.densityGPerL ?? null,
+  densityGPerL: normalizeOptionalPositiveNumber(record.densityGPerL),
   flavorTags: normalizeFlavorTags(record.flavorTags),
   harvestSeason: normalizeText(record.harvestSeason) ?? undefined,
   millName: record.millName ?? null,
-  moisturePercent: record.moisturePercent ?? null,
+  moisturePercent: normalizeOptionalPositiveNumber(record.moisturePercent),
   notes: record.notes ?? null,
   origin: buildOriginLabel(record),
   originArea: record.originArea ?? null,

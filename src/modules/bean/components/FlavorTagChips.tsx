@@ -1,4 +1,4 @@
-import { Tag } from 'antd';
+import Tag from "antd/es/tag";
 
 import { normalizeFlavorTags } from '@/modules/bean/utils/flavorTags';
 

@@ -42,7 +42,7 @@
 
 .button:focus-visible,
 .button:global(.ant-btn):focus-visible {
-  outline: 3px solid rgb(0 122 255 / 22%);
+  outline: 2px solid var(--app-focus-ring);
   outline-offset: 3px;
 }
 

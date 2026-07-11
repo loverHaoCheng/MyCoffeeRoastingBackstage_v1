@@ -188,9 +188,9 @@
 .collapseButton:global(.ant-btn) {
   display: inline-grid;
   place-items: center;
-  min-width: 32px;
-  width: 32px;
-  height: 32px;
+  min-width: var(--app-touch-target-size);
+  width: var(--app-touch-target-size);
+  height: var(--app-touch-target-size);
   padding: 0;
   color: var(--app-text-secondary);
   font-weight: 500;
@@ -302,6 +302,28 @@
   object-fit: contain;
   border-radius: 16px;
   background: var(--app-bg);
+}
+
+.qrLoading {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  background: var(--app-bg-surface);
+}
+
+.qrLoadError {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--app-bg-surface);
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  text-align: center;
 }
 
 .buildVersion {

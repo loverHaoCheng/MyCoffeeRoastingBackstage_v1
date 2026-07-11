@@ -1,10 +1,29 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { App as AntApp, ConfigProvider } from 'antd';
 import { describe, expect, it } from 'vitest';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, RouterProvider, useNavigate, useRoutes } from 'react-router-dom';
 
 import { routes } from '@/router/routes';
+
+function RoutesUnderTest() {
+  return useRoutes(routes);
+}
+
+function TestNavigationTrigger() {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      onClick={() => {
+        void navigate('/beans');
+      }}
+      type="button"
+    >
+      前往生豆
+    </button>
+  );
+}
 
 describe('router', () => {
   it('opens the bean module route', async () => {
@@ -29,7 +48,7 @@ describe('router', () => {
       </ConfigProvider>,
     );
 
-    expect(await screen.findByLabelText('生豆库存概览')).toBeInTheDocument();
+    expect(await screen.findByLabelText('生豆库存概览', {}, { timeout: 3_000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'dashboard 工作台' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'database 生豆库存' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'setting 设置' })).not.toBeInTheDocument();
@@ -61,6 +80,37 @@ describe('router', () => {
     expect(await screen.findByRole('heading', { name: '界面外观' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '当前数据同步状态' })).not.toBeInTheDocument();
     expect(screen.queryByText('同步状态')).not.toBeInTheDocument();
+  });
+
+  it('closes the mobile settings panel after leaving the settings route', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    render(
+      <ConfigProvider>
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={['/settings']}>
+              <RoutesUnderTest />
+              <TestNavigationTrigger />
+            </MemoryRouter>
+          </QueryClientProvider>
+        </AntApp>
+      </ConfigProvider>,
+    );
+
+    expect(await screen.findByLabelText('关闭设置面板')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '前往生豆' }));
+
+    expect(await screen.findByLabelText('生豆库存概览')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByLabelText('关闭设置面板')).not.toBeInTheDocument();
+    });
   });
 
   it('opens the finance route', async () => {

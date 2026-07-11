@@ -1,4 +1,4 @@
-import { Result } from 'antd';
+import Result from 'antd/es/result';
 import { Component, type ErrorInfo, type PropsWithChildren, type ReactNode } from 'react';
 
 import { logger } from '@/shared/logger/logger';
@@ -34,4 +34,3 @@ export class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundarySta
     return this.props.children;
   }
 }
-

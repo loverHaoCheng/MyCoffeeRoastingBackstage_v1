@@ -22,6 +22,14 @@ const { verifyMock } = vi.hoisted(() => ({
   verifyMock: vi.fn().mockResolvedValue(undefined),
 }));
 
+const { loadQrCodeAssetMock } = vi.hoisted(() => ({
+  loadQrCodeAssetMock: vi.fn().mockResolvedValue({ default: 'author-code.webp' }),
+}));
+
+const { loadQrCodeFallbackAssetMock } = vi.hoisted(() => ({
+  loadQrCodeFallbackAssetMock: vi.fn().mockResolvedValue({ default: 'author-code.png' }),
+}));
+
 const { syncFromRemoteSafelyMock } = vi.hoisted(() => ({
   syncFromRemoteSafelyMock: vi.fn().mockResolvedValue({
     greenBean: {
@@ -56,6 +64,11 @@ vi.mock('@/modules/settings/services/pocketBaseConnectionProbe.service', () => (
   pocketBaseConnectionProbeService: {
     verify: verifyMock,
   },
+}));
+
+vi.mock('@/modules/settings/services/qrCodeAsset.service', () => ({
+  loadQrCodeAsset: loadQrCodeAssetMock,
+  loadQrCodeFallbackAsset: loadQrCodeFallbackAssetMock,
 }));
 
 const expandRoastedBeanConnectionCard = async (): Promise<HTMLElement> => {
@@ -105,6 +118,10 @@ describe('SettingsPage', () => {
     syncLocalChangeMock.mockResolvedValue(undefined);
     verifyMock.mockClear();
     verifyMock.mockResolvedValue(undefined);
+    loadQrCodeAssetMock.mockClear();
+    loadQrCodeAssetMock.mockResolvedValue({ default: 'author-code.webp' });
+    loadQrCodeFallbackAssetMock.mockClear();
+    loadQrCodeFallbackAssetMock.mockResolvedValue({ default: 'author-code.png' });
     syncFromRemoteSafelyMock.mockClear();
     syncFromRemoteSafelyMock.mockResolvedValue({
       greenBean: {
@@ -260,6 +277,65 @@ describe('SettingsPage', () => {
     });
 
     expect(within(card).getByRole('button', { name: '收起' })).toBeInTheDocument();
+  });
+
+  it('loads a QR code only after it is opened and reuses it after reopening', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    const authorButton = screen.getByRole('button', { name: '和作者交流一下' });
+
+    expect(screen.queryByRole('img', { name: '作者交流二维码' })).not.toBeInTheDocument();
+
+    fireEvent.click(authorButton);
+
+    const firstImage = await screen.findByRole('img', { name: '作者交流二维码' });
+    const firstSource = firstImage.getAttribute('src');
+
+    expect(authorButton).toHaveAttribute('aria-pressed', 'true');
+    expect(firstSource).toContain('author-code');
+
+    fireEvent.click(authorButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('img', { name: '作者交流二维码' })).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(authorButton);
+
+    expect(await screen.findByRole('img', { name: '作者交流二维码' })).toHaveAttribute('src', firstSource);
+    expect(loadQrCodeAssetMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a retry action when a QR code fails to load', async () => {
+    loadQrCodeAssetMock
+      .mockRejectedValueOnce(new Error('asset unavailable'))
+      .mockResolvedValueOnce({ default: 'author-code.webp' });
+
+    renderWithQuery(<SettingsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '和作者交流一下' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('二维码加载失败，请重试。');
+
+    fireEvent.click(screen.getByRole('button', { name: '重新加载二维码' }));
+
+    expect(await screen.findByRole('img', { name: '作者交流二维码' })).toHaveAttribute('src', 'author-code.webp');
+    expect(loadQrCodeAssetMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back to the PNG asset when the WebP QR code cannot be decoded', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '和作者交流一下' }));
+
+    const qrImage = await screen.findByRole('img', { name: '作者交流二维码' });
+    fireEvent.error(qrImage);
+
+    await waitFor(() => {
+      expect(loadQrCodeFallbackAssetMock).toHaveBeenCalledWith('author');
+    });
+
+    expect(await screen.findByRole('img', { name: '作者交流二维码' })).toHaveAttribute('src', 'author-code.png');
   });
 
   it('loads and verifies roasted bean settings only once across settings page remounts in the same session', async () => {

@@ -1,4 +1,7 @@
-import { App, Input, InputNumber, Select } from 'antd';
+import { App } from 'antd';
+import Input from "antd/es/input";
+import InputNumber from "antd/es/input-number";
+import Select from "antd/es/select";
 import { useQuery } from '@tanstack/react-query';
 import { type FieldPath } from 'react-hook-form';
 import { useEffect, useMemo, useRef, useState } from 'react';

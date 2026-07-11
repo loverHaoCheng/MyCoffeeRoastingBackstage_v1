@@ -1,5 +1,6 @@
-import { DeleteOutlined } from '@ant-design/icons';
-import { Button, Empty } from 'antd';
+import DeleteOutlined from "@ant-design/icons/DeleteOutlined";
+import Button from "antd/es/button";
+import Empty from "antd/es/empty";
 
 import type { FinanceOverviewDrilldownPayload } from '@/modules/finance/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';

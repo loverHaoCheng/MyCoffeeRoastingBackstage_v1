@@ -112,9 +112,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: auto;
-  min-width: 24px;
+  width: var(--app-touch-target-size);
+  min-width: var(--app-touch-target-size);
+  min-height: var(--app-touch-target-size);
   padding-inline: 0;
   color: #8e8e93;
   border-radius: 0;

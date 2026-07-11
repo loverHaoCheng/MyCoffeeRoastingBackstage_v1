@@ -89,8 +89,6 @@ describe('AppRealtimeSync', () => {
     FakeEventSource.instances = [];
     useAuthStore.setState({
       session: {
-        baseUrl: 'http://81.70.224.75',
-        token: 'test-token',
         updatedAt: new Date().toISOString(),
         user: {
           email: 'tester@example.com',
@@ -104,8 +102,6 @@ describe('AppRealtimeSync', () => {
       },
     });
     pocketBaseSessionService.save({
-      baseUrl: 'http://81.70.224.75',
-      token: 'test-token',
       user: {
         email: 'tester@example.com',
         id: 'test-user',
@@ -157,6 +153,7 @@ describe('AppRealtimeSync', () => {
             'roast_profiles/*',
           ],
         }),
+        credentials: 'same-origin',
         method: 'POST',
       }),
     );

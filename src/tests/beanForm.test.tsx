@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BeanForm } from '@/modules/bean/components/BeanForm';
 import { createDefaultBeanFormValues } from '@/modules/bean/constants';
+import { greenBeanCreateFormSchema } from '@/modules/bean/schemas';
 import { useSettingsStore } from '@/modules/settings/store';
 import { createDefaultAppDisplaySettings } from '@/modules/settings/types';
 import { renderWithQuery } from '@/tests/renderWithProviders';
@@ -75,5 +76,28 @@ describe('BeanForm', () => {
     await waitFor(() => {
       expect(finalPriceInput).toHaveValue('0.00');
     });
+  });
+
+  it('requires positive quality metrics while allowing them to remain empty', () => {
+    const validInput = {
+      ...createDefaultBeanFormValues(),
+      defaultSaleUnitPrice: 20,
+      defaultSaleUnitWeightGrams: 100,
+      displayName: '测试生豆',
+      processMethod: '水洗',
+      purchasedTotalPrice: 100,
+      variety: 'Heirloom',
+    };
+
+    expect(greenBeanCreateFormSchema.safeParse(validInput).success).toBe(true);
+    expect(
+      greenBeanCreateFormSchema.safeParse({
+        ...validInput,
+        altitudeMetersMax: 0,
+        altitudeMetersMin: 0,
+        densityGPerL: 0,
+        moisturePercent: 0,
+      }).success,
+    ).toBe(false);
   });
 });

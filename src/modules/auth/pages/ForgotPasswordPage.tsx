@@ -1,5 +1,10 @@
-import { LockOutlined, MailOutlined } from '@ant-design/icons';
-import { App, Button, Form, Input, Space } from 'antd';
+import LockOutlined from '@ant-design/icons/LockOutlined';
+import MailOutlined from '@ant-design/icons/MailOutlined';
+import App from 'antd/es/app';
+import Button from 'antd/es/button';
+import Form from 'antd/es/form';
+import Input from 'antd/es/input';
+import Space from 'antd/es/space';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { AuthPageShell } from '@/modules/auth/components/AuthPageShell';

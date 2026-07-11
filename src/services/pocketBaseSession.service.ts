@@ -1,7 +1,3 @@
-import { normalizePocketBaseBaseUrl, resolvePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
-
-const pocketBaseSessionStorageKey = 'coffee-roasting-backstage:pocketbase-session';
-
 export interface PocketBaseSessionUser {
   email: string;
   id: string;
@@ -11,8 +7,6 @@ export interface PocketBaseSessionUser {
 }
 
 export interface PocketBaseSession {
-  baseUrl: string;
-  token: string;
   updatedAt: string;
   user: PocketBaseSessionUser;
 }
@@ -47,20 +41,14 @@ const normalizeSession = (value: unknown): PocketBaseSession | null => {
   }
 
   const record = value as Record<string, unknown>;
-  const token = typeof record.token === 'string' ? record.token.trim() : '';
-  const baseUrl = normalizePocketBaseBaseUrl(
-    typeof record.baseUrl === 'string' ? record.baseUrl : resolvePocketBaseBaseUrl(),
-  );
   const updatedAt = typeof record.updatedAt === 'string' ? record.updatedAt : new Date().toISOString();
   const user = normalizeSessionUser(record.user);
 
-  if (!token || !user) {
+  if (!user) {
     return null;
   }
 
   return {
-    baseUrl,
-    token,
     updatedAt,
     user,
   };
@@ -76,7 +64,6 @@ export const pocketBaseSessionService = {
   save(session: Omit<PocketBaseSession, 'updatedAt'>): PocketBaseSession {
     const nextSession: PocketBaseSession = {
       ...session,
-      baseUrl: normalizePocketBaseBaseUrl(session.baseUrl),
       updatedAt: new Date().toISOString(),
     };
 
@@ -84,16 +71,7 @@ export const pocketBaseSessionService = {
 
     return nextSession;
   },
-  getBaseUrl(): string {
-    return this.load()?.baseUrl ?? resolvePocketBaseBaseUrl();
-  },
-  getToken(): string {
-    return this.load()?.token ?? '';
-  },
   getUser(): PocketBaseSessionUser | null {
     return this.load()?.user ?? null;
-  },
-  getStorageKey(): string {
-    return pocketBaseSessionStorageKey;
   },
 };

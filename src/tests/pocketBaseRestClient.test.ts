@@ -23,7 +23,35 @@ describe('PocketBaseRestClient', () => {
     expect(fetcher).toHaveBeenCalledWith(
       expect.stringContaining(`${window.location.origin}/api/collections/green_beans/records`),
       expect.objectContaining({
+        credentials: 'same-origin',
         method: 'GET',
+      }),
+    );
+  });
+
+  it('uses the same-origin BFF without forwarding a token for primary business requests', async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify([{ id: 'bean-gateway', display_name: 'Gateway Bean' }]), {
+          status: 200,
+        }),
+      ),
+    );
+    const client = new PocketBaseRestClient({
+      fetcher,
+      projectUrl: 'https://external-pocketbase.example.com',
+      publishableKey: '',
+    });
+
+    await client.list('green_beans');
+
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining(`${window.location.origin}/api/collections/green_beans/records`),
+      expect.objectContaining({
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+        },
       }),
     );
   });

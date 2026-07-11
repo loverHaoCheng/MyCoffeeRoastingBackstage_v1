@@ -1,5 +1,12 @@
-import { DownOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
-import { App, Button, Input, InputNumber, Popconfirm, Tag } from 'antd';
+import DownOutlined from "@ant-design/icons/DownOutlined";
+import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import SaveOutlined from "@ant-design/icons/SaveOutlined";
+import { App } from 'antd';
+import Button from "antd/es/button";
+import Input from "antd/es/input";
+import InputNumber from "antd/es/input-number";
+import Popconfirm from "antd/es/popconfirm";
+import Tag from "antd/es/tag";
 import { useEffect, useId, useState } from 'react';
 
 import { costTemplateFormSchema } from '@/modules/settings/schemas';

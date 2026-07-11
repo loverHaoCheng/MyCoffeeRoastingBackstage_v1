@@ -1,13 +1,19 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import { Spin } from 'antd';
+import Spin from 'antd/es/spin';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, useLocation, createHashRouter, type RouteObject } from 'react-router-dom';
 
-import { ForgotPasswordPage, LoginPage, RegisterPage } from '@/modules/auth';
-import { MainLayout } from '@/layouts/MainLayout';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
+const MainLayout = lazy(() => import('@/layouts/MainLayout').then((module) => ({ default: module.MainLayout })));
+const ForgotPasswordPage = lazy(() =>
+  import('@/modules/auth').then((module) => ({ default: module.ForgotPasswordPage })),
+);
+const LoginPage = lazy(() => import('@/modules/auth').then((module) => ({ default: module.LoginPage })));
+const RegisterPage = lazy(() =>
+  import('@/modules/auth').then((module) => ({ default: module.RegisterPage })),
+);
 const LegalPage = lazy(() => import('@/modules/legal').then((module) => ({ default: module.LegalPage })));
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));
 const RoastPage = lazy(() =>
@@ -77,10 +83,10 @@ function PublicOnly({ children }: { children: ReactNode }) {
 export const routes: RouteObject[] = [
   {
     path: '/',
-    element: (
+    element: withPageFallback(
       <RequireAuth>
         <MainLayout />
-      </RequireAuth>
+      </RequireAuth>,
     ),
     children: [
       {
@@ -111,23 +117,23 @@ export const routes: RouteObject[] = [
   },
   {
     path: '/login',
-    element: (
+    element: withPageFallback(
       <PublicOnly>
         <LoginPage />
-      </PublicOnly>
+      </PublicOnly>,
     ),
   },
   {
     path: '/register',
-    element: (
+    element: withPageFallback(
       <PublicOnly>
         <RegisterPage />
-      </PublicOnly>
+      </PublicOnly>,
     ),
   },
   {
     path: '/forgot-password',
-    element: <ForgotPasswordPage />,
+    element: withPageFallback(<ForgotPasswordPage />),
   },
   {
     path: '/terms',

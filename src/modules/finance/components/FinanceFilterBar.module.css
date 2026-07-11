@@ -18,7 +18,8 @@
 
 .presetButton {
   flex: 0 0 auto;
-  min-height: 42px;
+  min-width: var(--app-touch-target-size);
+  min-height: var(--app-touch-target-size);
   padding: 0;
   padding-inline: 0;
   border: none;
@@ -39,7 +40,6 @@
 
 .presetButton:hover,
 .presetButton:focus,
-.presetButton:focus-visible,
 .presetButton:active {
   outline: none;
   color: #6e6e73;
@@ -48,10 +48,18 @@
   transform: none;
 }
 
+.presetButton:focus-visible {
+  outline: 2px solid var(--app-focus-ring);
+  outline-offset: 3px;
+}
+
 .presetButton[data-active='true']:hover,
 .presetButton[data-active='true']:focus,
-.presetButton[data-active='true']:focus-visible,
 .presetButton[data-active='true']:active {
+  color: #1d1d1f;
+}
+
+.presetButton[data-active='true']:focus-visible {
   color: #1d1d1f;
 }
 
@@ -78,6 +86,8 @@
 
 @media (max-width: 767px) {
   .presetGroup {
-    column-gap: 25px;
+    justify-content: space-between;
+    column-gap: 0;
+    overflow-x: visible;
   }
 }

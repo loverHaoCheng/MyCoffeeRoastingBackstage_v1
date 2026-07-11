@@ -1,5 +1,11 @@
-import { DeleteOutlined, DownOutlined } from '@ant-design/icons';
-import { App, Button, Radio, Select, Slider, Tag } from 'antd';
+import DeleteOutlined from "@ant-design/icons/DeleteOutlined";
+import DownOutlined from "@ant-design/icons/DownOutlined";
+import { App } from 'antd';
+import Button from "antd/es/button";
+import Radio from "antd/es/radio";
+import Select from "antd/es/select";
+import Slider from "antd/es/slider";
+import Tag from "antd/es/tag";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -11,6 +17,11 @@ import { cardDisplayModules } from '@/modules/settings/constants/cardDisplayModu
 import { useAppDisplaySettings, usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
 import { appDisplaySettingsSyncService } from '@/modules/settings/services/appDisplaySettingsSync.service';
 import {
+  loadQrCodeAsset,
+  loadQrCodeFallbackAsset,
+  type QrCodeKey,
+} from '@/modules/settings/services/qrCodeAsset.service';
+import {
   appDisplayScaleMax,
   appDisplayScaleMin,
   appDisplayScaleStep,
@@ -18,32 +29,26 @@ import {
   type AppDisplaySettings,
   type AppThemeMode,
 } from '@/modules/settings/types';
-import authorCodeImage from '@/assets/settings-codes/author-code.png';
-import sponsorCodeImage from '@/assets/settings-codes/sponsor-code.png';
 import { useAppBuildVersion } from '@/app/hooks/useAppBuildVersion';
 import { LegalFooter } from '@/modules/legal/components';
 import { RoastedBeanConnectionCard } from '@/modules/settings/components/RoastedBeanConnectionCard';
 
 import styles from './SettingsPage.module.css';
 
-type QrCodeKey = 'author' | 'sponsor';
 const qrCodeEntries: Record<
   QrCodeKey,
   {
     alt: string;
     buttonLabel: string;
-    image: string;
   }
 > = {
   author: {
     alt: '作者交流二维码',
     buttonLabel: '和作者交流一下',
-    image: authorCodeImage,
   },
   sponsor: {
     alt: '赞助支持二维码',
     buttonLabel: '请作者喝杯咖啡',
-    image: sponsorCodeImage,
   },
 };
 
@@ -79,6 +84,9 @@ export function SettingsPage() {
   const deleteAccount = useAuthStore((state) => state.deleteAccount);
   const lastGreenBeanRefreshSignatureRef = useRef('');
   const [visibleCode, setVisibleCode] = useState<null | QrCodeKey>(null);
+  const [qrCodeFallbackTried, setQrCodeFallbackTried] = useState<Partial<Record<QrCodeKey, boolean>>>({});
+  const [qrCodeLoadErrors, setQrCodeLoadErrors] = useState<Partial<Record<QrCodeKey, string>>>({});
+  const [qrCodeSources, setQrCodeSources] = useState<Partial<Record<QrCodeKey, string>>>({});
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState(() => {
     const collapsedByDefault = import.meta.env.MODE !== 'test';
@@ -160,11 +168,77 @@ export function SettingsPage() {
     [getDefaultVisibleKeys],
   );
 
-  const handleToggleCode = (code: 'author' | 'sponsor') => {
-    setVisibleCode((current) => (current === code ? null : code));
+  const loadQrCode = (code: QrCodeKey) => {
+    if (qrCodeSources[code]) {
+      return;
+    }
+
+    setQrCodeLoadErrors((current) => ({
+      ...current,
+      [code]: undefined,
+    }));
+    setQrCodeFallbackTried((current) => ({
+      ...current,
+      [code]: false,
+    }));
+
+    void loadQrCodeAsset(code)
+      .then((module) => {
+        setQrCodeSources((current) => ({
+          ...current,
+          [code]: module.default,
+        }));
+      })
+      .catch(() => {
+        setQrCodeLoadErrors((current) => ({
+          ...current,
+          [code]: '二维码加载失败，请重试。',
+        }));
+      });
+  };
+
+  const handleQrCodeImageError = (code: QrCodeKey) => {
+    if (qrCodeFallbackTried[code]) {
+      setQrCodeLoadErrors((current) => ({
+        ...current,
+        [code]: '二维码加载失败，请重试。',
+      }));
+      return;
+    }
+
+    setQrCodeFallbackTried((current) => ({
+      ...current,
+      [code]: true,
+    }));
+
+    void loadQrCodeFallbackAsset(code)
+      .then((module) => {
+        setQrCodeSources((current) => ({
+          ...current,
+          [code]: module.default,
+        }));
+      })
+      .catch(() => {
+        setQrCodeLoadErrors((current) => ({
+          ...current,
+          [code]: '二维码加载失败，请重试。',
+        }));
+      });
+  };
+
+  const handleToggleCode = (code: QrCodeKey) => {
+    if (visibleCode === code) {
+      setVisibleCode(null);
+      return;
+    }
+
+    setVisibleCode(code);
+    loadQrCode(code);
   };
 
   const activeQrEntry = visibleCode ? qrCodeEntries[visibleCode] : null;
+  const activeQrCodeError = visibleCode ? qrCodeLoadErrors[visibleCode] : undefined;
+  const activeQrCodeSource = visibleCode ? qrCodeSources[visibleCode] : undefined;
 
   const toggleSection = (key: keyof typeof collapsedSections) => {
     setCollapsedSections((current) => ({
@@ -491,7 +565,32 @@ export function SettingsPage() {
               {activeQrEntry ? (
                 <div className={styles.qrPanel}>
                   <div className={styles.qrCard} key={visibleCode}>
-                    <img alt={activeQrEntry.alt} className={styles.qrImage} src={activeQrEntry.image} />
+                    {activeQrCodeSource ? (
+                      <img
+                        alt={activeQrEntry.alt}
+                        className={styles.qrImage}
+                        onError={() => {
+                          if (visibleCode) {
+                            handleQrCodeImageError(visibleCode);
+                          }
+                        }}
+                        src={activeQrCodeSource}
+                      />
+                    ) : activeQrCodeError && visibleCode ? (
+                      <div className={styles.qrLoadError} role="alert">
+                        <span>{activeQrCodeError}</span>
+                        <Button
+                          onClick={() => {
+                            loadQrCode(visibleCode);
+                          }}
+                          type="default"
+                        >
+                          重新加载二维码
+                        </Button>
+                      </div>
+                    ) : (
+                      <div aria-label="正在加载二维码" className={styles.qrLoading} role="status" />
+                    )}
                   </div>
                 </div>
               ) : null}

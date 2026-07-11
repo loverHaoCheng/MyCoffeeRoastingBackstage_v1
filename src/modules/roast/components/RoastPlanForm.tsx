@@ -1,5 +1,13 @@
-import { DownOutlined, MinusCircleOutlined, PlusOutlined, SaveOutlined, UpOutlined } from '@ant-design/icons';
-import { App, Button, Input, InputNumber, Select } from 'antd';
+import DownOutlined from "@ant-design/icons/DownOutlined";
+import MinusCircleOutlined from "@ant-design/icons/MinusCircleOutlined";
+import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import SaveOutlined from "@ant-design/icons/SaveOutlined";
+import UpOutlined from "@ant-design/icons/UpOutlined";
+import { App } from 'antd';
+import Button from "antd/es/button";
+import Input from "antd/es/input";
+import InputNumber from "antd/es/input-number";
+import Select from "antd/es/select";
 import { useEffect } from 'react';
 import { Controller, type FieldPath, useFieldArray, useForm } from 'react-hook-form';
 

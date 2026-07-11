@@ -10,6 +10,7 @@ interface PocketBaseRestClientOptions {
   projectUrl: string;
   publishableKey?: string;
   timeoutMs?: number;
+  useAuthGateway?: boolean;
 }
 
 interface PocketBaseRestListOptions {
@@ -305,16 +306,9 @@ const resolveOwnerId = (): string | undefined => {
 };
 
 const getRequestHeaders = (): HeadersInit => {
-  const headers: Record<string, string> = {
+  return {
     Accept: 'application/json',
   };
-  const token = pocketBaseSessionService.getToken();
-
-  if (token) {
-    headers.Authorization = token;
-  }
-
-  return headers;
 };
 
 const mergeHeaders = (...headerSets: (HeadersInit | undefined)[]): Headers => {
@@ -364,7 +358,9 @@ export class PocketBaseRestClient {
   constructor(options: PocketBaseRestClientOptions) {
     const raw = options.fetcher ?? fetch;
     this.fetcher = (...args: Parameters<Fetcher>) => raw(...args);
-    this.baseUrl = normalizePocketBaseBaseUrl(options.projectUrl || resolvePocketBaseBaseUrl());
+    this.baseUrl = normalizePocketBaseBaseUrl(
+      options.useAuthGateway === false ? options.projectUrl : resolvePocketBaseBaseUrl(),
+    );
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
@@ -409,6 +405,7 @@ export class PocketBaseRestClient {
 
       try {
         const requestInit: RequestInit = {
+          credentials: 'same-origin',
           headers: getRequestHeaders(),
           method: 'GET',
         };
@@ -505,6 +502,7 @@ export class PocketBaseRestClient {
     try {
       const requestInit: RequestInit = {
         body: JSON.stringify(withTimestampFields(this.withOwner(payload), 'insert')),
+        credentials: 'same-origin',
         headers: mergeHeaders(getRequestHeaders(), {
           'Content-Type': 'application/json',
         }),
@@ -580,6 +578,7 @@ export class PocketBaseRestClient {
         .filter((id) => id.length > 0)
         .map(async (recordId) => {
           const response = await this.fetcher(buildCollectionUrl(this.baseUrl, collectionName, `/${recordId}`), {
+            credentials: 'same-origin',
             headers: getRequestHeaders(),
             method: 'DELETE',
           });
@@ -638,6 +637,7 @@ export class PocketBaseRestClient {
     try {
       const requestInit: RequestInit = {
         ...init,
+        credentials: 'same-origin',
         headers: mergeHeaders(getRequestHeaders(), init.headers),
       };
 

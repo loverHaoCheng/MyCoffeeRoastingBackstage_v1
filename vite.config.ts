@@ -46,7 +46,6 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            antd: ['antd', '@ant-design/icons'],
             react: ['react', 'react-dom', 'react-router-dom'],
             state: ['@tanstack/react-query', 'zustand', 'zod'],
           },

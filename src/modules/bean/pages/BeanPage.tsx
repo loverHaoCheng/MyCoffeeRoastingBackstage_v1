@@ -1,5 +1,11 @@
-import { DownOutlined, PlusOutlined } from '@ant-design/icons';
-import { App, Button, Drawer, Empty, Grid, Spin } from 'antd';
+import DownOutlined from "@ant-design/icons/DownOutlined";
+import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import { App } from 'antd';
+import Button from "antd/es/button";
+import Drawer from "antd/es/drawer";
+import Empty from "antd/es/empty";
+import Grid from "antd/es/grid";
+import Spin from "antd/es/spin";
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -114,7 +120,7 @@ export function BeanPage() {
   const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
   const [selectedBeanFieldPath, setSelectedBeanFieldPath] = useState<FieldPath<GreenBeanFormInput> | undefined>();
   const [detailMode, setDetailMode] = useState<BeanDetailMode | null>(null);
-  const { data: beans = [], isFetching } = useBeans();
+  const { data: beans = [], isLoading } = useBeans();
   const deleteBeanMutation = useDeleteBean();
 
   const filteredBeans = useMemo(() => {
@@ -365,13 +371,13 @@ export function BeanPage() {
       </section>
 
       <section className={styles.list} aria-label="生豆库存列表">
-        {isFetching && beans.length === 0 ? (
+        {isLoading && beans.length === 0 ? (
           <div className={styles.loading}>
             <Spin />
           </div>
         ) : null}
 
-        {!isFetching && shouldShowEmptyState ? (
+        {!isLoading && shouldShowEmptyState ? (
           <Empty className={styles.empty} description="没有匹配的生豆批次" />
         ) : null}
 

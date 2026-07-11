@@ -218,8 +218,8 @@ const normalizeText = (value: null | string | undefined): null | string => {
   return nextValue.length > 0 ? nextValue : null;
 };
 
-const toNullableNumber = (value: null | number | undefined): null | number => {
-  return value ?? null;
+const toNullablePositiveNumber = (value: null | number | undefined): null | number => {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
 };
 
 const normalizeRemainingWeightGrams = (input: Pick<GreenBeanUpdateInput, 'purchasedWeightGrams' | 'remainingWeightGrams'>): number => {
@@ -228,17 +228,17 @@ const normalizeRemainingWeightGrams = (input: Pick<GreenBeanUpdateInput, 'purcha
 
 const mapBeanFormInputToTableInput = (input: GreenBeanUpdateInput): GreenBeanTableUpdateInput => ({
   aging_days: Math.max(0, Math.round(input.agingDays)),
-  altitude_meters_max: toNullableNumber(input.altitudeMetersMax),
-  altitude_meters_min: toNullableNumber(input.altitudeMetersMin),
+  altitude_meters_max: toNullablePositiveNumber(input.altitudeMetersMax),
+  altitude_meters_min: toNullablePositiveNumber(input.altitudeMetersMin),
   code: input.code.trim(),
   default_roast_input_grams: input.defaultRoastInputGrams,
-  density_g_per_l: toNullableNumber(input.densityGPerL),
+  density_g_per_l: toNullablePositiveNumber(input.densityGPerL),
   display_name: input.displayName.trim(),
   flavor_tags: serializeFlavorTags(input.flavorTags),
   grade: normalizeText(input.grade),
   harvest_season: normalizeText(input.harvestSeason),
   mill_name: normalizeText(input.millName),
-  moisture_percent: toNullableNumber(input.moisturePercent),
+  moisture_percent: toNullablePositiveNumber(input.moisturePercent),
   notes: normalizeText(input.notes),
   origin_area: normalizeText(input.originArea),
   origin_country: normalizeText(input.originCountry),
@@ -313,19 +313,19 @@ export const mapRemoteGreenBeanInventoryRecordToBean = (
 ): Bean => ({
   agingDays: normalizeAgingDays(record.aging_days),
   id: record.id,
-  altitudeMetersMax: record.altitude_meters_max,
-  altitudeMetersMin: record.altitude_meters_min,
+  altitudeMetersMax: toNullablePositiveNumber(record.altitude_meters_max),
+  altitudeMetersMin: toNullablePositiveNumber(record.altitude_meters_min),
   name: record.display_name,
   code: record.code,
   costTemplateId: record.cost_template_id,
   defaultRoastInputGrams: record.default_roast_input_grams,
   defaultSaleUnitPrice: record.default_sale_unit_price,
   defaultSaleUnitWeightGrams: record.default_sale_unit_weight_grams,
-  densityGPerL: record.density_g_per_l,
+  densityGPerL: toNullablePositiveNumber(record.density_g_per_l),
   flavorTags: parseFlavorTags(record.flavor_tags),
   harvestSeason: record.harvest_season,
   millName: record.mill_name,
-  moisturePercent: record.moisture_percent,
+  moisturePercent: toNullablePositiveNumber(record.moisture_percent),
   notes: record.notes,
   origin: [record.origin_country, record.origin_region, record.origin_area].filter(Boolean).join(' · '),
   originArea: record.origin_area,
@@ -382,10 +382,10 @@ const mapRemoteEditableBeanToFormInput = (
   supplierName: latestPurchaseBatch?.supplier_name ?? null,
   tastingEndDays: normalizeTastingEndDays(bean.tasting_end_days, bean.aging_days),
   variety: bean.variety,
-  altitudeMetersMax: bean.altitude_meters_max,
-  altitudeMetersMin: bean.altitude_meters_min,
-  densityGPerL: bean.density_g_per_l,
-  moisturePercent: bean.moisture_percent,
+  altitudeMetersMax: toNullablePositiveNumber(bean.altitude_meters_max),
+  altitudeMetersMin: toNullablePositiveNumber(bean.altitude_meters_min),
+  densityGPerL: toNullablePositiveNumber(bean.density_g_per_l),
+  moisturePercent: toNullablePositiveNumber(bean.moisture_percent),
 });
 
 const compareIsoDateDesc = (left?: null | string, right?: null | string): number => {

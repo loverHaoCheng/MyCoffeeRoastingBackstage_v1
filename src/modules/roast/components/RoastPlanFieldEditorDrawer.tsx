@@ -1,4 +1,8 @@
-import { App, Input, InputNumber, Select, Spin } from 'antd';
+import { App } from 'antd';
+import Input from "antd/es/input";
+import InputNumber from "antd/es/input-number";
+import Select from "antd/es/select";
+import Spin from "antd/es/spin";
 import { useEffect, useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';

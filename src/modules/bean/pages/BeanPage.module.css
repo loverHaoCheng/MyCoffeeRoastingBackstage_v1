@@ -98,7 +98,8 @@
   justify-content: center;
   width: 100%;
   min-width: 0;
-  height: 42px;
+  min-height: var(--app-touch-target-size);
+  height: var(--app-touch-target-size);
   padding: 0 12px;
   border: 0;
   background: transparent !important;

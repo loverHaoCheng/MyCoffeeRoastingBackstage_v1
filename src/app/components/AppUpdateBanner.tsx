@@ -1,4 +1,5 @@
-import { Alert, Button } from 'antd';
+import Alert from 'antd/es/alert';
+import Button from 'antd/es/button';
 
 import { useAppUpdateNotice } from '@/app/hooks/useAppUpdateNotice';
 import { FloatingTopNotice } from '@/shared/components/FloatingTopNotice';

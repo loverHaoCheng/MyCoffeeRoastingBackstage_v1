@@ -1,9 +1,14 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 
 interface PocketBaseSessionResponse {
   record: SessionUser;
   token: string;
+}
+
+interface ClientSessionResponse {
+  record: SessionUser;
 }
 
 interface PocketBaseErrorPayload {
@@ -98,6 +103,25 @@ const AI_USAGE_LIMITS_COLLECTION = 'ai_usage_limits';
 const AI_USAGE_LOGS_COLLECTION = 'ai_usage_logs';
 const QINIU_DEFAULT_BASE_URL = 'https://api.qnaigc.com/v1';
 const QINIU_DEFAULT_MODEL = 'qwen/qwen3.6-27b';
+const BUSINESS_COLLECTIONS = new Set([
+  'app_settings',
+  'bean_sale_specs',
+  'cost_calculations',
+  'finance_expense_records',
+  'green_beans',
+  'green_bean_purchase_batches',
+  'roast_batches',
+  'roast_profiles',
+  'roast_records',
+]);
+const REALTIME_SUBSCRIPTIONS = new Set([
+  'app_settings/*',
+  'bean_sale_specs/*',
+  'green_beans/*',
+  'green_bean_purchase_batches/*',
+  'roast_batches/*',
+  'roast_profiles/*',
+]);
 
 const normalizeBaseUrl = (value: string, fallback: string): string => {
   const trimmed = value.trim();
@@ -1127,6 +1151,12 @@ const sendUpstreamError = (response: ServerResponse, statusCode: number, payload
   });
 };
 
+const sendClientSession = (response: ServerResponse, statusCode: number, record: SessionUser): void => {
+  sendJson(response, statusCode, {
+    record,
+  } satisfies ClientSessionResponse);
+};
+
 const proxyPocketBaseRequest = async (
   path: string,
   init: RequestInit,
@@ -1138,6 +1168,159 @@ const proxyPocketBaseRequest = async (
     payload,
     response,
   };
+};
+
+const getAuthenticatedToken = (request: IncomingMessage, response: ServerResponse): string | null => {
+  const token = getAuthCookieValue(request);
+
+  if (token) {
+    return token;
+  }
+
+  clearAuthCookie(response, request);
+  sendJson(response, 401, {
+    message: '未找到登录态，请重新登录。',
+  });
+  return null;
+};
+
+const handleBusinessCollectionRequest = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+  requestUrl: URL,
+): Promise<boolean> => {
+  const match = /^\/api\/collections\/([^/]+)\/records(?:\/([^/]+))?$/.exec(requestUrl.pathname);
+
+  if (!match) {
+    return false;
+  }
+
+  const collectionName = decodeURIComponent(match[1]);
+
+  if (!BUSINESS_COLLECTIONS.has(collectionName)) {
+    sendJson(response, 404, {
+      message: 'Not Found',
+    });
+    return true;
+  }
+
+  if (!['DELETE', 'GET', 'PATCH', 'POST'].includes(request.method ?? '')) {
+    sendMethodNotAllowed(response, ['DELETE', 'GET', 'PATCH', 'POST']);
+    return true;
+  }
+
+  const token = getAuthenticatedToken(request, response);
+
+  if (!token) {
+    return true;
+  }
+
+  const method = request.method ?? 'GET';
+  const body = method === 'GET' || method === 'DELETE' ? null : await parseJsonBody(request);
+  const upstream = await proxyPocketBaseRequest(`${requestUrl.pathname}${requestUrl.search}`, {
+    body: body == null ? undefined : JSON.stringify(body),
+    headers: {
+      Accept: 'application/json',
+      Authorization: token,
+      ...(body == null ? {} : { 'Content-Type': 'application/json' }),
+    },
+    method,
+  });
+
+  if (!upstream.response.ok) {
+    sendUpstreamError(response, upstream.response.status, upstream.payload);
+    return true;
+  }
+
+  sendJson(response, upstream.response.status === 204 ? 200 : upstream.response.status, upstream.payload);
+  return true;
+};
+
+const handleRealtimeRequest = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
+  const token = getAuthenticatedToken(request, response);
+
+  if (!token) {
+    return;
+  }
+
+  if (request.method === 'POST') {
+    const body = await parseJsonBody(request);
+
+    if (!isRecord(body) || typeof body.clientId !== 'string' || !Array.isArray(body.subscriptions)) {
+      sendJson(response, 400, {
+        message: '实时订阅请求缺少有效参数。',
+      });
+      return;
+    }
+
+    const clientId = toTrimmedString(body.clientId);
+    const subscriptions = body.subscriptions.filter(
+      (item): item is string => typeof item === 'string' && REALTIME_SUBSCRIPTIONS.has(item),
+    );
+
+    if (!clientId || subscriptions.length !== body.subscriptions.length) {
+      sendJson(response, 400, {
+        message: '实时订阅包含不支持的主题。',
+      });
+      return;
+    }
+
+    const upstream = await proxyPocketBaseRequest('/api/realtime', {
+      body: JSON.stringify({
+        clientId,
+        subscriptions,
+      }),
+      headers: {
+        Accept: 'application/json',
+        Authorization: token,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    });
+
+    if (!upstream.response.ok) {
+      sendUpstreamError(response, upstream.response.status, upstream.payload);
+      return;
+    }
+
+    sendJson(response, 200, upstream.payload);
+    return;
+  }
+
+  if (request.method !== 'GET') {
+    sendMethodNotAllowed(response, ['GET', 'POST']);
+    return;
+  }
+
+  const controller = new AbortController();
+  response.once('close', () => {
+    controller.abort();
+  });
+  const upstream = await fetch(buildPocketBaseUrl('/api/realtime'), {
+    headers: {
+      Accept: 'text/event-stream',
+      Authorization: token,
+    },
+    method: 'GET',
+    signal: controller.signal,
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    const payload = await parseJsonResponse(upstream);
+    sendUpstreamError(response, upstream.status, payload);
+    return;
+  }
+
+  response.writeHead(upstream.status, {
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'Content-Type': upstream.headers.get('content-type') ?? 'text/event-stream; charset=utf-8',
+    'X-Accel-Buffering': 'no',
+  });
+  Readable.fromWeb(upstream.body).pipe(response);
 };
 
 const requestEmailAction = async (
@@ -1366,7 +1549,7 @@ const handleLogin = async (request: IncomingMessage, response: ServerResponse): 
   }
 
   setAuthCookie(response, request, authResponse.token);
-  sendJson(response, 200, authResponse);
+  sendClientSession(response, 200, authResponse.record);
 };
 
 const handleRegister = async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
@@ -1471,7 +1654,7 @@ const handleSession = async (request: IncomingMessage, response: ServerResponse)
   }
 
   setAuthCookie(response, request, authResponse.token);
-  sendJson(response, 200, authResponse);
+  sendClientSession(response, 200, authResponse.record);
 };
 
 const handleUpdateProfile = async (
@@ -1566,13 +1749,8 @@ const handleUpdateProfile = async (
     return;
   }
 
-  const nextAuthResponse: PocketBaseSessionResponse = {
-    record: updatedRecord,
-    token: authResponse.token,
-  };
-
   setAuthCookie(response, request, authResponse.token);
-  sendJson(response, 200, nextAuthResponse);
+  sendClientSession(response, 200, updatedRecord);
 };
 
 const handleRequestVerification = async (
@@ -2058,6 +2236,15 @@ const handleRequest = async (request: IncomingMessage, response: ServerResponse)
     }
 
     await handleDeleteAccount(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/realtime') {
+    await handleRealtimeRequest(request, response);
+    return;
+  }
+
+  if (await handleBusinessCollectionRequest(request, response, requestUrl)) {
     return;
   }
 

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { pocketBaseAuthService } from '@/modules/auth/services/pocketBaseAuth.service';
-import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
 import { AppError } from '@/shared/errors/AppError';
 
@@ -218,7 +217,7 @@ describe('pocketBaseAuthService', () => {
     });
   });
 
-  it('restores the session from the auth gateway and keeps the current PocketBase base url', async () => {
+  it('restores a public user session from the auth gateway without retaining a token', async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(
         new Response(
@@ -230,7 +229,6 @@ describe('pocketBaseAuthService', () => {
               verified: true,
               username: 'demo',
             },
-            token: 'new-token',
           }),
           {
             status: 200,
@@ -239,22 +237,9 @@ describe('pocketBaseAuthService', () => {
       ),
     );
     vi.stubGlobal('fetch', fetchMock);
-    pocketBaseConnectionSettingsService.save({
-      greenBean: {
-        projectUrl: 'https://goaeusmfpfnzkinuobrg.supabase.co',
-        publishableKey: 'legacy-key',
-      },
-      roastedBean: {
-        projectUrl: 'https://goaeusmfpfnzkinuobrg.supabase.co',
-        publishableKey: 'legacy-key',
-      },
-      updatedAt: '2026-07-07T00:00:00.000Z',
-    });
-
     const session = await pocketBaseAuthService.restoreSession();
 
     expect(session).toMatchObject({
-      token: 'new-token',
       user: {
         email: 'demo@example.com',
         id: 'user-1',
@@ -264,13 +249,14 @@ describe('pocketBaseAuthService', () => {
       },
     });
     expect(pocketBaseSessionService.load()).toMatchObject({
-      token: 'new-token',
       user: {
         email: 'demo@example.com',
         id: 'user-1',
         name: '烘焙师 A',
       },
     });
+    expect(session).not.toHaveProperty('token');
+    expect(pocketBaseSessionService.load()).not.toHaveProperty('token');
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/auth/session',
       expect.objectContaining({
@@ -291,7 +277,6 @@ describe('pocketBaseAuthService', () => {
               verified: true,
               username: 'demo',
             },
-            token: 'updated-token',
           }),
           {
             status: 200,
@@ -304,7 +289,6 @@ describe('pocketBaseAuthService', () => {
     const session = await pocketBaseAuthService.updateProfileName('新的昵称');
 
     expect(session).toMatchObject({
-      token: 'updated-token',
       user: {
         email: 'demo@example.com',
         id: 'user-1',
@@ -342,8 +326,6 @@ describe('pocketBaseAuthService', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     pocketBaseSessionService.save({
-      baseUrl: 'http://81.70.224.75',
-      token: 'stored-token',
       user: {
         email: 'demo@example.com',
         id: 'user-1',
@@ -377,8 +359,6 @@ describe('pocketBaseAuthService', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     pocketBaseSessionService.save({
-      baseUrl: 'http://81.70.224.75',
-      token: 'stored-token',
       user: {
         email: 'demo@example.com',
         id: 'user-1',

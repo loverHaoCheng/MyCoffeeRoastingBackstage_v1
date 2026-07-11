@@ -1,15 +1,21 @@
-import {
-  CalculatorOutlined,
-  CloseOutlined,
-  DatabaseOutlined,
-  FireOutlined,
-  FundOutlined,
-  LogoutOutlined,
-  MenuOutlined,
-  ReloadOutlined,
-  SettingOutlined,
-} from '@ant-design/icons';
-import { App, Button, Grid, Input, Layout, Menu, Space, Spin, Typography } from 'antd';
+import CalculatorOutlined from '@ant-design/icons/CalculatorOutlined';
+import CloseOutlined from '@ant-design/icons/CloseOutlined';
+import DatabaseOutlined from '@ant-design/icons/DatabaseOutlined';
+import FireOutlined from '@ant-design/icons/FireOutlined';
+import FundOutlined from '@ant-design/icons/FundOutlined';
+import LogoutOutlined from '@ant-design/icons/LogoutOutlined';
+import MenuOutlined from '@ant-design/icons/MenuOutlined';
+import ReloadOutlined from '@ant-design/icons/ReloadOutlined';
+import SettingOutlined from '@ant-design/icons/SettingOutlined';
+import App from 'antd/es/app';
+import Button from 'antd/es/button';
+import Grid from 'antd/es/grid';
+import Input from 'antd/es/input';
+import Layout from 'antd/es/layout';
+import Menu from 'antd/es/menu';
+import Space from 'antd/es/space';
+import Spin from 'antd/es/spin';
+import Typography from 'antd/es/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, lazy, Suspense, type ReactNode, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
@@ -279,6 +285,7 @@ export function MainLayout() {
   useEffect(() => {
     if (location.pathname !== '/settings') {
       lastNonSettingsPathRef.current = location.pathname;
+      closeMobileSettingsPanel();
       return;
     }
 
@@ -287,7 +294,7 @@ export function MainLayout() {
     }
 
     openMobileSettingsPanel();
-  }, [isWide, location.pathname, openMobileSettingsPanel]);
+  }, [closeMobileSettingsPanel, isWide, location.pathname, openMobileSettingsPanel]);
 
   useEffect(() => {
     if (floatingActionCleanupTimerRef.current != null) {
@@ -404,8 +411,9 @@ export function MainLayout() {
       setIsNicknameDrawerOpen(false);
       void message.success(normalizedName ? '昵称已保存。' : '昵称已清空。');
     } catch (error) {
-      void message.error(getUserFacingErrorMessage(error, '昵称保存失败，请检查网络或稍后重试。'));
-      throw error;
+      if (typeof message.error === 'function') {
+        void message.error(getUserFacingErrorMessage(error, '昵称保存失败，请检查网络或稍后重试。'));
+      }
     }
   };
 

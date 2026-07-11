@@ -3,8 +3,6 @@ import {
   type PocketBaseSession,
   type PocketBaseSessionUser,
 } from '@/services/pocketBaseSession.service';
-import { normalizePocketBaseBaseUrl, resolvePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
-import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
@@ -19,7 +17,6 @@ import type {
 
 interface PocketBaseAuthResponse {
   record?: PocketBaseUserRecord;
-  token?: string;
 }
 
 interface PocketBaseErrorField {
@@ -331,7 +328,7 @@ const deleteJson = async (path: string): Promise<unknown> => {
 };
 
 const getSessionFromAuthResponse = (response: PocketBaseAuthResponse): PocketBaseSession => {
-  if (!response.token || !response.record) {
+  if (!response.record) {
     throw new AppError('PocketBase 认证响应缺少必要字段。', {
       code: 'DATA',
       cause: response,
@@ -339,11 +336,6 @@ const getSessionFromAuthResponse = (response: PocketBaseAuthResponse): PocketBas
   }
 
   return pocketBaseSessionService.save({
-    baseUrl: normalizePocketBaseBaseUrl(
-      pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean').projectUrl.trim() ||
-        resolvePocketBaseBaseUrl(),
-    ),
-    token: response.token,
     user: normalizeUser(response.record),
   });
 };
@@ -372,7 +364,7 @@ export const pocketBaseAuthService = {
       method: 'GET',
     })) as PocketBaseAuthResponse;
 
-    if (!response.record || !response.token) {
+    if (!response.record) {
       return null;
     }
 

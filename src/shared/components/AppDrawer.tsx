@@ -1,4 +1,5 @@
-import { Drawer, type DrawerProps } from 'antd';
+import Drawer from "antd/es/drawer";
+import type { DrawerProps } from "antd/es/drawer";
 
 import styles from './AppDrawer.module.css';
 

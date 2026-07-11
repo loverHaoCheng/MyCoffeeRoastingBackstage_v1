@@ -7,8 +7,6 @@ import {
   resolveCurrentAppRefreshScope,
 } from '@/app/services/appDataRefresh.service';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
-import { normalizePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
 import { logger } from '@/shared/logger/logger';
 
 import type { AppRouteKey } from '@/router/navigation';
@@ -33,9 +31,7 @@ const TOPIC_SCOPE_MAP: Record<(typeof REALTIME_SUBSCRIPTIONS)[number], AppRouteK
   'roast_profiles/*': ['production', 'roast'],
 };
 
-const getRealtimeEndpoint = (): string => {
-  return new URL('/api/realtime', normalizePocketBaseBaseUrl(pocketBaseSessionService.getBaseUrl())).toString();
-};
+const getRealtimeEndpoint = (): string => '/api/realtime';
 
 const shouldSyncTopicForScope = (
   topic: (typeof REALTIME_SUBSCRIPTIONS)[number],
@@ -195,9 +191,7 @@ export function AppRealtimeSync() {
     };
 
     const subscribeAllTopics = async (clientId: string) => {
-      const token = pocketBaseSessionService.getToken().trim();
-
-      if (!clientId || !token) {
+      if (!clientId) {
         return;
       }
 
@@ -207,9 +201,9 @@ export function AppRealtimeSync() {
             clientId,
             subscriptions: [...REALTIME_SUBSCRIPTIONS],
           }),
+          credentials: 'same-origin',
           headers: {
             Accept: 'application/json',
-            Authorization: token,
             'Content-Type': 'application/json',
           },
           method: 'POST',

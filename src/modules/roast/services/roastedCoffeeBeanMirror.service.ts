@@ -353,6 +353,7 @@ const getRoastedBeanClient = (): Pick<PocketBaseRestClient, 'insert'> => {
   return new PocketBaseRestClient({
     projectUrl: connection.projectUrl,
     publishableKey: connection.publishableKey,
+    useAuthGateway: false,
   });
 };
 

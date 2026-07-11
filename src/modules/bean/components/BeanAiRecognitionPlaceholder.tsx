@@ -1,12 +1,14 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import {
-  ApiOutlined,
-  CheckOutlined,
-  DeleteOutlined,
-  ScanOutlined,
-  UploadOutlined,
-} from '@ant-design/icons';
-import { Alert, App, Button, Empty, Spin } from 'antd';
+import ApiOutlined from "@ant-design/icons/ApiOutlined";
+import CheckOutlined from "@ant-design/icons/CheckOutlined";
+import DeleteOutlined from "@ant-design/icons/DeleteOutlined";
+import ScanOutlined from "@ant-design/icons/ScanOutlined";
+import UploadOutlined from "@ant-design/icons/UploadOutlined";
+import Alert from "antd/es/alert";
+import { App } from 'antd';
+import Button from "antd/es/button";
+import Empty from "antd/es/empty";
+import Spin from "antd/es/spin";
 
 import {
   beanAiRecognitionService,

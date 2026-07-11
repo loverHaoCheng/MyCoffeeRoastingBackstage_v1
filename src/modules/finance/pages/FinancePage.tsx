@@ -1,5 +1,9 @@
-import { PlusOutlined } from '@ant-design/icons';
-import { App, Button, Drawer, Grid, Spin } from 'antd';
+import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import { App } from 'antd';
+import Button from "antd/es/button";
+import Drawer from "antd/es/drawer";
+import Grid from "antd/es/grid";
+import Spin from "antd/es/spin";
 import { useMemo, useState } from 'react';
 
 import {

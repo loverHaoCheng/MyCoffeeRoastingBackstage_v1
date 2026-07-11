@@ -1,5 +1,8 @@
-import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Space, Tag } from 'antd';
+import ArrowRightOutlined from "@ant-design/icons/ArrowRightOutlined";
+import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import Button from "antd/es/button";
+import Space from "antd/es/space";
+import Tag from "antd/es/tag";
 
 import styles from './ModuleComingSoonPage.module.css';
 

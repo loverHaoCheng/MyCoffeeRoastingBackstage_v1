@@ -40,7 +40,7 @@ const toOptionalNumber = (value: unknown): null | number | undefined => {
     return value;
   }
 
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
 };
 
 const toOptionalString = (value: unknown): string | undefined => {

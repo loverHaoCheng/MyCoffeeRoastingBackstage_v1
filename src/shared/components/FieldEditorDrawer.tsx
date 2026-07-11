@@ -1,5 +1,5 @@
-import { SaveOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import SaveOutlined from '@ant-design/icons/SaveOutlined';
+import Button from 'antd/es/button';
 import type { ReactNode, SyntheticEvent } from 'react';
 import { useState } from 'react';
 

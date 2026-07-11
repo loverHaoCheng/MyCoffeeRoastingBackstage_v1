@@ -29,6 +29,8 @@
   --app-text: #1d1d1f;
   --app-text-secondary: #6e6e73;
   --app-text-tertiary: #8e8e93;
+  --app-focus-ring: #1d1d1f;
+  --app-touch-target-size: 44px;
   --app-muted-surface: #f5f5f7;
   --app-selected-surface: rgb(232 232 236 / 98%);
   --app-selected-surface-strong: rgb(222 222 227 / 96%);
@@ -215,6 +217,7 @@ select,
   --app-text: #f5f5f7;
   --app-text-secondary: #a1a1aa;
   --app-text-tertiary: #8b8b93;
+  --app-focus-ring: #f5f5f7;
   --app-muted-surface: #18181b;
   --app-selected-surface: rgb(33 33 36 / 100%);
   --app-selected-surface-strong: rgb(41 41 44 / 100%);
@@ -288,36 +291,41 @@ select,
 
   .ant-btn:active,
   .ant-btn:focus,
-  .ant-btn:focus-visible,
   .ant-menu-item:active,
   .ant-menu-item:focus,
-  .ant-menu-item:focus-visible,
   .ant-menu-submenu-title:active,
   .ant-menu-submenu-title:focus,
-  .ant-menu-submenu-title:focus-visible,
   .ant-pagination-item:active,
   .ant-pagination-item:focus,
-  .ant-pagination-item:focus-visible,
   .ant-tabs-tab:active,
   .ant-tabs-tab:focus,
-  .ant-tabs-tab:focus-visible,
   .ant-radio-button-wrapper:active,
   .ant-radio-button-wrapper:focus,
-  .ant-radio-button-wrapper:focus-visible,
   .ant-segmented-item:active,
   .ant-segmented-item:focus,
-  .ant-segmented-item:focus-visible,
   .ant-select-selector:active,
   .ant-select-selector:focus,
-  .ant-select-selector:focus-visible,
   .ant-picker:active,
   .ant-picker:focus,
-  .ant-picker:focus-visible,
   .ant-input-affix-wrapper:active,
-  .ant-input-affix-wrapper:focus,
-  .ant-input-affix-wrapper:focus-visible {
+  .ant-input-affix-wrapper:focus {
     outline: none !important;
     box-shadow: none !important;
     transform: none !important;
   }
+}
+
+:where(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role='button'],
+  [role='menuitem'],
+  [role='tab'],
+  [tabindex]:not([tabindex='-1'])
+):focus-visible {
+  outline: 2px solid var(--app-focus-ring) !important;
+  outline-offset: 2px;
 }

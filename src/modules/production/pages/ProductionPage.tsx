@@ -1,5 +1,8 @@
-import { PlusOutlined } from '@ant-design/icons';
-import { App, Empty, Grid, Spin } from 'antd';
+import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import { App } from 'antd';
+import Empty from "antd/es/empty";
+import Grid from "antd/es/grid";
+import Spin from "antd/es/spin";
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 

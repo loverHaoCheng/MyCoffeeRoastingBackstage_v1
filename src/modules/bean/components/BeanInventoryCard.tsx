@@ -51,7 +51,7 @@ const formatOptionalCurrency = (value: unknown, fallback = '待补充'): string 
 };
 
 const formatOptionalDecimal = (value: unknown, suffix = '', fallback = '待补充'): string => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     return fallback;
   }
 

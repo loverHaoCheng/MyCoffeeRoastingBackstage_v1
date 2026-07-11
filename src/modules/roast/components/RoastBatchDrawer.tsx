@@ -1,5 +1,9 @@
-import { SaveOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Input, InputNumber, Select } from 'antd';
+import SaveOutlined from "@ant-design/icons/SaveOutlined";
+import Button from "antd/es/button";
+import DatePicker from "antd/es/date-picker";
+import Input from "antd/es/input";
+import InputNumber from "antd/es/input-number";
+import Select from "antd/es/select";
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -158,6 +162,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 </span>
               ) : (
                 <DatePicker
+                  aria-label="烘焙日期"
                   format={ROAST_DATE_TIME_FORMAT}
                   placeholder="选择烘焙日期与时间"
                   showTime={{ format: 'HH:mm' }}
@@ -178,6 +183,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{normalizeRoastLevel(batch.roastLevel)}</span>
               ) : (
                 <Select
+                  aria-label="烘焙程度"
                   value={normalizedRoastLevel}
                   onChange={(v) => {
                     roastLevelManualOverrideRef.current = true;
@@ -206,6 +212,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.greenBeanName}</span>
               ) : (
                 <Select
+                  aria-label="生豆"
                   disabled={beans.length === 0}
                   onChange={(beanId: string) => {
                     const bean = beans.find((item) => String(item.id) === beanId);
@@ -230,6 +237,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.roastedBeanName ?? batch.greenBeanName}</span>
               ) : (
                 <Input
+                  aria-label="熟豆名称"
                   value={form.roastedBeanName}
                   onChange={(event) => {
                     setForm((f) => ({ ...f, roastedBeanName: event.target.value }));
@@ -244,6 +252,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.salesMode === 'selfUse' ? '自留' : '销售'}</span>
               ) : (
                 <Select
+                  aria-label="去向"
                   value={form.salesMode}
                   onChange={(value: 'sale' | 'selfUse') => {
                     setForm((current) => ({ ...current, salesMode: value }));
@@ -262,6 +271,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.roastPlanName?.trim() ?? '未关联'}</span>
               ) : (
                 <Select
+                  aria-label="烘焙计划"
                   allowClear
                   value={form.roastPlanId === '' ? undefined : form.roastPlanId}
                   onChange={(planId: string | undefined) => {
@@ -295,6 +305,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.inputWeightGrams} g</span>
               ) : (
                 <InputNumber
+                  aria-label="入豆量"
                   value={form.inputWeightGrams}
                   onChange={(v) => {
                     setForm((f) => ({ ...f, inputWeightGrams: v ?? 0 }));
@@ -310,6 +321,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.outputWeightGrams} g</span>
               ) : (
                 <InputNumber
+                  aria-label="出豆量"
                   value={form.outputWeightGrams}
                   onChange={(v) => {
                     setForm((f) => ({ ...f, outputWeightGrams: v ?? 0 }));
@@ -329,6 +341,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.developmentRatio ?? '-'}%</span>
               ) : (
                 <InputNumber
+                  aria-label="发展比"
                   value={form.developmentRatio}
                   onChange={(v) => {
                     setForm((f) => ({ ...f, developmentRatio: v ?? undefined }));
@@ -345,6 +358,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.firstCrackTime ?? '-'} s</span>
               ) : (
                 <InputNumber
+                  aria-label="一爆时间"
                   value={form.firstCrackTime}
                   onChange={(v) => {
                     setForm((f) => ({ ...f, firstCrackTime: v ?? undefined }));
@@ -360,6 +374,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 <span className={styles.fieldValue}>{batch.totalRoastTime ?? '-'} s</span>
               ) : (
                 <InputNumber
+                  aria-label="总烘焙时间"
                   value={form.totalRoastTime}
                   onChange={(v) => {
                     setForm((f) => ({ ...f, totalRoastTime: v ?? undefined }));
@@ -379,6 +394,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
             <p className={styles.notes}>{batch.notes ?? '暂无备注'}</p>
           ) : (
             <Input.TextArea
+              aria-label="备注"
               value={form.notes}
               onChange={(e) => {
                 setForm((f) => ({ ...f, notes: e.target.value }));

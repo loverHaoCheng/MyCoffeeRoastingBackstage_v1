@@ -1,10 +1,10 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMemo, useState, type ReactNode } from 'react';
 
 import { BeanPage } from '@/modules/bean';
 import { createDefaultBeanCode } from '@/modules/bean/constants';
-import { beanAiRecognitionService, beanCacheService } from '@/modules/bean/services';
+import { beanAiRecognitionService, beanCacheService, beanService } from '@/modules/bean/services';
 import { useSettingsStore } from '@/modules/settings/store';
 import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
 import {
@@ -165,6 +165,24 @@ describe('BeanPage', () => {
 
     expect(await screen.findByText('没有匹配的生豆批次')).toBeInTheDocument();
     expect(screen.getByLabelText('生豆库存筛选')).toBeInTheDocument();
+  });
+
+  it('keeps the empty state visible after deleting the last bean during a background refresh', async () => {
+    saveBeanCache(1);
+    const pendingListRequest = new Promise<never>(() => undefined);
+    vi.spyOn(beanService, 'listBeans').mockReturnValue(pendingListRequest);
+    vi.spyOn(beanService, 'deleteBean').mockResolvedValue({ queued: false, synced: true });
+
+    renderWithQuery(<BeanPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '删除 零库存测试豆' }));
+
+    const deleteDialog = await screen.findByRole('dialog', { name: '确认删除' });
+    fireEvent.click(within(deleteDialog).getByRole('button', { name: '删 除' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('没有匹配的生豆批次')).toBeInTheDocument();
+    });
   });
 
   it('opens a create method action sheet before showing the bean creator', async () => {

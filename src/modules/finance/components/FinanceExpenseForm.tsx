@@ -1,4 +1,9 @@
-import { AutoComplete, Button, DatePicker, Input, InputNumber, Select } from 'antd';
+import AutoComplete from "antd/es/auto-complete";
+import Button from "antd/es/button";
+import DatePicker from "antd/es/date-picker";
+import Input from "antd/es/input";
+import InputNumber from "antd/es/input-number";
+import Select from "antd/es/select";
 import dayjs from 'dayjs';
 import { Controller, type FieldPath, useForm, useWatch } from 'react-hook-form';
 

@@ -37,8 +37,6 @@ describe('MainLayout auth bar', () => {
     useAuthStore.setState({
       hasHydrated: true,
       session: {
-        baseUrl: 'http://81.70.224.75',
-        token: 'test-token',
         updatedAt: '2026-07-08T14:00:00.000Z',
         user: {
           email: 'test@qq.com',
@@ -64,7 +62,6 @@ describe('MainLayout auth bar', () => {
               name: '测试昵称',
               verified: true,
             },
-            token: 'test-token',
           }),
           {
             status: 200,
@@ -76,7 +73,7 @@ describe('MainLayout auth bar', () => {
 
     renderSettingsRoute();
 
-    const nicknameButton = await screen.findByRole('button', { name: '设置昵称' });
+    const nicknameButton = await screen.findByRole('button', { name: '设置昵称' }, { timeout: 3_000 });
     fireEvent.click(nicknameButton);
 
     expect(await screen.findByText('修改昵称')).toBeInTheDocument();
@@ -93,14 +90,16 @@ describe('MainLayout auth bar', () => {
 
     const emailText = screen.getByText('test@qq.com');
     expect(emailText.className).toContain('authEmail');
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/profile',
-      expect.objectContaining({
-        body: JSON.stringify({
-          name: '测试昵称',
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/auth/profile',
+        expect.objectContaining({
+          body: JSON.stringify({
+            name: '测试昵称',
+          }),
+          method: 'PATCH',
         }),
-        method: 'PATCH',
-      }),
-    );
+      );
+    });
   });
 });

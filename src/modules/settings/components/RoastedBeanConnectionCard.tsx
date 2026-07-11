@@ -1,5 +1,9 @@
-import { DownOutlined, ReloadOutlined } from '@ant-design/icons';
-import { App, Button, Input, Tag } from 'antd';
+import DownOutlined from "@ant-design/icons/DownOutlined";
+import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
+import { App } from 'antd';
+import Button from "antd/es/button";
+import Input from "antd/es/input";
+import Tag from "antd/es/tag";
 import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { pocketBaseConnectionFormSectionSchema } from '@/modules/settings/schemas';

@@ -1,5 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { App as AntApp, ConfigProvider, message as antdMessage, theme as antdTheme } from 'antd';
+import AntApp from 'antd/es/app';
+import ConfigProvider from 'antd/es/config-provider';
+import antdMessage from 'antd/es/message';
+import antdTheme from 'antd/es/theme';
 import zhCN from 'antd/locale/zh_CN';
 import { type PropsWithChildren, useEffect, useMemo, useState } from 'react';
 
