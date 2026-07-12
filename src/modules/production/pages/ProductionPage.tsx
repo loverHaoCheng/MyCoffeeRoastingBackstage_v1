@@ -21,8 +21,6 @@ import {
 } from '@/modules/roast/hooks';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
-import { usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
-import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -55,7 +53,6 @@ export function ProductionPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
-  const { pocketBaseConnections } = usePocketBaseConnectionSettings();
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
@@ -66,7 +63,6 @@ export function ProductionPage() {
   const deleteMutation = useDeleteRoastBatch();
   const updateMutation = useUpdateRoastBatch();
   const isWide = screens.md ?? false;
-  const hasGreenBeanConnection = isPocketBaseProjectConnectionConfigured(pocketBaseConnections.greenBean);
 
   const filteredBatches = batches.filter((b) => matchesKeyword(b, keyword));
   const selectedBatch = batches.find((b) => b.id === selectedBatchId) ?? null;
@@ -158,11 +154,6 @@ export function ProductionPage() {
   };
 
   const handleOpenCreateDrawer = () => {
-    if (!hasGreenBeanConnection) {
-      void message.warning('请先前往设置页创建并连接生豆数据库，完成后才能新增烘焙记录。');
-      return;
-    }
-
     if (beans.length === 0) {
       void message.warning('当前还没有可选的生豆，请先创建至少一条生豆数据。');
       return;

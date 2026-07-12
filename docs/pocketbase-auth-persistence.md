@@ -12,6 +12,7 @@
 - 前端启动时请求 `/api/auth/session`，由网关读取 Cookie 并调用 PocketBase `auth-refresh`。
 - 登录、会话恢复和昵称更新只返回公开用户资料，绝不将 PocketBase Token 返回给浏览器。
 - 所有主库业务请求和 `/api/realtime` 订阅均通过 BFF 白名单代理；BFF 从 Cookie 读取 Token 后再访问 PocketBase。
+- BFF 代码按领域拆分在 `server/auth-bff/`，入口 `server/pocketbase-auth-bff.ts` 只负责路由 handler 组装、异常兜底与独立服务启动。
 
 ## 你需要在腾讯云上做的事情
 
@@ -30,7 +31,9 @@ npm run auth:bff:start
 
 默认情况下，BFF 会监听 `127.0.0.1:3001`。
 
-日常发布优先使用项目根目录的 `./deploy.sh`。脚本先保存前端构建快照，再构建、上传和验证 BFF；BFF 探测失败时自动恢复前一个文件并重启旧服务，只有 BFF 成功后才发布前端。前端会先上传至独立版本目录，再原子切换 Nginx 的入口链接；公网验收失败时自动切回上一版本。静态入口目录保持 `755`，确保 Nginx 可读取资源。它会验证本机与公网的无凭据认证端点均返回 `400`。
+`PB_BASE_URL` 仅用于 BFF 进程访问 PocketBase，上游默认值和生产环境显式配置都应为 `http://127.0.0.1:8090`。前端开发代理使用 `VITE_DEV_API_PROXY_TARGET=https://www.easybake.top` 访问 BFF，这是浏览器入口地址，不能复制给 `PB_BASE_URL`。
+
+日常发布优先使用项目根目录的 `./deploy.sh`。脚本先保存前端构建快照，再构建、上传和验证 BFF；BFF 以整个 `dist/server/` 目录发布，探测失败时自动恢复前一个目录并重启旧服务，只有 BFF 成功后才发布前端。前端会先上传至独立版本目录，再原子切换 Nginx 的入口链接；公网验收失败时自动切回上一版本。静态入口目录保持 `755`，确保 Nginx 可读取资源。它会验证本机与公网的无凭据认证端点均返回 `400`。
 
 前端发布目录默认最多保留 `5` 个版本：`/var/www/easybake` 当前链接和 `/var/www/easybake.previous` 回退链接所指向的版本绝不参与清理，其余版本按修改时间保留最新版本，超过数量的目录只会在公网验收成功后删除。可通过 `FRONTEND_RELEASES_TO_KEEP` 覆盖总保留数，最小为 `2`。如服务器目录、服务名或 SSH 主机不同，可设置 `BFF_REMOTE_TARGET`、`BFF_REMOTE_PATH`、`BFF_SERVICE_NAME`、`REMOTE_SSH_TARGET`、`FRONTEND_RELEASES_PATH`、`FRONTEND_CURRENT_LINK`、`FRONTEND_REMOTE_SSH_TARGET` 覆盖默认值。
 

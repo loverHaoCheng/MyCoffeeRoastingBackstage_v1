@@ -8,6 +8,7 @@ BFF_REMOTE_TARGET="${BFF_REMOTE_TARGET:-easybake:/opt/easybake-auth-bff/dist/ser
 BFF_SERVICE_NAME="${BFF_SERVICE_NAME:-easybake-auth-bff}"
 REMOTE_SSH_TARGET="${REMOTE_SSH_TARGET:-${BFF_REMOTE_TARGET%%:*}}"
 BFF_REMOTE_PATH="${BFF_REMOTE_PATH:-${BFF_REMOTE_TARGET#*:}}"
+BFF_REMOTE_DIR="${BFF_REMOTE_DIR:-$(dirname "${BFF_REMOTE_PATH}")}"
 FRONTEND_REMOTE_SSH_TARGET="${FRONTEND_REMOTE_SSH_TARGET:-${REMOTE_TARGET%%:*}}"
 FRONTEND_REMOTE_PATH="${FRONTEND_REMOTE_PATH:-${REMOTE_TARGET#*:}}"
 FRONTEND_RELEASES_PATH="${FRONTEND_RELEASES_PATH:-/var/www/easybake-releases}"
@@ -18,8 +19,8 @@ VERSION_URL="${APP_URL%/}/version.json"
 HEALTH_URL="${APP_URL%/}/api/health"
 AUTH_LOGIN_URL="${APP_URL%/}/api/auth/login"
 FRONTEND_RELEASE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/easybake-frontend.XXXXXX")"
-BFF_STAGED_PATH="${BFF_REMOTE_PATH}.next"
-BFF_BACKUP_PATH="${BFF_REMOTE_PATH}.previous"
+BFF_STAGED_DIR="${BFF_REMOTE_DIR}.next"
+BFF_BACKUP_DIR="${BFF_REMOTE_DIR}.previous"
 DEPLOY_LOCK_OWNER="$(hostname)-$$-$(date -u +%Y%m%dT%H%M%SZ)"
 DEPLOY_LOCK_CREATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 DEPLOY_LOCK_ACQUIRED=false
@@ -143,39 +144,52 @@ REMOTE_SCRIPT
 }
 
 deploy_bff_with_rollback() {
-  rsync -az --checksum dist/server/pocketbase-auth-bff.js "${REMOTE_SSH_TARGET}:${BFF_STAGED_PATH}"
+  ssh "${REMOTE_SSH_TARGET}" "rm -rf '${BFF_STAGED_DIR}' && mkdir -p '${BFF_STAGED_DIR}'"
+  rsync -az --delete --checksum dist/server/ "${REMOTE_SSH_TARGET}:${BFF_STAGED_DIR}/"
 
   ssh "${REMOTE_SSH_TARGET}" bash -s -- \
+    "${BFF_REMOTE_DIR}" \
     "${BFF_REMOTE_PATH}" \
-    "${BFF_STAGED_PATH}" \
-    "${BFF_BACKUP_PATH}" \
+    "${BFF_STAGED_DIR}" \
+    "${BFF_BACKUP_DIR}" \
     "${BFF_SERVICE_NAME}" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
-bff_path="$1"
-staged_path="$2"
-backup_path="$3"
-service_name="$4"
+bff_dir="$1"
+bff_entry_path="$2"
+staged_dir="$3"
+backup_dir="$4"
+service_name="$5"
 
 rollback() {
-  rm -f "${staged_path}"
+  rm -rf "${staged_dir}"
 
-  if [[ -f "${backup_path}" ]]; then
-    mv -f "${backup_path}" "${bff_path}"
+  if [[ -d "${backup_dir}" ]]; then
+    rm -rf "${bff_dir}"
+    mv -f "${backup_dir}" "${bff_dir}"
     sudo systemctl restart "${service_name}" || true
   fi
 }
 
-if [[ ! -f "${staged_path}" ]]; then
-  echo "Staged BFF file is missing: ${staged_path}" >&2
+if [[ ! -f "${staged_dir}/pocketbase-auth-bff.js" ]]; then
+  echo "Staged BFF entry file is missing: ${staged_dir}/pocketbase-auth-bff.js" >&2
   exit 1
 fi
 
-if [[ -f "${bff_path}" ]]; then
-  cp -f "${bff_path}" "${backup_path}"
+rm -rf "${backup_dir}"
+
+if [[ -d "${bff_dir}" ]]; then
+  cp -a "${bff_dir}" "${backup_dir}"
 fi
 
-mv -f "${staged_path}" "${bff_path}"
+rm -rf "${bff_dir}"
+mv -f "${staged_dir}" "${bff_dir}"
+
+if [[ ! -f "${bff_entry_path}" ]]; then
+  echo "Deployed BFF entry file is missing: ${bff_entry_path}" >&2
+  rollback
+  exit 1
+fi
 
 if ! sudo systemctl restart "${service_name}"; then
   rollback
@@ -191,7 +205,7 @@ if [[ "${bff_auth_status}" != "400" ]]; then
   exit 1
 fi
 
-rm -f "${backup_path}"
+rm -rf "${backup_dir}"
 REMOTE_SCRIPT
 }
 

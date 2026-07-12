@@ -24,8 +24,6 @@ import {
 } from '@/modules/roast/hooks';
 import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlanStatus';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
-import { usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
-import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
@@ -70,7 +68,6 @@ export function RoastPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
-  const { pocketBaseConnections } = usePocketBaseConnectionSettings();
   const [keyword, setKeyword] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState<RoastPlan['id'] | null>(null);
   const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | 'steps' | undefined>();
@@ -83,7 +80,6 @@ export function RoastPage() {
   const deleteMutation = useDeleteRoastPlan();
 
   const isWide = screens.md ?? false;
-  const hasGreenBeanConnection = isPocketBaseProjectConnectionConfigured(pocketBaseConnections.greenBean);
 
   const { data: batches = [] } = useRoastBatches();
   const effectivePlans = useMemo(
@@ -228,11 +224,6 @@ export function RoastPage() {
   };
 
   const handleOpenCreateDrawer = () => {
-    if (!hasGreenBeanConnection) {
-      void message.warning('请先前往设置页创建并连接生豆数据库，完成后才能新增烘焙计划。');
-      return;
-    }
-
     setCreationDrawerOpen(true);
   };
 

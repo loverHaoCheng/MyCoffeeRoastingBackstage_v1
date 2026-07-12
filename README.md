@@ -41,7 +41,7 @@ VITE_DEV_API_PROXY_TARGET=https://www.easybake.top
 ./deploy.sh
 ```
 
-发布脚本会先保存前端构建快照，再构建、上传并验证服务器 BFF；BFF 探测失败时自动恢复前一个服务端文件。前端发布使用版本目录和原子入口链接切换，公网验收失败会自动切回上一版本。随后验证版本号、`/api/health` 以及无凭据认证端点。验证通过后，用户只需要通过 HTTPS 443 访问 `https://www.easybake.top`。
+发布脚本会先保存前端构建快照，再构建、上传并验证服务器 BFF；BFF 以整个 `dist/server/` 目录发布，探测失败时自动恢复前一个服务端目录。前端发布使用版本目录和原子入口链接切换，公网验收失败会自动切回上一版本。随后验证版本号、`/api/health` 以及无凭据认证端点。验证通过后，用户只需要通过 HTTPS 443 访问 `https://www.easybake.top`。
 
 前端版本目录默认最多保留 `5` 个，其中当前版本（`/var/www/easybake`）与上一版本（`/var/www/easybake.previous`）始终受保护；其余版本按修改时间从新到旧保留，超出的目录在发布验收成功后清理。需要调整数量时可执行 `FRONTEND_RELEASES_TO_KEEP=8 ./deploy.sh`；该值不得小于 `2`。
 
@@ -58,6 +58,8 @@ npm run build
 ## 目录约定
 
 业务代码按 Feature First 组织在 `src/modules` 下。跨模块能力放入 `src/shared`、`src/services`、`src/stores`、`src/types`。
+
+服务端 auth BFF 按职责组织在 `server/auth-bff` 下：入口 `server/pocketbase-auth-bff.ts` 只负责组装 handler 和启动本地 HTTP 服务；认证、业务集合代理、realtime、AI 图片识别、账号注销、HTTP 工具和 PocketBase 客户端分别放在独立模块中，单文件必须低于 500 行。
 
 ## 财务模块
 

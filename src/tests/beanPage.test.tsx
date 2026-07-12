@@ -187,6 +187,15 @@ describe('BeanPage', () => {
 
   it('opens a create method action sheet before showing the bean creator', async () => {
     enableBeanCreationPrerequisites();
+    useSettingsStore.setState((state) => ({
+      pocketBaseConnections: {
+        ...state.pocketBaseConnections,
+        greenBean: {
+          projectUrl: '',
+          publishableKey: '',
+        },
+      },
+    }));
     vi.spyOn(beanAiRecognitionService, 'getUsage').mockResolvedValue({
       enabled: true,
       monthlyLimit: 10,

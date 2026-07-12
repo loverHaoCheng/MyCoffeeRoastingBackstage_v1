@@ -78,6 +78,23 @@ describe('BeanForm', () => {
     });
   });
 
+  it('renders every split field section from one form coordinator', () => {
+    renderWithQuery(
+      <BeanForm
+        initialValues={createDefaultBeanFormValues()}
+        onSubmit={vi.fn()}
+        submitLabel="创建生豆"
+      />,
+    );
+
+    ['基础信息', '烘焙后处理', '产地与品质', '采购与定价', '补充说明'].forEach((heading) => {
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('textbox', { name: '显示名称' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '含水率' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '备注' })).toBeInTheDocument();
+  });
+
   it('requires positive quality metrics while allowing them to remain empty', () => {
     const validInput = {
       ...createDefaultBeanFormValues(),

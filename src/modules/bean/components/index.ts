@@ -1,5 +1,6 @@
 export {};
 export { BeanAiRecognitionPlaceholder } from './BeanAiRecognitionPlaceholder';
+export { BeanCreationFlow } from './BeanCreationFlow';
 export { BeanDetailDrawer } from './BeanDetailDrawer';
 export { BeanFieldEditorDrawer } from './BeanFieldEditorDrawer';
 export { BeanManualCreator } from './BeanManualCreator';
