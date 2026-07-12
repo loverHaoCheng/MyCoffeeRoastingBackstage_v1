@@ -2,17 +2,14 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { appBuildVersionService } from '@/app/services/appBuildVersion.service';
-import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { SettingsPage } from '@/modules/settings';
-import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
-import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
-import {
-  createDefaultAppDisplaySettings,
-  createDefaultCostTemplateSettings,
-  createDefaultPocketBaseConnectionSettings,
-} from '@/modules/settings/types';
 import { renderWithQuery } from '@/tests/renderWithProviders';
+import {
+  createMatchMediaStub,
+  expandRoastedBeanConnectionCard,
+  resetSettingsPageTestState,
+} from '@/tests/settingsPage.test.shared';
 
 const { syncLocalChangeMock } = vi.hoisted(() => ({
   syncLocalChangeMock: vi.fn().mockResolvedValue(undefined),
@@ -71,81 +68,14 @@ vi.mock('@/modules/settings/services/qrCodeAsset.service', () => ({
   loadQrCodeFallbackAsset: loadQrCodeFallbackAssetMock,
 }));
 
-const expandRoastedBeanConnectionCard = async (): Promise<HTMLElement> => {
-  const card = screen.getByRole('heading', { name: '熟豆 Supabase 连接' }).closest('article');
-
-  expect(card).not.toBeNull();
-
-  if (card == null) {
-    throw new Error('roasted bean connection card not found');
-  }
-
-  const expandButton = within(card).getByRole('button', { name: '展开' });
-  fireEvent.click(expandButton);
-
-  await waitFor(() => {
-    expect(card.getAttribute('data-collapsed')).toBe('false');
-  });
-
-  return card;
-};
-
 describe('SettingsPage', () => {
   beforeEach(() => {
-    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-    Object.defineProperty(window.navigator, 'clipboard', {
-      configurable: true,
-      value: undefined,
-    });
-    Object.defineProperty(document, 'execCommand', {
-      configurable: true,
-      value: vi.fn().mockReturnValue(true),
-    });
-    window.localStorage.clear();
-    appBuildVersionService.clear();
-    costTemplateSettingsService.clear();
-    pocketBaseConnectionSettingsService.clear();
-    syncLocalChangeMock.mockClear();
-    syncLocalChangeMock.mockResolvedValue(undefined);
-    verifyMock.mockClear();
-    verifyMock.mockResolvedValue(undefined);
-    loadQrCodeAssetMock.mockClear();
-    loadQrCodeAssetMock.mockResolvedValue({ default: 'author-code.webp' });
-    loadQrCodeFallbackAssetMock.mockClear();
-    loadQrCodeFallbackAssetMock.mockResolvedValue({ default: 'author-code.png' });
-    syncFromRemoteSafelyMock.mockClear();
-    syncFromRemoteSafelyMock.mockResolvedValue({
-      greenBean: {
-        projectUrl: 'http://81.70.224.75',
-        publishableKey: '',
-      },
-      roastedBean: {
-        projectUrl: '',
-        publishableKey: '',
-      },
-      updatedAt: null,
-    });
-    useSettingsStore.setState({
-      appDisplaySettings: createDefaultAppDisplaySettings(),
-      costTemplateSettings: createDefaultCostTemplateSettings(),
-      pocketBaseConnections: createDefaultPocketBaseConnectionSettings(),
-    });
-    useAuthStore.setState({
-      hasHydrated: true,
-      status: 'authenticated',
-      user: {
-        email: 'tester@example.com',
-        id: 'test-user',
-      },
+    resetSettingsPageTestState({
+      loadQrCodeAssetMock,
+      loadQrCodeFallbackAssetMock,
+      syncFromRemoteSafelyMock,
+      syncLocalChangeMock,
+      verifyMock,
     });
   });
 
@@ -402,16 +332,9 @@ describe('SettingsPage', () => {
   it('copies the brew guide link in standalone pwa runtime', async () => {
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
 
-    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
-      matches: query === '(display-mode: standalone)',
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
+    vi.mocked(window.matchMedia).mockImplementation(
+      createMatchMediaStub((query) => query === '(display-mode: standalone)'),
+    );
     Object.defineProperty(window.navigator, 'clipboard', {
       configurable: true,
       value: {
@@ -436,16 +359,9 @@ describe('SettingsPage', () => {
     const writeTextMock = vi.fn().mockRejectedValue(new Error('clipboard denied'));
     const execCommandMock = vi.fn().mockReturnValue(true);
 
-    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
-      matches: query === '(display-mode: standalone)',
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
+    vi.mocked(window.matchMedia).mockImplementation(
+      createMatchMediaStub((query) => query === '(display-mode: standalone)'),
+    );
     Object.defineProperty(window.navigator, 'clipboard', {
       configurable: true,
       value: {

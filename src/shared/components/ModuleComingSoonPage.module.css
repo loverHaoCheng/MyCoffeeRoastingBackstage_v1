@@ -57,19 +57,19 @@
 }
 
 .statCard[data-tone="green"] {
-  border-top: 3px solid #216e5a;
+  border-top: 3px solid var(--app-emphasis-border-strong);
 }
 
 .statCard[data-tone="blue"] {
-  border-top: 3px solid #2f6fed;
+  border-top: 3px solid var(--app-emphasis-border-medium);
 }
 
 .statCard[data-tone="amber"] {
-  border-top: 3px solid #b45309;
+  border-top: 3px solid var(--app-border-hover);
 }
 
 .statCard[data-tone="red"] {
-  border-top: 3px solid #b42318;
+  border-top: 3px solid var(--app-emphasis-border-soft);
 }
 
 .focusPanel {

@@ -4,7 +4,7 @@ import Button from 'antd/es/button';
 import type { ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
 
 import floatingActionStyles from '@/shared/components/ViewportFloatingActionButton.module.css';
-import styles from '../MainLayout.module.css';
+import styles from './FloatingActionDock.module.css';
 
 interface FloatingActionDockProps {
   isQuickRefreshing: boolean;

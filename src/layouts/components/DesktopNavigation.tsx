@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 
 import type { AppNavigationItem, AppRouteKey } from '@/router/navigation';
 
-import styles from '../MainLayout.module.css';
+import styles from './DesktopNavigation.module.css';
 import { iconByRoute } from './navigationIcons';
 
 const { Sider } = Layout;

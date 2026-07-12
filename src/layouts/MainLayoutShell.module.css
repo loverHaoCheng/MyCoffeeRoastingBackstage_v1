@@ -1,0 +1,188 @@
+.shell {
+  --shell-content-bottom-space: 28px;
+  --shell-floating-bottom-offset: 28px;
+  --shell-route-transition-duration: 300ms;
+  --shell-route-transition-easing: cubic-bezier(0.32, 0.72, 0, 1);
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 12px;
+  background:
+    radial-gradient(circle at top left, var(--app-card-glow-start) 0%, var(--app-card-glow-end) 34%),
+    linear-gradient(180deg, var(--app-bg-soft) 0%, var(--app-bg-surface) 100%);
+}
+
+.shell[data-mobile='true'] {
+  --shell-content-bottom-space: calc(var(--app-shell-bottom-nav-height) + 12px);
+  --shell-floating-bottom-offset: calc(var(--app-shell-bottom-nav-height) + 16px);
+}
+
+.main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+}
+
+.viewportFrame {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding-top: 18px;
+  overflow: visible;
+}
+
+.viewportFrame::before,
+.viewportFrame::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 22px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.viewportFrame::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--app-bg-surface) 0%, rgb(245 245 247 / 68%) 52%, rgb(245 245 247 / 0) 100%);
+}
+
+.viewportFrame::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--app-bg-surface) 0%, rgb(245 245 247 / 68%) 52%, rgb(245 245 247 / 0) 100%);
+}
+
+.viewportFrame[data-scaled='true']::before,
+.viewportFrame[data-scaled='true']::after {
+  opacity: 1;
+}
+
+.scrollViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid transparent;
+  border-radius: 34px;
+  background: transparent;
+  box-shadow: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
+}
+
+.scaleViewport {
+  --layout-content-scale: 1;
+  margin: 0 auto;
+  width: 100%;
+  min-height: 100%;
+}
+
+@supports (zoom: 1) {
+  .scaleViewport {
+    zoom: var(--layout-content-scale);
+  }
+}
+
+@supports not (zoom: 1) {
+  .scaleViewport {
+    width: min(100%, calc(100% / var(--layout-content-scale)));
+    min-height: 100%;
+    transform: scale(var(--layout-content-scale));
+    transform-origin: top center;
+  }
+}
+
+.content {
+  --content-page-inline-padding: 16px;
+  --content-page-max-width: 1148px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100%;
+  padding-bottom: var(--shell-content-bottom-space);
+}
+
+:global(:root[data-standalone-pwa='true']) .shell,
+.shell[data-standalone-pwa='true'] {
+  --app-shell-header-height: calc(58px + var(--app-safe-top));
+  --app-shell-content-top-space: calc(var(--app-shell-header-height) + 4px);
+  height: 100vh;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports not (zoom: 1) {
+    .scaleViewport {
+      transition: transform 160ms ease, width 160ms ease, min-height 160ms ease;
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .content {
+    --content-page-inline-padding: 12px;
+  }
+
+  .shell {
+    padding: 0;
+    background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
+  }
+
+  .viewportFrame {
+    padding-top: var(--app-shell-content-top-space);
+  }
+
+  .scrollViewport {
+    border: 0;
+    border-radius: 0 0 28px 28px;
+    background: linear-gradient(180deg, var(--app-bg-elevated) 0%, var(--app-bg-surface) 100%);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 4%);
+    scrollbar-gutter: auto;
+    scrollbar-width: none;
+  }
+
+  .scrollViewport::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .shell[data-standalone-pwa='true'] .content {
+    padding-bottom: var(--shell-content-bottom-space);
+  }
+}
+
+@media (max-width: 767px) and (display-mode: standalone) {
+  .shell {
+    --app-shell-header-height: calc(58px + var(--app-safe-top));
+    --app-shell-content-top-space: calc(var(--app-shell-header-height) + 4px);
+    height: 100vh;
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
+  }
+
+  .viewportFrame {
+    padding-top: var(--app-shell-content-top-space);
+  }
+
+  .content {
+    padding-bottom: var(--shell-content-bottom-space);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .shell {
+    padding: 14px;
+  }
+}

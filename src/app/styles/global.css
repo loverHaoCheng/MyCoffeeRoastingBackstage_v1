@@ -35,6 +35,11 @@
   --app-selected-surface: rgb(232 232 236 / 98%);
   --app-selected-surface-strong: rgb(222 222 227 / 96%);
   --app-hover-surface: rgb(17 24 39 / 4%);
+  --app-emphasis-border-strong: rgb(29 29 31 / 18%);
+  --app-emphasis-border-medium: rgb(29 29 31 / 12%);
+  --app-emphasis-border-soft: rgb(29 29 31 / 8%);
+  --app-emphasis-text-strong: #1d1d1f;
+  --app-emphasis-text-muted: #4b5563;
   --app-viewport-height: 100vh;
   --app-visual-viewport-height: 100vh;
   --app-shell-bottom-nav-content-height: 64px;
@@ -222,6 +227,11 @@ select,
   --app-selected-surface: rgb(33 33 36 / 100%);
   --app-selected-surface-strong: rgb(41 41 44 / 100%);
   --app-hover-surface: rgb(255 255 255 / 6%);
+  --app-emphasis-border-strong: rgb(245 245 247 / 22%);
+  --app-emphasis-border-medium: rgb(245 245 247 / 16%);
+  --app-emphasis-border-soft: rgb(245 245 247 / 10%);
+  --app-emphasis-text-strong: #f5f5f7;
+  --app-emphasis-text-muted: #d4d4d8;
 }
 
 :root[data-app-theme='dark'] body,

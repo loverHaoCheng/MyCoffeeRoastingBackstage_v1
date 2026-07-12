@@ -36,7 +36,7 @@ export function ModuleComingSoonPage({
     <main className={styles.page}>
       <section className={styles.header}>
         <div>
-          <Tag color="green">V1 模块入口</Tag>
+          <Tag bordered={false}>V1 模块入口</Tag>
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>
@@ -75,4 +75,3 @@ export function ModuleComingSoonPage({
     </main>
   );
 }
-

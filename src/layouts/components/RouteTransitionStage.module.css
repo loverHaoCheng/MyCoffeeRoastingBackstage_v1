@@ -1,0 +1,91 @@
+.routeScene {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  position: relative;
+  min-height: 100%;
+  overflow: visible;
+  contain: none;
+}
+
+.routePanel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 100%;
+  backface-visibility: hidden;
+}
+
+.routeTrack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 200%;
+  min-height: 100%;
+  pointer-events: none;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+  .routeScene[data-transitioning='true'] .routeTrack {
+    backface-visibility: hidden;
+    will-change: transform;
+  }
+
+  .routeScene[data-transitioning='true'] .routeTrack[data-direction='forward'] {
+    animation: route-track-forward var(--shell-route-transition-duration) var(--shell-route-transition-easing) both;
+  }
+
+  .routeScene[data-transitioning='true'] .routeTrack[data-direction='backward'] {
+    transform: translate3d(-50%, 0, 0);
+    animation: route-track-backward var(--shell-route-transition-duration) var(--shell-route-transition-easing) both;
+  }
+
+  .routeScene[data-transitioning='true'] .routeTrack .routePanel[data-role='previous'] {
+    animation: route-panel-fade-out var(--shell-route-transition-duration) var(--shell-route-transition-easing) both;
+  }
+
+  .routeScene[data-transitioning='true'] .routeTrack .routePanel[data-role='current'] {
+    animation: route-panel-fade-in var(--shell-route-transition-duration) var(--shell-route-transition-easing) both;
+  }
+}
+
+@keyframes route-track-forward {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes route-track-backward {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes route-panel-fade-in {
+  from {
+    opacity: 0.64;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes route-panel-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.42;
+  }
+}

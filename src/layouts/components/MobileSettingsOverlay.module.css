@@ -1,0 +1,75 @@
+.mobileSettingsOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+}
+
+.mobileSettingsBackdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(15 23 42 / 18%);
+  opacity: 0;
+  transition: opacity 260ms ease;
+  cursor: pointer;
+}
+
+.mobileSettingsPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(180deg, var(--app-bg-elevated) 0%, var(--app-bg-surface) 100%);
+  box-shadow: 20px 0 40px rgb(15 23 42 / 16%);
+  transform: translate3d(-100%, 0, 0);
+  opacity: 0;
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 260ms ease;
+  overflow: hidden;
+}
+
+.mobileSettingsPanelScroll {
+  --settings-page-min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding:
+    calc(var(--app-shell-header-height) + 8px)
+    0
+    calc(var(--app-shell-bottom-nav-height) + 16px);
+  scrollbar-width: none;
+}
+
+.mobileSettingsPanelScroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.mobileSettingsLoading {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+}
+
+.mobileSettingsOverlay[data-visible='true'] {
+  pointer-events: auto;
+}
+
+.mobileSettingsOverlay[data-visible='true'] .mobileSettingsBackdrop {
+  opacity: 1;
+}
+
+.mobileSettingsPanel[data-visible='true'] {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .mobileSettingsPanel {
+    background: var(--app-bg);
+    box-shadow: none;
+  }
+}

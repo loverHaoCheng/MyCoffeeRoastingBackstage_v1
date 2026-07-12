@@ -51,62 +51,71 @@ describe('BeanPage', () => {
     });
   });
 
+  const stubBeanQueries = (beans: ReturnType<typeof createBeanRecords>): void => {
+    vi.spyOn(beanService, 'getBootstrappedBeans').mockReturnValue(beans);
+    vi.spyOn(beanService, 'listBeans').mockResolvedValue({
+      code: 0,
+      data: beans,
+      message: 'ok',
+    });
+  };
+
+  const createBeanRecords = (stockKg = 1) => [
+    {
+      agingDays: 14,
+      costPerKg: 86,
+      createdAt: '2026-07-03T00:00:00.000Z',
+      flavorTags: ['柑橘', '花香'],
+      grade: 'G1',
+      id: 'bean-zero-stock',
+      name: '零库存测试豆',
+      origin: '埃塞俄比亚 · 古吉',
+      process: '水洗',
+      stockKg,
+      tastingEndDays: 40,
+      updatedAt: '2026-07-03T00:00:00.000Z',
+    },
+  ];
+
   const saveBeanCache = (stockKg: number): void => {
-    beanCacheService.save(
-      [
-        {
-          agingDays: 14,
-          costPerKg: 86,
-          createdAt: '2026-07-03T00:00:00.000Z',
-          flavorTags: ['柑橘', '花香'],
-          grade: 'G1',
-          id: 'bean-zero-stock',
-          name: '零库存测试豆',
-          origin: '埃塞俄比亚 · 古吉',
-          process: '水洗',
-          stockKg,
-          tastingEndDays: 40,
-          updatedAt: '2026-07-03T00:00:00.000Z',
-        },
-      ],
-      'mock',
-    );
+    const beans = createBeanRecords(stockKg);
+    beanCacheService.save(beans, 'mock');
+    stubBeanQueries(beans);
   };
 
   const saveBeanSummaryCache = (): void => {
-    beanCacheService.save(
-      [
-        {
-          agingDays: 14,
-          costPerKg: 100,
-          createdAt: '2026-07-03T00:00:00.000Z',
-          flavorTags: ['柑橘', '花香'],
-          grade: 'G1',
-          id: 'bean-a',
-          name: '测试豆 A',
-          origin: '埃塞俄比亚 · 古吉',
-          process: '水洗',
-          stockKg: 1,
-          tastingEndDays: 40,
-          updatedAt: '2026-07-03T00:00:00.000Z',
-        },
-        {
-          agingDays: 21,
-          costPerKg: 200,
-          createdAt: '2026-07-03T00:00:00.000Z',
-          flavorTags: ['黑巧克力', '坚果'],
-          grade: 'G1',
-          id: 'bean-b',
-          name: '测试豆 B',
-          origin: '哥伦比亚 · 慧兰',
-          process: '日晒',
-          stockKg: 9,
-          tastingEndDays: 45,
-          updatedAt: '2026-07-03T00:00:00.000Z',
-        },
-      ],
-      'mock',
-    );
+    const beans = [
+      {
+        agingDays: 14,
+        costPerKg: 100,
+        createdAt: '2026-07-03T00:00:00.000Z',
+        flavorTags: ['柑橘', '花香'],
+        grade: 'G1',
+        id: 'bean-a',
+        name: '测试豆 A',
+        origin: '埃塞俄比亚 · 古吉',
+        process: '水洗',
+        stockKg: 1,
+        tastingEndDays: 40,
+        updatedAt: '2026-07-03T00:00:00.000Z',
+      },
+      {
+        agingDays: 21,
+        costPerKg: 200,
+        createdAt: '2026-07-03T00:00:00.000Z',
+        flavorTags: ['黑巧克力', '坚果'],
+        grade: 'G1',
+        id: 'bean-b',
+        name: '测试豆 B',
+        origin: '哥伦比亚 · 慧兰',
+        process: '日晒',
+        stockKg: 9,
+        tastingEndDays: 45,
+        updatedAt: '2026-07-03T00:00:00.000Z',
+      },
+    ];
+    beanCacheService.save(beans, 'mock');
+    stubBeanQueries(beans);
   };
 
   const enableBeanCreationPrerequisites = (): void => {
@@ -170,6 +179,7 @@ describe('BeanPage', () => {
   it('keeps the empty state visible after deleting the last bean during a background refresh', async () => {
     saveBeanCache(1);
     const pendingListRequest = new Promise<never>(() => undefined);
+    vi.spyOn(beanService, 'getBootstrappedBeans').mockReturnValue(createBeanRecords(1));
     vi.spyOn(beanService, 'listBeans').mockReturnValue(pendingListRequest);
     vi.spyOn(beanService, 'deleteBean').mockResolvedValue({ queued: false, synced: true });
 
@@ -267,12 +277,12 @@ describe('BeanPage', () => {
     expect(aiRecognitionButton).toBeDisabled();
   });
 
-  it('puts zero-stock beans into a collapsed bottom section and removes them after stock changes', () => {
+  it('puts zero-stock beans into a collapsed bottom section and removes them after stock changes', async () => {
     saveBeanCache(0);
 
     const firstRender = renderWithQuery(<BeanPage />);
 
-    const collapsedSection = screen.getByLabelText('零库存生豆折叠区');
+    const collapsedSection = await screen.findByLabelText('零库存生豆折叠区');
     expect(within(collapsedSection).getByText('零库存生豆')).toBeInTheDocument();
     expect(within(collapsedSection).getByRole('button', { name: '零库存生豆' })).toBeInTheDocument();
     expect(within(collapsedSection).queryByText(/重量为 0 的记录/)).not.toBeInTheDocument();
@@ -302,7 +312,7 @@ describe('BeanPage', () => {
     renderWithQuery(<BeanPage />);
 
     expect(screen.queryByLabelText('零库存生豆折叠区')).not.toBeInTheDocument();
-    expect(screen.getByText('零库存测试豆')).toBeInTheDocument();
+    expect(await screen.findByText('零库存测试豆')).toBeInTheDocument();
   });
 
   it('calculates the summary average cost with remaining stock weighting', () => {
@@ -321,7 +331,7 @@ describe('BeanPage', () => {
 
     renderWithQuery(<BeanPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试豆 A' }));
+    fireEvent.click(await screen.findByRole('button', { name: '全部编辑 测试豆 A' }));
 
     expect(await screen.findByText('编辑生豆')).toBeInTheDocument();
   });
@@ -330,6 +340,8 @@ describe('BeanPage', () => {
     saveBeanSummaryCache();
 
     renderWithQuery(<BeanPage />);
+
+    await screen.findByText('测试豆 A');
 
     fireEvent.change(screen.getByLabelText('搜索生豆'), {
       target: { value: '柑' },

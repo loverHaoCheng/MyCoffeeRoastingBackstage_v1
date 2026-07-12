@@ -1,0 +1,39 @@
+.floatingActionRoot {
+  position: fixed;
+  right: calc(var(--app-safe-right) + 18px);
+  bottom: var(--shell-floating-bottom-offset);
+  z-index: 90;
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(0, 10px, 0);
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.floatingActionRoot[data-visible='true'] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.floatingActionRoot > * {
+  pointer-events: auto;
+}
+
+.floatingActionRoot[data-visible='false'] > * {
+  pointer-events: none !important;
+}
+
+@media (max-width: 767px) {
+  .floatingActionRoot {
+    right: calc(var(--app-safe-right) + 20px);
+    bottom: var(--shell-floating-bottom-offset);
+  }
+}
+
+@media (max-width: 767px) and (display-mode: standalone) {
+  .floatingActionRoot {
+    bottom: var(--shell-floating-bottom-offset);
+  }
+}

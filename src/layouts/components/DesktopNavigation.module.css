@@ -1,0 +1,91 @@
+.sider {
+  position: relative;
+  top: auto;
+  height: calc(100vh - 24px);
+  overflow: hidden;
+  border-radius: 28px;
+  background: var(--app-bg-elevated);
+  box-shadow: 12px 0 28px rgb(17 24 39 / 10%);
+}
+
+.desktopBrand {
+  display: block;
+  width: 100%;
+  padding: 20px 20px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: left;
+  text-transform: uppercase;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.desktopMenu {
+  height: calc(100% - 44px);
+  border-inline-end: 0;
+  padding: 10px 10px 18px;
+  background: transparent;
+  overflow: auto;
+}
+
+.desktopMenu :global(.ant-menu) {
+  background: transparent;
+}
+
+.desktopMenu :global(.ant-menu-inline),
+.desktopMenu :global(.ant-menu-light) {
+  background: transparent;
+}
+
+.desktopMenu :global(.ant-menu-item) {
+  width: calc(100% - 2px);
+  height: 52px;
+  margin: 8px 1px;
+  padding-inline: 16px !important;
+  border-radius: 16px;
+  color: var(--app-text);
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.desktopMenu :global(.ant-menu-item-selected) {
+  background: var(--app-selected-surface) !important;
+  color: var(--app-accent) !important;
+  box-shadow:
+    inset 0 0 0 1px rgb(17 24 39 / 6%),
+    0 10px 20px rgb(17 24 39 / 8%);
+}
+
+.desktopMenu :global(.ant-menu-item-selected::after) {
+  border-inline-end: 0 !important;
+}
+
+.desktopMenu :global(.ant-menu-item .anticon) {
+  color: inherit;
+  font-size: 18px;
+}
+
+.desktopMenu :global(.ant-menu-title-content) {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.desktopMenu :global(.ant-menu-item:active) {
+  background: var(--app-selected-surface-strong) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .desktopMenu :global(.ant-menu-item:hover) {
+    background: var(--app-hover-surface) !important;
+    color: var(--app-text) !important;
+  }
+}

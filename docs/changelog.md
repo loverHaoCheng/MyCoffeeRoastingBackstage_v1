@@ -1,5 +1,32 @@
 # 变更记录
 
+## 2026-07-12 - 测试基线收尾
+
+- 修复 `beanPage.test.tsx` 中依赖异步列表刷新时序的失败用例，改为先等待数据可见再交互，稳定零库存分组、删除与搜索断言。
+- 重写 `server/pocketbase-auth-bff.test.ts` 的请求驱动方式，直接调用 BFF handler 完成契约测试，去除对本地监听端口的环境依赖。
+- 让全量测试重新回到可执行基线，便于后续进入新功能开发阶段。
+
+## 2026-07-12 - 生豆仓储与设置页测试继续收口
+
+- 将 `bean.service.repositories.ts` 继续拆分为仓储解析入口、Mock 仓储、简单远端仓储、PocketBase 库存仓储和库存仓储工具，解决仓储实现仍超 500 行的遗漏。
+- 将 `settingsPage.test.tsx` 中的浏览器环境重置、共享 mock 初始化和连接卡片展开流程抽到 `settingsPage.test.shared.tsx`，保留主测试文件断言语义不变并降到 500 行以内。
+- 更新交互文档中的维护边界，明确后续应在仓储子文件和测试共享基座扩展，而不是继续堆叠到单个大文件。
+
+## 2026-07-12 - #35 主布局样式文件拆分
+
+- 将原 `src/layouts/MainLayout.module.css` 的 900+ 行样式按职责拆分到主布局壳层和各布局子组件旁的独立 CSS module。
+- `MainLayout.tsx` 仅保留壳层样式引用；桌面导航、移动顶栏、底部导航、设置浮层、认证栏、浮动按钮和路由转场改为各自就近维护样式。
+- 删除主布局样式中的未使用认证辅助类，降低后续维护时误改整包布局样式的风险。
+
+## 2026-07-12 - #28～#33 巨型文件收口
+
+- 将 `src/modules/bean/services/bean.service.ts` 拆分为门面 + `bean-service/` 子模块，抽离类型、共享映射和远端仓储实现，保留现有对外导出与离线/同步行为。
+- 将 `src/modules/roast/services/roastPlan.service.ts` 拆分为门面 + `roast-plan/` 子模块，分离 state、共享转换与仓储逻辑，保持计划列表、创建、删除与同步契约不变。
+- 将 `src/modules/roast/services/roastBatch.service.ts` 拆分为门面 + `roast-batch/` 子模块，分离本地状态、库存回滚和远端仓储实现，保留烘焙记录与库存联动行为。
+- 将 `src/services/pocketBaseRestClientCore.ts` 拆分为 `pocketbase-rest/` 下的类型、错误和工具模块，主文件只保留客户端核心流程。
+- 将 `BeanAiRecognitionPlaceholder` 与 `CostTemplateManagerPanel` 分别拆分到 `bean-ai-recognition/`、`cost-template-manager/` 子组件目录，保留现有 UI 交互和表单回填逻辑。
+- 更新交互文档中的维护边界与快速定位索引，明确后续应优先在拆分目录扩展，避免主文件再次膨胀。
+
 ## 2026-07-12 - 生豆表单职责拆分
 
 - 将 `BeanForm` 的基础信息、烘焙后处理、产地品质、备注和提交操作栏拆分为独立组件，父表单只保留 React Hook Form 编排、Zod 校验、成本模板联动与采购定价逻辑。
@@ -69,6 +96,13 @@
 
 - 前端 PocketBase 默认地址改为当前浏览器同源地址，避免生产构建未配置 `VITE_PB_URL` 时回落到 HTTP 裸 IP
 - 更新 PocketBase 部署说明，明确只有前端与 PocketBase 分域部署时才需要设置 `VITE_PB_URL`
+
+## 2026-07-12 - 黑白灰配色收口
+
+- 去除下拉刷新成功态、就绪态和警告态中的绿色与橙色持续强调，统一改为灰阶反馈
+- 去除模块占位页统计卡片的绿蓝橙红顶部色条，改为黑白灰层级描边
+- 去除底部导航激活态的偏绿色描边，统一回收为灰阶边框
+- 更新交互文档中的黑白灰配色执行边界
 
 ## 2026-07-12 - 主布局组件拆分
 

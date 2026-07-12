@@ -1,0 +1,97 @@
+.mobileHeader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--app-shell-header-height);
+  width: 100%;
+  padding:
+    var(--app-safe-top)
+    calc(var(--app-safe-right) + 16px)
+    0
+    calc(var(--app-safe-left) + 16px);
+  background: var(--app-bg-elevated);
+  box-shadow: 0 1px 0 rgb(229 229 231 / 28%);
+}
+
+.mobileHeaderButton {
+  display: inline-grid;
+  place-items: center;
+  width: var(--app-touch-target-size);
+  height: var(--app-touch-target-size);
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--app-text);
+  cursor: pointer;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.mobileHeaderButton :global(.anticon) {
+  font-size: 18px;
+}
+
+.mobileBrand {
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.mobileHeaderSpacer {
+  width: var(--app-touch-target-size);
+  height: var(--app-touch-target-size);
+  flex: 0 0 auto;
+}
+
+.mobileHeaderAction {
+  display: inline-grid !important;
+  place-items: center;
+  width: var(--app-touch-target-size) !important;
+  min-width: var(--app-touch-target-size) !important;
+  height: var(--app-touch-target-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  color: var(--app-text) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.mobileHeaderAction :global(.anticon) {
+  font-size: 18px;
+}
+
+:global(:root[data-standalone-pwa='true']) .mobileHeader,
+.mobileHeader[data-standalone-pwa='true'] {
+  height: calc(58px + var(--app-safe-top));
+  padding:
+    var(--app-safe-top)
+    calc(var(--app-safe-right) + 16px)
+    0
+    calc(var(--app-safe-left) + 16px);
+}
+
+@media (max-width: 767px) and (display-mode: standalone) {
+  .mobileHeader {
+    height: calc(58px + var(--app-safe-top));
+    padding:
+      var(--app-safe-top)
+      calc(var(--app-safe-right) + 16px)
+      0
+      calc(var(--app-safe-left) + 16px);
+  }
+}

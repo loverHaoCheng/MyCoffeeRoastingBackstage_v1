@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 
 import type { AppNavigationItem, AppRouteKey } from '@/router/navigation';
 
-import styles from '../MainLayout.module.css';
+import styles from './MobileBottomNavigation.module.css';
 import { iconByRoute } from './navigationIcons';
 
 interface MobileBottomNavigationProps {

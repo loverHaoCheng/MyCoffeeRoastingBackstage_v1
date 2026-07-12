@@ -1,7 +1,7 @@
 import Spin from 'antd/es/spin';
 import { lazy, Suspense, type ReactNode, type RefObject } from 'react';
 
-import styles from '../MainLayout.module.css';
+import styles from './MobileSettingsOverlay.module.css';
 
 const MobileSettingsPage = lazy(() =>
   import('@/modules/settings').then((module) => ({ default: module.SettingsPage })),

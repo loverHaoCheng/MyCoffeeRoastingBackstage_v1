@@ -20,7 +20,7 @@ import { SettingsAuthBar } from './components/SettingsAuthBar';
 import { useMobileSwipeNavigation } from './hooks/useMobileSwipeNavigation';
 import { useViewportRuntimeFlags } from './hooks/useViewportRuntimeFlags';
 import { ViewportScrollContext } from './ViewportContext';
-import styles from './MainLayout.module.css';
+import styles from './MainLayoutShell.module.css';
 
 const { Content } = Layout;
 const { useBreakpoint } = Grid;

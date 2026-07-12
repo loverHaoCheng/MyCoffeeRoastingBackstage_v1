@@ -4,7 +4,7 @@ import Button from 'antd/es/button';
 
 import type { ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
 
-import styles from '../MainLayout.module.css';
+import styles from './MobileAppHeader.module.css';
 
 interface MobileAppHeaderProps {
   actionConfig: null | ViewportFloatingActionButtonProps;
@@ -20,7 +20,7 @@ export function MobileAppHeader({
   onLeftButtonClick,
 }: MobileAppHeaderProps) {
   return (
-    <header className={styles.mobileHeader} data-app-shell-header="true">
+    <header className={styles.mobileHeader}>
       <button
         aria-label={isSettingsOpen ? '收起设置面板' : '打开设置面板'}
         className={styles.mobileHeaderButton}

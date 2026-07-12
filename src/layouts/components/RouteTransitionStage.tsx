@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { AppRouteKey } from '@/router/navigation';
 import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
 
-import styles from '../MainLayout.module.css';
+import styles from './RouteTransitionStage.module.css';
 
 export type RouteTransitionDirection = 'backward' | 'forward';
 

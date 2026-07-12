@@ -46,19 +46,19 @@
 }
 
 .pullRefreshDock[data-ready="true"] .pullRefreshIndicator {
-  color: #216e5a;
+  color: var(--app-emphasis-text-strong);
 }
 
 .pullRefreshDock[data-feedback="success"] .pullRefreshIndicator {
-  color: #216e5a;
-  background: var(--app-bg-soft);
-  box-shadow: 0 12px 28px rgb(33 110 90 / 14%);
+  color: var(--app-emphasis-text-strong);
+  background: var(--app-selected-surface);
+  box-shadow: 0 12px 28px rgb(15 23 42 / 10%);
 }
 
 .pullRefreshDock[data-feedback="warning"] .pullRefreshIndicator {
-  color: #b45309;
+  color: var(--app-emphasis-text-muted);
   background: var(--app-bg-soft);
-  box-shadow: 0 12px 28px rgb(180 83 9 / 12%);
+  box-shadow: 0 12px 28px rgb(15 23 42 / 8%);
 }
 
 .pullRefreshArrow {

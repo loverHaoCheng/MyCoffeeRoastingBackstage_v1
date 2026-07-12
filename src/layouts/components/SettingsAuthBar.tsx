@@ -12,7 +12,7 @@ import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { FieldEditorDrawer } from '@/shared/components/FieldEditorDrawer';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 
-import styles from '../MainLayout.module.css';
+import styles from './SettingsAuthBar.module.css';
 
 interface SettingsAuthBarProps {
   isDesktop: boolean;

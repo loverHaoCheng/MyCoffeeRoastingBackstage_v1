@@ -1,473 +1,30 @@
-import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
-import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
-import { AppError } from '@/shared/errors/AppError';
 import type { ApiResponse } from '@/services/api.types';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import type { RoastPlan } from '@/types/domain';
 
-import { seedRoastPlans } from '@/modules/roast/constants/roastPlan.mock';
-import {
-  createRoastPlan,
-  createRoastPlanFromJson,
-  updateRoastPlanFromInput,
-} from './roastPlanJson.service';
 import type { RoastPlanJsonInput } from '../types';
-
-interface RoastPlanRepository {
-  createPlan: (input: RoastPlanJsonInput) => Promise<ApiResponse<RoastPlan>>;
-  createPlanFromJson: (jsonText: string) => Promise<ApiResponse<RoastPlan>>;
-  deletePlan: (planId: RoastPlan['id']) => Promise<ApiResponse<null>>;
-  listPlans: () => Promise<ApiResponse<RoastPlan[]>>;
-  updatePlan: (planId: RoastPlan['id'], input: RoastPlanJsonInput) => Promise<ApiResponse<RoastPlan>>;
-}
-
-interface RemoteRoastPlanOverviewRecord {
-  batch_weight_grams: number;
-  bean_name: null | string;
-  created_at: string;
-  green_bean_id: null | string;
-  id: string;
-  name: string;
-  planned_batch_kg: number;
-  roast_purpose: null | string;
-  status: string;
-  steps: unknown;
-  target_roast_level: null | string;
-  updated_at: string;
-}
-
-interface RemoteRoastProfileMutationRecord {
-  id: string;
-}
-
-interface RemoteRoastBatchPlanRelationRecord {
-  id: string;
-}
-
-interface RemoteGreenBeanLookupRecord {
-  id: string;
-}
-
-interface RemoteRoastPlanStepRecord {
-  event?: string;
-  firePower?: string;
-  note?: string;
-  operation?: string;
-  temperature?: string;
-  time?: string;
-}
-
-type RoastPlanStatus = RoastPlan['status'];
-
-const ROAST_PLAN_STATUS_SET = new Set<RoastPlanStatus>(['draft', 'inProgress', 'completed', 'cancelled']);
-const GENERIC_BEAN_ID = 'generic';
-const GENERIC_BEAN_NAME = '通用';
-
-const STORAGE_KEY = 'coffee-roasting-backstage:roast-plans';
-
-const loadLocalPlans = (): RoastPlan[] => {
-  void STORAGE_KEY;
-  return [];
-};
-
-const ok = <T,>(data: T): ApiResponse<T> => ({
-  code: 0,
-  data,
-  message: 'ok',
-});
-
-const sortPlans = (plans: RoastPlan[]): RoastPlan[] => {
-  return [...plans].sort((left, right) => {
-    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-  });
-};
-
-const saveLocalPlans = (plans: RoastPlan[]): RoastPlan[] => {
-  const nextPlans = sortPlans(plans);
-
-  return nextPlans;
-};
-
-const createOptimisticLocalPlanId = (): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `local-${crypto.randomUUID()}`;
-  }
-
-  return `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-};
-
-const isOptimisticLocalPlanId = (planId: RoastPlan['id']): boolean => {
-  return String(planId).startsWith('local-');
-};
-
-const getPlanSyncSnapshot = (plans: RoastPlan[]): string => {
-  return JSON.stringify(
-    [...plans]
-      .sort((left, right) => String(left.id).localeCompare(String(right.id)))
-      .map((plan) => `${String(plan.id)}:${plan.updatedAt}`),
-  );
-};
-
-let localRoastPlans: RoastPlan[] =
-  import.meta.env.MODE === 'test' ? sortPlans(seedRoastPlans) : loadLocalPlans();
-const pendingOptimisticCreatePlanIds = new Set<string>();
-const pendingOptimisticDeletePlanIds = new Set<string>();
-
-const normalizeRoastPlanStatus = (status: null | string | undefined): RoastPlanStatus => {
-  if (!status || !ROAST_PLAN_STATUS_SET.has(status as RoastPlanStatus)) {
-    return 'draft';
-  }
-
-  return status as RoastPlanStatus;
-};
-
-const mapRoastPlanSteps = (steps: unknown): RoastPlan['steps'] => {
-  if (!Array.isArray(steps)) {
-    return [];
-  }
-
-  return steps.map((step, index) => {
-    const record = (typeof step === 'object' && step != null ? step : {}) as RemoteRoastPlanStepRecord;
-
-    return {
-      id: index + 1,
-      timeLabel: record.time ?? '',
-      eventName: record.event ?? '',
-      operation: record.operation ?? '',
-      drumTemperature: record.temperature ?? '-',
-      firePower: record.firePower ?? '',
-      note: record.note,
-    };
-  });
-};
-
-const mapRemoteRoastPlanRecord = (record: RemoteRoastPlanOverviewRecord): RoastPlan => ({
-  id: record.id,
-  name: record.name,
-  beanId: record.green_bean_id ?? GENERIC_BEAN_ID,
-  beanName: record.bean_name ?? GENERIC_BEAN_NAME,
-  batchWeightGrams: record.batch_weight_grams,
-  plannedBatchKg: toPlannedBatchKilograms(record.batch_weight_grams),
-  targetRoastLevel: record.target_roast_level ?? '',
-  roastPurpose: record.roast_purpose ?? '',
-  status: normalizeRoastPlanStatus(record.status),
-  steps: mapRoastPlanSteps(record.steps),
-  createdAt: record.created_at,
-  updatedAt: record.updated_at,
-});
-
-const isUuidLike = (value: string): boolean => {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-};
-
-const toPlannedBatchKilograms = (batchWeightGrams: number): number => {
-  return Number((batchWeightGrams / 1000).toFixed(3));
-};
-
-const toPocketBaseCompatiblePlannedBatchKilograms = (batchWeightGrams: number): number => {
-  return Math.max(1, toPlannedBatchKilograms(batchWeightGrams));
-};
-
-const resolveGreenBeanId = async (client: PocketBaseRestClient, input: RoastPlanJsonInput): Promise<null | string> => {
-  if (String(input.beanId ?? '') === GENERIC_BEAN_ID || input.beanName.trim() === GENERIC_BEAN_NAME) {
-    return null;
-  }
-
-  if (typeof input.beanId === 'string' && isUuidLike(input.beanId)) {
-    return input.beanId;
-  }
-
-  if (input.beanName.trim().length > 0) {
-    const records = await client.list<RemoteGreenBeanLookupRecord>('green_beans', {
-      limit: 1,
-      match: {
-        display_name: input.beanName.trim(),
-      },
-      select: 'id',
-    });
-
-    const record = records[0];
-
-    if (record) {
-      return record.id;
-    }
-  }
-
-  throw new AppError('未找到对应的生豆，请先同步生豆数据或在界面里重新选择生豆。', {
-    code: 'BUSINESS',
-  });
-};
-
-const toRemoteRoastPlanPayload = async (
-  client: PocketBaseRestClient,
-  input: RoastPlanJsonInput,
-  status: RoastPlanStatus = 'draft',
-): Promise<Record<string, unknown>> => {
-  return {
-    batch_weight_grams: input.batchWeightGrams,
-    bean_name: input.beanName.trim(),
-    green_bean_id: await resolveGreenBeanId(client, input),
-    is_active: true,
-    name: input.name,
-    planned_batch_kg: toPocketBaseCompatiblePlannedBatchKilograms(input.batchWeightGrams),
-    roast_purpose: input.purpose ?? null,
-    status,
-    steps: input.steps.map((step) => ({
-      event: step.event,
-      firePower: step.firePower,
-      note: step.note,
-      operation: step.operation,
-      temperature: step.temperature,
-      time: step.time,
-    })),
-    target_roast_level: input.roastLevel,
-  };
-};
-
-const hasGreenBeanConnection = (): boolean => {
-  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
-
-  return isPocketBaseProjectConnectionConfigured(connection);
-};
-
-const getGreenBeanClient = (): PocketBaseRestClient => {
-  const connection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
-
-  return new PocketBaseRestClient({
-    projectUrl: connection.projectUrl,
-    publishableKey: connection.publishableKey,
-  });
-};
-
-const getRoastPlanById = async (
-  client: PocketBaseRestClient,
-  planId: RoastPlan['id'],
-): Promise<RoastPlan> => {
-  const records = await client.list<RemoteRoastPlanOverviewRecord>('roast_plan_overview', {
-    limit: 1,
-    match: {
-      id: String(planId),
-    },
-  });
-
-  const record = records[0];
-
-  if (!record) {
-    throw new AppError('未找到对应的烘焙计划。', {
-      code: 'DATA',
-    });
-  }
-
-  return mapRemoteRoastPlanRecord(record);
-};
-
-class LocalRoastPlanRepository implements RoastPlanRepository {
-  createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
-    const nextId = Math.max(0, ...localRoastPlans.map((plan) => (typeof plan.id === 'number' ? plan.id : 0))) + 1;
-    const plan = createRoastPlan(input, nextId);
-
-    localRoastPlans = saveLocalPlans([plan, ...localRoastPlans]);
-
-    return Promise.resolve(ok(plan));
-  }
-
-  createPlanFromJson(jsonText: string): Promise<ApiResponse<RoastPlan>> {
-    const nextId = Math.max(0, ...localRoastPlans.map((plan) => (typeof plan.id === 'number' ? plan.id : 0))) + 1;
-    const plan = createRoastPlanFromJson(jsonText, nextId);
-
-    localRoastPlans = saveLocalPlans([plan, ...localRoastPlans]);
-
-    return Promise.resolve(ok(plan));
-  }
-
-  deletePlan(planId: RoastPlan['id']): Promise<ApiResponse<null>> {
-    localRoastPlans = saveLocalPlans(localRoastPlans.filter((plan) => String(plan.id) !== String(planId)));
-
-    return Promise.resolve(ok(null));
-  }
-
-  listPlans(): Promise<ApiResponse<RoastPlan[]>> {
-    return Promise.resolve(ok(sortPlans(localRoastPlans)));
-  }
-
-  updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
-    const currentPlan = localRoastPlans.find((plan) => String(plan.id) === String(planId));
-
-    if (!currentPlan) {
-      throw new AppError('烘焙计划不存在', {
-        code: 'BUSINESS',
-      });
-    }
-
-    const nextPlan = updateRoastPlanFromInput(currentPlan, input);
-
-    localRoastPlans = saveLocalPlans(
-      localRoastPlans.map((plan) => (String(plan.id) === String(planId) ? nextPlan : plan)),
-    );
-
-    return Promise.resolve(ok(nextPlan));
-  }
-}
-
-class RemoteRoastPlanRepository implements RoastPlanRepository {
-  constructor(private readonly client: PocketBaseRestClient) {}
-
-  async createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
-    const insertedRows = await this.client.insert<RemoteRoastProfileMutationRecord>(
-      'roast_profiles',
-      await toRemoteRoastPlanPayload(this.client, input),
-      {
-        select: 'id',
-      },
-    );
-
-    const insertedRecord = insertedRows[0];
-
-    if (!insertedRecord) {
-      throw new AppError('烘焙计划创建成功，但未返回新记录。', {
-        code: 'DATA',
-      });
-    }
-
-    return ok(await getRoastPlanById(this.client, insertedRecord.id));
-  }
-
-  async createPlanFromJson(jsonText: string): Promise<ApiResponse<RoastPlan>> {
-    const draftPlan = createRoastPlanFromJson(jsonText, 0);
-
-    return this.createPlan({
-      batchWeightGrams: draftPlan.batchWeightGrams,
-      beanId: draftPlan.beanId,
-      beanName: draftPlan.beanName,
-      name: draftPlan.name,
-      purpose: draftPlan.roastPurpose,
-      roastLevel: draftPlan.targetRoastLevel,
-      steps: draftPlan.steps.map((step) => ({
-        event: step.eventName,
-        firePower: step.firePower,
-        note: step.note,
-        operation: step.operation,
-        temperature: step.drumTemperature,
-        time: step.timeLabel,
-      })),
-    });
-  }
-
-  async deletePlan(planId: RoastPlan['id']): Promise<ApiResponse<null>> {
-    const linkedBatches = await this.client.list<RemoteRoastBatchPlanRelationRecord>('roast_batches', {
-      match: {
-        roast_plan_id: String(planId),
-      },
-      select: 'id',
-    });
-
-    await Promise.all(
-      linkedBatches.map((batch) =>
-        this.client.update<RemoteRoastBatchPlanRelationRecord>(
-          'roast_batches',
-          { roast_plan_id: null },
-          {
-            match: { id: batch.id },
-            select: 'id',
-          },
-        ),
-      ),
-    );
-
-    await this.client.delete('roast_profiles', {
-      match: {
-        id: String(planId),
-      },
-    });
-
-    return ok(null);
-  }
-
-  async listPlans(): Promise<ApiResponse<RoastPlan[]>> {
-    const records = await this.client.list<RemoteRoastPlanOverviewRecord>('roast_plan_overview', {
-      orderBy: {
-        ascending: false,
-        column: 'updated_at',
-      },
-    });
-
-    return ok(records.map(mapRemoteRoastPlanRecord));
-  }
-
-  async updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
-    const currentPlan = await getRoastPlanById(this.client, planId);
-
-    const updatedRows = await this.client.update<RemoteRoastProfileMutationRecord>(
-      'roast_profiles',
-      await toRemoteRoastPlanPayload(this.client, input, currentPlan.status),
-      {
-        match: {
-          id: String(planId),
-        },
-        select: 'id',
-      },
-    );
-
-    const updatedRecord = updatedRows[0];
-
-    if (!updatedRecord) {
-      throw new AppError('烘焙计划更新成功，但未返回结果。', {
-        code: 'DATA',
-      });
-    }
-
-    return ok(await getRoastPlanById(this.client, updatedRecord.id));
-  }
-}
-
-const resolveRoastPlanRepository = (): RoastPlanRepository => {
-  if (import.meta.env.MODE === 'test') {
-    return new LocalRoastPlanRepository();
-  }
-
-  if (!hasGreenBeanConnection()) {
-    return new LocalRoastPlanRepository();
-  }
-
-  return new RemoteRoastPlanRepository(getGreenBeanClient());
-};
+import { hasGreenBeanConnection, ok } from './roast-plan/roastPlan.service.shared';
+import {
+  roastPlanOptimisticHelpers,
+  resolveRoastPlanRepository,
+} from './roast-plan/roastPlan.service.repositories';
+import { roastPlanState, saveLocalPlans, sortPlans } from './roast-plan/roastPlan.service.state';
 
 export const roastPlanService = {
   getBootstrappedPlans(): RoastPlan[] {
-    return sortPlans(localRoastPlans);
+    return sortPlans(roastPlanState.localPlans);
   },
   createOptimisticPlan(input: RoastPlanJsonInput): RoastPlan {
-    const plan = createRoastPlan(input, 0);
-    const optimisticPlan: RoastPlan = {
-      ...plan,
-      id: createOptimisticLocalPlanId(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    pendingOptimisticCreatePlanIds.add(String(optimisticPlan.id));
-    localRoastPlans = saveLocalPlans([optimisticPlan, ...localRoastPlans]);
-
-    return optimisticPlan;
+    return roastPlanOptimisticHelpers.createOptimisticPlan(input);
   },
   createOptimisticPlanFromJson(jsonText: string): RoastPlan {
-    const plan = createRoastPlanFromJson(jsonText, 0);
-    const optimisticPlan: RoastPlan = {
-      ...plan,
-      id: createOptimisticLocalPlanId(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    pendingOptimisticCreatePlanIds.add(String(optimisticPlan.id));
-    localRoastPlans = saveLocalPlans([optimisticPlan, ...localRoastPlans]);
-
-    return optimisticPlan;
+    return roastPlanOptimisticHelpers.createOptimisticPlanFromJson(jsonText);
   },
   removeOptimisticPlan(planId: RoastPlan['id']): RoastPlan | null {
     const nextPlanId = String(planId);
-    const removedPlan = localRoastPlans.find((plan) => String(plan.id) === nextPlanId) ?? null;
+    const removedPlan = roastPlanState.localPlans.find((plan) => String(plan.id) === nextPlanId) ?? null;
 
-    localRoastPlans = saveLocalPlans(
-      localRoastPlans.filter((plan) => String(plan.id) !== nextPlanId),
+    roastPlanState.localPlans = saveLocalPlans(
+      roastPlanState.localPlans.filter((plan) => String(plan.id) !== nextPlanId),
     );
 
     return removedPlan;
@@ -475,45 +32,45 @@ export const roastPlanService = {
   beginOptimisticDelete(planId: RoastPlan['id']): RoastPlan | null {
     const nextPlanId = String(planId);
 
-    pendingOptimisticDeletePlanIds.add(nextPlanId);
+    roastPlanState.pendingOptimisticDeletePlanIds.add(nextPlanId);
 
     return this.removeOptimisticPlan(planId);
   },
   finalizeOptimisticDelete(planId: RoastPlan['id']): RoastPlan[] {
-    pendingOptimisticDeletePlanIds.delete(String(planId));
+    roastPlanState.pendingOptimisticDeletePlanIds.delete(String(planId));
     this.removeOptimisticPlan(planId);
 
-    return sortPlans(localRoastPlans);
+    return sortPlans(roastPlanState.localPlans);
   },
   rollbackOptimisticDelete(planId: RoastPlan['id'], plan: RoastPlan | null): RoastPlan[] {
-    pendingOptimisticDeletePlanIds.delete(String(planId));
+    roastPlanState.pendingOptimisticDeletePlanIds.delete(String(planId));
 
-    return plan ? this.restoreOptimisticPlan(plan) : sortPlans(localRoastPlans);
+    return plan ? this.restoreOptimisticPlan(plan) : sortPlans(roastPlanState.localPlans);
   },
   restoreOptimisticPlan(plan: RoastPlan): RoastPlan[] {
-    localRoastPlans = saveLocalPlans([
+    roastPlanState.localPlans = saveLocalPlans([
       plan,
-      ...localRoastPlans.filter((currentPlan) => String(currentPlan.id) !== String(plan.id)),
+      ...roastPlanState.localPlans.filter((currentPlan) => String(currentPlan.id) !== String(plan.id)),
     ]);
 
-    return sortPlans(localRoastPlans);
+    return sortPlans(roastPlanState.localPlans);
   },
   finalizeOptimisticPlan(optimisticPlanId: RoastPlan['id'], remotePlan: RoastPlan): RoastPlan[] {
-    pendingOptimisticCreatePlanIds.delete(String(optimisticPlanId));
-    localRoastPlans = saveLocalPlans([
+    roastPlanState.pendingOptimisticCreatePlanIds.delete(String(optimisticPlanId));
+    roastPlanState.localPlans = saveLocalPlans([
       remotePlan,
-      ...localRoastPlans.filter((plan) => String(plan.id) !== String(optimisticPlanId)),
+      ...roastPlanState.localPlans.filter((plan) => String(plan.id) !== String(optimisticPlanId)),
     ]);
 
-    return sortPlans(localRoastPlans);
+    return sortPlans(roastPlanState.localPlans);
   },
   rollbackOptimisticPlan(optimisticPlanId: RoastPlan['id']): RoastPlan[] {
-    pendingOptimisticCreatePlanIds.delete(String(optimisticPlanId));
-    localRoastPlans = saveLocalPlans(
-      localRoastPlans.filter((plan) => String(plan.id) !== String(optimisticPlanId)),
+    roastPlanState.pendingOptimisticCreatePlanIds.delete(String(optimisticPlanId));
+    roastPlanState.localPlans = saveLocalPlans(
+      roastPlanState.localPlans.filter((plan) => String(plan.id) !== String(optimisticPlanId)),
     );
 
-    return sortPlans(localRoastPlans);
+    return sortPlans(roastPlanState.localPlans);
   },
   createPlan(input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     return resolveRoastPlanRepository().createPlan(input);
@@ -527,10 +84,10 @@ export const roastPlanService = {
   async listPlans(): Promise<ApiResponse<RoastPlan[]>> {
     const response = await resolveRoastPlanRepository().listPlans();
     const visiblePlans = response.data.filter(
-      (plan) => !pendingOptimisticDeletePlanIds.has(String(plan.id)),
+      (plan) => !roastPlanState.pendingOptimisticDeletePlanIds.has(String(plan.id)),
     );
 
-    localRoastPlans = saveLocalPlans(visiblePlans);
+    roastPlanState.localPlans = saveLocalPlans(visiblePlans);
 
     return {
       ...response,
@@ -540,38 +97,15 @@ export const roastPlanService = {
   updatePlan(planId: RoastPlan['id'], input: RoastPlanJsonInput): Promise<ApiResponse<RoastPlan>> {
     return resolveRoastPlanRepository().updatePlan(planId, input);
   },
-  async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
-    if (!hasGreenBeanConnection() || typeof navigator === 'undefined' || !navigator.onLine) {
-      return { downloaded: 0, uploaded: 0 };
-    }
-
-    if (pendingOptimisticCreatePlanIds.size > 0 || pendingOptimisticDeletePlanIds.size > 0) {
-      return { downloaded: 0, uploaded: 0 };
-    }
-
-    const repository = new RemoteRoastPlanRepository(getGreenBeanClient());
-    const localPlansBeforeSync = sortPlans(localRoastPlans);
-    const optimisticLocalPlans = localPlansBeforeSync.filter((plan) => isOptimisticLocalPlanId(plan.id));
-    const remotePlans = await repository.listPlans();
-    const visibleRemotePlans = remotePlans.data.filter(
-      (plan) => !pendingOptimisticDeletePlanIds.has(String(plan.id)),
-    );
-    const nextPlans = sortPlans([...optimisticLocalPlans, ...visibleRemotePlans]);
-    const beforeSignature = getPlanSyncSnapshot(localPlansBeforeSync);
-    const afterSignature = getPlanSyncSnapshot(nextPlans);
-
-    localRoastPlans = saveLocalPlans(nextPlans);
-
-    return {
-      downloaded: beforeSignature === afterSignature ? 0 : nextPlans.length,
-      uploaded: 0,
-    };
+  syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
+    return roastPlanOptimisticHelpers.syncLocalAndRemote();
   },
   hasPendingOptimisticCreations(): boolean {
-    return pendingOptimisticCreatePlanIds.size > 0;
+    return roastPlanState.pendingOptimisticCreatePlanIds.size > 0;
   },
   hasPendingOptimisticDeletions(): boolean {
-    return pendingOptimisticDeletePlanIds.size > 0;
+    return roastPlanState.pendingOptimisticDeletePlanIds.size > 0;
   },
   hasGreenBeanConnection,
+  ok,
 };

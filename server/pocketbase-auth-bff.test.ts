@@ -1,9 +1,10 @@
 // @vitest-environment node
 
-import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import { EventEmitter } from 'node:events';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { Readable } from 'node:stream';
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { handleAuthGatewayRequest } from './pocketbase-auth-bff.js';
 
@@ -20,66 +21,80 @@ interface GatewayRequestOptions {
   path: string;
 }
 
-let gateway: Server;
-let gatewayUrl: string;
-const nativeFetch = globalThis.fetch.bind(globalThis);
+class MockServerResponse extends EventEmitter {
+  body = '';
+  destroyed = false;
+  headers = new Map<string, string>();
+  headersSent = false;
+  statusCode = 200;
 
-const startGateway = async (): Promise<void> => {
-  gateway = createServer((request, response) => {
-    void handleAuthGatewayRequest(request, response);
-  });
+  destroy(): this {
+    this.destroyed = true;
+    return this;
+  }
 
-  await new Promise<void>((resolve, reject) => {
-    gateway.once('error', reject);
-    gateway.listen(0, '127.0.0.1', () => {
-      gateway.off('error', reject);
-      resolve();
+  end(chunk?: string): this {
+    if (chunk) {
+      this.body += chunk;
+    }
+    this.headersSent = true;
+    return this;
+  }
+
+  getHeader(name: string): string | undefined {
+    return this.headers.get(name.toLowerCase());
+  }
+
+  setHeader(name: string, value: number | string | string[]): this {
+    const normalizedValue = Array.isArray(value) ? value.join(', ') : String(value);
+    this.headers.set(name.toLowerCase(), normalizedValue);
+    return this;
+  }
+
+  writeHead(statusCode: number, headers?: Record<string, number | string | string[]>): this {
+    this.statusCode = statusCode;
+    this.headersSent = true;
+
+    Object.entries(headers ?? {}).forEach(([name, value]) => {
+      this.setHeader(name, value);
     });
-  });
 
-  const address = gateway.address() as AddressInfo;
-  gatewayUrl = `http://127.0.0.1:${String(address.port)}`;
+    return this;
+  }
+}
+
+const createMockRequest = ({
+  body,
+  headers = {},
+  method = 'GET',
+  path,
+}: GatewayRequestOptions): IncomingMessage => {
+  const request = Readable.from(body ? [body] : []) as IncomingMessage;
+  request.headers = Object.fromEntries(
+    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]),
+  );
+  request.method = method;
+  request.url = path;
+  return request;
 };
 
-const requestGateway = async ({ body, headers, method = 'GET', path }: GatewayRequestOptions): Promise<GatewayResponse> => {
-  const response = await nativeFetch(`${gatewayUrl}${path}`, {
-    body,
-    headers,
-    method,
-  });
+const requestGateway = async (options: GatewayRequestOptions): Promise<GatewayResponse> => {
+  const request = createMockRequest(options);
+  const response = new MockServerResponse();
 
-  const rawBody = await response.text();
+  await handleAuthGatewayRequest(request, response as unknown as ServerResponse);
 
   return {
-    body: rawBody ? (JSON.parse(rawBody) as unknown) : null,
-    headers: response.headers,
-    status: response.status,
+    body: response.body ? (JSON.parse(response.body) as unknown) : null,
+    headers: new Headers(Object.fromEntries(response.headers)),
+    status: response.statusCode,
   };
 };
 
 describe('PocketBase auth BFF contract', () => {
-  beforeEach(async () => {
-    await startGateway();
-  });
-
-  afterEach(async () => {
+  afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-
-    if (!gateway.listening) {
-      return;
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      gateway.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        resolve();
-      });
-    });
   });
 
   it('returns the health contract without touching PocketBase', async () => {
