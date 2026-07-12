@@ -12,8 +12,17 @@
 .recordLink {
   color: inherit;
   text-decoration: none;
+  text-underline-offset: 3px;
 }
 
-.recordLink:hover {
+.recordLink:hover,
+.recordLink:focus-visible {
   color: var(--app-text-secondary);
+  text-decoration: underline;
+}
+
+.recordLink:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--app-text-secondary);
+  outline-offset: 3px;
 }
