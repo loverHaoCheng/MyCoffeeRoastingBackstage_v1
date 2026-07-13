@@ -2,7 +2,6 @@ import LogoutOutlined from '@ant-design/icons/LogoutOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import Input from 'antd/es/input';
-import Space from 'antd/es/space';
 import Typography from 'antd/es/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -87,20 +86,25 @@ export function SettingsAuthBar({ isDesktop }: SettingsAuthBarProps) {
   return (
     <>
       <div className={styles.authBar} data-settings-auth-bar={isDesktop ? 'true' : undefined}>
-        <Space align="center" size={10}>
+        <div className={styles.authIdentity}>
           <div className={styles.authAvatar}>
             {authDisplaySeed.slice(0, 1).toUpperCase()}
           </div>
           <div className={styles.authMeta}>
-            <button className={styles.authNicknameButton} onClick={handleOpenNicknameDrawer} type="button">
+            <button
+              className={styles.authNicknameButton}
+              onClick={handleOpenNicknameDrawer}
+              title={nicknameDisplayValue || '设置昵称'}
+              type="button"
+            >
               {nicknameDisplayValue || '设置昵称'}
             </button>
             <Typography.Text className={styles.authEmail} ellipsis>
               {user?.email ?? '未登录'}
             </Typography.Text>
           </div>
-        </Space>
-        <Button icon={<LogoutOutlined />} onClick={handleLogout} type="text">
+        </div>
+        <Button className={styles.logoutButton} icon={<LogoutOutlined />} onClick={handleLogout} type="text">
           退出登录
         </Button>
       </div>

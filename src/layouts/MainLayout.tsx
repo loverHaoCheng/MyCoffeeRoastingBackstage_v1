@@ -376,7 +376,7 @@ export function MainLayout() {
 
         <Layout className={styles.main}>
           <div className={styles.viewportFrame} data-scaled={appDisplaySettings.scale < 0.999}>
-            <div className={styles.scrollViewport} ref={scrollViewportRef}>
+            <div className={styles.scrollViewport} data-app-scroll-viewport="true" ref={scrollViewportRef}>
               <GlobalPullToRefresh />
               <div
                 className={styles.scaleViewport}

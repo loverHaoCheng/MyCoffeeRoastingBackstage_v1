@@ -7,9 +7,15 @@
   will-change: transform;
   backface-visibility: hidden;
   transform: translate3d(0, 0, 0);
+  max-width: 100dvw;
+  max-height: 100dvh;
 }
 
 .drawer :global(.ant-drawer-content) {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
   backface-visibility: hidden;
   transform: translateZ(0);
 }
@@ -18,9 +24,20 @@
   backface-visibility: hidden;
 }
 
-.drawer :global(.ant-drawer-body),
 .drawer :global(.ant-drawer-header),
 .drawer :global(.ant-drawer-footer) {
+  flex: 0 0 auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer :global(.ant-drawer-body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 

@@ -236,6 +236,15 @@ describe('SettingsPage', () => {
     expect(loadQrCodeAssetMock).toHaveBeenCalledTimes(1);
   });
 
+  it('shows the remotely managed community QR code beside the author exchange action', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '进群交流 bugs' }));
+
+    expect(await screen.findByRole('img', { name: '进群交流 bugs 二维码' })).toBeInTheDocument();
+    expect(loadQrCodeAssetMock).toHaveBeenCalledWith('community');
+  });
+
   it('shows a retry action when a QR code fails to load', async () => {
     loadQrCodeAssetMock
       .mockRejectedValueOnce(new Error('asset unavailable'))

@@ -1,8 +1,12 @@
-export type QrCodeKey = 'author' | 'sponsor';
+export type QrCodeKey = 'author' | 'community' | 'sponsor';
+
+type BundledQrCodeKey = Exclude<QrCodeKey, 'community'>;
 
 export type QrCodeAssetLoader = () => Promise<{ default: string }>;
 
-export type QrCodeAssetLoaders = Record<QrCodeKey, QrCodeAssetLoader>;
+export type QrCodeAssetLoaders = Record<BundledQrCodeKey, QrCodeAssetLoader>;
+
+const COMMUNITY_QR_CODE_PATH = '/community-qr.png';
 
 const qrCodeLoaders: QrCodeAssetLoaders = {
   author: () => import('@/assets/settings-codes/author-code.webp'),
@@ -15,9 +19,9 @@ const qrCodeFallbackLoaders: QrCodeAssetLoaders = {
 };
 
 export const createQrCodeAssetLoader = (loaders: QrCodeAssetLoaders) => {
-  const pendingLoads = new Map<QrCodeKey, Promise<{ default: string }>>();
+  const pendingLoads = new Map<BundledQrCodeKey, Promise<{ default: string }>>();
 
-  return (code: QrCodeKey): Promise<{ default: string }> => {
+  return (code: BundledQrCodeKey): Promise<{ default: string }> => {
     const pendingLoad = pendingLoads.get(code);
 
     if (pendingLoad) {
@@ -38,7 +42,11 @@ const loadQrCodeAssetOnce = createQrCodeAssetLoader(qrCodeLoaders);
 const loadQrCodeFallbackAssetOnce = createQrCodeAssetLoader(qrCodeFallbackLoaders);
 
 export const loadQrCodeAsset = (code: QrCodeKey): Promise<{ default: string }> =>
-  loadQrCodeAssetOnce(code);
+  code === 'community'
+    ? Promise.resolve({ default: `${COMMUNITY_QR_CODE_PATH}?updated=${String(Date.now())}` })
+    : loadQrCodeAssetOnce(code);
 
 export const loadQrCodeFallbackAsset = (code: QrCodeKey): Promise<{ default: string }> =>
-  loadQrCodeFallbackAssetOnce(code);
+  code === 'community'
+    ? Promise.reject(new Error('Community QR code has no bundled fallback.'))
+    : loadQrCodeFallbackAssetOnce(code);

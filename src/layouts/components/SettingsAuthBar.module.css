@@ -37,16 +37,26 @@
   font-weight: 700;
 }
 
-.authMeta {
-  display: grid;
-  gap: 6px;
+.authIdentity {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
+.authMeta {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .authNicknameButton {
-  display: inline-flex;
-  width: fit-content;
-  max-width: min(58vw, 280px);
+  display: block;
+  width: 100%;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -56,6 +66,9 @@
   font-weight: 700;
   line-height: 1.1;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: opacity 160ms ease;
   appearance: none;
   -webkit-appearance: none;
@@ -72,10 +85,20 @@
 }
 
 .authEmail {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--app-text-secondary) !important;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.3;
+}
+
+.logoutButton {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .authDrawerField {

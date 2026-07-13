@@ -257,14 +257,14 @@
 }
 
 .qrActions {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
 .qrButton {
   min-width: 0;
-  flex: 1 1 0;
+  width: 100%;
 }
 
 .qrPanel {
@@ -422,7 +422,15 @@
   }
 
   .qrButton {
-    flex: 1 1 0;
+    width: 100%;
+  }
+
+  .qrActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .qrButton:last-child {
+    grid-column: 1 / -1;
   }
 
   .qrCard {

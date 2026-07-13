@@ -81,6 +81,12 @@
   touch-action: pan-y;
 }
 
+:global(:root[data-app-drawer-open='true']) .scrollViewport {
+  overflow-y: hidden;
+  overscroll-behavior-y: none;
+  touch-action: none;
+}
+
 .scaleViewport {
   --layout-content-scale: 1;
   margin: 0 auto;

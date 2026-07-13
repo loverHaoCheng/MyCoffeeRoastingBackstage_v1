@@ -67,6 +67,7 @@ staging.easybake.top
 /var/www/easybake-releases
 /var/www/easybake-staging
 /var/www/easybake-staging-releases
+/var/www/easybake-assets/community-qr.png
 
 /opt/easybake-auth-bff
 /opt/easybake-auth-bff-staging
@@ -76,6 +77,8 @@ staging.easybake.top
 ```
 
 生产环境和测试环境不得共用 PocketBase 数据目录。测试环境可以从生产环境定期复制脱敏数据，也可以使用专门的测试账号手工构造数据。
+
+正式站与测试站可共用只读的微信群二维码文件 `/var/www/easybake-assets/community-qr.png`。该文件不属于任一前端版本目录，使用本机 `./update_community_qr.sh <png-path>` 上传后立即生效，不需要重新发布任何环境。
 
 ## 端口约定
 

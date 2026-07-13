@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createQrCodeAssetLoader,
+  loadQrCodeAsset,
   type QrCodeAssetLoaders,
 } from '@/modules/settings/services/qrCodeAsset.service';
 
@@ -43,5 +44,11 @@ describe('createQrCodeAssetLoader', () => {
     await expect(loadQrCodeAsset('author')).resolves.toEqual({ default: 'author-code.webp' });
 
     expect(authorLoader).toHaveBeenCalledTimes(2);
+  });
+
+  it('loads the community QR code from the server-managed path', async () => {
+    const asset = await loadQrCodeAsset('community');
+
+    expect(asset.default).toMatch(/^\/community-qr\.png\?updated=\d+$/);
   });
 });

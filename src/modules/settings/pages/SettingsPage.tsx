@@ -32,6 +32,10 @@ const qrCodeEntries: Record<
     alt: '作者交流二维码',
     buttonLabel: '和作者交流一下',
   },
+  community: {
+    alt: '进群交流 bugs 二维码',
+    buttonLabel: '进群交流 bugs',
+  },
   sponsor: {
     alt: '赞助支持二维码',
     buttonLabel: '请作者喝杯咖啡',
@@ -82,7 +86,7 @@ export function SettingsPage() {
   ]);
 
   const loadQrCode = (code: QrCodeKey) => {
-    if (qrCodeSources[code]) {
+    if (code !== 'community' && qrCodeSources[code]) {
       return;
     }
 
@@ -111,6 +115,14 @@ export function SettingsPage() {
   };
 
   const handleQrCodeImageError = (code: QrCodeKey) => {
+    if (code === 'community') {
+      setQrCodeLoadErrors((current) => ({
+        ...current,
+        [code]: '群二维码暂时不可用，请稍后重试。',
+      }));
+      return;
+    }
+
     if (qrCodeFallbackTried[code]) {
       setQrCodeLoadErrors((current) => ({
         ...current,
