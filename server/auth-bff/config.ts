@@ -32,6 +32,7 @@ export const BUSINESS_COLLECTIONS = new Set([
   'green_beans',
   'green_bean_purchase_batches',
   'roast_batches',
+  'roast_curve_records',
   'roast_profiles',
   'roast_records',
 ]);
@@ -42,6 +43,7 @@ export const REALTIME_SUBSCRIPTIONS = new Set([
   'green_beans/*',
   'green_bean_purchase_batches/*',
   'roast_batches/*',
+  'roast_curve_records/*',
   'roast_profiles/*',
 ]);
 

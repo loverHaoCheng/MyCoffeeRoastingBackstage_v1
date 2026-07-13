@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export { roastPlanJsonSchema, roastPlanJsonStepSchema } from './roastPlanJson.schema';
+export { hibeanRoastCurveSchema } from './hibeanRoastCurve.schema';
 
 export const roastPlanSchema = z.object({
   name: z.string().min(1),

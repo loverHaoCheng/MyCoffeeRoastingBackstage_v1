@@ -202,7 +202,11 @@ const resolveSaleUnitWeight = (bean: Bean | null): string => {
   return '';
 };
 
-const resolveSaleUnitPrice = (bean: Bean | null): string => {
+const resolveSaleUnitPrice = (batch: RoastBatchRecord, bean: Bean | null): string => {
+  if (batch.finalSaleUnitPrice != null && batch.finalSaleUnitPrice > 0) {
+    return String(batch.finalSaleUnitPrice);
+  }
+
   if (bean?.defaultSaleUnitPrice != null && bean.defaultSaleUnitPrice > 0) {
     return String(bean.defaultSaleUnitPrice);
   }
@@ -261,7 +265,7 @@ export const buildMirrorData = (
   blendComponent: CoffeeBeanBlendComponent,
 ): CoffeeBeanMirrorData => {
   const capacity = resolveSaleUnitWeight(bean);
-  const price = batch.salesMode === 'selfUse' ? resolveSelfUsePrice(batch, bean) : resolveSaleUnitPrice(bean);
+  const price = batch.salesMode === 'selfUse' ? resolveSelfUsePrice(batch, bean) : resolveSaleUnitPrice(batch, bean);
   const remaining = capacity || (batch.outputWeightGrams > 0 ? String(batch.outputWeightGrams) : '');
   const brand = getTrimmedText(bean?.supplierName) || getTrimmedText(bean?.name);
   const imageUrls = batch.imageUrls?.filter((url): url is string => typeof url === 'string').map((url) => url.trim()) ?? [];

@@ -1,16 +1,23 @@
-.creator {
+.form {
   display: grid;
-  gap: 24px;
-  padding: 4px 0;
+  gap: 18px;
+  padding: 16px 0 0;
+}
+
+.section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 22px;
+  background: var(--app-bg-elevated);
 }
 
 .section h4 {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--app-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  margin: 0 0 2px;
+  color: var(--app-text);
+  font-size: 16px;
+  line-height: 1.3;
 }
 
 .fieldGrid {
@@ -21,11 +28,11 @@
 }
 
 .field {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   flex: 1 1 40%;
   max-width: 40%;
-  gap: 4px;
+  min-width: 0;
+  gap: 7px;
 }
 
 .field:only-child {
@@ -34,8 +41,9 @@
 }
 
 .fieldLabel {
-  font-size: 12px;
   color: var(--app-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .field :global(.ant-input),
@@ -47,26 +55,30 @@
   width: 100%;
 }
 
+.field :global(.ant-input),
+.field :global(.ant-input-number),
+.field :global(.ant-input-number-affix-wrapper),
+.field :global(.ant-select-selector),
+.field :global(.ant-picker),
+.field :global(.ant-input-affix-wrapper) {
+  border-radius: 14px;
+}
+
 .field :global(.ant-input-number-affix-wrapper .ant-input-number) {
   width: 100%;
 }
 
 .fieldValue {
-  font-size: 14px;
   color: var(--app-text);
+  font-size: 14px;
   font-weight: 500;
-  padding: 6px 0;
 }
 
-.imageUploadPlaceholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 120px;
-  border: 2px dashed var(--app-border-soft);
-  border-radius: 12px;
+.inlineHint {
+  margin-top: 8px;
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .submitButton {

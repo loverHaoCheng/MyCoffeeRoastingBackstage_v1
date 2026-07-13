@@ -164,6 +164,7 @@ export const toPocketBaseRoastBatchPayload = (
   if (input.developmentRatio !== undefined) payload.development_ratio = input.developmentRatio;
   if (input.firstCrackTime !== undefined) payload.first_crack_time = input.firstCrackTime;
   if (input.totalRoastTime !== undefined) payload.total_roast_time = input.totalRoastTime;
+  if (input.finalSaleUnitPrice !== undefined) payload.final_sale_unit_price = input.finalSaleUnitPrice ?? null;
   if (input.notes !== undefined) payload.notes = toNullableStringValue(input.notes);
   if (input.imageUrls !== undefined) payload.image_urls = input.imageUrls ?? [];
   if (input.salesMode !== undefined) payload.sales_mode = input.salesMode;
@@ -234,6 +235,7 @@ export const mapRemoteRoastBatchRecord = (record: Record<string, unknown>): Roas
   developmentRatio: getOptionalNumberField(record.development_ratio),
   firstCrackTime: getOptionalNumberField(record.first_crack_time),
   totalRoastTime: getOptionalNumberField(record.total_roast_time),
+  finalSaleUnitPrice: getOptionalNumberField(record.final_sale_unit_price),
   notes: getOptionalStringField(record.notes),
   imageUrls: getStringArrayField(record.image_urls),
   salesMode: getSalesModeField(record.sales_mode),

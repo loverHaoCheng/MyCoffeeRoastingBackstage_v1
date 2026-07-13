@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { seedBeans } from '@/modules/bean/constants';
 import { beanCacheService } from '@/modules/bean/services';
+import { beanService } from '@/modules/bean/services/bean.service';
 
 describe('beanCacheService', () => {
   it('keeps bean cache in runtime memory and returns status metadata', () => {
@@ -15,6 +16,13 @@ describe('beanCacheService', () => {
       source: 'mock',
       status: 'cached',
     });
+  });
+
+  it('uses cached remote beans as bootstrapped query data', () => {
+    beanCacheService.clear();
+    beanCacheService.save(seedBeans.slice(0, 3), 'remote');
+
+    expect(beanService.getBootstrappedBeans()).toHaveLength(3);
   });
 
   it('marks fallback without losing the cached beans', () => {

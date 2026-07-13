@@ -7,6 +7,14 @@ import { parseJsonBody, parseJsonResponse, sendJson, sendMethodNotAllowed } from
 import { buildPocketBaseUrl, proxyPocketBaseRequest, sendUpstreamError } from './pocketbase-client.js';
 import { isRecord, toTrimmedString } from './utils.js';
 
+const isAbortError = (error: unknown): boolean => {
+  if (error instanceof DOMException) {
+    return error.name === 'AbortError';
+  }
+
+  return error instanceof Error && error.name === 'AbortError';
+};
+
 export const handleRealtimeRequest = async (
   request: IncomingMessage,
   response: ServerResponse,
@@ -70,14 +78,24 @@ export const handleRealtimeRequest = async (
   response.once('close', () => {
     controller.abort();
   });
-  const upstream = await fetch(buildPocketBaseUrl('/api/realtime'), {
-    headers: {
-      Accept: 'text/event-stream',
-      Authorization: token,
-    },
-    method: 'GET',
-    signal: controller.signal,
-  });
+  let upstream: Response;
+
+  try {
+    upstream = await fetch(buildPocketBaseUrl('/api/realtime'), {
+      headers: {
+        Accept: 'text/event-stream',
+        Authorization: token,
+      },
+      method: 'GET',
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (isAbortError(error) || response.destroyed) {
+      return;
+    }
+
+    throw error;
+  }
 
   if (!upstream.ok || !upstream.body) {
     const payload = await parseJsonResponse(upstream);
@@ -91,5 +109,15 @@ export const handleRealtimeRequest = async (
     'Content-Type': upstream.headers.get('content-type') ?? 'text/event-stream; charset=utf-8',
     'X-Accel-Buffering': 'no',
   });
-  Readable.fromWeb(upstream.body).pipe(response);
+  const upstreamStream = Readable.fromWeb(upstream.body);
+
+  upstreamStream.on('error', (error: unknown) => {
+    if (isAbortError(error) || response.destroyed || response.writableEnded) {
+      return;
+    }
+
+    response.destroy(error instanceof Error ? error : undefined);
+  });
+
+  upstreamStream.pipe(response);
 };

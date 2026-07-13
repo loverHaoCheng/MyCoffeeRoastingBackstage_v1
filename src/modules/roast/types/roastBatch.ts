@@ -27,6 +27,8 @@ export interface RoastBatchRecord {
   firstCrackTime?: number;
   /** 总烘焙时间（秒） */
   totalRoastTime?: number;
+  /** 本次销售单份最终定价，仅影响本次烘焙记录收入 */
+  finalSaleUnitPrice?: number | null;
   /** 备注 */
   notes?: string;
   /** 图片 URL 列表 */
@@ -53,6 +55,7 @@ export interface RoastBatchCreateInput {
   developmentRatio?: number;
   firstCrackTime?: number;
   totalRoastTime?: number;
+  finalSaleUnitPrice?: number | null;
   notes?: string;
   imageUrls?: string[];
   status?: 'completed' | 'draft';
@@ -73,6 +76,7 @@ export interface RoastBatchUpdateInput {
   developmentRatio?: number;
   firstCrackTime?: number;
   totalRoastTime?: number;
+  finalSaleUnitPrice?: number | null;
   notes?: string;
   imageUrls?: string[];
   status?: 'completed' | 'draft';

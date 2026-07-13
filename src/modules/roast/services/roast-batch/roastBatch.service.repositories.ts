@@ -254,6 +254,7 @@ export const roastBatchRemoteSync = async (): Promise<{ downloaded: number; uplo
     await repository.createBatch({
       developmentRatio: batch.developmentRatio,
       firstCrackTime: batch.firstCrackTime,
+      finalSaleUnitPrice: batch.finalSaleUnitPrice,
       greenBeanId: batch.greenBeanId,
       greenBeanName: batch.greenBeanName,
       imageUrls: batch.imageUrls,

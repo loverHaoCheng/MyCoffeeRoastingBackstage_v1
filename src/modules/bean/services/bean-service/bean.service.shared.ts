@@ -1,3 +1,4 @@
+import { beanCacheService } from '@/modules/bean/services/beanCache.service';
 import { localGreenBeanService } from '@/modules/bean/services/localGreenBean.service';
 import type { ApiResponse } from '@/services/api.types';
 import type { Bean } from '@/types/domain';
@@ -79,7 +80,7 @@ export const mergeBeans = (beans: Bean[]): Bean[] => {
 };
 
 export const getBootstrappedBeans = (): Bean[] => {
-  return mergeBeans([]);
+  return mergeBeans(beanCacheService.getBeans() ?? []);
 };
 
 export const mapRemoteBeanRecordToBean = (record: RemoteBeanRecord): Bean => ({

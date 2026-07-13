@@ -116,6 +116,10 @@ describe('PocketBase auth BFF contract', () => {
       body: { message: '未找到登录态，请重新登录。' },
       status: 401,
     });
+    await expect(requestGateway({ path: '/api/collections/roast_curve_records/records' })).resolves.toMatchObject({
+      body: { message: '未找到登录态，请重新登录。' },
+      status: 401,
+    });
     await expect(requestGateway({ method: 'POST', path: '/api/realtime' })).resolves.toMatchObject({
       body: { message: '未找到登录态，请重新登录。' },
       status: 401,

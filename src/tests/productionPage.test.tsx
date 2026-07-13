@@ -35,6 +35,14 @@ vi.mock('@/modules/roast/hooks', () => ({
   useDeleteRoastBatch: () => ({
     mutateAsync: vi.fn(),
   }),
+  useImportHiBeanRoastCurve: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
+  }),
+  useRoastCurve: () => ({
+    data: null,
+    isFetching: false,
+  }),
   useRoastBatches: () => ({
     data: [
       {
@@ -117,6 +125,7 @@ describe('ProductionPage (烘焙历史)', () => {
     expect(screen.getByRole('combobox', { name: '烘焙程度' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '去向' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '本次最终定价' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '烘焙计划' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '入豆量' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '出豆量' })).toBeInTheDocument();
@@ -133,6 +142,7 @@ describe('ProductionPage (烘焙历史)', () => {
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '熟豆名称' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '去向' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '本次最终定价' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '烘焙计划' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '入豆量' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '出豆量' })).toBeInTheDocument();
@@ -140,5 +150,7 @@ describe('ProductionPage (烘焙历史)', () => {
     expect(screen.getByRole('spinbutton', { name: '一爆时间' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '总烘焙时间' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '备注' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '导入 HiBean JSON' })).toBeInTheDocument();
+    expect(screen.queryByText('图片记录（预留接口）')).not.toBeInTheDocument();
   });
 });

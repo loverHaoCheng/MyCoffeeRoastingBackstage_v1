@@ -1785,6 +1785,19 @@
         "type": "number"
       },
       {
+        "help": "",
+        "hidden": false,
+        "id": "numberfinalsale001",
+        "max": null,
+        "min": 0,
+        "name": "final_sale_unit_price",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
         "autogeneratePattern": "",
         "help": "",
         "hidden": false,

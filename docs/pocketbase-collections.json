@@ -913,6 +913,16 @@
         },
         {
           "system": false,
+          "id": "fld_final_sale_unit_price",
+          "name": "final_sale_unit_price",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
           "id": "fld_notes",
           "name": "notes",
           "type": "text",

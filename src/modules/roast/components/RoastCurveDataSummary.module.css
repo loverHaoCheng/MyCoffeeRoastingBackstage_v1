@@ -1,0 +1,105 @@
+.summary {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.summaryBlock,
+.detailGrid > .summaryBlock {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.summaryBlock h5 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metricGrid span,
+.eventList span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-bg-soft);
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.metricGrid b,
+.eventList b {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eventList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dataList {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-border);
+}
+
+.dataRow {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.34fr) minmax(0, 1fr);
+  min-width: 0;
+  background: var(--app-bg-soft);
+}
+
+.dataRow dt,
+.dataRow dd {
+  margin: 0;
+  min-width: 0;
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dataRow dt {
+  color: var(--app-text-secondary);
+  font-weight: 600;
+}
+
+.dataRow dd {
+  color: var(--app-text);
+  overflow-wrap: anywhere;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 767px) {
+  .metricGrid,
+  .eventList,
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}

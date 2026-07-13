@@ -212,6 +212,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `development_ratio` | number | 发展比 |
 | `first_crack_time` | number | 一爆时间 |
 | `total_roast_time` | number | 总烘焙时间 |
+| `final_sale_unit_price` | number | 本次销售单份最终定价，仅影响本次烘焙记录收入 |
 | `notes` | text | 备注 |
 | `image_urls` | json | 图片地址数组 |
 | `status` | select | `completed` / `draft` |
@@ -222,6 +223,36 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 
 - `owner,roast_date`
 - `owner,green_bean_id`
+
+### `roast_curve_records`
+
+用途：保存烘焙记录绑定的当前有效曲线。一个 `roast_batches` 记录只保留一条曲线；重新导入 HiBean JSON 时覆盖当前记录，不保留历史版本。
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户 |
+| `roast_batch_id` | relation(roast_batches) | 关联烘焙记录，建议唯一 |
+| `source` | text | 曲线来源，首版固定 `hibean` |
+| `source_version` | text | HiBean 导出版本 |
+| `sample_interval` | number | 采样间隔，单位秒 |
+| `temperature_unit` | text | 温度单位，首版通常为 `C` |
+| `curve_data` | json | 标准化曲线点数组 |
+| `event_list` | json | 标准化事件数组 |
+| `phase_list` | json | 阶段数组 |
+| `device_info` | json | 设备快照 |
+| `bean_snapshot` | json | 导出文件中的生豆快照 |
+| `metrics` | json | 解析出的总时长、一爆、发展比、下豆温等指标 |
+| `original_file_name` | text | 导入文件名 |
+| `imported_at` | text | 导入时间 |
+| `created_at` | text | 兼容前端时间戳 |
+| `updated_at` | text | 兼容前端时间戳 |
+
+建议索引：
+
+- `owner,roast_batch_id`
+- `roast_batch_id` 唯一索引，保证一个烘焙记录只有一条当前有效曲线
 
 ### `roast_records`
 

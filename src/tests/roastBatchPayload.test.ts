@@ -14,10 +14,12 @@ describe('roastBatch PocketBase payload mapping', () => {
       outputWeightGrams: 172,
       roastDate: '2026-07-07T10:00:00.000Z',
       roastLevel: '中焙',
+      finalSaleUnitPrice: 68.5,
     });
 
     expect(payload.green_bean_id).toBe('bean-1');
     expect(payload.green_bean_name).toBe('耶加雪菲 G1');
+    expect(payload.final_sale_unit_price).toBe(68.5);
     expect(payload.status).toBe('completed');
   });
 
@@ -27,6 +29,7 @@ describe('roastBatch PocketBase payload mapping', () => {
       roastPlanId: 'plan-1',
       roastPlanName: '测试计划',
       roastedBeanName: '花魁 SOE',
+      finalSaleUnitPrice: null,
       status: 'draft',
     });
 
@@ -34,6 +37,7 @@ describe('roastBatch PocketBase payload mapping', () => {
     expect(payload.roast_plan_id).toBe('plan-1');
     expect(payload.roast_plan_name).toBe('测试计划');
     expect(payload.roasted_bean_name).toBe('花魁 SOE');
+    expect(payload.final_sale_unit_price).toBeNull();
     expect(payload.status).toBe('draft');
   });
 });

@@ -62,6 +62,7 @@ describe('calculateFinanceOverview', () => {
         createdAt: '2026-07-08T09:00:00.000Z',
         developmentRatio: 12,
         firstCrackTime: 380,
+        finalSaleUnitPrice: 92,
         greenBeanId: 'bean-1',
         greenBeanName: '耶加雪菲',
         id: 'batch-1',
@@ -131,10 +132,10 @@ describe('calculateFinanceOverview', () => {
       },
     });
 
-    expect(overview.realizedIncome).toBe(80);
+    expect(overview.realizedIncome).toBe(92);
     expect(overview.totalExpenses).toBe(240);
-    expect(overview.grossProfit).toBe(-140);
-    expect(overview.operatingProfit).toBe(-160);
+    expect(overview.grossProfit).toBe(-128);
+    expect(overview.operatingProfit).toBe(-148);
     expect(overview.estimatedRevenue).toBe(1280);
     expect(overview.expenseRecordCount).toBe(4);
     expect(overview.incomeRecordCount).toBe(1);

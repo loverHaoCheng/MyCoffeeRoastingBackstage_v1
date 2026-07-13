@@ -1,0 +1,124 @@
+.chartWrap {
+  display: grid;
+  min-width: 0;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 760 / 420;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-bg-soft);
+}
+
+.chartSurface {
+  fill: var(--app-bg-soft);
+}
+
+.axis {
+  stroke: rgba(38, 38, 38, 0.18);
+  stroke-width: 1;
+}
+
+.axisLabel {
+  fill: var(--app-text-secondary);
+  font-size: 12px;
+}
+
+.rorAxisLabel {
+  fill: var(--app-text-secondary);
+  font-size: 13px;
+}
+
+.gridLine {
+  stroke: rgba(38, 38, 38, 0.1);
+  stroke-width: 1;
+}
+
+.minuteLine {
+  stroke: rgba(38, 38, 38, 0.12);
+  stroke-dasharray: 4 6;
+  stroke-width: 1;
+}
+
+.minuteLabel {
+  fill: var(--app-text-secondary);
+  font-size: 14px;
+}
+
+.eventLine {
+  stroke: rgba(38, 38, 38, 0.18);
+  stroke-dasharray: 4 5;
+  stroke-width: 1;
+}
+
+.eventLabel {
+  fill: var(--app-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eventMarker {
+  fill: #f43f5e;
+  stroke: var(--app-bg-elevated);
+  stroke-width: 2;
+}
+
+.tempLine {
+  stroke: #f43f5e;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.8;
+}
+
+.rorLine {
+  stroke: #f59e0b;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
+.legend {
+  fill: var(--app-text-secondary);
+  font-size: 14px;
+}
+
+.phaseSegment {
+  opacity: 0.82;
+}
+
+.phaseLabel {
+  fill: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.tempDot {
+  fill: #f43f5e;
+}
+
+.rorDot {
+  fill: #f59e0b;
+}
+
+.powerDot {
+  fill: #e11d48;
+}
+
+.drumDot {
+  fill: #4f46e5;
+}
+
+.baseLine {
+  stroke: rgba(38, 38, 38, 0.14);
+  stroke-width: 1;
+}
+
+.empty {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+}

@@ -116,7 +116,7 @@ const buildRoastBatchRevenueRecords = (
     })
     .map((batch) => {
       const bean = beanMap.get(batch.greenBeanId);
-      const saleUnitPrice = bean?.defaultSaleUnitPrice ?? 0;
+      const saleUnitPrice = batch.finalSaleUnitPrice ?? bean?.defaultSaleUnitPrice ?? 0;
       const saleUnitCount = 1;
       const amount = saleUnitPrice > 0 ? toMoney(saleUnitPrice) : 0;
       const roastedBeanName = batch.roastedBeanName?.trim();

@@ -111,8 +111,7 @@ export function ProductionPage() {
     });
   };
 
-  const handleCreate = (input: RoastBatchCreateInput) => {
-    setCreationDrawerOpen(false);
+  const handleCreate = async (input: RoastBatchCreateInput): Promise<RoastBatchRecord> => {
     submissionBackupService.save('create', input, 'roastBatch');
     const optimisticBatch = roastBatchService.createOptimisticBatch(input);
 
@@ -123,20 +122,18 @@ export function ProductionPage() {
       ]);
     });
 
-    const createTask = (async () => {
-      try {
-        const response = await roastBatchService.createBatch(input);
-        const nextBatches = roastBatchService.finalizeOptimisticBatch(optimisticBatch.id, response.data);
+    try {
+      const response = await roastBatchService.createBatch(input);
+      const nextBatches = roastBatchService.finalizeOptimisticBatch(optimisticBatch.id, response.data);
 
-        queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
-      } catch (error: unknown) {
-        const nextBatches = roastBatchService.rollbackOptimisticBatch(optimisticBatch.id);
-        queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
-        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，已回滚本次新建，请检查后重试。'));
-      }
-    })();
+      queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
 
-    void createTask;
+      return response.data;
+    } catch (error: unknown) {
+      const nextBatches = roastBatchService.rollbackOptimisticBatch(optimisticBatch.id);
+      queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
+      throw error;
+    }
   };
 
   const handleUpdate = (batchId: string, input: RoastBatchUpdateInput) => {
@@ -232,7 +229,7 @@ export function ProductionPage() {
             setCreationDrawerOpen(false);
           }}
           onCreate={(input) => {
-            handleCreate(input);
+            return handleCreate(input);
           }}
         />
       </AppDrawer>

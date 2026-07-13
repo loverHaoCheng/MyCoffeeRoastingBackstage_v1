@@ -19,6 +19,7 @@ describe('roastedCoffeeBeanMirrorService', () => {
       id: 'batch-1',
       greenBeanId: 'bean-1',
       greenBeanName: '测试生豆',
+      finalSaleUnitPrice: 12.5,
       roastDate: '2026-07-06T10:29:00+00:00',
       roastLevel: '中焙',
       inputWeightGrams: 200,
@@ -70,7 +71,7 @@ describe('roastedCoffeeBeanMirrorService', () => {
     expect(mirrorData.name).toBe('测试熟豆 水洗');
     expect(mirrorData.sourceGreenBeanId).toBe('bean-1');
     expect(mirrorData.purchaseDate).toBe('2026-07-06T00:00:00.000Z');
-    expect(mirrorData.price).toBe('10');
+    expect(mirrorData.price).toBe('12.5');
     expect(mirrorData.capacity).toBe('170');
     expect(mirrorData.remaining).toBe('170');
     expect(mirrorData.flavor).toEqual(['柑橘', '花香']);
