@@ -50,7 +50,7 @@ describe('router', () => {
 
     expect(await screen.findByLabelText('生豆库存概览', {}, { timeout: 3_000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'dashboard 工作台' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'database 生豆库存' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'hdd 生豆库存' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'setting 设置' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '打开设置面板' })).toBeInTheDocument();
   });

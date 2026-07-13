@@ -106,4 +106,28 @@ describe('appDisplaySettingsSyncService', () => {
       }),
     );
   });
+
+  it('normalizes a PocketBase timestamp before saving remote display settings in memory', async () => {
+    const localSettings = normalizeAppDisplaySettings({
+      ...createDefaultAppDisplaySettings(),
+      updatedAt: '2026-07-04T08:00:00.000Z',
+    });
+
+    settingsSyncMocks.loadRecord.mockResolvedValue({
+      id: 'record-1',
+      key: 'app_display_settings',
+      updated_at: '2026-07-04 09:00:00.000Z',
+      value: {
+        cardDisplaySettings: localSettings.cardDisplaySettings,
+      },
+    });
+
+    await appDisplaySettingsSyncService.sync(localSettings);
+
+    expect(displaySettingsMocks.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        updatedAt: '2026-07-04T09:00:00.000Z',
+      }),
+    );
+  });
 });

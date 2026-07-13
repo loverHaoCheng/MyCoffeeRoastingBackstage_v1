@@ -37,9 +37,25 @@ VITE_DEV_API_PROXY_TARGET=https://www.easybake.top
 
 ## 正式发布
 
+先发布到受 Basic Auth 保护的测试环境：
+
+```bash
+./deploy_test.sh
+```
+
+脚本默认会提示输入 `test.easybake.top` 的 Basic Auth 密码，并把前端、BFF 分别发布到测试服务。若希望本机免交互输入，可创建不会提交到 Git 的 `.deploy_test.local`：
+
+```bash
+DEPLOY_HTTP_PASSWORD="你的测试站 Basic Auth 密码"
+```
+
+测试环境通过发布前验收后，再执行正式发布：
+
 ```bash
 ./deploy.sh
 ```
+
+发布脚本会在前端构建后扫描即将上传的静态快照，发现 `.env*`、私钥文件、部署密码或服务端密钥标记时会中止发布。不要手工上传包含 `dist/server/`、本地 `.env.local` 或 `.deploy_test.local` 的目录。
 
 发布脚本会先保存前端构建快照，再构建、上传并验证服务器 BFF；BFF 以整个 `dist/server/` 目录发布，探测失败时自动恢复前一个服务端目录。前端发布使用版本目录和原子入口链接切换，公网验收失败会自动切回上一版本。随后验证版本号、`/api/health` 以及无凭据认证端点。验证通过后，用户只需要通过 HTTPS 443 访问 `https://www.easybake.top`。
 

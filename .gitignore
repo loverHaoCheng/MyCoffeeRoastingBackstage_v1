@@ -18,12 +18,21 @@ coverage/
 !.env.example
 !.env.sample
 *.local
+.env*.local
 
 # secrets and local certificates
+.deploy*.local
+.deploy.local
+.netrc
+.npmrc
+*.credentials
 *.pem
 *.key
 *.crt
 *.p12
+*.secret
+*.secrets
+*.token
 certs/
 
 # logs

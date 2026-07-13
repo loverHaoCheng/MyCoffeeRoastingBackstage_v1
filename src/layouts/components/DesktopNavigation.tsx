@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import type { AppNavigationItem, AppRouteKey } from '@/router/navigation';
 
 import styles from './DesktopNavigation.module.css';
-import { iconByRoute } from './navigationIcons';
+import { getNavigationIcon } from './navigationIcons';
 
 const { Sider } = Layout;
 
@@ -30,10 +30,10 @@ export function DesktopNavigation({
     () =>
       items.map((item) => ({
         key: item.key,
-        icon: iconByRoute[item.key],
+        icon: getNavigationIcon(item.key, selectedKey === item.key),
         label: item.label,
       })),
-    [items],
+    [items, selectedKey],
   );
 
   return (

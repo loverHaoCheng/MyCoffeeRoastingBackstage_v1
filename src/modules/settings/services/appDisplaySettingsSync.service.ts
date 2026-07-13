@@ -8,6 +8,17 @@ import { logger } from '@/shared/logger/logger';
 const appDisplaySettingsKey = 'app_display_settings';
 type AppDisplaySettingsSyncPayload = Pick<AppDisplaySettings, 'cardDisplaySettings' | 'updatedAt'>;
 
+const normalizeIsoDatetime = (value: null | string | undefined): null | string => {
+  if (!value) {
+    return null;
+  }
+
+  const normalizedValue = value.replace(/^(\d{4}-\d{2}-\d{2}) /, '$1T');
+  const timestamp = new Date(normalizedValue).getTime();
+
+  return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString();
+};
+
 const toUpdatedAtTimestamp = (value: null | string): number => {
   if (!value) {
     return Number.NEGATIVE_INFINITY;
@@ -55,7 +66,7 @@ const parseRemoteSettings = (record: AppSettingRecord): AppDisplaySettingsSyncPa
 
   const normalized = normalizeAppDisplaySettings({
     ...result.data,
-    updatedAt: result.data.updatedAt ?? record.updated_at ?? null,
+    updatedAt: normalizeIsoDatetime(result.data.updatedAt ?? record.updated_at),
   });
 
   return toSyncPayload(normalized);

@@ -10,9 +10,18 @@
 }
 
 .recordLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: inherit;
   text-decoration: none;
   text-underline-offset: 3px;
+}
+
+.recordIcon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
 }
 
 .recordLink:hover,

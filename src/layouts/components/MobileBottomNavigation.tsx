@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import type { AppNavigationItem, AppRouteKey } from '@/router/navigation';
 
 import styles from './MobileBottomNavigation.module.css';
-import { iconByRoute } from './navigationIcons';
+import { getNavigationIcon } from './navigationIcons';
 
 interface MobileBottomNavigationProps {
   activeIndex: number;
@@ -48,7 +48,7 @@ export function MobileBottomNavigation({
                 }}
                 type="button"
               >
-                <span className={styles.bottomNavIcon}>{iconByRoute[item.key]}</span>
+                <span className={styles.bottomNavIcon}>{getNavigationIcon(item.key, selectedKey === item.key)}</span>
                 <span className={styles.bottomNavLabel}>{item.shortLabel}</span>
               </button>
             ))}

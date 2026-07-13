@@ -6,6 +6,10 @@ APP_URL="${APP_URL:-https://www.easybake.top}"
 REMOTE_TARGET="${REMOTE_TARGET:-easybake:/var/www/easybake/}"
 BFF_REMOTE_TARGET="${BFF_REMOTE_TARGET:-easybake:/opt/easybake-auth-bff/dist/server/pocketbase-auth-bff.js}"
 BFF_SERVICE_NAME="${BFF_SERVICE_NAME:-easybake-auth-bff}"
+BFF_LOCAL_PORT="${BFF_LOCAL_PORT:-3001}"
+DEPLOY_ENVIRONMENT_NAME="${DEPLOY_ENVIRONMENT_NAME:-Production}"
+DEPLOY_HTTP_USER="${DEPLOY_HTTP_USER:-}"
+DEPLOY_HTTP_PASSWORD="${DEPLOY_HTTP_PASSWORD:-}"
 REMOTE_SSH_TARGET="${REMOTE_SSH_TARGET:-${BFF_REMOTE_TARGET%%:*}}"
 BFF_REMOTE_PATH="${BFF_REMOTE_PATH:-${BFF_REMOTE_TARGET#*:}}"
 BFF_REMOTE_DIR="${BFF_REMOTE_DIR:-$(dirname "${BFF_REMOTE_PATH}")}"
@@ -24,6 +28,97 @@ BFF_BACKUP_DIR="${BFF_REMOTE_DIR}.previous"
 DEPLOY_LOCK_OWNER="$(hostname)-$$-$(date -u +%Y%m%dT%H%M%SZ)"
 DEPLOY_LOCK_CREATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 DEPLOY_LOCK_ACQUIRED=false
+
+if [[ -n "${DEPLOY_HTTP_USER}" && -z "${DEPLOY_HTTP_PASSWORD}" ]]; then
+  read -r -s -p "Basic Auth password for ${DEPLOY_HTTP_USER}: " DEPLOY_HTTP_PASSWORD
+  echo
+fi
+
+if [[ -z "${DEPLOY_HTTP_USER}" && -n "${DEPLOY_HTTP_PASSWORD}" ]]; then
+  echo "DEPLOY_HTTP_USER is required when DEPLOY_HTTP_PASSWORD is provided." >&2
+  exit 1
+fi
+
+if [[ -n "${DEPLOY_HTTP_USER}" ]]; then
+  if [[ -z "${DEPLOY_HTTP_PASSWORD}" ]]; then
+    echo "Basic Auth password cannot be empty." >&2
+    exit 1
+  fi
+fi
+
+public_curl() {
+  if [[ -n "${DEPLOY_HTTP_USER}" ]]; then
+    curl --user "${DEPLOY_HTTP_USER}:${DEPLOY_HTTP_PASSWORD}" "$@"
+    return
+  fi
+
+  curl "$@"
+}
+
+validate_public_vite_env() {
+  local leaked_public_env
+
+  leaked_public_env="$(
+    env | sed -n 's/^\(VITE_[^=]*\(SECRET\|PASSWORD\|TOKEN\|PRIVATE\|SUPERUSER\|QINIU\|AUTH\|KEY\)[^=]*\)=.*/\1/p' | sort
+  )"
+
+  if [[ -n "${leaked_public_env}" ]]; then
+    echo "❌ Refusing to build with secret-like VITE_* variables." >&2
+    echo "Vite exposes VITE_* variables to the browser. Move these values to server environment variables:" >&2
+    echo "${leaked_public_env}" >&2
+    exit 1
+  fi
+}
+
+verify_frontend_release_has_no_secrets() {
+  local secret_artifact
+  local sensitive_patterns
+  local pattern
+
+  secret_artifact="$(
+    find "${FRONTEND_RELEASE_DIR}" \
+      \( -name '.env' \
+      -o -name '.env.*' \
+      -o -name '.deploy*.local' \
+      -o -name '*.pem' \
+      -o -name '*.key' \
+      -o -name '*.crt' \
+      -o -name '*.p12' \
+      -o -name '*.secret' \
+      -o -name '*.secrets' \
+      -o -name '*.token' \
+      -o -name '*.credentials' \) \
+      -print \
+      -quit
+  )"
+
+  if [[ -n "${secret_artifact}" ]]; then
+    echo "❌ Frontend release contains a secret-like file: ${secret_artifact}" >&2
+    exit 1
+  fi
+
+  sensitive_patterns=(
+    "DEPLOY_HTTP_PASSWORD"
+    "PB_SUPERUSER_EMAIL"
+    "PB_SUPERUSER_PASSWORD"
+    "QINIU_QWEN_API_KEY"
+    "BEGIN PRIVATE KEY"
+    "BEGIN RSA PRIVATE KEY"
+    ".deploy_test.local"
+  )
+
+  for pattern in "${sensitive_patterns[@]}"; do
+    if grep -R -I -F -q -- "${pattern}" "${FRONTEND_RELEASE_DIR}"; then
+      echo "❌ Frontend release contains sensitive marker: ${pattern}" >&2
+      exit 1
+    fi
+  done
+
+  if [[ -n "${DEPLOY_HTTP_PASSWORD}" ]] && grep -R -I -F -q -- "${DEPLOY_HTTP_PASSWORD}" "${FRONTEND_RELEASE_DIR}"; then
+    echo "❌ Frontend release contains the deploy Basic Auth password." >&2
+    exit 1
+  fi
+}
 
 cleanup() {
   local exit_status=$?
@@ -152,7 +247,8 @@ deploy_bff_with_rollback() {
     "${BFF_REMOTE_PATH}" \
     "${BFF_STAGED_DIR}" \
     "${BFF_BACKUP_DIR}" \
-    "${BFF_SERVICE_NAME}" <<'REMOTE_SCRIPT'
+    "${BFF_SERVICE_NAME}" \
+    "${BFF_LOCAL_PORT}" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 bff_dir="$1"
@@ -160,6 +256,7 @@ bff_entry_path="$2"
 staged_dir="$3"
 backup_dir="$4"
 service_name="$5"
+local_port="$6"
 
 rollback() {
   rm -rf "${staged_dir}"
@@ -197,7 +294,7 @@ if ! sudo systemctl restart "${service_name}"; then
 fi
 
 sleep 2
-bff_auth_status="$(curl --max-time 8 -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3001/api/auth/login || true)"
+bff_auth_status="$(curl --max-time 8 -sS -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:${local_port}/api/auth/login" || true)"
 
 if [[ "${bff_auth_status}" != "400" ]]; then
   echo "BFF authentication probe failed. Expected HTTP 400, got: ${bff_auth_status}" >&2
@@ -319,7 +416,7 @@ verify_public_release() {
   local health_status
   local public_auth_status
 
-  remote_version="$(curl --max-time 15 -fsS "${VERSION_URL}" 2>/dev/null | tr -d '[:space:]' || true)"
+  remote_version="$(public_curl --max-time 15 -fsS "${VERSION_URL}" 2>/dev/null | tr -d '[:space:]' || true)"
 
   if [[ "${expected_version}" != "${remote_version}" ]]; then
     echo "❌ Remote version does not match the local build."
@@ -328,14 +425,14 @@ verify_public_release() {
     return 1
   fi
 
-  health_status="$(curl --max-time 15 -sS -o /dev/null -w '%{http_code}' "${HEALTH_URL}" || true)"
+  health_status="$(public_curl --max-time 15 -sS -o /dev/null -w '%{http_code}' "${HEALTH_URL}" || true)"
 
   if [[ "${health_status}" != "200" ]]; then
     echo "❌ Health probe failed. Expected HTTP 200, got: ${health_status}"
     return 1
   fi
 
-  public_auth_status="$(curl --max-time 15 -sS -o /dev/null -w '%{http_code}' -X POST "${AUTH_LOGIN_URL}" || true)"
+  public_auth_status="$(public_curl --max-time 15 -sS -o /dev/null -w '%{http_code}' -X POST "${AUTH_LOGIN_URL}" || true)"
 
   if [[ "${public_auth_status}" != "400" ]]; then
     echo "❌ Public BFF authentication probe failed. Expected HTTP 400, got: ${public_auth_status}"
@@ -344,10 +441,12 @@ verify_public_release() {
 }
 
 echo "🔨 Building frontend..."
+validate_public_vite_env
 npm run build
 
 echo "📦 Staging frontend release..."
 cp -R dist/. "${FRONTEND_RELEASE_DIR}/"
+verify_frontend_release_has_no_secrets
 
 echo "🔨 Building BFF..."
 npm run auth:bff:build
@@ -386,4 +485,4 @@ if ! release_frontend_deploy_lock; then
   exit 1
 fi
 
-echo "✅ Deploy completed. Production is live at ${APP_URL} over HTTPS 443."
+echo "✅ Deploy completed. ${DEPLOY_ENVIRONMENT_NAME} is live at ${APP_URL} over HTTPS 443."
