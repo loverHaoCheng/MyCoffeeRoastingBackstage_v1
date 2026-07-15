@@ -11,6 +11,7 @@ import type {
 } from '../../types/roastBatch';
 import { roastedCoffeeBeanMirrorService } from '../roastedCoffeeBeanMirror.service';
 import {
+  createDefaultRoastBatchEvaluation,
   getGreenBeanClient,
   getInventoryImpactWeight,
   getLocalBatchAt,
@@ -35,6 +36,7 @@ import {
   saveLocalBatches,
   sortBatches,
 } from './roastBatch.service.state';
+import { removeLocalCurveByBatchId } from '../roast-curve/roastCurve.service.state';
 
 export interface RoastBatchRepository {
   createBatch(input: RoastBatchCreateInput): Promise<ApiResponse<RoastBatchRecord>>;
@@ -50,6 +52,7 @@ class MockRoastBatchRepository implements RoastBatchRepository {
     const now = new Date().toISOString();
     const record: RoastBatchRecord = {
       ...input,
+      evaluation: input.evaluation ?? createDefaultRoastBatchEvaluation(),
       roastedBeanName: resolveRoastedBeanName(input.roastedBeanName, input.greenBeanName),
       roastLevel: resolveNormalizedRoastLevel(input.roastLevel, input.inputWeightGrams, input.outputWeightGrams),
       id: `local-${Date.now().toString()}`,
@@ -87,6 +90,7 @@ class MockRoastBatchRepository implements RoastBatchRepository {
     const updated: RoastBatchRecord = {
       ...currentBatch,
       ...input,
+      evaluation: input.evaluation ?? currentBatch.evaluation,
       roastedBeanName: input.roastedBeanName ?? currentBatch.roastedBeanName ?? currentBatch.greenBeanName,
       roastLevel: resolveNormalizedRoastLevel(
         input.roastLevel ?? currentBatch.roastLevel,
@@ -133,6 +137,7 @@ class RemoteRoastBatchRepository implements RoastBatchRepository {
   }
 
   async deleteBatch(batchId: string) {
+    await this.client.delete('roast_curve_records', { match: { roast_batch_id: batchId } });
     await this.client.delete('roast_batches', { match: { id: batchId } });
   }
 
@@ -240,41 +245,11 @@ export const resolveRoastBatchRepository = (): RoastBatchRepository => {
 export const roastBatchRemoteSync = async (): Promise<{ downloaded: number; uploaded: number }> => {
   const repository = new RemoteRoastBatchRepository();
   const localBatchesBeforeSync = sortBatches(loadLocalBatches());
-  const optimisticLocalBatches = localBatchesBeforeSync.filter((batch) => batch.id.startsWith('local-'));
-  const syncableLocalBatches = localBatchesBeforeSync.filter((batch) => !batch.id.startsWith('local-'));
-  const remoteBeforeSync = await repository.listBatches();
-  const remoteIds = new Set(remoteBeforeSync.data.map((batch) => batch.id));
-  let uploaded = 0;
-
-  for (const batch of syncableLocalBatches) {
-    if (remoteIds.has(batch.id)) {
-      continue;
-    }
-
-    await repository.createBatch({
-      developmentRatio: batch.developmentRatio,
-      firstCrackTime: batch.firstCrackTime,
-      finalSaleUnitPrice: batch.finalSaleUnitPrice,
-      greenBeanId: batch.greenBeanId,
-      greenBeanName: batch.greenBeanName,
-      imageUrls: batch.imageUrls,
-      inputWeightGrams: batch.inputWeightGrams,
-      notes: batch.notes,
-      outputWeightGrams: batch.outputWeightGrams,
-      roastDate: batch.roastDate,
-      roastLevel: resolveNormalizedRoastLevel(batch.roastLevel, batch.inputWeightGrams, batch.outputWeightGrams),
-      roastPlanId: batch.roastPlanId,
-      roastPlanName: batch.roastPlanName,
-      roastedBeanName: batch.roastedBeanName,
-      salesMode: batch.salesMode,
-      status: batch.status,
-      totalRoastTime: batch.totalRoastTime,
-    });
-    uploaded += 1;
-  }
-
   const remoteAfterSync = await repository.listBatches();
-  const nextBatches = sortBatches([...optimisticLocalBatches, ...remoteAfterSync.data]);
+  const nextBatches = sortBatches([
+    ...localBatchesBeforeSync.filter((batch) => batch.id.startsWith('local-')),
+    ...remoteAfterSync.data,
+  ]);
   const beforeSignature = JSON.stringify(localBatchesBeforeSync.map((batch) => `${batch.id}:${batch.updatedAt}`));
   const afterSignature = JSON.stringify(nextBatches.map((batch) => `${batch.id}:${batch.updatedAt}`));
 
@@ -282,7 +257,7 @@ export const roastBatchRemoteSync = async (): Promise<{ downloaded: number; uplo
 
   return {
     downloaded: beforeSignature === afterSignature ? 0 : nextBatches.length,
-    uploaded,
+    uploaded: 0,
   };
 };
 
@@ -380,6 +355,7 @@ export const roastBatchCrud = {
     }
 
     removeStoredBatch(batchId);
+    removeLocalCurveByBatchId(batchId);
   },
   updateBatch: async (
     batchId: string,

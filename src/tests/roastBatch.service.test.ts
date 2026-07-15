@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
+import { beanService } from '@/modules/bean/services';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { createDefaultPocketBaseConnectionSettings } from '@/modules/settings/types';
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import type { Bean } from '@/types/domain';
+import { saveBatchRecord, saveLocalBatches } from '@/modules/roast/services/roast-batch/roastBatch.service.state';
 
 describe('roastBatchService', () => {
   beforeEach(() => {
     vi.stubEnv('MODE', 'development');
+    saveLocalBatches([]);
     pocketBaseConnectionSettingsService.clear();
     pocketBaseConnectionSettingsService.save({
       ...createDefaultPocketBaseConnectionSettings(),
@@ -75,5 +79,74 @@ describe('roastBatchService', () => {
     expect(listSpy).toHaveBeenNthCalledWith(2, 'roast_batches', {
       orderBy: { ascending: false, column: 'roast_date' },
     });
+  });
+
+  it('deletes an attached roast curve before deleting its roast batch', async () => {
+    vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([
+      {
+        created_at: '2026-07-09T10:00:00.000Z',
+        development_ratio: 18,
+        first_crack_time: 420,
+        green_bean_id: 'bean-1',
+        green_bean_name: '测试生豆',
+        id: 'batch-1',
+        input_weight_grams: 200,
+        notes: 'curve deletion test',
+        output_weight_grams: 170,
+        roast_date: '2026-07-09T10:00:00.000Z',
+        roast_level: '浅烘',
+        sales_mode: 'selfUse',
+        status: 'completed',
+        total_roast_time: 540,
+        updated_at: '2026-07-09T10:00:00.000Z',
+      },
+    ]);
+    const deleteSpy = vi.spyOn(PocketBaseRestClient.prototype, 'delete').mockResolvedValue();
+    vi.spyOn(beanService, 'adjustRemainingWeight').mockResolvedValue({
+      code: 0,
+      data: {} as Bean,
+      message: 'ok',
+    });
+
+    await roastBatchService.deleteBatch('batch-1');
+
+    expect(deleteSpy).toHaveBeenNthCalledWith(1, 'roast_curve_records', {
+      match: { roast_batch_id: 'batch-1' },
+    });
+    expect(deleteSpy).toHaveBeenNthCalledWith(2, 'roast_batches', {
+      match: { id: 'batch-1' },
+    });
+  });
+
+  it('removes a stale local roast batch when PocketBase no longer has it', async () => {
+    saveBatchRecord({
+      createdAt: '2026-07-09T10:00:00.000Z',
+      evaluation: {
+        allowTraining: false,
+      },
+      greenBeanId: 'bean-stale',
+      greenBeanName: '过期记录豆',
+      id: 'batch-stale-1',
+      imageUrls: [],
+      inputWeightGrams: 200,
+      outputWeightGrams: 170,
+      roastDate: '2026-07-09T10:00:00.000Z',
+      roastLevel: '浅烘',
+      salesMode: 'sale',
+      status: 'completed',
+      updatedAt: '2026-07-09T10:00:00.000Z',
+    });
+
+    const listSpy = vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([]);
+    const insertSpy = vi.spyOn(PocketBaseRestClient.prototype, 'insert').mockResolvedValue([]);
+
+    await expect(roastBatchService.syncLocalAndRemote()).resolves.toEqual({
+      downloaded: 0,
+      uploaded: 0,
+    });
+
+    expect(listSpy).toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
+    expect(roastBatchService.getBootstrappedBatches()).toEqual([]);
   });
 });

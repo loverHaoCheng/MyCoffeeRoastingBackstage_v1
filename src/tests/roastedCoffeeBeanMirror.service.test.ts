@@ -17,6 +17,9 @@ describe('roastedCoffeeBeanMirrorService', () => {
 
     const batch: RoastBatchRecord = {
       id: 'batch-1',
+      evaluation: {
+        allowTraining: false,
+      },
       greenBeanId: 'bean-1',
       greenBeanName: '测试生豆',
       finalSaleUnitPrice: 12.5,
@@ -98,6 +101,9 @@ describe('roastedCoffeeBeanMirrorService', () => {
 
     const batch: RoastBatchRecord = {
       id: 'batch-2',
+      evaluation: {
+        allowTraining: false,
+      },
       greenBeanId: 'bean-2',
       greenBeanName: '耶加雪菲 G1',
       roastDate: '2026-07-06T10:29:00+00:00',

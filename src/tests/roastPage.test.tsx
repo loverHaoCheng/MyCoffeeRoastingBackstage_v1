@@ -1,10 +1,12 @@
 import { act, fireEvent, screen } from '@testing-library/react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RoastPage } from '@/modules/roast';
 import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
 import { pocketBaseConnectionSettingsStorageKey } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
+import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
 import {
   createDefaultAppDisplaySettings,
   createDefaultCostTemplateSettings,
@@ -54,11 +56,14 @@ vi.mock('@/modules/roast/hooks', () => ({
         id: 1,
         name: '肯尼亚 柏拉 AA Plus SL28 SL34 水洗',
         plannedBatchKg: 0.2,
+        roasterModel: 'tank200d',
         roastPurpose: '手冲',
         status: 'draft',
         steps: [
           {
             drumTemperature: '235°C',
+            airTemperature: '210°C',
+            drumSpeed: '45rpm',
             eventName: '入豆',
             firePower: '90%',
             id: 1,
@@ -67,6 +72,8 @@ vi.mock('@/modules/roast/hooks', () => ({
           },
           {
             drumTemperature: '-',
+            airTemperature: '180°C',
+            drumSpeed: '45rpm',
             eventName: '回温点',
             firePower: '90%',
             id: 2,
@@ -85,11 +92,14 @@ vi.mock('@/modules/roast/hooks', () => ({
         id: 2,
         name: '埃塞俄比亚 古吉 水洗 浅中烘',
         plannedBatchKg: 0.5,
+        roasterModel: '其他',
         roastPurpose: '意式拼配测试',
         status: 'draft',
         steps: [
           {
             drumTemperature: '220°C',
+            airTemperature: '205°C',
+            drumSpeed: '50rpm',
             eventName: '入豆',
             firePower: '85%',
             id: 1,
@@ -98,6 +108,8 @@ vi.mock('@/modules/roast/hooks', () => ({
           },
           {
             drumTemperature: '-',
+            airTemperature: '178°C',
+            drumSpeed: '50rpm',
             eventName: '回温点',
             firePower: '85%',
             id: 2,
@@ -134,6 +146,31 @@ const performUiUpdate = async (action: () => void) => {
     await Promise.resolve();
   });
 };
+
+function FloatingActionTestHost({ children }: { children: ReactNode }) {
+  const [actionConfig, setActionConfig] = useState<ViewportFloatingActionButtonProps | null>(null);
+  const contextValue = useMemo(() => ({
+    enabled: true,
+    register(config: ViewportFloatingActionButtonProps) {
+      setActionConfig(config);
+
+      return () => {
+        setActionConfig(null);
+      };
+    },
+  }), []);
+
+  return (
+    <FloatingActionRegistrationContext.Provider value={contextValue}>
+      {children}
+      {actionConfig ? (
+        <button aria-label={actionConfig.ariaLabel} onClick={actionConfig.onClick} type="button">
+          {actionConfig.ariaLabel}
+        </button>
+      ) : null}
+    </FloatingActionRegistrationContext.Provider>
+  );
+}
 
 describe('RoastPage', () => {
   beforeEach(() => {
@@ -254,6 +291,7 @@ describe('RoastPage', () => {
     expect(screen.getByText('编辑烘焙计划')).toBeInTheDocument();
     expect(screen.queryByText('肯尼亚 柏拉 AA Plus SL28 SL34 水洗（200g，手冲浅烘）')).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '烘豆机型号' })).toBeInTheDocument();
     expect(screen.queryByLabelText('生豆名称')).not.toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: '保存计划' });
@@ -320,6 +358,23 @@ describe('RoastPage', () => {
 
     expect(screen.getByText('编辑烘焙计划')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '保存计划' })).toBeInTheDocument();
+  });
+
+  it('shows the staged AI recommendation tab in the create drawer', () => {
+    renderWithQuery(
+      <FloatingActionTestHost>
+        <RoastPage />
+      </FloatingActionTestHost>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI 推荐' }));
+
+    expect(screen.getByLabelText('AI 推荐筹备说明')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'AI 推荐（暂未开放）' })).toBeInTheDocument();
+    expect(screen.getByText('当前已开放')).toBeInTheDocument();
+    expect(screen.getByText('当前暂禁用')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'AI 推荐（暂未开放）' })).toBeDisabled();
   });
 
   it('renders the roast history workspace shell', () => {

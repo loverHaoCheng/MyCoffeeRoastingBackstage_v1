@@ -7,6 +7,7 @@ import type {
   RoastBatchUpdateInput,
 } from '../types/roastBatch';
 import {
+  createDefaultRoastBatchEvaluation,
   hasGreenBeanConnection,
   ok,
   resolveNormalizedRoastLevel,
@@ -42,6 +43,7 @@ export const roastBatchService = {
     const now = new Date().toISOString();
     const record: RoastBatchRecord = {
       ...input,
+      evaluation: input.evaluation ?? createDefaultRoastBatchEvaluation(),
       roastedBeanName: resolveRoastedBeanName(input.roastedBeanName, input.greenBeanName),
       roastLevel: resolveNormalizedRoastLevel(input.roastLevel, input.inputWeightGrams, input.outputWeightGrams),
       id: createOptimisticLocalBatchId(),

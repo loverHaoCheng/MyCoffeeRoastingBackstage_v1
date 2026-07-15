@@ -3,10 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { seedRoastPlans } from '@/modules/roast/constants/roastPlan.mock';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { updateRoastPlanFromInput } from '@/modules/roast/services/roastPlanJson.service';
+import { detachDeletedPlanFromBatches } from '@/modules/roast/utils/roastCacheSync';
 import { AppError } from '@/shared/errors/AppError';
 import type { RoastPlan } from '@/types/domain';
+import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 
 import type { RoastPlanJsonInput } from '../types';
+import { roastBatchQueryKeys } from './useRoastBatches';
 
 export const roastPlanQueryKeys = {
   all: ['roast-plans'] as const,
@@ -137,8 +140,10 @@ export function useDeleteRoastPlan() {
     },
     onMutate: async (planId) => {
       await queryClient.cancelQueries({ queryKey: roastPlanQueryKeys.list() });
+      await queryClient.cancelQueries({ queryKey: roastBatchQueryKeys.list() });
 
       const previousPlans = queryClient.getQueryData<RoastPlan[]>(roastPlanQueryKeys.list());
+      const previousBatches = queryClient.getQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list());
       const cachedPlan = previousPlans?.find((plan) => String(plan.id) === String(planId)) ?? null;
       const localPlan = roastPlanService.beginOptimisticDelete(planId);
       const removedPlan = cachedPlan ?? localPlan;
@@ -146,12 +151,19 @@ export function useDeleteRoastPlan() {
         roastPlanQueryKeys.list(),
         (current = []) => current.filter((plan) => String(plan.id) !== String(planId)),
       );
+      queryClient.setQueryData<RoastBatchRecord[]>(
+        roastBatchQueryKeys.list(),
+        (current = []) => detachDeletedPlanFromBatches(current, planId),
+      );
 
-      return { previousPlans, removedPlan };
+      return { previousBatches, previousPlans, removedPlan };
     },
     onError: (_error, planId, context) => {
       if (context?.previousPlans) {
         queryClient.setQueryData(roastPlanQueryKeys.list(), context.previousPlans);
+      }
+      if (context?.previousBatches) {
+        queryClient.setQueryData(roastBatchQueryKeys.list(), context.previousBatches);
       }
 
       roastPlanService.rollbackOptimisticDelete(planId, context?.removedPlan ?? null);
@@ -161,6 +173,10 @@ export function useDeleteRoastPlan() {
       queryClient.setQueryData<RoastPlan[]>(
         roastPlanQueryKeys.list(),
         (current = []) => current.filter((plan) => String(plan.id) !== String(planId)),
+      );
+      queryClient.setQueryData<RoastBatchRecord[]>(
+        roastBatchQueryKeys.list(),
+        (current = []) => detachDeletedPlanFromBatches(current, planId),
       );
     },
   });

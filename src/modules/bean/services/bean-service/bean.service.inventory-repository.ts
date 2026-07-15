@@ -39,6 +39,7 @@ import type {
   RemotePurchaseBatchRecord,
   RemoteRoastBatchOverviewRecord,
   RemoteSaleSpecRecord,
+  RoastPlanDisposition,
 } from './bean.service.types';
 
 export function createGreenBeanInventoryRepository(
@@ -464,11 +465,39 @@ export function createGreenBeanInventoryRepository(
       beanCacheService.save([bean], 'remote');
       return ok(bean);
     },
-    async deleteBean(beanId) {
+    async deleteBean(beanId, roastPlanDisposition: RoastPlanDisposition) {
+      const relatedRoastBatches = await client.list<{ id: string }>('roast_batches', {
+        match: { green_bean_id: beanId },
+        select: 'id',
+      });
+
+      await Promise.all(
+        relatedRoastBatches.map((batch) =>
+          client.delete('roast_curve_records', { match: { roast_batch_id: batch.id } }),
+        ),
+      );
       await client.delete('roast_batches', { match: { green_bean_id: beanId } });
       await client.delete('green_bean_purchase_batches', { match: { green_bean_id: beanId } });
       await client.delete('roast_records', { match: { green_bean_id: beanId } });
-      await client.delete('roast_profiles', { match: { green_bean_id: beanId } });
+
+      if (roastPlanDisposition === 'makeGeneric') {
+        const relatedRoastProfiles = await client.list<{ id: string }>('roast_profiles', {
+          match: { green_bean_id: beanId },
+          select: 'id',
+        });
+
+        await Promise.all(
+          relatedRoastProfiles.map((profile) =>
+            client.update('roast_profiles', { green_bean_id: null }, {
+              match: { id: profile.id },
+              select: 'id',
+            }),
+          ),
+        );
+      } else {
+        await client.delete('roast_profiles', { match: { green_bean_id: beanId } });
+      }
+
       await client.delete('bean_sale_specs', { match: { green_bean_id: beanId } });
       await client.delete(tableName, { match: { id: beanId } });
     },

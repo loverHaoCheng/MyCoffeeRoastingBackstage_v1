@@ -2,7 +2,6 @@ import type { QueryClient } from '@tanstack/react-query';
 
 import { beanEditableDetailQueryKeys, beanQueryKeys } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services/bean.service';
-import { beanSyncService } from '@/modules/bean/services/beanSync.service';
 import { financeQueryKeys } from '@/modules/finance/hooks';
 import { financeLedgerService, financeService } from '@/modules/finance/services';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
@@ -116,12 +115,6 @@ const syncSharedAppSettings = async (options: { deferNonCriticalSync?: boolean }
   settingsState.loadCostTemplates();
   settingsState.loadAppDisplaySettings();
 
-  const pendingOperations = beanSyncService.getPendingOperations();
-  const pendingResult =
-    pendingOperations.length > 0
-      ? await beanService.syncPendingOperations().catch(() => ({ failed: 0, success: 0 }))
-      : { failed: 0, success: 0 };
-
   if (options.deferNonCriticalSync) {
     void scheduleDeferredSettingsSync(settingsState);
   } else {
@@ -131,7 +124,7 @@ const syncSharedAppSettings = async (options: { deferNonCriticalSync?: boolean }
     settingsState.loadAppDisplaySettings();
   }
 
-  return pendingResult;
+  return { failed: 0, success: 0 };
 };
 
 const getSyncJobsForScope = (scope: AppRefreshScope): NamedSyncJob[] => {

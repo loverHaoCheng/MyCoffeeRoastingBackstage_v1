@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { resetAppRuntimeState } from '@/app/services/appRuntimeStateReset.service';
 import { pocketBaseAuthService } from '@/modules/auth/services/pocketBaseAuth.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import {
@@ -105,6 +106,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   deleteAccount: async () => {
     await pocketBaseAuthService.deleteAccount();
     await browserDataCleanupService.clearCurrentOriginData();
+    resetAppRuntimeState();
     pocketBaseConnectionSettingsService.clear();
     set({
       hasHydrated: true,
@@ -115,6 +117,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   login: async (input) => {
     localStorageCleanupService.clearAppState();
+    resetAppRuntimeState();
     pocketBaseConnectionSettingsService.clear();
     const session = await pocketBaseAuthService.login(input);
 
@@ -130,6 +133,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     await pocketBaseAuthService.logout();
     await browserDataCleanupService.clearCurrentOriginData();
+    resetAppRuntimeState();
     pocketBaseConnectionSettingsService.clear();
     set({
       hasHydrated: true,
@@ -140,6 +144,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   register: async (input) => {
     localStorageCleanupService.clearAppState();
+    resetAppRuntimeState();
     pocketBaseConnectionSettingsService.clear();
     const result = await pocketBaseAuthService.register(input);
 

@@ -249,6 +249,7 @@ export function AppearanceSettingsSection() {
                                   value: option.key,
                                 }))}
                                 placeholder={`请选择第 ${String(slotIndex + 1)} 项`}
+                                showSearch={false}
                                 value={currentValue}
                               />
                             </div>

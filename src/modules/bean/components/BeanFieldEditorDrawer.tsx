@@ -317,6 +317,7 @@ export function BeanFieldEditorDrawer({
               value: template.id,
             }))}
             placeholder={fieldConfig.placeholder}
+            showSearch={false}
             style={{ width: '100%' }}
             value={currentDraft.costTemplateId ?? undefined}
           />

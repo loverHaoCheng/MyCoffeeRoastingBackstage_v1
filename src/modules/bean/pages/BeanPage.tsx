@@ -3,6 +3,7 @@ import { App } from 'antd';
 import Button from "antd/es/button";
 import Empty from "antd/es/empty";
 import Grid from "antd/es/grid";
+import Radio from 'antd/es/radio';
 import Spin from "antd/es/spin";
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,11 +15,10 @@ import {
   BeanInventoryCard,
 } from '@/modules/bean/components';
 import { beanQueryKeys, useBeans, useDeleteBean } from '@/modules/bean/hooks';
-import { beanService } from '@/modules/bean/services';
+import { beanService, type RoastPlanDisposition } from '@/modules/bean/services';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
-import { AppError } from '@/shared/errors/AppError';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
@@ -114,25 +114,53 @@ export function BeanPage() {
   };
 
   const handleDeleteBean = (bean: Bean) => {
-    modal.confirm({
+    let selectedDisposition: RoastPlanDisposition | undefined;
+    const confirmation: ReturnType<typeof modal.confirm> = modal.confirm({
+
       centered: true,
-      content: `确定要删除「${bean.name}」吗？此操作不可撤销，关联的采购批次、烘焙记录等数据将一并删除。`,
-      okButtonProps: { danger: true },
+      content: (
+        <div>
+          <p>
+            删除「{bean.name}」后，关联的采购批次、烘焙历史及其曲线都会永久删除，且无法复原。
+          </p>
+          <p>请选择关联烘焙计划的处理方式：</p>
+          <Radio.Group
+            aria-label="关联烘焙计划的处理方式"
+            onChange={(event) => {
+              selectedDisposition = event.target.value as RoastPlanDisposition;
+              confirmation.update({
+                okButtonProps: { danger: true, disabled: false },
+              });
+            }}
+          >
+            <Radio value="makeGeneric">全部改为通用计划：保留计划并解除与当前生豆的关联</Radio>
+            <Radio value="delete">全部删除：永久删除这些烘焙计划，且无法复原</Radio>
+          </Radio.Group>
+        </div>
+      ),
+      okButtonProps: { danger: true, disabled: true },
       okText: '删除',
       title: '确认删除',
-      onOk() {
-        void deleteBeanMutation
-          .mutateAsync(bean.id)
-          .then((result) => {
+      async onOk() {
+        if (!selectedDisposition) {
+          return;
+        }
+
+        try {
+          const result = await deleteBeanMutation.mutateAsync({
+            beanId: bean.id,
+            roastPlanDisposition: selectedDisposition,
+          });
+
             if (!result.synced) {
               void message.error('删除已保存到本地，但远程 PocketBase 删除未同步成功，请稍后重试。');
             }
-          })
-          .catch((error: unknown) => {
-            void message.error(
-              getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
-            );
-          });
+        } catch (error) {
+          void message.error(
+            getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
+          );
+          throw error;
+        }
       },
     });
   };
@@ -155,16 +183,6 @@ export function BeanPage() {
 
         queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
       } catch (error) {
-        if (
-          error instanceof AppError &&
-          (error.code === 'NETWORK' || (error.code === 'HTTP' && error.status === 404))
-        ) {
-          const nextBeans = beanService.persistOptimisticBeanAsPending(input);
-          queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
-          void message.warning('PocketBase 暂未就绪，已先保存到本地，待连接恢复后会自动同步。');
-          return;
-        }
-
         const nextBeans = beanService.rollbackOptimisticBean(String(optimisticBean.id));
         queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
         void message.error(getUserFacingErrorMessage(error, '生豆同步失败，已回滚本次新建，请检查后重试。'));

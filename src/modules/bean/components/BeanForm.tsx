@@ -318,6 +318,7 @@ export function BeanForm({
                   value: template.id,
                 }))}
                 placeholder="选择一个成本模板"
+                showSearch={false}
                 value={selectedTemplate?.id ?? undefined}
               />
               <span className={styles.helpText}>

@@ -10,6 +10,8 @@ import type {
   AuthAccountDeletionResult,
   AuthCredentialsInput,
   AuthEmailActionResult,
+  AuthPasswordResetConfirmationResult,
+  AuthVerificationResult,
   PocketBaseUserRecord,
   RegisterInput,
   RegisterResult,
@@ -414,5 +416,21 @@ export const pocketBaseAuthService = {
     return (await postJson('/request-verification', {
       email: email.trim(),
     })) as AuthEmailActionResult;
+  },
+  async confirmVerification(token: string): Promise<AuthVerificationResult> {
+    return (await postJson('/confirm-verification', {
+      token: token.trim(),
+    })) as AuthVerificationResult;
+  },
+  async confirmPasswordReset(
+    token: string,
+    password: string,
+    passwordConfirm: string,
+  ): Promise<AuthPasswordResetConfirmationResult> {
+    return (await postJson('/confirm-password-reset', {
+      password,
+      passwordConfirm,
+      token: token.trim(),
+    })) as AuthPasswordResetConfirmationResult;
   },
 };

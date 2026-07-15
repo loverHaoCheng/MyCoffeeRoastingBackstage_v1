@@ -12,6 +12,16 @@ export interface AuthEmailActionResult {
   success: true;
 }
 
+export interface AuthVerificationResult {
+  message: string;
+  success: true;
+}
+
+export interface AuthPasswordResetConfirmationResult {
+  message: string;
+  success: true;
+}
+
 export interface AuthAccountDeletionResult {
   message: string;
   success: true;

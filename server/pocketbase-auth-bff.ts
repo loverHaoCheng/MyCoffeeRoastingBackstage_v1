@@ -3,17 +3,20 @@ import { pathToFileURL } from 'node:url';
 
 import { handleDeleteAccount } from './auth-bff/account-handler.js';
 import { handleBeanImageRecognitionUsage } from './auth-bff/ai/handler.js';
-import { handleLogin, handleLogout, handleRegister, handleRequestPasswordReset, handleRequestVerification, handleSession, handleUpdateProfile } from './auth-bff/auth-handlers.js';
+import { handleConfirmPasswordReset, handleConfirmVerification, handleLogin, handleLogout, handleRegister, handleRequestPasswordReset, handleRequestVerification, handleSession, handleUpdateProfile } from './auth-bff/auth-handlers.js';
 import { handleBusinessCollectionRequest } from './auth-bff/collection-handler.js';
 import { port } from './auth-bff/config.js';
 import { sendJson, sendMethodNotAllowed } from './auth-bff/http.js';
 import { handleRealtimeRequest } from './auth-bff/realtime-handler.js';
 import { createGatewayRequestHandler } from './auth-bff/router.js';
+import { handleUnverifiedUserCleanup } from './auth-bff/unverified-user-cleanup-handler.js';
 
 const handleRequest = createGatewayRequestHandler({
   handleAccountDeletion: handleDeleteAccount,
   handleBeanImageRecognition: handleBeanImageRecognitionUsage,
   handleBusinessCollection: handleBusinessCollectionRequest,
+  handleConfirmPasswordReset,
+  handleConfirmVerification,
   handleLogin,
   handleLogout: (request, response) => {
     handleLogout(request, response);
@@ -24,6 +27,7 @@ const handleRequest = createGatewayRequestHandler({
   handleRealtime: handleRealtimeRequest,
   handleRegister,
   handleSession,
+  handleUnverifiedUserCleanup,
   handleVerificationRequest: handleRequestVerification,
   sendJson,
   sendMethodNotAllowed,

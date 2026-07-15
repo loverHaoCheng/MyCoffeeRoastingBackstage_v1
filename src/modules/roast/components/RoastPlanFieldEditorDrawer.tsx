@@ -6,6 +6,9 @@ import Spin from "antd/es/spin";
 import { useEffect, useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
+import {
+  roasterModelSelectOptions,
+} from '@/modules/roast/constants/roasterModel';
 import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
 import { roastPlanToJsonInput } from '@/modules/roast/services/roastPlanJson.service';
 import { useUpdateRoastPlan } from '@/modules/roast/hooks/useRoastPlans';
@@ -21,7 +24,7 @@ import { submissionBackupService } from '@/shared/services/submissionBackup.serv
 const GENERIC_BEAN_ID = 'generic';
 const GENERIC_BEAN_NAME = '通用';
 
-export type RoastPlanEditableFieldPath = 'batchWeightGrams' | 'beanId' | 'purpose' | 'roastLevel';
+export type RoastPlanEditableFieldPath = 'batchWeightGrams' | 'beanId' | 'purpose' | 'roastLevel' | 'roasterModel';
 
 interface RoastPlanFieldEditorDrawerProps {
   fieldPath?: RoastPlanEditableFieldPath;
@@ -45,6 +48,7 @@ const fieldMeta: Record<
   beanId: { label: '生豆', placeholder: '选择对应生豆', type: 'select' },
   purpose: { label: '用途', placeholder: '例如 手冲 / 咖啡馆', type: 'text' },
   roastLevel: { label: '烘焙目标', placeholder: '例如 手冲浅烘', type: 'text' },
+  roasterModel: { label: '烘豆机型号', placeholder: '选择烘豆机型号', type: 'select' },
 };
 
 export function RoastPlanFieldEditorDrawer({
@@ -164,6 +168,7 @@ export function RoastPlanFieldEditorDrawer({
               ...beans.map((bean) => ({ label: bean.name, value: String(bean.id) })),
             ]}
             placeholder={fieldConfig.placeholder}
+            showSearch={false}
             value={draft.beanId == null ? undefined : String(draft.beanId)}
           />
         );
@@ -186,6 +191,18 @@ export function RoastPlanFieldEditorDrawer({
             }}
             placeholder={fieldConfig.placeholder}
             value={draft.roastLevel}
+          />
+        );
+      case 'roasterModel':
+        return (
+          <Select
+            onChange={(value) => {
+              updateDraft('roasterModel', value);
+            }}
+            options={roasterModelSelectOptions}
+            placeholder={fieldConfig.placeholder}
+            showSearch={false}
+            value={draft.roasterModel || undefined}
           />
         );
     }

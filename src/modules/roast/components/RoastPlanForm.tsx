@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { Controller, type FieldPath, useFieldArray, useForm } from 'react-hook-form';
 
 import { useBeans } from '@/modules/bean/hooks';
+import { roasterModelSelectOptions } from '@/modules/roast/constants/roasterModel';
 import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 
@@ -138,6 +139,7 @@ export function RoastPlanForm({
                 }}
                 options={beanOptions}
                 placeholder="从生豆库存选择，或使用通用计划"
+                showSearch={false}
                 value={field.value == null ? undefined : String(field.value)}
               />
             )}
@@ -164,6 +166,26 @@ export function RoastPlanForm({
                 precision={0}
                 suffix="g"
                 value={field.value}
+              />
+            )}
+          />
+        </label>
+
+        <label className={styles.field} data-field-path="roasterModel">
+          {renderLabel('烘豆机型号', true)}
+          <Controller
+            control={control}
+            name="roasterModel"
+            render={({ field }) => (
+              <Select
+                aria-label="烘豆机型号"
+                onChange={(value) => {
+                  field.onChange(value);
+                }}
+                options={roasterModelSelectOptions}
+                placeholder="请选择烘豆机型号"
+                showSearch={false}
+                value={field.value || undefined}
               />
             )}
           />
@@ -200,7 +222,9 @@ export function RoastPlanForm({
                 event: '',
                 operation: '',
                 temperature: '-',
+                airTemperature: '-',
                 firePower: '',
+                drumSpeed: '',
               });
             }}
           >
@@ -291,6 +315,22 @@ export function RoastPlanForm({
                         <Controller
                           control={control}
                           name={`steps.${stepIndex}.firePower` as `steps.${number}.firePower`}
+                          render={({ field: itemField }) => <Input {...itemField} />}
+                        />
+                      </label>
+                      <label className={styles.field} data-field-path={`steps.${stepIndex}.airTemperature`}>
+                        {renderLabel('风温', true)}
+                        <Controller
+                          control={control}
+                          name={`steps.${stepIndex}.airTemperature` as `steps.${number}.airTemperature`}
+                          render={({ field: itemField }) => <Input {...itemField} />}
+                        />
+                      </label>
+                      <label className={styles.field} data-field-path={`steps.${stepIndex}.drumSpeed`}>
+                        {renderLabel('转速', true)}
+                        <Controller
+                          control={control}
+                          name={`steps.${stepIndex}.drumSpeed` as `steps.${number}.drumSpeed`}
                           render={({ field: itemField }) => <Input {...itemField} />}
                         />
                       </label>

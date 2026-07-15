@@ -49,3 +49,9 @@ export const roastPlanState = {
   pendingOptimisticCreatePlanIds: new Set<string>(),
   pendingOptimisticDeletePlanIds: new Set<string>(),
 };
+
+export const clearRoastPlanState = (): void => {
+  roastPlanState.localPlans = import.meta.env.MODE === 'test' ? sortPlans(seedRoastPlans) : [];
+  roastPlanState.pendingOptimisticCreatePlanIds.clear();
+  roastPlanState.pendingOptimisticDeletePlanIds.clear();
+};

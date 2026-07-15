@@ -19,6 +19,7 @@ export interface RemoteRoastPlanOverviewRecord {
   id: string;
   name: string;
   planned_batch_kg: number;
+  roaster_model: null | string;
   roast_purpose: null | string;
   status: string;
   steps: unknown;
@@ -39,6 +40,8 @@ export interface RemoteGreenBeanLookupRecord {
 }
 
 export interface RemoteRoastPlanStepRecord {
+  airTemperature?: string;
+  drumSpeed?: string;
   event?: string;
   firePower?: string;
   note?: string;

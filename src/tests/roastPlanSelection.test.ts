@@ -11,6 +11,7 @@ const createPlan = (overrides: Partial<RoastPlan>): RoastPlan => ({
   id: 'plan-1',
   name: '测试计划',
   plannedBatchKg: 0.2,
+  roasterModel: 'tank200d',
   roastPurpose: '',
   status: 'draft',
   steps: [],

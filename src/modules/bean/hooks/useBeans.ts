@@ -3,9 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { beanEditableDetailQueryKeys } from '@/modules/bean/hooks/useBeanEditableDetail';
 import { beanService } from '@/modules/bean/services';
 import { normalizeFlavorTags } from '@/modules/bean/utils/flavorTags';
+import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
+import { roastPlanQueryKeys } from '@/modules/roast/hooks/useRoastPlans';
+import { syncDeletedBeanBatches, syncDeletedBeanPlans } from '@/modules/roast/utils/roastCacheSync';
 import { AppError } from '@/shared/errors/AppError';
 import type { GreenBeanEditableDetail, GreenBeanUpdateInput } from '@/modules/bean/types';
+import type { RoastPlanDisposition } from '@/modules/bean/services/bean.service';
 import type { Bean } from '@/types/domain';
+import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import type { RoastPlan } from '@/types/domain';
 
 export const beanQueryKeys = {
   all: ['beans'] as const,
@@ -196,17 +202,22 @@ export function useDeleteBean() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (beanId: Bean['id']) => {
-      return beanService.deleteBean(beanId);
+    mutationFn: async (variables: { beanId: Bean['id']; roastPlanDisposition: RoastPlanDisposition }) => {
+      return beanService.deleteBean(variables.beanId, variables.roastPlanDisposition);
     },
-    onMutate: async (beanId) => {
+    onMutate: async (variables) => {
+      const { beanId } = variables;
       await queryClient.cancelQueries({ queryKey: beanQueryKeys.list() });
       await queryClient.cancelQueries({ queryKey: beanEditableDetailQueryKeys.detail(beanId) });
+      await queryClient.cancelQueries({ queryKey: roastPlanQueryKeys.list() });
+      await queryClient.cancelQueries({ queryKey: roastBatchQueryKeys.list() });
 
       const previousBeans = queryClient.getQueryData<Bean[]>(beanQueryKeys.list());
       const previousDetail = queryClient.getQueryData<GreenBeanEditableDetail>(
         beanEditableDetailQueryKeys.detail(beanId),
       );
+      const previousPlans = queryClient.getQueryData<RoastPlan[]>(roastPlanQueryKeys.list());
+      const previousBatches = queryClient.getQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list());
       const removedBean = previousBeans?.find((bean) => String(bean.id) === String(beanId)) ?? null;
       const deleteSnapshot = beanService.prepareOptimisticDelete(beanId);
 
@@ -214,15 +225,26 @@ export function useDeleteBean() {
         beanQueryKeys.list(),
         (current = []) => current.filter((bean) => String(bean.id) !== String(beanId)),
       );
+      queryClient.setQueryData<RoastPlan[]>(
+        roastPlanQueryKeys.list(),
+        (current = []) => syncDeletedBeanPlans(current, beanId, variables.roastPlanDisposition),
+      );
+      queryClient.setQueryData<RoastBatchRecord[]>(
+        roastBatchQueryKeys.list(),
+        (current = []) => syncDeletedBeanBatches(current, beanId),
+      );
 
       return {
+        previousBatches,
         previousBeans,
         previousDetail,
+        previousPlans,
         deleteSnapshot,
         removedBean,
       };
     },
-    onError: (_error, beanId, context) => {
+    onError: (_error, variables, context) => {
+      const { beanId } = variables;
       if (context?.previousBeans) {
         queryClient.setQueryData(beanQueryKeys.list(), context.previousBeans);
       }
@@ -230,15 +252,24 @@ export function useDeleteBean() {
       if (context?.previousDetail) {
         queryClient.setQueryData(beanEditableDetailQueryKeys.detail(beanId), context.previousDetail);
       }
+      if (context?.previousPlans) {
+        queryClient.setQueryData(roastPlanQueryKeys.list(), context.previousPlans);
+      }
+      if (context?.previousBatches) {
+        queryClient.setQueryData(roastBatchQueryKeys.list(), context.previousBatches);
+      }
 
       if (context?.deleteSnapshot) {
         beanService.rollbackOptimisticDelete(context.deleteSnapshot);
       }
     },
-    onSuccess: (result, beanId) => {
+    onSuccess: (result, variables) => {
+      const { beanId } = variables;
       if (result.synced) {
         queryClient.removeQueries({ queryKey: beanEditableDetailQueryKeys.detail(beanId), exact: true });
         void queryClient.invalidateQueries({ queryKey: beanQueryKeys.list() });
+        void queryClient.invalidateQueries({ queryKey: roastPlanQueryKeys.list() });
+        void queryClient.invalidateQueries({ queryKey: roastBatchQueryKeys.list() });
       }
     },
   });

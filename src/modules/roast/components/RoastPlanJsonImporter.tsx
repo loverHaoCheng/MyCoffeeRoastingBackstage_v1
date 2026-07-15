@@ -41,7 +41,7 @@ export function RoastPlanJsonImporter({ onCancel, onImport }: RoastPlanJsonImpor
         </Button>
       </div>
       <Alert
-        message="支持 name、beanName、batchWeightGrams、roastLevel、steps 字段，steps 会生成时间/事件/操作/炉温/火力表。"
+        message="支持 name、beanName、roasterModel、batchWeightGrams、roastLevel、steps 字段；其中 roasterModel 仅允许 tank200d 或 其他，steps 会生成时间/事件/操作/炉温/风温/火力/转速表。"
         showIcon
         type="info"
       />

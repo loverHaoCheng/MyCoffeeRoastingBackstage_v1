@@ -19,6 +19,7 @@ interface GatewayRequestOptions {
   headers?: Record<string, string>;
   method?: string;
   path: string;
+  remoteAddress?: string;
 }
 
 class MockServerResponse extends EventEmitter {
@@ -68,8 +69,13 @@ const createMockRequest = ({
   headers = {},
   method = 'GET',
   path,
+  remoteAddress = '127.0.0.1',
 }: GatewayRequestOptions): IncomingMessage => {
   const request = Readable.from(body ? [body] : []) as IncomingMessage;
+  Object.defineProperty(request, 'socket', {
+    configurable: true,
+    value: { remoteAddress },
+  });
   request.headers = Object.fromEntries(
     Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]),
   );
@@ -93,6 +99,7 @@ const requestGateway = async (options: GatewayRequestOptions): Promise<GatewayRe
 
 describe('PocketBase auth BFF contract', () => {
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -143,6 +150,134 @@ describe('PocketBase auth BFF contract', () => {
       status: 405,
     });
     expect(response.headers.get('allow')).toBe('POST');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('confirms an email verification token through the dedicated auth gateway route', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await requestGateway({
+      body: JSON.stringify({ token: 'verification-token' }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+      path: '/api/auth/confirm-verification',
+    });
+
+    expect(response).toMatchObject({
+      body: {
+        message: '邮箱验证成功，现在可以登录 EasyBake。',
+        success: true,
+      },
+      status: 200,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:8090/api/collections/users/confirm-verification',
+      expect.objectContaining({
+        body: JSON.stringify({ token: 'verification-token' }),
+        method: 'POST',
+      }),
+    );
+  });
+
+  it('confirms a password reset through the dedicated auth gateway route', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await requestGateway({
+      body: JSON.stringify({
+        password: 'password123',
+        passwordConfirm: 'password123',
+        token: 'reset-token',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+      path: '/api/auth/confirm-password-reset',
+    });
+
+    expect(response).toMatchObject({
+      body: {
+        message: '密码已重置，现在可以使用新密码登录。',
+        success: true,
+      },
+      status: 200,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:8090/api/collections/users/confirm-password-reset',
+      expect.objectContaining({
+        body: JSON.stringify({
+          password: 'password123',
+          passwordConfirm: 'password123',
+          token: 'reset-token',
+        }),
+        method: 'POST',
+      }),
+    );
+  });
+
+  it('deletes only expired unverified users from a loopback cleanup request', async () => {
+    vi.stubEnv('PB_SUPERUSER_EMAIL', 'admin@example.com');
+    vi.stubEnv('PB_SUPERUSER_PASSWORD', 'admin-password');
+    const expiredCreatedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes('/_superusers/auth-with-password')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: { email: 'admin@example.com', id: 'admin-1' },
+          token: 'superuser-token',
+        }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/users/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          items: [
+            { created: expiredCreatedAt, id: 'expired-user', verified: false },
+            { created: new Date().toISOString(), id: 'recent-user', verified: false },
+          ],
+          totalPages: 1,
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/users/records/expired-user')) {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(requestGateway({
+      method: 'POST',
+      path: '/internal/jobs/cleanup-unverified-users',
+    })).resolves.toMatchObject({
+      body: { deletedCount: 1 },
+      status: 200,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:8090/api/collections/users/records/expired-user',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      'http://127.0.0.1:8090/api/collections/users/records/recent-user',
+      expect.anything(),
+    );
+  });
+
+  it('rejects cleanup requests that do not originate from the server loopback interface', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(requestGateway({
+      method: 'POST',
+      path: '/internal/jobs/cleanup-unverified-users',
+      remoteAddress: '203.0.113.10',
+    })).resolves.toMatchObject({
+      body: { message: 'Forbidden' },
+      status: 403,
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

@@ -86,6 +86,61 @@
   white-space: pre-wrap;
 }
 
+.trainingSummary {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.trainingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trainingItem {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 16px;
+  background: var(--app-bg);
+}
+
+.trainingItem[data-ready='true'] {
+  border-color: color-mix(in srgb, var(--app-border) 65%, #8b8b8b 35%);
+}
+
+.trainingItem strong {
+  color: var(--app-text);
+  font-size: 14px;
+}
+
+.trainingItem span {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trainingItem p {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.trainingActionRow {
+  display: grid;
+  gap: 10px;
+}
+
+.trainingHint {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .emptyText {
   margin: 0;
   font-size: 13px;
@@ -130,5 +185,9 @@
 
   .field {
     max-width: 100%;
+  }
+
+  .trainingGrid {
+    grid-template-columns: 1fr;
   }
 }

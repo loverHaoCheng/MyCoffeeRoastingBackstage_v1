@@ -7,6 +7,7 @@ import { useBeanEditableDetail, useUpdateBean } from '@/modules/bean/hooks';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
+import { formatShanghaiDateTime } from '@/shared/time/shanghaiTime';
 import type { Bean } from '@/types/domain';
 import type { FieldPath } from 'react-hook-form';
 
@@ -76,7 +77,7 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDe
       { label: '供应商', value: bean.supplierName ?? '待补充' },
       {
         label: '更新时间',
-        value: new Date(bean.updatedAt).toLocaleString('zh-CN'),
+        value: formatShanghaiDateTime(bean.updatedAt),
       },
       { label: '养豆时间', value: bean.agingDays != null ? `${String(bean.agingDays)} 天` : '14 天' },
       { label: '赏味结束期', value: bean.tastingEndDays != null ? `${String(bean.tastingEndDays)} 天` : '40 天' },

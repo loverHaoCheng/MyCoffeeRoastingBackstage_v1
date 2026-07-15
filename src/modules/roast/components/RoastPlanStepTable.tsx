@@ -15,7 +15,9 @@ export function RoastPlanStepTable({ steps }: RoastPlanStepTableProps) {
           <div role="columnheader">事件</div>
           <div role="columnheader">操作</div>
           <div role="columnheader">炉温</div>
+          <div role="columnheader">风温</div>
           <div role="columnheader">火力</div>
+          <div role="columnheader">转速</div>
         </div>
         {steps.map((step) => (
           <div className={styles.row} key={step.id} role="row">
@@ -31,8 +33,14 @@ export function RoastPlanStepTable({ steps }: RoastPlanStepTableProps) {
             <div data-label="炉温" role="cell">
               {step.drumTemperature}
             </div>
+            <div data-label="风温" role="cell">
+              {step.airTemperature}
+            </div>
             <div data-label="火力" role="cell">
               {step.firePower}
+            </div>
+            <div data-label="转速" role="cell">
+              {step.drumSpeed}
             </div>
           </div>
         ))}

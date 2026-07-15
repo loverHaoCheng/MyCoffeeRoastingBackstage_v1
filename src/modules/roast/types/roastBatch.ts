@@ -1,6 +1,15 @@
 /** 烘焙记录领域类型 */
 export type RoastBatchSalesMode = 'sale' | 'selfUse';
 
+export interface RoastBatchEvaluation {
+  allowTraining: boolean;
+  defectNotes?: string;
+  flavorNotes?: string;
+  nextAdjustmentNotes?: string;
+  overallScore?: number;
+  targetMatchScore?: number;
+}
+
 export interface RoastBatchRecord {
   id: string;
   /** 烘焙日期 */
@@ -31,6 +40,8 @@ export interface RoastBatchRecord {
   finalSaleUnitPrice?: number | null;
   /** 备注 */
   notes?: string;
+  /** 评价 */
+  evaluation: RoastBatchEvaluation;
   /** 图片 URL 列表 */
   imageUrls?: string[];
   /** 状态 */
@@ -57,6 +68,7 @@ export interface RoastBatchCreateInput {
   totalRoastTime?: number;
   finalSaleUnitPrice?: number | null;
   notes?: string;
+  evaluation?: RoastBatchEvaluation;
   imageUrls?: string[];
   status?: 'completed' | 'draft';
   salesMode?: RoastBatchSalesMode;
@@ -78,6 +90,7 @@ export interface RoastBatchUpdateInput {
   totalRoastTime?: number;
   finalSaleUnitPrice?: number | null;
   notes?: string;
+  evaluation?: RoastBatchEvaluation;
   imageUrls?: string[];
   status?: 'completed' | 'draft';
   salesMode?: RoastBatchSalesMode;

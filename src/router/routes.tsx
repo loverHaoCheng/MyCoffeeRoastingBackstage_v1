@@ -14,6 +14,12 @@ const LoginPage = lazy(() => import('@/modules/auth').then((module) => ({ defaul
 const RegisterPage = lazy(() =>
   import('@/modules/auth').then((module) => ({ default: module.RegisterPage })),
 );
+const ResetPasswordPage = lazy(() =>
+  import('@/modules/auth').then((module) => ({ default: module.ResetPasswordPage })),
+);
+const VerifyEmailPage = lazy(() =>
+  import('@/modules/auth').then((module) => ({ default: module.VerifyEmailPage })),
+);
 const LegalPage = lazy(() => import('@/modules/legal').then((module) => ({ default: module.LegalPage })));
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));
 const RoastPage = lazy(() =>
@@ -134,6 +140,14 @@ export const routes: RouteObject[] = [
   {
     path: '/forgot-password',
     element: withPageFallback(<ForgotPasswordPage />),
+  },
+  {
+    path: '/verify-email',
+    element: withPageFallback(<VerifyEmailPage />),
+  },
+  {
+    path: '/reset-password',
+    element: withPageFallback(<ResetPasswordPage />),
   },
   {
     path: '/terms',

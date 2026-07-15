@@ -41,7 +41,10 @@ describe('roastPlanService', () => {
     expect(updateSpy).toHaveBeenCalledTimes(2);
     expect(updateSpy).toHaveBeenCalledWith(
       'roast_batches',
-      { roast_plan_id: null },
+      {
+        roast_plan_id: null,
+        roast_plan_name: null,
+      },
       { match: { id: 'batch-1' }, select: 'id' },
     );
     expect(deleteSpy).toHaveBeenCalledWith('roast_profiles', {

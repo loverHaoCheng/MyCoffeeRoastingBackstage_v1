@@ -60,6 +60,9 @@ const curveRecord: RoastCurveRecord = {
 const batchRecord: RoastBatchRecord = {
   createdAt: '2026-07-12T15:00:00.000Z',
   developmentRatio: 14.4,
+  evaluation: {
+    allowTraining: false,
+  },
   firstCrackTime: 447,
   greenBeanId: 'bean-1',
   greenBeanName: '测试生豆',

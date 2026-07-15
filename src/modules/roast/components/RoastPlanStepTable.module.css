@@ -14,7 +14,14 @@
 
 .row {
   display: grid;
-  grid-template-columns: minmax(72px, 0.9fr) minmax(92px, 1.1fr) minmax(76px, 0.9fr) minmax(116px, 1.35fr) minmax(64px, 0.72fr);
+  grid-template-columns:
+    minmax(72px, 0.9fr)
+    minmax(92px, 1.05fr)
+    minmax(76px, 0.9fr)
+    minmax(96px, 1fr)
+    minmax(96px, 1fr)
+    minmax(64px, 0.72fr)
+    minmax(76px, 0.8fr);
   min-height: 68px;
   border-bottom: 1px solid var(--app-border-soft);
 }

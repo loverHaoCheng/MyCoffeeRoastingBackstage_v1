@@ -40,6 +40,7 @@ function RoastPlanCard({ onDelete, onEdit, onEditAll, onView, plan }: RoastPlanC
   const totalTimeLabel = getText('-', plan.steps[plan.steps.length - 1]?.timeLabel);
   const allMetaItems = [
     { key: 'beanName', label: '生豆', value: getText('待配置', plan.beanName), multiline: true, editPath: 'beanId' as const },
+    { key: 'roasterModel', label: '烘豆机', value: getText('待配置', plan.roasterModel), editPath: 'roasterModel' as const },
     { key: 'batchWeight', label: '批次重量', value: `${String(plan.batchWeightGrams)} g`, editPath: 'batchWeightGrams' as const },
     { key: 'plannedBatchWeight', label: '计划重量', value: `${formatKg.format(plan.plannedBatchKg)} kg` },
     { key: 'roastPurpose', label: '用途', value: getText('待补充', plan.roastPurpose), multiline: true, editPath: 'purpose' as const },

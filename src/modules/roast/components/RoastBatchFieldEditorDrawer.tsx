@@ -262,6 +262,7 @@ export function RoastBatchFieldEditorDrawer({
             }}
             options={beans.map((bean) => ({ label: bean.name, value: String(bean.id) }))}
             placeholder="选择生豆"
+            showSearch={false}
             value={draft.greenBeanId}
           />
         );
@@ -287,6 +288,7 @@ export function RoastBatchFieldEditorDrawer({
               { label: '销售', value: 'sale' },
               { label: '自留', value: 'selfUse' },
             ]}
+            showSearch={false}
             value={draft.salesMode ?? 'sale'}
           />
         );
@@ -305,7 +307,7 @@ export function RoastBatchFieldEditorDrawer({
             }))}
             disabled={availablePlans.length === 0}
             placeholder={draft.greenBeanId ? '选择通用计划或当前生豆对应计划' : '可先选择通用计划'}
-            showSearch
+            showSearch={false}
             value={draft.roastPlanId}
           />
         );
@@ -345,6 +347,7 @@ export function RoastBatchFieldEditorDrawer({
               updateDraft('roastLevel', value);
             }}
             options={ROAST_LEVEL_OPTIONS.map((level) => ({ label: level, value: level }))}
+            showSearch={false}
             value={draft.roastLevel}
           />
         );
@@ -414,6 +417,7 @@ export function RoastBatchFieldEditorDrawer({
               { label: '草稿', value: 'draft' },
               { label: '已完成', value: 'completed' },
             ]}
+            showSearch={false}
             value={draft.status}
           />
         );

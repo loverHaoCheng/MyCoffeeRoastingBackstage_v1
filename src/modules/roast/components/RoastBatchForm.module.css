@@ -46,6 +46,12 @@
   font-weight: 700;
 }
 
+.requiredMark {
+  margin-left: 4px;
+  color: var(--app-danger, #c43c39);
+  font-style: normal;
+}
+
 .field :global(.ant-input),
 .field :global(.ant-input-number),
 .field :global(.ant-input-number-affix-wrapper),
@@ -79,6 +85,15 @@
   color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.checkboxField {
+  display: block;
+}
+
+.checkboxField :global(.ant-checkbox-wrapper) {
+  color: var(--app-text);
+  line-height: 1.5;
 }
 
 .submitButton {

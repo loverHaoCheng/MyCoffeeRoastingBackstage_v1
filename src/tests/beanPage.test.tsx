@@ -145,7 +145,7 @@ describe('BeanPage', () => {
   };
 
   it('formats the default bean code with two digit date and time parts', () => {
-    expect(createDefaultBeanCode(new Date(2026, 6, 10, 5, 8))).toBe('EB-2607100508');
+    expect(createDefaultBeanCode(new Date('2026-07-09T21:08:00.000Z'))).toBe('EB-2607100508');
   });
 
   it('renders the bean inventory workspace with the current simplified search layout', async () => {
@@ -181,14 +181,24 @@ describe('BeanPage', () => {
     const pendingListRequest = new Promise<never>(() => undefined);
     vi.spyOn(beanService, 'getBootstrappedBeans').mockReturnValue(createBeanRecords(1));
     vi.spyOn(beanService, 'listBeans').mockReturnValue(pendingListRequest);
-    vi.spyOn(beanService, 'deleteBean').mockResolvedValue({ queued: false, synced: true });
+    const deleteBeanSpy = vi.spyOn(beanService, 'deleteBean').mockResolvedValue({ queued: false, synced: true });
 
     renderWithQuery(<BeanPage />);
 
     fireEvent.click(await screen.findByRole('button', { name: '删除 零库存测试豆' }));
 
     const deleteDialog = await screen.findByRole('dialog', { name: '确认删除' });
+    const deleteButton = within(deleteDialog).getByRole('button', { name: '删 除' });
+
+    expect(deleteButton).toBeDisabled();
+
+    fireEvent.click(within(deleteDialog).getByRole('radio', { name: /全部改为通用计划/ }));
+    expect(deleteButton).toBeEnabled();
     fireEvent.click(within(deleteDialog).getByRole('button', { name: '删 除' }));
+
+    await waitFor(() => {
+      expect(deleteBeanSpy).toHaveBeenCalledWith('bean-zero-stock', 'makeGeneric');
+    });
 
     await waitFor(() => {
       expect(screen.getByText('没有匹配的生豆批次')).toBeInTheDocument();

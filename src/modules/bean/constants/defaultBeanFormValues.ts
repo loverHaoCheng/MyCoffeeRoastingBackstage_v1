@@ -1,17 +1,21 @@
 import type { GreenBeanCreateInput } from '../types/localGreenBean';
 
-const padTwoDigits = (value: number): string => {
-  return String(value).padStart(2, '0');
-};
+import { getShanghaiDateParts, toShanghaiDateString } from '@/shared/time/shanghaiTime';
 
 export const createDefaultBeanCode = (date = new Date()): string => {
+  const parts = getShanghaiDateParts(date);
+
+  if (!parts) {
+    return 'EB-0000000000';
+  }
+
   return [
     'EB-',
-    padTwoDigits(date.getFullYear() % 100),
-    padTwoDigits(date.getMonth() + 1),
-    padTwoDigits(date.getDate()),
-    padTwoDigits(date.getHours()),
-    padTwoDigits(date.getMinutes()),
+    parts.year.slice(-2),
+    parts.month,
+    parts.day,
+    parts.hour,
+    parts.minute,
   ].join('');
 };
 
@@ -33,7 +37,7 @@ export const createDefaultBeanFormValues = (): GreenBeanCreateInput => {
     originCountry: '',
     originRegion: '',
     processMethod: '',
-    purchaseDate: new Date().toISOString().slice(0, 10),
+    purchaseDate: toShanghaiDateString(new Date()),
     purchasedTotalPrice: 0,
     purchasedWeightGrams: 1000,
     remainingWeightGrams: 1000,

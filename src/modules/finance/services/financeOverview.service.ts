@@ -1,5 +1,6 @@
 import type { Bean } from '@/types/domain';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import { toShanghaiDateString } from '@/shared/time/shanghaiTime';
 
 import type {
   CostCalculationRecord,
@@ -33,20 +34,38 @@ interface BuildFinanceOverviewDrilldownInput {
 
 const DEFAULT_DEHYDRATION_RATE = 14;
 
-const createLocalDateText = (value: Date): string => {
-  const year = String(value.getFullYear());
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+const createDateTextFromUtcDate = (value: Date): string => {
+  return value.toISOString().slice(0, 10);
 };
 
-const shiftDate = (value: Date, offsetDays: number): Date => {
-  const nextValue = new Date(value);
+const createUtcDateFromDateText = (dateText: string): Date => {
+  const [year = '1970', month = '01', day = '01'] = dateText.split('-');
 
-  nextValue.setDate(nextValue.getDate() + offsetDays);
+  return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+};
 
-  return nextValue;
+const shiftDateText = (dateText: string, offsetDays: number): string => {
+  const nextValue = createUtcDateFromDateText(dateText);
+
+  nextValue.setUTCDate(nextValue.getUTCDate() + offsetDays);
+
+  return createDateTextFromUtcDate(nextValue);
+};
+
+const getDayOfWeekFromDateText = (dateText: string): number => {
+  return createUtcDateFromDateText(dateText).getUTCDay();
+};
+
+const getYearFromDateText = (dateText: string): string => {
+  return dateText.slice(0, 4);
+};
+
+const getYearMonthFromDateText = (dateText: string): string => {
+  return dateText.slice(0, 7);
+};
+
+const getFinanceDateTextFromTimestamp = (value: string): string => {
+  return toShanghaiDateString(value) || value.slice(0, 10);
 };
 
 const clampRate = (value: number): number => {
@@ -112,9 +131,12 @@ const buildRoastBatchRevenueRecords = (
 
   return roastBatches
     .filter((batch) => {
-      return batch.status === 'completed' && batch.salesMode === 'sale' && isDateWithinFinanceRange(batch.roastDate.slice(0, 10), range);
+      const roastDate = getFinanceDateTextFromTimestamp(batch.roastDate);
+
+      return batch.status === 'completed' && batch.salesMode === 'sale' && isDateWithinFinanceRange(roastDate, range);
     })
     .map((batch) => {
+      const roastDate = getFinanceDateTextFromTimestamp(batch.roastDate);
       const bean = beanMap.get(batch.greenBeanId);
       const saleUnitPrice = batch.finalSaleUnitPrice ?? bean?.defaultSaleUnitPrice ?? 0;
       const saleUnitCount = 1;
@@ -123,7 +145,7 @@ const buildRoastBatchRevenueRecords = (
 
       return {
         amount,
-        date: batch.roastDate.slice(0, 10),
+        date: roastDate,
         id: batch.id,
         notes: batch.notes ?? null,
         saleUnitCount,
@@ -146,7 +168,7 @@ export const isDateWithinFinanceRange = (dateText: string, range: FinanceDateRan
 };
 
 export const getDateTextFromTimestamp = (value: string): string => {
-  return createLocalDateText(new Date(value));
+  return getFinanceDateTextFromTimestamp(value);
 };
 
 export const resolveFinanceDateRange = (
@@ -154,7 +176,7 @@ export const resolveFinanceDateRange = (
   customRange: FinanceDateRange | null,
   now = new Date(),
 ): FinanceDateRange => {
-  const today = createLocalDateText(now);
+  const today = toShanghaiDateString(now) || createDateTextFromUtcDate(now);
 
   if (preset === 'custom' && customRange) {
     return customRange;
@@ -175,25 +197,25 @@ export const resolveFinanceDateRange = (
   }
 
   if (preset === 'week') {
-    const dayOfWeek = now.getDay();
+    const dayOfWeek = getDayOfWeekFromDateText(today);
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
 
     return {
       endDate: today,
-      startDate: createLocalDateText(shiftDate(now, mondayOffset)),
+      startDate: shiftDateText(today, mondayOffset),
     };
   }
 
   if (preset === 'year') {
     return {
       endDate: today,
-      startDate: `${String(now.getFullYear())}-01-01`,
+      startDate: `${getYearFromDateText(today)}-01-01`,
     };
   }
 
   return {
     endDate: today,
-    startDate: `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-01`,
+    startDate: `${getYearMonthFromDateText(today)}-01`,
   };
 };
 
@@ -229,7 +251,7 @@ export const calculateFinanceOverview = ({
   const roastBatchRevenueRecords = buildRoastBatchRevenueRecords(roastBatches, beans, range);
   const filteredExpenseRecords = expenseRecords.filter((record) => isDateWithinFinanceRange(record.expenseDate, range));
   const filteredBeanPurchases = beans.filter((bean) => {
-    const purchaseDate = bean.purchaseDate ?? bean.createdAt.slice(0, 10);
+    const purchaseDate = bean.purchaseDate ?? getFinanceDateTextFromTimestamp(bean.createdAt);
     const purchasedTotalPrice = bean.purchasedTotalPrice ?? 0;
 
     return purchasedTotalPrice > 0 && isDateWithinFinanceRange(purchaseDate, range);
@@ -294,7 +316,7 @@ export const buildFinanceOverviewDrilldown = ({
           return {
             amount,
             categoryLabel: `${formatRevenueUnitCount(estimatedUnitCount)} 份 × ¥${(bean.defaultSaleUnitPrice ?? 0).toFixed(2)}`,
-            date: bean.updatedAt.slice(0, 10),
+            date: getFinanceDateTextFromTimestamp(bean.updatedAt),
             deletable: false,
             id: `estimated-${String(bean.id)}`,
             notes: `剩余 ${bean.stockKg.toFixed(2)}kg · 按脱水率 ${dehydrationRate.toFixed(1)}% 估算`,
@@ -344,7 +366,7 @@ export const buildFinanceOverviewDrilldown = ({
 
   const beanPurchaseRecords: FinanceOverviewDetailItem[] = beans
     .filter((bean) => {
-      const purchaseDate = bean.purchaseDate ?? bean.createdAt.slice(0, 10);
+      const purchaseDate = bean.purchaseDate ?? getFinanceDateTextFromTimestamp(bean.createdAt);
       const purchasedTotalPrice = bean.purchasedTotalPrice ?? 0;
 
       return purchasedTotalPrice > 0 && isDateWithinFinanceRange(purchaseDate, range);
@@ -352,7 +374,7 @@ export const buildFinanceOverviewDrilldown = ({
     .map((bean) => ({
       amount: toMoney(bean.purchasedTotalPrice ?? 0),
       categoryLabel: '生豆采购',
-      date: bean.purchaseDate ?? bean.createdAt.slice(0, 10),
+      date: bean.purchaseDate ?? getFinanceDateTextFromTimestamp(bean.createdAt),
       deleteHint: '自动计入记录请到生豆库存中修改或删除采购数据。',
       deletable: false,
       id: `bean-${String(bean.id)}`,

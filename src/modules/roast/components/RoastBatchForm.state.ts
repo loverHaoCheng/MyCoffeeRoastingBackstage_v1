@@ -1,10 +1,12 @@
 import dayjs from 'dayjs';
 
 import { getRoastLevelSuggestion } from '@/modules/roast/constants/roastLevel';
+import { createDefaultRoastBatchEvaluation } from '@/modules/roast/services/roast-batch/roastBatch.service.shared';
 
 import type { RoastBatchFormState } from './RoastBatchForm';
 
 export const createDefaultRoastBatchFormState = (): RoastBatchFormState => ({
+  evaluation: createDefaultRoastBatchEvaluation(),
   developmentRatio: undefined,
   firstCrackTime: undefined,
   finalSaleUnitPrice: undefined,

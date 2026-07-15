@@ -5,7 +5,9 @@ export interface RoastPlanJsonStep {
   event: string;
   operation: string;
   temperature: string;
+  airTemperature: string;
   firePower: string;
+  drumSpeed: string;
   note?: string;
 }
 
@@ -13,6 +15,7 @@ export interface RoastPlanJsonInput {
   name: string;
   beanName: string;
   beanId?: Bean['id'];
+  roasterModel: string;
   batchWeightGrams: number;
   roastLevel: string;
   purpose?: string;

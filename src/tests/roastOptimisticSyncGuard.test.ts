@@ -37,6 +37,9 @@ describe('roast optimistic sync guard', () => {
 
   it('does not upload optimistic local roast batches during background sync', async () => {
     const optimisticBatch = roastBatchService.createOptimisticBatch({
+      evaluation: {
+        allowTraining: false,
+      },
       greenBeanId: 'bean-1',
       greenBeanName: '测试生豆',
       inputWeightGrams: 200,
@@ -68,11 +71,14 @@ describe('roast optimistic sync guard', () => {
       beanId: 'bean-1',
       beanName: '测试生豆',
       name: '测试计划',
+      roasterModel: 'tank200d',
       purpose: '手冲',
       roastLevel: '中焙',
       steps: [
         {
           event: '入豆',
+          airTemperature: '180',
+          drumSpeed: '45rpm',
           firePower: '80%',
           operation: '入豆',
           temperature: '200',
@@ -103,11 +109,14 @@ describe('roast optimistic sync guard', () => {
       beanId: 'bean-1',
       beanName: '测试生豆',
       name: '待删除计划',
+      roasterModel: 'tank200d',
       purpose: '手冲',
       roastLevel: '中焙',
       steps: [
         {
           event: '入豆',
+          airTemperature: '180',
+          drumSpeed: '45rpm',
           firePower: '80%',
           operation: '入豆',
           temperature: '200',
@@ -147,11 +156,14 @@ describe('roast optimistic sync guard', () => {
       beanId: 'bean-1',
       beanName: '测试生豆',
       name: '后台删除计划',
+      roasterModel: 'tank200d',
       purpose: '手冲',
       roastLevel: '中焙',
       steps: [
         {
           event: '入豆',
+          airTemperature: '180',
+          drumSpeed: '45rpm',
           firePower: '80%',
           operation: '入豆',
           temperature: '200',

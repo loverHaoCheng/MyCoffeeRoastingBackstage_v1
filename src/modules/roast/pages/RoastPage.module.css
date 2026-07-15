@@ -26,6 +26,56 @@
   padding: 20px;
 }
 
+.aiPanel {
+  display: grid;
+  gap: 16px;
+  padding: 4px 0 0;
+}
+
+.aiPanelHeader {
+  display: grid;
+  gap: 8px;
+}
+
+.aiPanelHeader h3 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 18px;
+}
+
+.aiPanelHeader p {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.aiStageGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.aiStageItem {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 18px;
+  background: var(--app-bg-elevated);
+}
+
+.aiStageItem strong {
+  color: var(--app-text);
+  font-size: 14px;
+}
+
+.aiStageItem p {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .detailDrawer :global(.ant-drawer-body) {
   padding: 0 24px 0;
   overflow-x: hidden;

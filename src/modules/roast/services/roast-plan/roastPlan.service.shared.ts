@@ -5,6 +5,7 @@ import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import type { ApiResponse } from '@/services/api.types';
 import type { RoastPlan } from '@/types/domain';
 
+import { normalizeRoasterModel } from '../../constants/roasterModel';
 import type { RoastPlanJsonInput } from '../../types';
 import {
   GENERIC_BEAN_ID,
@@ -46,7 +47,9 @@ const mapRoastPlanSteps = (steps: unknown): RoastPlan['steps'] => {
       eventName: record.event ?? '',
       operation: record.operation ?? '',
       drumTemperature: record.temperature ?? '-',
+      airTemperature: record.airTemperature ?? '-',
       firePower: record.firePower ?? '',
+      drumSpeed: record.drumSpeed ?? '-',
       note: record.note,
     };
   });
@@ -57,6 +60,7 @@ export const mapRemoteRoastPlanRecord = (record: RemoteRoastPlanOverviewRecord):
   name: record.name,
   beanId: record.green_bean_id ?? GENERIC_BEAN_ID,
   beanName: record.bean_name ?? GENERIC_BEAN_NAME,
+  roasterModel: normalizeRoasterModel(record.roaster_model),
   batchWeightGrams: record.batch_weight_grams,
   plannedBatchKg: toPlannedBatchKilograms(record.batch_weight_grams),
   targetRoastLevel: record.target_roast_level ?? '',
@@ -121,9 +125,12 @@ export const toRemoteRoastPlanPayload = async (
     is_active: true,
     name: input.name,
     planned_batch_kg: toPocketBaseCompatiblePlannedBatchKilograms(input.batchWeightGrams),
+    roaster_model: normalizeRoasterModel(input.roasterModel),
     roast_purpose: input.purpose ?? null,
     status,
     steps: input.steps.map((step) => ({
+      airTemperature: step.airTemperature,
+      drumSpeed: step.drumSpeed,
       event: step.event,
       firePower: step.firePower,
       note: step.note,

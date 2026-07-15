@@ -13,6 +13,7 @@ import {
 } from '../../constants/roastLevel';
 import type {
   RoastBatchCreateInput,
+  RoastBatchEvaluation,
   RoastBatchRecord,
   RoastBatchUpdateInput,
 } from '../../types/roastBatch';
@@ -21,6 +22,10 @@ export const ok = <T,>(data: T): ApiResponse<T> => ({
   code: 0,
   data,
   message: 'ok',
+});
+
+export const createDefaultRoastBatchEvaluation = (): RoastBatchEvaluation => ({
+  allowTraining: false,
 });
 
 export const isMissingRemoteResourceError = (error: unknown): boolean => {
@@ -135,6 +140,7 @@ export const getNextBatchState = (
 ): RoastBatchRecord => ({
   ...currentBatch,
   ...input,
+  evaluation: input.evaluation ?? currentBatch.evaluation,
   roastedBeanName: input.roastedBeanName ?? currentBatch.roastedBeanName ?? currentBatch.greenBeanName,
   roastLevel: resolveNormalizedRoastLevel(
     input.roastLevel ?? currentBatch.roastLevel,
@@ -166,6 +172,7 @@ export const toPocketBaseRoastBatchPayload = (
   if (input.totalRoastTime !== undefined) payload.total_roast_time = input.totalRoastTime;
   if (input.finalSaleUnitPrice !== undefined) payload.final_sale_unit_price = input.finalSaleUnitPrice ?? null;
   if (input.notes !== undefined) payload.notes = toNullableStringValue(input.notes);
+  if (input.evaluation !== undefined) payload.evaluation = input.evaluation;
   if (input.imageUrls !== undefined) payload.image_urls = input.imageUrls ?? [];
   if (input.salesMode !== undefined) payload.sales_mode = input.salesMode;
   if (input.status !== undefined) payload.status = input.status;
@@ -206,6 +213,38 @@ const getStringArrayField = (value: unknown): string[] => {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 };
 
+const getRoastBatchEvaluation = (value: unknown): RoastBatchEvaluation => {
+  if (typeof value !== 'object' || value == null) {
+    return createDefaultRoastBatchEvaluation();
+  }
+
+  const record = value as Record<string, unknown>;
+  const overallScore = typeof record.overallScore === 'number' && Number.isFinite(record.overallScore)
+    ? record.overallScore
+    : undefined;
+  const targetMatchScore = typeof record.targetMatchScore === 'number' && Number.isFinite(record.targetMatchScore)
+    ? record.targetMatchScore
+    : undefined;
+  const flavorNotes = typeof record.flavorNotes === 'string' && record.flavorNotes.trim().length > 0
+    ? record.flavorNotes
+    : undefined;
+  const defectNotes = typeof record.defectNotes === 'string' && record.defectNotes.trim().length > 0
+    ? record.defectNotes
+    : undefined;
+  const nextAdjustmentNotes = typeof record.nextAdjustmentNotes === 'string' && record.nextAdjustmentNotes.trim().length > 0
+    ? record.nextAdjustmentNotes
+    : undefined;
+
+  return {
+    allowTraining: record.allowTraining === true,
+    defectNotes,
+    flavorNotes,
+    nextAdjustmentNotes,
+    overallScore,
+    targetMatchScore,
+  };
+};
+
 const getBatchStatusField = (value: unknown): RoastBatchRecord['status'] => {
   return value === 'draft' ? 'draft' : 'completed';
 };
@@ -237,6 +276,7 @@ export const mapRemoteRoastBatchRecord = (record: Record<string, unknown>): Roas
   totalRoastTime: getOptionalNumberField(record.total_roast_time),
   finalSaleUnitPrice: getOptionalNumberField(record.final_sale_unit_price),
   notes: getOptionalStringField(record.notes),
+  evaluation: getRoastBatchEvaluation(record.evaluation),
   imageUrls: getStringArrayField(record.image_urls),
   salesMode: getSalesModeField(record.sales_mode),
   status: getBatchStatusField(record.status),

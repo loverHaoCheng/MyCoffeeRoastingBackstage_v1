@@ -1,4 +1,5 @@
 import type { RoastBatchRecord } from '../../types/roastBatch';
+import { createDefaultRoastBatchEvaluation } from './roastBatch.service.shared';
 
 const STORAGE_KEY = 'coffee-roasting-backstage:roast-batches';
 
@@ -6,14 +7,19 @@ export const pendingOptimisticCreateBatchIds = new Set<string>();
 
 let localRoastBatches: RoastBatchRecord[] = [];
 
+type LegacyRoastBatchRecord = Omit<RoastBatchRecord, 'evaluation'> & {
+  evaluation?: RoastBatchRecord['evaluation'];
+};
+
 export const sortBatches = (batches: RoastBatchRecord[]): RoastBatchRecord[] => {
   return [...batches].sort((a, b) => {
     return new Date(b.roastDate).getTime() - new Date(a.roastDate).getTime();
   });
 };
 
-const normalizeStoredBatch = (batch: RoastBatchRecord): RoastBatchRecord => ({
+const normalizeStoredBatch = (batch: LegacyRoastBatchRecord): RoastBatchRecord => ({
   ...batch,
+  evaluation: batch.evaluation ?? createDefaultRoastBatchEvaluation(),
   roastLevel: batch.roastLevel,
 });
 
@@ -57,4 +63,9 @@ export const removeStoredBatch = (batchId: string): void => {
 
 export const restoreStoredBatch = (batch: RoastBatchRecord): void => {
   saveLocalBatches([batch, ...loadLocalBatches().filter((item) => item.id !== batch.id)]);
+};
+
+export const clearRoastBatchState = (): void => {
+  pendingOptimisticCreateBatchIds.clear();
+  localRoastBatches = [];
 };

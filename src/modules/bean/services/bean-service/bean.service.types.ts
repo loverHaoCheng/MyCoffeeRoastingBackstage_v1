@@ -3,6 +3,8 @@ import type { Bean } from '@/types/domain';
 
 import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../../types';
 
+export type RoastPlanDisposition = 'delete' | 'makeGeneric';
+
 export interface GreenBeanTableUpdateInput {
   aging_days?: number;
   altitude_meters_max?: null | number;
@@ -36,7 +38,7 @@ export interface EditablePurchaseBatchInput {
 export interface BeanRepository {
   adjustRemainingWeight(beanId: string | number, deltaGrams: number): Promise<ApiResponse<Bean>>;
   createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>>;
-  deleteBean(beanId: string | number): Promise<void>;
+  deleteBean(beanId: string | number, roastPlanDisposition: RoastPlanDisposition): Promise<void>;
   getBeanById(beanId: string | number): Promise<ApiResponse<Bean | null>>;
   getEditableBean(beanId: string | number): Promise<ApiResponse<GreenBeanEditableDetail>>;
   listBeans(): Promise<ApiResponse<Bean[]>>;

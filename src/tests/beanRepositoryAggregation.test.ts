@@ -256,7 +256,7 @@ describe('createGreenBeanInventoryRepository', () => {
 
     const repository = createGreenBeanInventoryRepository(client);
 
-    await repository.deleteBean('bean-1');
+    await repository.deleteBean('bean-1', 'delete');
 
     expect(deleteCalls).toEqual([
       { match: { green_bean_id: 'bean-1' }, tableName: 'roast_batches' },
@@ -266,6 +266,78 @@ describe('createGreenBeanInventoryRepository', () => {
       { match: { green_bean_id: 'bean-1' }, tableName: 'bean_sale_specs' },
       { match: { id: 'bean-1' }, tableName: 'green_beans' },
     ]);
+  });
+
+  it('keeps linked roast plans as generic plans when requested during bean deletion', async () => {
+    const deleteCalls: { match: Record<string, unknown>; tableName: string }[] = [];
+    const updateCalls: {
+      match: Record<string, unknown>;
+      payload: Record<string, unknown>;
+      tableName: string;
+    }[] = [];
+    const client = {
+      delete: (tableName: string, options: { match: Record<string, unknown> }) => {
+        deleteCalls.push({ match: options.match, tableName });
+        return Promise.resolve();
+      },
+      insert: <T,>(): Promise<T[]> => {
+        return Promise.resolve([] as T[]);
+      },
+      list: <T,>(tableName: string): Promise<T[]> => {
+        if (tableName === 'roast_batches') {
+          return Promise.resolve([{ id: 'batch-1' }] as T[]);
+        }
+
+        if (tableName === 'roast_profiles') {
+          return Promise.resolve([{ id: 'plan-1' }] as T[]);
+        }
+
+        return Promise.resolve([] as T[]);
+      },
+      update: <T,>(
+        tableName: string,
+        payload: Record<string, unknown>,
+        options: { match: Record<string, unknown> },
+      ): Promise<T[]> => {
+        updateCalls.push({ match: options.match, payload, tableName });
+        return Promise.resolve([] as T[]);
+      },
+    } as unknown as PocketBaseRestClient;
+
+    const repository = createGreenBeanInventoryRepository(client);
+
+    await repository.deleteBean('bean-1', 'makeGeneric');
+
+    expect(deleteCalls).toContainEqual({
+      match: { roast_batch_id: 'batch-1' },
+      tableName: 'roast_curve_records',
+    });
+    expect(deleteCalls).not.toContainEqual({
+      match: { green_bean_id: 'bean-1' },
+      tableName: 'roast_profiles',
+    });
+    expect(updateCalls).toEqual([
+      {
+        match: { id: 'plan-1' },
+        payload: { green_bean_id: null },
+        tableName: 'roast_profiles',
+      },
+    ]);
+  });
+
+  it('allows deleting a bean as generic when it has no linked roast plans', async () => {
+    const client = {
+      delete: (): Promise<void> => Promise.resolve(),
+      insert: <T,>(): Promise<T[]> => Promise.resolve([] as T[]),
+      list: <T,>(): Promise<T[]> => Promise.resolve([] as T[]),
+      update: (): never => {
+        throw new Error('No linked roast plan should be updated.');
+      },
+    } as unknown as PocketBaseRestClient;
+
+    const repository = createGreenBeanInventoryRepository(client);
+
+    await expect(repository.deleteBean('bean-1', 'makeGeneric')).resolves.toBeUndefined();
   });
 
   it('creates beans successfully when optional bean settings collections are unavailable', async () => {

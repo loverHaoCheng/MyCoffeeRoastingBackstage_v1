@@ -1,4 +1,3 @@
-import AutoComplete from "antd/es/auto-complete";
 import Button from "antd/es/button";
 import DatePicker from "antd/es/date-picker";
 import Input from "antd/es/input";
@@ -163,6 +162,7 @@ export function FinanceExpenseForm({
                   <Select
                     aria-label="支出类别"
                     options={financeExpenseCategoryOptions}
+                    showSearch={false}
                     value={field.value}
                     onChange={field.onChange}
                   />
@@ -180,20 +180,23 @@ export function FinanceExpenseForm({
                   control={control}
                   name="customCategoryLabel"
                   render={({ field }) => (
-                    <AutoComplete
+                    <Input
                       aria-label="自定义类别"
-                      options={(customCategorySuggestions ?? []).map((label) => ({
-                        label,
-                        value: label,
-                      }))}
                       placeholder="例如 耗材 / 平台服务费"
                       value={field.value ?? ''}
-                      onChange={field.onChange}
+                      onChange={(event) => {
+                        field.onChange(event.target.value);
+                      }}
                     />
                   )}
                 />
                 <span className={joinClassNames(styles.helpText, errors.customCategoryLabel && styles.errorText)}>
-                  {getHelpText(getErrorMessage(errors.customCategoryLabel), '保存后会在下次新增支出时继续复用')}
+                  {getHelpText(
+                    getErrorMessage(errors.customCategoryLabel),
+                    customCategorySuggestions && customCategorySuggestions.length > 0
+                      ? `历史类别可直接手动输入，例如 ${customCategorySuggestions.slice(0, 2).join(' / ')}`
+                      : '保存后会在下次新增支出时继续复用',
+                  )}
                 </span>
               </label>
             ) : null}
@@ -233,6 +236,7 @@ export function FinanceExpenseForm({
                       { label: '已支付', value: 'paid' },
                       { label: '待支付', value: 'pending' },
                     ]}
+                    showSearch={false}
                     value={field.value}
                     onChange={field.onChange}
                   />

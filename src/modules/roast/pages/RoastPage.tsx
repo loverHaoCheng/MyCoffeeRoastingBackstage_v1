@@ -1,5 +1,6 @@
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
 import { App } from 'antd';
+import Button from 'antd/es/button';
 import Empty from "antd/es/empty";
 import Grid from "antd/es/grid";
 import Spin from "antd/es/spin";
@@ -51,7 +52,7 @@ const getDetailDrawerTitle = (mode: DetailMode | null): string => {
 const matchesKeyword = (plan: RoastPlan, keyword: string): boolean => {
   const normalized = keyword.trim().toLowerCase();
   if (!normalized) return true;
-  return [plan.name, plan.beanName, plan.targetRoastLevel, plan.roastPurpose]
+  return [plan.name, plan.beanName, plan.roasterModel, plan.targetRoastLevel, plan.roastPurpose]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
@@ -73,7 +74,7 @@ export function RoastPage() {
   const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | 'steps' | undefined>();
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
-  const [creationTab, setCreationTab] = useState<'manual' | 'json'>('manual');
+  const [creationTab, setCreationTab] = useState<'ai' | 'json' | 'manual'>('manual');
 
   const { data: plans = [], isFetching } = useRoastPlans();
   const updateMutation = useUpdateRoastPlan();
@@ -282,7 +283,11 @@ export function RoastPage() {
         <Tabs
           activeKey={creationTab}
           onChange={(key) => {
-            setCreationTab(key as 'manual' | 'json');
+            if (key === 'ai') {
+              void message.info('AI 推荐正在筹备中，当前版本先完成数据采集与校验。');
+            }
+
+            setCreationTab(key as 'ai' | 'json' | 'manual');
           }}
           items={[
             {
@@ -307,6 +312,35 @@ export function RoastPage() {
                   }}
                   onImport={handleCreateFromJson}
                 />
+              ),
+            },
+            {
+              key: 'ai',
+              label: 'AI 推荐',
+              children: (
+                <section className={styles.aiPanel} aria-label="AI 推荐筹备说明">
+                  <div className={styles.aiPanelHeader}>
+                    <h3>AI 推荐（暂未开放）</h3>
+                    <p>当前版本先公开入口和规则说明，正式推荐能力会在训练快照、质量检查和安全边界稳定后开放。</p>
+                  </div>
+                  <div className={styles.aiStageGrid}>
+                    <article className={styles.aiStageItem}>
+                      <strong>当前已开放</strong>
+                      <p>烘豆机型号、风温、转速、曲线与评价表单采集。</p>
+                    </article>
+                    <article className={styles.aiStageItem}>
+                      <strong>当前暂禁用</strong>
+                      <p>AI 生成烘焙计划、训练上传、模型版本与推荐依据展示。</p>
+                    </article>
+                    <article className={styles.aiStageItem}>
+                      <strong>开放前条件</strong>
+                      <p>需要先完成训练数据快照、单次上传限制、质量检查与自动发布链路。</p>
+                    </article>
+                  </div>
+                  <Button block disabled type="primary">
+                    AI 推荐（暂未开放）
+                  </Button>
+                </section>
               ),
             },
           ]}

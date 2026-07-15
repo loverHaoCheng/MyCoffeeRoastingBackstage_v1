@@ -93,7 +93,7 @@ export function CostTemplateCardList({
                       onConfirm={() => {
                         onDeleteTemplate(template);
                       }}
-                      title={`删除模板「${template.name}」？`}
+                      title={`删除模板「${template.name}」？此操作不可撤销。`}
                     >
                       <Button danger>
                         删除

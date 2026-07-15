@@ -44,6 +44,7 @@ export interface RoastPlan extends EntityTimestamps {
   name: string;
   beanName: string;
   beanId: Bean['id'];
+  roasterModel: string;
   batchWeightGrams: number;
   plannedBatchKg: number;
   targetRoastLevel: string;
@@ -58,7 +59,9 @@ export interface RoastPlanStep {
   eventName: string;
   operation: string;
   drumTemperature: string;
+  airTemperature: string;
   firePower: string;
+  drumSpeed: string;
   note?: string;
 }
 

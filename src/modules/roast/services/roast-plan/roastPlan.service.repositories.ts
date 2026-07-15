@@ -117,9 +117,12 @@ class RemoteRoastPlanRepository implements RoastPlanRepository {
       beanId: draftPlan.beanId,
       beanName: draftPlan.beanName,
       name: draftPlan.name,
+      roasterModel: draftPlan.roasterModel,
       purpose: draftPlan.roastPurpose,
       roastLevel: draftPlan.targetRoastLevel,
       steps: draftPlan.steps.map((step) => ({
+        airTemperature: step.airTemperature,
+        drumSpeed: step.drumSpeed,
         event: step.eventName,
         firePower: step.firePower,
         note: step.note,
@@ -142,7 +145,10 @@ class RemoteRoastPlanRepository implements RoastPlanRepository {
       linkedBatches.map((batch) =>
         this.client.update<RemoteRoastBatchPlanRelationRecord>(
           'roast_batches',
-          { roast_plan_id: null },
+          {
+            roast_plan_id: null,
+            roast_plan_name: null,
+          },
           {
             match: { id: batch.id },
             select: 'id',

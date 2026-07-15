@@ -181,9 +181,10 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `name` | text | 方案名称 |
 | `batch_weight_grams` | number | 单批投豆量 |
 | `planned_batch_kg` | number | 计划批量 |
+| `roaster_model` | select | 本计划对应烘豆机型号，仅允许 `tank200d` / `其他` |
 | `roast_purpose` | text | 用途 |
 | `status` | select | `draft` / `inProgress` / `completed` / `cancelled` |
-| `steps` | json | 烘焙步骤 |
+| `steps` | json | 烘焙步骤，节点内包含时间、事件、操作、炉温、风温、火力、转速 |
 | `target_roast_level` | text | 目标烘焙程度 |
 | `is_active` | bool | 是否启用 |
 | `created_at` | text | 兼容前端时间戳 |
@@ -213,6 +214,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `first_crack_time` | number | 一爆时间 |
 | `total_roast_time` | number | 总烘焙时间 |
 | `final_sale_unit_price` | number | 本次销售单份最终定价，仅影响本次烘焙记录收入 |
+| `evaluation` | json | 评价表单，包含评分、风味、缺陷、调整建议与训练授权 |
 | `notes` | text | 备注 |
 | `image_urls` | json | 图片地址数组 |
 | `status` | select | `completed` / `draft` |

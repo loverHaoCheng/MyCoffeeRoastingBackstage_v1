@@ -4,7 +4,6 @@ import {
   localGreenBeanService,
   mapLocalGreenBeanRecordToBean,
 } from '@/modules/bean/services/localGreenBean.service';
-import { logger } from '@/shared/logger/logger';
 import { AppError } from '@/shared/errors/AppError';
 import type { ApiResponse } from '@/services/api.types';
 import type { Bean } from '@/types/domain';
@@ -25,8 +24,13 @@ import {
   ok,
   toLocalEditableBeanDetail,
 } from './bean-service/bean.service.shared';
+import {
+  addPendingOptimisticCreateBeanId,
+  pruneInvisibleLocalBeans,
+  removePendingOptimisticCreateBeanId,
+} from './bean.service.state';
 
-export type { BeanRepository } from './bean-service/bean.service.types';
+export type { BeanRepository, RoastPlanDisposition } from './bean-service/bean.service.types';
 export {
   createGreenBeanInventoryRepository,
   createRemoteBeanRepository,
@@ -40,6 +44,7 @@ export const beanService = {
   getBootstrappedBeans,
   createOptimisticBean(input: GreenBeanCreateInput): Bean {
     const localRecord = localGreenBeanService.create(input);
+    addPendingOptimisticCreateBeanId(localRecord.id);
     return mapLocalGreenBeanRecordToBean(localRecord);
   },
   prepareOptimisticDelete(beanId: Bean['id']): {
@@ -59,6 +64,7 @@ export const beanService = {
     }
 
     if (localRecord) {
+      removePendingOptimisticCreateBeanId(localRecord.id);
       localGreenBeanService.removeById(beanIdString);
     }
 
@@ -78,12 +84,14 @@ export const beanService = {
     }
 
     if (snapshot.localRecord) {
+      addPendingOptimisticCreateBeanId(snapshot.localRecord.id);
       localGreenBeanService.restore(snapshot.localRecord);
     }
 
     return getBootstrappedBeans();
   },
   finalizeOptimisticBean(optimisticBeanId: string, remoteBean: Bean): Bean[] {
+    removePendingOptimisticCreateBeanId(optimisticBeanId);
     localGreenBeanService.removeById(optimisticBeanId);
     const nextBeans = mergeBeans([remoteBean]);
 
@@ -92,22 +100,10 @@ export const beanService = {
     return nextBeans;
   },
   rollbackOptimisticBean(optimisticBeanId: string): Bean[] {
+    removePendingOptimisticCreateBeanId(optimisticBeanId);
     localGreenBeanService.removeById(optimisticBeanId);
 
     return mergeBeans(beanCacheService.getBeans() ?? []);
-  },
-  persistOptimisticBeanAsPending(input: GreenBeanCreateInput): Bean[] {
-    beanSyncService.recordPendingCreate(input);
-    const normalizedCode = input.code.trim();
-    const existingLocalRecord = localGreenBeanService
-      .listRecords()
-      .find((record) => record.code === normalizedCode);
-    const localRecord = existingLocalRecord ?? localGreenBeanService.create(input);
-
-    return mergeBeans([
-      ...(beanCacheService.getBeans() ?? []),
-      mapLocalGreenBeanRecordToBean(localRecord),
-    ]);
   },
   async createRemoteBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
     if (!beanSyncService.isOnline()) {
@@ -117,21 +113,14 @@ export const beanService = {
     return resolveBeanRepository().createBean(input);
   },
   async createBean(input: GreenBeanCreateInput): Promise<ApiResponse<Bean>> {
-    if (beanSyncService.isOnline()) {
-      try {
-        const repo = resolveBeanRepository();
-        const response = await repo.createBean(input);
-        localGreenBeanService.removeByCode(input.code.trim());
-        return response;
-      } catch (error) {
-        logger.warn('bean create failed, fallback to local', { error });
-      }
+    if (!beanSyncService.isOnline()) {
+      throw new AppError('当前网络不可用，无法同步到 PocketBase。', { code: 'NETWORK' });
     }
 
-    const localRecord = localGreenBeanService.create(input);
-    beanSyncService.recordPendingCreate(input);
-
-    return ok(mapLocalGreenBeanRecordToBean(localRecord));
+    const repo = resolveBeanRepository();
+    const response = await repo.createBean(input);
+    localGreenBeanService.removeByCode(input.code.trim());
+    return response;
   },
   async adjustRemainingWeight(beanId: string | number, deltaGrams: number): Promise<ApiResponse<Bean>> {
     if (typeof beanId === 'string' && beanId.startsWith('local-')) {
@@ -166,6 +155,7 @@ export const beanService = {
   async listBeans(): Promise<ApiResponse<Bean[]>> {
     try {
       const response = await resolveBeanRepository().listBeans();
+      pruneInvisibleLocalBeans();
 
       return ok(mergeBeans(response.data));
     } catch (error) {
@@ -183,8 +173,10 @@ export const beanService = {
 
         beanCacheService.markFailure(error.code);
 
-        if (localGreenBeanService.listBeans().length > 0) {
-          return ok(mergeBeans([]));
+        const visibleLocalBeans = mergeBeans([]);
+
+        if (visibleLocalBeans.length > 0) {
+          return ok(visibleLocalBeans);
         }
       }
 
@@ -197,41 +189,13 @@ export const beanService = {
     }
 
     const repository = resolveBeanRepository();
-    const localRecords = localGreenBeanService.listRecords();
-    let uploaded = 0;
-
-    if (localRecords.length > 0) {
-      const remoteBeforeSync = await repository.listBeans();
-      const remoteCodes = new Set(
-        remoteBeforeSync.data
-          .map((bean) => bean.code?.trim())
-          .filter((code): code is string => Boolean(code)),
-      );
-
-      for (const record of localRecords) {
-        const normalizedCode = record.code.trim();
-
-        if (normalizedCode.length === 0) {
-          continue;
-        }
-
-        if (remoteCodes.has(normalizedCode)) {
-          localGreenBeanService.removeByCode(normalizedCode);
-          continue;
-        }
-
-        await repository.createBean(beanSyncService.localRecordToCreateInput(record));
-        localGreenBeanService.removeByCode(normalizedCode);
-        remoteCodes.add(normalizedCode);
-        uploaded += 1;
-      }
-    }
-
-    const remoteAfterSync = await repository.listBeans();
     const bootstrappedBeforeSync = getBootstrappedBeans();
+    const remoteAfterSync = await repository.listBeans();
+    pruneInvisibleLocalBeans();
     const mergedRemoteBeans = mergeBeans(remoteAfterSync.data);
 
     beanCacheService.save(remoteAfterSync.data, 'remote');
+    beanSyncService.clearPendingOps();
 
     const beforeSignature = JSON.stringify(
       bootstrappedBeforeSync.map((bean) => `${String(bean.id)}:${bean.updatedAt}`),
@@ -242,7 +206,7 @@ export const beanService = {
 
     return {
       downloaded: beforeSignature === afterSignature ? 0 : mergedRemoteBeans.length,
-      uploaded,
+      uploaded: 0,
     };
   },
   syncBeans(): Promise<ApiResponse<Bean[]>> {
@@ -255,87 +219,30 @@ export const beanService = {
     }
 
     if (beanSyncService.isOnline()) {
-      try {
-        return await resolveBeanRepository().updateBean(beanId, input);
-      } catch (error) {
-        logger.warn('bean update failed, fallback to pending queue', { error });
-      }
+      return resolveBeanRepository().updateBean(beanId, input);
     }
 
-    beanSyncService.recordPendingUpdate(beanId, input);
-
-    throw new AppError('当前处于离线状态，更新已记录，将在联网后同步。', {
+    throw new AppError('当前离线，无法同步到 PocketBase。', {
       code: 'NETWORK',
     });
   },
-  async deleteBean(beanId: string | number): Promise<{ queued: boolean; synced: boolean }> {
+  async deleteBean(
+    beanId: string | number,
+    roastPlanDisposition: import('./bean-service/bean.service.types').RoastPlanDisposition,
+  ): Promise<{ queued: boolean; synced: boolean }> {
     if (beanSyncService.isOnline()) {
-      try {
-        await resolveBeanRepository().deleteBean(beanId);
-        return { queued: false, synced: true };
-      } catch (error) {
-        logger.warn('bean delete failed, fallback to pending queue', { error });
-      }
+      await resolveBeanRepository().deleteBean(beanId, roastPlanDisposition);
+      return { queued: false, synced: true };
     }
 
     if (typeof beanId === 'string' && beanId.startsWith('local-')) {
+      removePendingOptimisticCreateBeanId(beanId);
       localGreenBeanService.removeById(beanId);
       return { queued: false, synced: true };
     }
 
-    beanSyncService.recordPendingDelete(beanId);
-    return { queued: true, synced: false };
-  },
-  async syncPendingOperations(): Promise<{ failed: number; success: number }> {
-    const pendingOps = beanSyncService.getPendingOperations();
-    if (pendingOps.length === 0) {
-      return { failed: 0, success: 0 };
-    }
-
-    const repo = resolveBeanRepository();
-    let success = 0;
-    let failed = 0;
-
-    for (const op of pendingOps) {
-      try {
-        if (op.type === 'create') {
-          const input = beanSyncService.localRecordToCreateInput(op.payload);
-          try {
-            await repo.createBean(input);
-          } catch (createError) {
-            const errMsg = createError instanceof Error ? createError.message : String(createError);
-            if (errMsg.includes('409') || errMsg.includes('duplicate') || errMsg.includes('Conflict')) {
-              logger.info('bean pending create already exists remotely', { opId: op.id });
-              localGreenBeanService.removeByCode(input.code.trim());
-              beanSyncService.removePendingOp(op.id);
-              success++;
-              continue;
-            }
-            throw createError;
-          }
-          localGreenBeanService.removeByCode(input.code.trim());
-        } else if (op.type === 'update') {
-          const { beanId: pendingBeanId, ...pendingInput } = op.payload;
-          await repo.updateBean(
-            pendingBeanId as string | number,
-            beanSyncService.localRecordToCreateInput(pendingInput),
-          );
-        } else {
-          const { beanId: pendingBeanId } = op.payload;
-          await repo.deleteBean(pendingBeanId as string | number);
-        }
-        beanSyncService.removePendingOp(op.id);
-        success++;
-      } catch (error) {
-        logger.error('bean pending operation sync failed', {
-          error,
-          opId: op.id,
-          type: op.type,
-        });
-        failed++;
-      }
-    }
-
-    return { failed, success };
+    throw new AppError('当前离线，无法同步到 PocketBase。', {
+      code: 'NETWORK',
+    });
   },
 };

@@ -1,5 +1,5 @@
 import { beanCacheService } from '@/modules/bean/services/beanCache.service';
-import { localGreenBeanService } from '@/modules/bean/services/localGreenBean.service';
+import { getVisibleLocalBeans } from '@/modules/bean/services/bean.service.state';
 import type { ApiResponse } from '@/services/api.types';
 import type { Bean } from '@/types/domain';
 import { parseFlavorTags, serializeFlavorTags } from '@/modules/bean/utils/flavorTags';
@@ -66,7 +66,7 @@ export const mapBeanFormInputToTableInput = (input: GreenBeanUpdateInput): Green
 export const mergeBeans = (beans: Bean[]): Bean[] => {
   const mergedMap = new Map<string, Bean>();
 
-  [...beans, ...localGreenBeanService.listBeans()].forEach((bean) => {
+  [...beans, ...getVisibleLocalBeans()].forEach((bean) => {
     const key = String(bean.id);
     const existing = mergedMap.get(key);
     if (!existing || (existing.id.toString().startsWith('local-') && !key.startsWith('local-'))) {

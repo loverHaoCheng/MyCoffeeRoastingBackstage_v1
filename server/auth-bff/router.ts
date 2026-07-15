@@ -11,6 +11,8 @@ interface GatewayRouteHandlers {
   handleAccountDeletion: RequestHandler;
   handleBeanImageRecognition: RequestHandler;
   handleBusinessCollection: BusinessCollectionHandler;
+  handleConfirmPasswordReset: RequestHandler;
+  handleConfirmVerification: RequestHandler;
   handleLogin: RequestHandler;
   handleLogout: RequestHandler;
   handlePasswordReset: RequestHandler;
@@ -18,6 +20,7 @@ interface GatewayRouteHandlers {
   handleRealtime: RequestHandler;
   handleRegister: RequestHandler;
   handleSession: RequestHandler;
+  handleUnverifiedUserCleanup: RequestHandler;
   handleVerificationRequest: RequestHandler;
   sendJson: (response: ServerResponse, statusCode: number, body: unknown) => void;
   sendMethodNotAllowed: (response: ServerResponse, allowedMethods: string[]) => void;
@@ -47,6 +50,13 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
       return;
     }
 
+    if (path === '/internal/jobs/cleanup-unverified-users') {
+      if (ensureMethod(request, response, ['POST'], handlers)) {
+        await handlers.handleUnverifiedUserCleanup(request, response);
+      }
+      return;
+    }
+
     if (path === '/api/ai/bean-image-recognition') {
       if (ensureMethod(request, response, ['GET', 'POST'], handlers)) {
         await handlers.handleBeanImageRecognition(request, response);
@@ -56,6 +66,8 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
 
     const authRoutes: Partial<Record<string, { allowedMethods: string[]; handler: RequestHandler }>> = {
       '/api/auth/account': { allowedMethods: ['DELETE'], handler: handlers.handleAccountDeletion },
+      '/api/auth/confirm-password-reset': { allowedMethods: ['POST'], handler: handlers.handleConfirmPasswordReset },
+      '/api/auth/confirm-verification': { allowedMethods: ['POST'], handler: handlers.handleConfirmVerification },
       '/api/auth/login': { allowedMethods: ['POST'], handler: handlers.handleLogin },
       '/api/auth/logout': { allowedMethods: ['POST'], handler: handlers.handleLogout },
       '/api/auth/profile': { allowedMethods: ['PATCH'], handler: handlers.handleProfileUpdate },

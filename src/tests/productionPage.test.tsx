@@ -57,6 +57,9 @@ vi.mock('@/modules/roast/hooks', () => ({
         outputWeightGrams: 170,
         roastLevel: '手冲浅烘',
         developmentRatio: 18,
+        evaluation: {
+          allowTraining: false,
+        },
         firstCrackTime: 420,
         totalRoastTime: 540,
         notes: '测试备注',
@@ -76,6 +79,7 @@ vi.mock('@/modules/roast/hooks', () => ({
         batchWeightGrams: 200,
         name: '测试计划',
         plannedBatchKg: 0.2,
+        roasterModel: 'tank200d',
         roastPurpose: '手冲',
         status: 'draft',
         steps: [
@@ -85,7 +89,9 @@ vi.mock('@/modules/roast/hooks', () => ({
             eventName: '入豆',
             operation: '入豆',
             drumTemperature: '200°C',
+            airTemperature: '180°C',
             firePower: '80%',
+            drumSpeed: '45rpm',
           },
         ],
         targetRoastLevel: '手冲浅烘',
@@ -121,7 +127,13 @@ describe('ProductionPage (烘焙历史)', () => {
     fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试熟豆' }));
 
     expect(screen.getAllByText('编辑烘焙记录').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /保存烘焙记录/ })).toBeInTheDocument();
+    const trainingHeading = screen.getByRole('heading', { name: 'AI 训练准备' });
+    const saveButton = screen.getByRole('button', { name: /保存烘焙记录/ });
+
+    expect(trainingHeading).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '上传用于训练（暂未开放）' })).toBeDisabled();
+    expect(saveButton.compareDocumentPosition(trainingHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(saveButton).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '烘焙程度' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '去向' })).toBeInTheDocument();

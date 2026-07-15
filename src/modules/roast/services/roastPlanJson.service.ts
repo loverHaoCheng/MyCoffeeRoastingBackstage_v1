@@ -1,6 +1,7 @@
 import { AppError } from '@/shared/errors/AppError';
 import type { RoastPlan } from '@/types/domain';
 
+import { normalizeRoasterModel } from '../constants/roasterModel';
 import { roastPlanJsonSchema } from '../schemas/roastPlanJson.schema';
 import type { RoastPlanJsonInput } from '../types';
 
@@ -9,6 +10,7 @@ export const sampleRoastPlanJson = JSON.stringify(
     name: '新建烘焙计划',
     beanName: '待选择生豆',
     beanId: 'sample-bean-id',
+    roasterModel: 'tank200d',
     batchWeightGrams: 200,
     roastLevel: '中焙',
     purpose: '手冲',
@@ -18,28 +20,36 @@ export const sampleRoastPlanJson = JSON.stringify(
         event: '入豆',
         operation: '入豆',
         temperature: '200°C',
+        airTemperature: '185°C',
         firePower: '80%',
+        drumSpeed: '45rpm',
       },
       {
         time: '1:30',
         event: '回温点',
         operation: '保持',
         temperature: '-',
+        airTemperature: '160°C',
         firePower: '80%',
+        drumSpeed: '45rpm',
       },
       {
         time: '4:30',
         event: '转黄',
         operation: '降火',
         temperature: '150°C',
+        airTemperature: '145°C',
         firePower: '70%',
+        drumSpeed: '48rpm',
       },
       {
         time: '8:30',
         event: '一爆开始',
         operation: '保持',
         temperature: '198°C',
+        airTemperature: '188°C',
         firePower: '60%',
+        drumSpeed: '50rpm',
       },
     ],
   },
@@ -65,6 +75,7 @@ export function createRoastPlan(input: unknown, id: number): RoastPlan {
     name: plan.name,
     beanId: plan.beanId ?? id,
     beanName: plan.beanName,
+    roasterModel: normalizeRoasterModel(plan.roasterModel),
     batchWeightGrams: plan.batchWeightGrams,
     plannedBatchKg: Number((plan.batchWeightGrams / 1000).toFixed(3)),
     targetRoastLevel: plan.roastLevel,
@@ -78,7 +89,9 @@ export function createRoastPlan(input: unknown, id: number): RoastPlan {
       eventName: step.event,
       operation: step.operation,
       drumTemperature: step.temperature,
+      airTemperature: step.airTemperature,
       firePower: step.firePower,
+      drumSpeed: step.drumSpeed,
       note: step.note,
     })),
   };
@@ -104,6 +117,7 @@ export function roastPlanToJsonInput(plan: RoastPlan): RoastPlanJsonInput {
     name: plan.name,
     beanId: plan.beanId,
     beanName: plan.beanName,
+    roasterModel: normalizeRoasterModel(plan.roasterModel),
     batchWeightGrams: plan.batchWeightGrams,
     roastLevel: plan.targetRoastLevel,
     purpose: plan.roastPurpose,
@@ -112,7 +126,9 @@ export function roastPlanToJsonInput(plan: RoastPlan): RoastPlanJsonInput {
       event: step.eventName,
       operation: step.operation,
       temperature: step.drumTemperature,
+      airTemperature: step.airTemperature,
       firePower: step.firePower,
+      drumSpeed: step.drumSpeed,
       note: step.note,
     })),
   };

@@ -131,6 +131,66 @@ describe('pocketBaseAuthService', () => {
     );
   });
 
+  it('confirms an email verification token through the auth gateway', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            message: '邮箱验证成功，现在可以登录 EasyBake。',
+            success: true,
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(pocketBaseAuthService.confirmVerification('verification-token')).resolves.toEqual({
+      message: '邮箱验证成功，现在可以登录 EasyBake。',
+      success: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/confirm-verification',
+      expect.objectContaining({
+        body: JSON.stringify({ token: 'verification-token' }),
+        method: 'POST',
+      }),
+    );
+  });
+
+  it('confirms a password reset through the auth gateway', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            message: '密码已重置，现在可以使用新密码登录。',
+            success: true,
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      pocketBaseAuthService.confirmPasswordReset('reset-token', 'password123', 'password123'),
+    ).resolves.toEqual({
+      message: '密码已重置，现在可以使用新密码登录。',
+      success: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/confirm-password-reset',
+      expect.objectContaining({
+        body: JSON.stringify({
+          password: 'password123',
+          passwordConfirm: 'password123',
+          token: 'reset-token',
+        }),
+        method: 'POST',
+      }),
+    );
+  });
+
   it('turns upstream 5xx login failures into a gateway-specific message', async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(

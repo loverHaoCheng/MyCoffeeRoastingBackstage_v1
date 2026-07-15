@@ -301,6 +301,58 @@ export const handleRequestVerification = async (
   );
 };
 
+export const handleConfirmVerification = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
+  const body = await parseJsonBody(request);
+
+  if (!isRecord(body)) {
+    sendJson(response, 400, {
+      message: '验证链接缺少有效参数。',
+    });
+    return;
+  }
+
+  const token = toTrimmedString(body.token);
+
+  if (!token) {
+    sendJson(response, 400, {
+      message: '验证链接无效或已过期，请返回登录页重新发送验证邮件。',
+    });
+    return;
+  }
+
+  const upstream = await proxyPocketBaseRequest(
+    `/api/collections/${authCollection}/confirm-verification`,
+    {
+      body: JSON.stringify({ token }),
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    },
+  );
+
+  if (!upstream.response.ok) {
+    if (upstream.response.status < 500) {
+      sendJson(response, upstream.response.status, {
+        message: '验证链接无效或已过期，请返回登录页重新发送验证邮件。',
+      });
+      return;
+    }
+
+    sendUpstreamError(response, upstream.response.status, upstream.payload);
+    return;
+  }
+
+  sendJson(response, 200, {
+    message: '邮箱验证成功，现在可以登录 EasyBake。',
+    success: true,
+  });
+};
+
 export const handleRequestPasswordReset = async (
   request: IncomingMessage,
   response: ServerResponse,
@@ -335,6 +387,78 @@ export const handleRequestPasswordReset = async (
     200,
     toGenericEmailActionResult('如果该邮箱已注册，重置密码邮件已发送，请注意查收。'),
   );
+};
+
+export const handleConfirmPasswordReset = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
+  const body = await parseJsonBody(request);
+
+  if (!isRecord(body)) {
+    sendJson(response, 400, {
+      message: '重置链接缺少有效参数。',
+    });
+    return;
+  }
+
+  const token = toTrimmedString(body.token);
+  const password = toTrimmedString(body.password);
+  const passwordConfirm = toTrimmedString(body.passwordConfirm);
+
+  if (!token) {
+    sendJson(response, 400, {
+      message: '重置链接无效或已过期，请重新发起找回密码。',
+    });
+    return;
+  }
+
+  if (password.length < 8 || passwordConfirm.length < 8) {
+    sendJson(response, 400, {
+      message: '新密码至少需要 8 位。',
+    });
+    return;
+  }
+
+  if (password !== passwordConfirm) {
+    sendJson(response, 400, {
+      message: '两次输入的密码不一致。',
+    });
+    return;
+  }
+
+  const upstream = await proxyPocketBaseRequest(
+    `/api/collections/${authCollection}/confirm-password-reset`,
+    {
+      body: JSON.stringify({
+        password,
+        passwordConfirm,
+        token,
+      }),
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    },
+  );
+
+  if (!upstream.response.ok) {
+    if (upstream.response.status < 500) {
+      sendJson(response, upstream.response.status, {
+        message: '重置链接无效或已过期，请重新发起找回密码。',
+      });
+      return;
+    }
+
+    sendUpstreamError(response, upstream.response.status, upstream.payload);
+    return;
+  }
+
+  sendJson(response, 200, {
+    message: '密码已重置，现在可以使用新密码登录。',
+    success: true,
+  });
 };
 
 export const handleLogout = (request: IncomingMessage, response: ServerResponse): void => {

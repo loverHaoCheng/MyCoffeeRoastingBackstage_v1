@@ -245,6 +245,18 @@ describe('SettingsPage', () => {
     expect(loadQrCodeAssetMock).toHaveBeenCalledWith('community');
   });
 
+  it('renders the staged AI release guidance section', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    expect(await screen.findByRole('heading', { name: 'AI 烘焙能力（筹备中）' })).toBeInTheDocument();
+    expect(screen.getByText('当前版本先公开入口、规则和数据准备要求。AI 推荐与训练上传会在后续阶段逐步开放。')).toBeInTheDocument();
+    expect(screen.queryByText('已正式开放')).not.toBeInTheDocument();
+    expect(screen.queryByText('已公开但暂禁用')).not.toBeInTheDocument();
+    expect(screen.queryByText('开放前要求')).not.toBeInTheDocument();
+    expect(screen.queryByText(/训练授权默认关闭/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/训练上传正式开放后/)).not.toBeInTheDocument();
+  });
+
   it('shows a retry action when a QR code fails to load', async () => {
     loadQrCodeAssetMock
       .mockRejectedValueOnce(new Error('asset unavailable'))

@@ -2,6 +2,7 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 
 import Button from 'antd/es/button';
+import Checkbox from 'antd/es/checkbox';
 import DatePicker from 'antd/es/date-picker';
 import Input from 'antd/es/input';
 import InputNumber from 'antd/es/input-number';
@@ -9,7 +10,7 @@ import Select from 'antd/es/select';
 import dayjs, { type Dayjs } from 'dayjs';
 
 import type { Bean, RoastPlan } from '@/types/domain';
-import type { RoastBatchSalesMode } from '@/modules/roast/types/roastBatch';
+import type { RoastBatchEvaluation, RoastBatchSalesMode } from '@/modules/roast/types/roastBatch';
 import {
   ROAST_LEVEL_OPTIONS,
   calculateDehydrationRate,
@@ -35,6 +36,7 @@ const toPickerValue = (value: string) => {
 };
 
 export interface RoastBatchFormState {
+  evaluation: RoastBatchEvaluation;
   roastDate: string;
   greenBeanId: string;
   greenBeanName: string;
@@ -53,6 +55,7 @@ export interface RoastBatchFormState {
 }
 
 export interface RoastBatchFormSubmitValue {
+  evaluation: RoastBatchEvaluation;
   developmentRatio: number | undefined;
   firstCrackTime: number | undefined;
   greenBeanId: string;
@@ -84,6 +87,25 @@ interface RoastBatchFormProps {
   submitLabel: string;
   value: RoastBatchFormState;
 }
+
+const SCORE_OPTIONS = [
+  { label: '1 分', value: 1 },
+  { label: '2 分', value: 2 },
+  { label: '3 分', value: 3 },
+  { label: '4 分', value: 4 },
+  { label: '5 分', value: 5 },
+];
+
+const renderRequiredLabel = (label: string) => {
+  return (
+    <span className={styles.fieldLabel}>
+      {label}
+      <em aria-hidden="true" className={styles.requiredMark}>
+        *
+      </em>
+    </span>
+  );
+};
 
 export function RoastBatchForm({
   beans,
@@ -157,6 +179,16 @@ export function RoastBatchForm({
     }
 
     onSubmit({
+      evaluation: {
+        allowTraining: value.evaluation.allowTraining,
+        defectNotes: value.evaluation.defectNotes?.trim() ? value.evaluation.defectNotes.trim() : undefined,
+        flavorNotes: value.evaluation.flavorNotes?.trim() ? value.evaluation.flavorNotes.trim() : undefined,
+        nextAdjustmentNotes: value.evaluation.nextAdjustmentNotes?.trim()
+          ? value.evaluation.nextAdjustmentNotes.trim()
+          : undefined,
+        overallScore: value.evaluation.overallScore,
+        targetMatchScore: value.evaluation.targetMatchScore,
+      },
       developmentRatio: value.developmentRatio,
       firstCrackTime: value.firstCrackTime,
       greenBeanId: value.greenBeanId,
@@ -181,7 +213,7 @@ export function RoastBatchForm({
         <h4>基本信息</h4>
         <div className={styles.fieldGrid}>
           <div className={styles.field} data-field-path="roastDate">
-            <span className={styles.fieldLabel}>烘焙日期</span>
+            {renderRequiredLabel('烘焙日期')}
             <DatePicker
               aria-label="烘焙日期"
               format={ROAST_DATE_TIME_FORMAT}
@@ -198,7 +230,7 @@ export function RoastBatchForm({
             />
           </div>
           <div className={styles.field} data-field-path="roastLevel">
-            <span className={styles.fieldLabel}>烘焙程度</span>
+            {renderRequiredLabel('烘焙程度')}
             <Select
               aria-label="烘焙程度"
               value={normalizedRoastLevel}
@@ -207,6 +239,7 @@ export function RoastBatchForm({
                 onChange((current) => ({ ...current, roastLevel: normalizeRoastLevel(nextValue) }));
               }}
               options={ROAST_LEVEL_OPTIONS.map((level) => ({ label: level, value: level }))}
+              showSearch={false}
               style={{ width: '100%' }}
             />
             <div className={styles.inlineHint}>
@@ -220,7 +253,7 @@ export function RoastBatchForm({
         <h4>生豆信息</h4>
         <div className={styles.fieldGrid}>
           <div className={styles.field} data-field-path="greenBeanId">
-            <span className={styles.fieldLabel}>生豆</span>
+            {renderRequiredLabel('生豆')}
             <Select
               aria-label="生豆"
               disabled={beans.length === 0}
@@ -239,6 +272,7 @@ export function RoastBatchForm({
               }}
               options={beans.map((bean) => ({ label: bean.name, value: String(bean.id) }))}
               placeholder="选择生豆"
+              showSearch={false}
               value={value.greenBeanId === '' ? undefined : value.greenBeanId}
               style={{ width: '100%' }}
             />
@@ -271,6 +305,7 @@ export function RoastBatchForm({
                 { label: '销售', value: 'sale' },
                 { label: '自留', value: 'selfUse' },
               ]}
+              showSearch={false}
               style={{ width: '100%' }}
             />
           </div>
@@ -317,6 +352,7 @@ export function RoastBatchForm({
                 value: String(plan.id),
               }))}
               disabled={availablePlans.length === 0}
+              showSearch={false}
               style={{ width: '100%' }}
             />
           </div>
@@ -327,7 +363,7 @@ export function RoastBatchForm({
         <h4>烘焙数据</h4>
         <div className={styles.fieldGrid}>
           <div className={styles.field} data-field-path="inputWeightGrams">
-            <span className={styles.fieldLabel}>入豆量 (g)</span>
+            {renderRequiredLabel('入豆量 (g)')}
             <InputNumber
               aria-label="入豆量"
               value={value.inputWeightGrams}
@@ -339,7 +375,7 @@ export function RoastBatchForm({
             />
           </div>
           <div className={styles.field} data-field-path="outputWeightGrams">
-            <span className={styles.fieldLabel}>出豆量 (g)</span>
+            {renderRequiredLabel('出豆量 (g)')}
             <InputNumber
               aria-label="出豆量"
               value={value.outputWeightGrams}
@@ -390,6 +426,108 @@ export function RoastBatchForm({
               min={0}
               style={{ width: '100%' }}
             />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h4>评价表单</h4>
+        <div className={styles.fieldGrid}>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>综合评分</span>
+            <Select
+              aria-label="综合评分"
+              allowClear
+              options={SCORE_OPTIONS}
+              placeholder="选择 1-5 分"
+              showSearch={false}
+              value={value.evaluation.overallScore}
+              onChange={(nextValue) => {
+                onChange((current) => ({
+                  ...current,
+                  evaluation: { ...current.evaluation, overallScore: nextValue },
+                }));
+              }}
+            />
+          </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>目标达成度</span>
+            <Select
+              aria-label="目标达成度"
+              allowClear
+              options={SCORE_OPTIONS}
+              placeholder="选择 1-5 分"
+              showSearch={false}
+              value={value.evaluation.targetMatchScore}
+              onChange={(nextValue) => {
+                onChange((current) => ({
+                  ...current,
+                  evaluation: { ...current.evaluation, targetMatchScore: nextValue },
+                }));
+              }}
+            />
+          </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>风味描述</span>
+            <Input.TextArea
+              aria-label="风味描述"
+              rows={3}
+              value={value.evaluation.flavorNotes ?? ''}
+              onChange={(event) => {
+                onChange((current) => ({
+                  ...current,
+                  evaluation: { ...current.evaluation, flavorNotes: event.target.value },
+                }));
+              }}
+              placeholder="记录杯测印象、甜感、酸质、醇厚度等"
+            />
+          </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>缺陷记录</span>
+            <Input.TextArea
+              aria-label="缺陷记录"
+              rows={3}
+              value={value.evaluation.defectNotes ?? ''}
+              onChange={(event) => {
+                onChange((current) => ({
+                  ...current,
+                  evaluation: { ...current.evaluation, defectNotes: event.target.value },
+                }));
+              }}
+              placeholder="例如 烟感偏重、发展不足、风味发木"
+            />
+          </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>下次调整建议</span>
+            <Input.TextArea
+              aria-label="下次调整建议"
+              rows={3}
+              value={value.evaluation.nextAdjustmentNotes ?? ''}
+              onChange={(event) => {
+                onChange((current) => ({
+                  ...current,
+                  evaluation: { ...current.evaluation, nextAdjustmentNotes: event.target.value },
+                }));
+              }}
+              placeholder="例如 一爆前减火提前 20 秒，后段风门再开 5%"
+            />
+          </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>训练授权</span>
+            <label className={styles.checkboxField}>
+              <Checkbox
+                checked={value.evaluation.allowTraining}
+                onChange={(event) => {
+                  onChange((current) => ({
+                    ...current,
+                    evaluation: { ...current.evaluation, allowTraining: event.target.checked },
+                  }));
+                }}
+              >
+                允许将本次匿名烘焙数据用于同型号模型训练
+              </Checkbox>
+            </label>
+            <div className={styles.inlineHint}>默认关闭。开启后，本次上传并进入训练流程的数据不支持逐条撤回。</div>
           </div>
         </div>
       </section>

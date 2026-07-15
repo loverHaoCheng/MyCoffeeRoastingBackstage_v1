@@ -90,7 +90,7 @@ export function ProductionPage() {
 
     modal.confirm({
       centered: true,
-      content: `确定要删除「${displayName}」的烘焙记录吗？此操作不可撤销。`,
+      content: `确定要删除「${displayName}」的烘焙记录吗？关联的烘焙曲线也会永久删除，且无法复原。`,
       okButtonProps: { danger: true },
       okText: '删除',
       title: '确认删除',

@@ -27,6 +27,7 @@ export function RoastPlanDetail({ mode, onClose, onUpdate, plan }: RoastPlanDeta
   if (mode === 'view') {
     const summaryItems = [
       { label: '计划名称', value: plan.name },
+      { label: '烘豆机型号', value: plan.roasterModel || '-' },
       { label: '批次重量', value: `${String(plan.batchWeightGrams)}g` },
       { label: '烘焙目标', value: plan.targetRoastLevel },
       { label: '用途', value: plan.roastPurpose || '-' },
@@ -67,8 +68,16 @@ export function RoastPlanDetail({ mode, onClose, onUpdate, plan }: RoastPlanDeta
                     <dd>{step.drumTemperature || '-'}</dd>
                   </div>
                   <div>
+                    <dt>风温</dt>
+                    <dd>{step.airTemperature || '-'}</dd>
+                  </div>
+                  <div>
                     <dt>火力</dt>
                     <dd>{step.firePower || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>转速</dt>
+                    <dd>{step.drumSpeed || '-'}</dd>
                   </div>
                 </dl>
               </article>

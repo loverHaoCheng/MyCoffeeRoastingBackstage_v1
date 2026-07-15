@@ -2,6 +2,7 @@ import { pocketBaseConnectionSettingsService } from '@/modules/settings/services
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { normalizeFlavorTags } from '@/modules/bean/utils/flavorTags';
 import type { GreenBeanCreateInput, GreenBeanUpdateInput, LocalGreenBeanRecord } from '../types/localGreenBean';
+import type { RoastPlanDisposition } from './bean-service/bean.service.types';
 
 let currentPendingOperations: PendingOperation[] = [];
 
@@ -135,11 +136,11 @@ export const beanSyncService = {
   /**
    * 记录一个待删除操作（离线时调用）
    */
-  recordPendingDelete(beanId: string | number): PendingOperation {
+  recordPendingDelete(beanId: string | number, roastPlanDisposition: RoastPlanDisposition): PendingOperation {
     const op: PendingOperation = {
       entity: 'bean',
       id: generatePendingId(),
-      payload: { beanId },
+      payload: { beanId, roastPlanDisposition },
       timestamp: new Date().toISOString(),
       type: 'delete',
     };

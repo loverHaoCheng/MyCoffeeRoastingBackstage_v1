@@ -118,6 +118,43 @@
   text-decoration: none;
 }
 
+.verificationState {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.verificationState h1,
+.verificationState p {
+  margin: 0;
+}
+
+.verificationState h1 {
+  color: var(--app-text);
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.verificationState p {
+  color: var(--app-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.verificationSuccessIcon,
+.verificationErrorIcon {
+  font-size: 36px;
+}
+
+.verificationSuccessIcon {
+  color: var(--app-text);
+}
+
+.verificationErrorIcon {
+  color: var(--app-text-secondary);
+}
+
 @media (max-width: 640px) {
   .page {
     padding: 16px;

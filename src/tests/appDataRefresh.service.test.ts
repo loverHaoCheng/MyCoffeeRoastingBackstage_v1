@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { refreshAllAppData, refreshQuickAppData, resolveCurrentAppRefreshScope } from '@/app/services/appDataRefresh.service';
 import { beanQueryKeys } from '@/modules/bean/hooks';
 import { beanService } from '@/modules/bean/services/bean.service';
-import { beanSyncService } from '@/modules/bean/services/beanSync.service';
 import { financeQueryKeys } from '@/modules/finance/hooks';
 import { financeLedgerService, financeService } from '@/modules/finance/services';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
@@ -30,7 +29,7 @@ describe('appDataRefresh.service', () => {
     expect(resolveCurrentAppRefreshScope()).toBe('production');
   });
 
-  it('skips pending sync and only refreshes the active roast page queries during quick refresh', async () => {
+  it('only refreshes the active roast page queries during quick refresh', async () => {
     window.location.hash = '#/roasts';
     vi.useFakeTimers();
 
@@ -41,8 +40,6 @@ describe('appDataRefresh.service', () => {
       setQueryData,
     } as unknown as QueryClient;
 
-    const pendingOpsSpy = vi.spyOn(beanSyncService, 'getPendingOperations').mockReturnValue([]);
-    const pendingSyncSpy = vi.spyOn(beanService, 'syncPendingOperations');
     const beanSyncSpy = vi.spyOn(beanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 1, uploaded: 0 });
     const roastPlanSyncSpy = vi.spyOn(roastPlanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 2, uploaded: 1 });
     const roastBatchSyncSpy = vi.spyOn(roastBatchService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 0, uploaded: 0 });
@@ -68,8 +65,6 @@ describe('appDataRefresh.service', () => {
       success: 0,
       uploaded: 1,
     });
-    expect(pendingOpsSpy).toHaveBeenCalledTimes(1);
-    expect(pendingSyncSpy).not.toHaveBeenCalled();
     expect(beanSyncSpy).toHaveBeenCalledTimes(1);
     expect(roastPlanSyncSpy).toHaveBeenCalledTimes(1);
     expect(roastBatchSyncSpy).toHaveBeenCalledTimes(1);
@@ -91,7 +86,6 @@ describe('appDataRefresh.service', () => {
       setQueryData,
     } as unknown as QueryClient;
 
-    vi.spyOn(beanSyncService, 'getPendingOperations').mockReturnValue([]);
     vi.spyOn(beanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 1, uploaded: 2 });
     vi.spyOn(roastPlanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 0, uploaded: 0 });
     vi.spyOn(roastBatchService, 'syncLocalAndRemote').mockRejectedValue(new Error('熟豆库表结构不匹配'));

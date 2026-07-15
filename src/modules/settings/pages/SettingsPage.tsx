@@ -18,6 +18,7 @@ import { useAppBuildVersion } from '@/app/hooks/useAppBuildVersion';
 import { LegalFooter } from '@/modules/legal/components';
 import { RoastedBeanConnectionCard } from '@/modules/settings/components/RoastedBeanConnectionCard';
 import { AppearanceSettingsSection } from '@/modules/settings/components/AppearanceSettingsSection';
+import { formatShanghaiBuildVersion } from '@/shared/time/shanghaiTime';
 
 import styles from './SettingsPage.module.css';
 
@@ -239,6 +240,19 @@ export function SettingsPage() {
 
         <AppearanceSettingsSection />
 
+        <section aria-label="AI 烘焙能力" className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderRow}>
+              <div className={styles.sectionHeaderTitleGroup}>
+                <h2>AI 烘焙能力（筹备中）</h2>
+              </div>
+            </div>
+            <p className={styles.sectionStatusCopy}>
+              当前版本先公开入口、规则和数据准备要求。AI 推荐与训练上传会在后续阶段逐步开放。
+            </p>
+          </div>
+        </section>
+
         <section className={styles.qrSection} data-expanded={visibleCode ? 'true' : 'false'}>
           <div className={styles.qrActions}>
             {(Object.entries(qrCodeEntries) as [QrCodeKey, (typeof qrCodeEntries)[QrCodeKey]][]).map(([code, entry]) => (
@@ -309,7 +323,7 @@ export function SettingsPage() {
 
           <p className={styles.buildVersion}>
             当前 Web 上传版本：
-            {appBuildVersion}
+            {formatShanghaiBuildVersion(appBuildVersion)}
           </p>
 
           <LegalFooter />

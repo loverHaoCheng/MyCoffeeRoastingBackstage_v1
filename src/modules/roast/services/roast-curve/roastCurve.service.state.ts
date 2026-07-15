@@ -22,3 +22,11 @@ export const saveLocalCurveRecord = (record: RoastCurveRecord): RoastCurveRecord
 
   return record;
 };
+
+export const removeLocalCurveByBatchId = (roastBatchId: string): void => {
+  localCurveRecords = localCurveRecords.filter((record) => record.roastBatchId !== roastBatchId);
+};
+
+export const clearRoastCurveState = (): void => {
+  localCurveRecords = [];
+};
