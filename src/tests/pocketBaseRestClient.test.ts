@@ -188,4 +188,25 @@ describe('PocketBaseRestClient', () => {
       status: 400,
     });
   });
+
+  it('translates generic PocketBase processing failures before showing them to users', async () => {
+    const client = new PocketBaseRestClient({
+      fetcher: () =>
+        Promise.resolve(
+          new Response(JSON.stringify({
+            message: 'Something went wrong while processing your request.',
+          }), {
+            status: 400,
+          }),
+        ),
+      projectUrl: 'http://81.70.224.75',
+      publishableKey: '',
+    });
+
+    await expect(client.list('green_beans')).rejects.toMatchObject({
+      code: 'HTTP',
+      message: 'PocketBase 请求失败，请稍后重试或联系管理员检查服务日志。（HTTP 400）',
+      status: 400,
+    });
+  });
 });

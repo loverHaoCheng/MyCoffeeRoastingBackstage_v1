@@ -37,17 +37,13 @@ VITE_DEV_API_PROXY_TARGET=https://www.easybake.top
 
 ## 正式发布
 
-先发布到受 Basic Auth 保护的测试环境：
+先发布到测试环境：
 
 ```bash
 ./deploy_test.sh
 ```
 
-脚本默认会提示输入 `test.easybake.top` 的 Basic Auth 密码，并把前端、BFF 分别发布到测试服务。若希望本机免交互输入，可创建不会提交到 Git 的 `.deploy_test.local`：
-
-```bash
-DEPLOY_HTTP_PASSWORD="你的测试站 Basic Auth 密码"
-```
+脚本会把前端、BFF 分别发布到测试服务。测试站当前不再默认使用 Basic Auth，便于验证登录态、PWA 和 AI 训练上传接口。
 
 测试环境通过发布前验收后，再执行正式发布：
 

@@ -207,7 +207,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   margin-top: -4px;
+}
+
+.footer[data-layout='split'] {
+  justify-content: space-between;
 }
 
 .expandButton:global(.ant-btn) {
@@ -234,6 +239,11 @@
   transition: none;
 }
 
+.footer[data-layout='split'] .expandButton:global(.ant-btn) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .expandButton:global(.ant-btn):hover,
 .expandButton:global(.ant-btn):active {
   background: transparent !important;
@@ -258,6 +268,10 @@
 }
 
 .expandButton[data-expanded-level='2'] .expandIcon {
+  transform: rotate(180deg);
+}
+
+.expandButton[data-action='collapse'] .expandIcon {
   transform: rotate(180deg);
 }
 

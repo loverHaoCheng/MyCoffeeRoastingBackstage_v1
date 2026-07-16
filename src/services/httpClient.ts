@@ -16,6 +16,8 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
 
 const defaultBaseUrl: string = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
+const defaultFetcher: Fetcher = (input, init) => globalThis.fetch(input, init);
+
 const isFormData = (value: unknown): value is FormData => {
   return typeof FormData !== 'undefined' && value instanceof FormData;
 };
@@ -118,7 +120,7 @@ export class HttpClient {
 
   constructor(options: HttpClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? defaultBaseUrl;
-    this.fetcher = options.fetcher ?? fetch;
+    this.fetcher = options.fetcher ?? defaultFetcher;
     this.getAuthToken = options.getAuthToken;
   }
 
@@ -137,6 +139,7 @@ export class HttpClient {
 
     try {
       const response = await this.fetcher(buildUrl(this.baseUrl, path), {
+        credentials: 'same-origin',
         ...options,
         headers,
         body: serializeBody(body),

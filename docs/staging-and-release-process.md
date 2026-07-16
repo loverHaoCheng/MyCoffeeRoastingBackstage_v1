@@ -193,7 +193,7 @@ npm run build
 ./deploy_test.sh
 ```
 
-脚本提示时输入测试站 Basic Auth 密码。密码仅用于本次公网验收，不写入项目文件。脚本复用正式发布的构建、发布锁、BFF 回滚、前端原子切换、版本清理和 HTTPS 验收机制，但目标固定为测试 BFF `3002`、测试前端入口 `/var/www/easybake-staging` 和测试版本目录 `/var/www/easybake-staging-releases`。
+脚本复用正式发布的构建、发布锁、BFF 回滚、前端原子切换、版本清理和 HTTPS 验收机制，但目标固定为测试 BFF `3002`、测试前端入口 `/var/www/easybake-staging` 和测试版本目录 `/var/www/easybake-staging-releases`。测试站当前不再默认使用 Basic Auth，便于验证登录态、PWA 和 AI 训练上传接口。
 
 5. 打开测试地址：
 

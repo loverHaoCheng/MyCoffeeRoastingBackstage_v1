@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { App as AntApp, ConfigProvider } from 'antd';
+import AntApp from 'antd/es/app';
+import ConfigProvider from 'antd/es/config-provider';
 import type { ReactElement } from 'react';
 import { render, type RenderResult } from '@testing-library/react';
 

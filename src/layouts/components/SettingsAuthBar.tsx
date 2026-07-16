@@ -1,3 +1,4 @@
+import EditOutlined from '@ant-design/icons/EditOutlined';
 import LogoutOutlined from '@ant-design/icons/LogoutOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
@@ -97,7 +98,8 @@ export function SettingsAuthBar({ isDesktop }: SettingsAuthBarProps) {
               title={nicknameDisplayValue || '设置昵称'}
               type="button"
             >
-              {nicknameDisplayValue || '设置昵称'}
+              <span className={styles.authNicknameText}>{nicknameDisplayValue || '设置昵称'}</span>
+              <EditOutlined aria-hidden="true" className={styles.authNicknameEditIcon} />
             </button>
             <Typography.Text className={styles.authEmail} ellipsis>
               {user?.email ?? '未登录'}

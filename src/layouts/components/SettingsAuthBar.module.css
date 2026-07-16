@@ -54,7 +54,9 @@
 }
 
 .authNicknameButton {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -72,6 +74,19 @@
   transition: opacity 160ms ease;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.authNicknameText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.authNicknameEditIcon {
+  flex: 0 0 auto;
+  color: var(--app-text-tertiary);
+  font-size: 14px;
 }
 
 .authNicknameButton:hover {

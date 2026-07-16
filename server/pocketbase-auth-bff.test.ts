@@ -281,6 +281,171 @@ describe('PocketBase auth BFF contract', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('rejects roast training uploads in production before touching PocketBase', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(requestGateway({
+      body: JSON.stringify({ roastBatchId: 'batch-1' }),
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: 'easybake_pb_session=session-token',
+      },
+      method: 'POST',
+      path: '/api/ai/roast-training-upload',
+    })).resolves.toMatchObject({
+      body: {
+        code: 403,
+        message: '正式环境暂未开放训练上传。',
+      },
+      status: 403,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('creates an immutable roast training sample and upload audit record in staging', async () => {
+    vi.stubEnv('EASYBAKE_APP_ENV', 'staging');
+    const curveData = Array.from({ length: 60 }, (_item, index) => ({
+      beanTemperature: 80 + index,
+      timeSeconds: index * 10,
+    }));
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/collections/users/auth-refresh')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: {
+            email: 'test@example.com',
+            id: 'user-1',
+            verified: true,
+          },
+          token: 'refreshed-token',
+        }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/roast_training_uploads/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roast_batches/records/batch-1')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          evaluation: {
+            allowTraining: true,
+            flavorNotes: '甜感清楚',
+            overallScore: 4,
+            targetMatchScore: 5,
+          },
+          green_bean_id: 'bean-1',
+          green_bean_name: '测试生豆',
+          id: 'batch-1',
+          input_weight_grams: 200,
+          output_weight_grams: 170,
+          roast_level: '手冲浅烘',
+          roast_plan_id: 'plan-1',
+          roast_plan_name: '测试计划',
+        }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/roast_curve_records/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          items: [{
+            curve_data: curveData,
+            id: 'curve-1',
+            metrics: {
+              developmentRatio: 20,
+              roastDuration: 590,
+            },
+            roast_batch_id: 'batch-1',
+            source: 'hibean',
+          }],
+          totalPages: 1,
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/green_beans/records/bean-1')) {
+        return Promise.resolve(new Response(JSON.stringify({ id: 'bean-1', name: '测试生豆' }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roast_profiles/records/plan-1')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          id: 'plan-1',
+          name: '测试计划',
+          roaster_model: 'tank200d',
+          steps: [
+            { eventName: '入豆', timeLabel: '0:00' },
+            { eventName: '一爆', timeLabel: '7:00' },
+            { eventName: '下豆', timeLabel: '9:50' },
+          ],
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roast_training_samples/records')) {
+        expect(init?.method).toBe('POST');
+        const payload = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as Record<string, unknown>;
+        expect(payload).toMatchObject({
+          owner: 'user-1',
+          quality_status: 'pending',
+          roast_batch_id: 'batch-1',
+          roaster_model: 'tank200d',
+        });
+        expect(payload.snapshot).toMatchObject({
+          ownerId: 'user-1',
+          schemaVersion: 1,
+        });
+        return Promise.resolve(new Response(JSON.stringify({ id: 'sample-1' }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roast_training_samples/records/sample-1')) {
+        expect(init?.method).toBe('PATCH');
+        const payload = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as Record<string, unknown>;
+        expect(payload).toMatchObject({
+          quality_status: 'passed',
+        });
+        expect(payload.quality_report).toMatchObject({
+          errors: [],
+          passed: true,
+        });
+        expect(payload.quality_checked_at).toEqual(expect.any(String));
+        return Promise.resolve(new Response(JSON.stringify({ id: 'sample-1' }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roast_training_uploads/records')) {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(typeof init?.body === 'string' ? init.body : '{}')).toMatchObject({
+          owner: 'user-1',
+          roast_batch_id: 'batch-1',
+          sample_id: 'sample-1',
+          status: 'uploaded',
+        });
+        return Promise.resolve(new Response(JSON.stringify({ id: 'upload-1' }), { status: 200 }));
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(requestGateway({
+      body: JSON.stringify({ roastBatchId: 'batch-1' }),
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: 'easybake_pb_session=session-token',
+      },
+      method: 'POST',
+      path: '/api/ai/roast-training-upload',
+    })).resolves.toMatchObject({
+      body: {
+        code: 0,
+        data: {
+          quality: {
+            status: 'passed',
+          },
+          sampleId: 'sample-1',
+          uploadId: 'upload-1',
+        },
+        message: 'ok',
+      },
+      status: 200,
+    });
+  });
+
   it('stores the upstream token only in a secure HttpOnly cookie after login', async () => {
     const upstreamToken = 'server-only-token';
     const fetchMock = vi.fn(() =>

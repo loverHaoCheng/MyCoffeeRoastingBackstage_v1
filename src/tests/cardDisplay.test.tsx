@@ -147,6 +147,29 @@ describe('card display settings', () => {
     expect(container.textContent).toContain('默认单份重量');
   });
 
+  it('shows expand-all and collapse actions side by side when second-level expansion is available', () => {
+    render(
+      <UnifiedDataCard
+        metaItems={Array.from({ length: 10 }, (_, index) => ({
+          key: `field-${String(index + 1)}`,
+          label: `字段 ${String(index + 1)}`,
+          value: `值 ${String(index + 1)}`,
+        }))}
+        title="测试卡片"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '展开' }));
+
+    expect(screen.getByRole('button', { name: '展开全部' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '收起' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '展开全部' }));
+
+    expect(screen.queryByRole('button', { name: '展开全部' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '收起' })).toBeInTheDocument();
+  });
+
   it('wires the full edit button to the card callback', () => {
     const onEditAll = vi.fn();
 

@@ -3,6 +3,7 @@
 declare const __APP_BUILD_VERSION__: string;
 
 interface ImportMetaEnv {
+  readonly VITE_EASYBAKE_APP_ENV?: string;
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_PB_URL?: string;
 }

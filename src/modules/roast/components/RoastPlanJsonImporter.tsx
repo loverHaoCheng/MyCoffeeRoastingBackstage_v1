@@ -1,9 +1,8 @@
 import ImportOutlined from "@ant-design/icons/ImportOutlined";
 import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
-import Alert from "antd/es/alert";
 import Button from "antd/es/button";
 import Input from "antd/es/input";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 
@@ -16,10 +15,15 @@ const { TextArea } = Input;
 interface RoastPlanJsonImporterProps {
   onCancel?: () => void;
   onImport: (jsonText: string) => Promise<void> | void;
+  resetSignal?: number;
 }
 
-export function RoastPlanJsonImporter({ onCancel, onImport }: RoastPlanJsonImporterProps) {
+export function RoastPlanJsonImporter({ onCancel, onImport, resetSignal = 0 }: RoastPlanJsonImporterProps) {
   const [jsonText, setJsonText] = useState('');
+
+  useEffect(() => {
+    setJsonText('');
+  }, [resetSignal]);
 
   const handleImport = () => {
     void onImport(jsonText);
@@ -40,11 +44,6 @@ export function RoastPlanJsonImporter({ onCancel, onImport }: RoastPlanJsonImpor
           填入模板
         </Button>
       </div>
-      <Alert
-        message="支持 name、beanName、roasterModel、batchWeightGrams、roastLevel、steps 字段；其中 roasterModel 仅允许 tank200d 或 其他，steps 会生成时间/事件/操作/炉温/风温/火力/转速表。"
-        showIcon
-        type="info"
-      />
       <TextArea
         aria-label="烘焙计划 JSON"
         autoSize={{ minRows: 8, maxRows: 18 }}
@@ -52,14 +51,14 @@ export function RoastPlanJsonImporter({ onCancel, onImport }: RoastPlanJsonImpor
         onChange={(event) => {
           setJsonText(event.target.value);
         }}
-        placeholder="可直接粘贴烘焙计划 JSON，或点击右上角填入模板"
+        placeholder="可粘贴完整或部分烘焙计划 JSON，回填到表单后继续补充"
         spellCheck={false}
         value={jsonText}
       />
       <DrawerActionBar compact>
         {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
         <Button icon={<ImportOutlined />} onClick={handleImport} type="primary">
-          创建烘焙计划
+          回填到表单
         </Button>
       </DrawerActionBar>
     </section>

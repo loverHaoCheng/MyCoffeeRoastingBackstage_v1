@@ -66,6 +66,10 @@ export const formatShanghaiDateTime = (value: Date | string): string => {
 };
 
 export const formatShanghaiBuildVersion = (version: string): string => {
+  if (/^\d+$/.test(version)) {
+    return version;
+  }
+
   const match = /^(.*)-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)$/.exec(version);
 
   const packageVersion = match?.[1];
@@ -75,5 +79,12 @@ export const formatShanghaiBuildVersion = (version: string): string => {
     return version;
   }
 
-  return `${packageVersion} · ${formatShanghaiDateTime(timestamp)} 北京时间`;
+  const packageVersionDigits = packageVersion.replace(/\D/g, '') || '000';
+  const parts = getShanghaiDateParts(timestamp);
+
+  if (!parts) {
+    return version;
+  }
+
+  return `${packageVersionDigits}${parts.year}${parts.month}${parts.day}${parts.hour}${parts.minute}${parts.second}`;
 };

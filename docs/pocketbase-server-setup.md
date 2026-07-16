@@ -256,6 +256,45 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 - `owner,roast_batch_id`
 - `roast_batch_id` 唯一索引，保证一个烘焙记录只有一条当前有效曲线
 
+### `roast_training_samples`
+
+用途：保存用于后续训练的不可变快照。当前阶段只在测试环境写入，不触发训练、不生成推荐。
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户，必填 |
+| `roast_batch_id` | relation(roast_batches) | 关联烘焙记录，必填 |
+| `roaster_model` | select | 烘豆机型号，仅允许 `tank200d` / `其他` |
+| `snapshot` | json | 服务端读取 PocketBase 后生成的训练快照 |
+| `quality_status` | select | 质量状态，当前默认 `pending`，预留 `passed` / `failed` |
+| `quality_report` | json | 自动质量检查报告，包含错误、警告与核心指标 |
+| `quality_checked_at` | text | 质量检查完成时间，ISO 字符串 |
+
+建议索引：
+
+- `owner,roast_batch_id`
+- `owner,roaster_model,created`
+
+### `roast_training_uploads`
+
+用途：保存训练上传审计记录，并防止同一条烘焙记录重复上传。
+
+字段建议：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 归属用户，必填 |
+| `roast_batch_id` | relation(roast_batches) | 关联烘焙记录，必填 |
+| `sample_id` | relation(roast_training_samples) | 对应训练快照，必填 |
+| `status` | select | 上传状态，当前固定 `uploaded` |
+
+建议索引：
+
+- `owner,roast_batch_id` 唯一索引，保证一个用户的一条烘焙记录只能上传一次
+- `owner,status,created`
+
 ### `roast_records`
 
 字段建议：

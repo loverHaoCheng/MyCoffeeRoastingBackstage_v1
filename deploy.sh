@@ -3,6 +3,7 @@
 set -euo pipefail
 
 APP_URL="${APP_URL:-https://www.easybake.top}"
+EASYBAKE_APP_ENV="${EASYBAKE_APP_ENV:-production}"
 REMOTE_TARGET="${REMOTE_TARGET:-easybake:/var/www/easybake/}"
 BFF_REMOTE_TARGET="${BFF_REMOTE_TARGET:-easybake:/opt/easybake-auth-bff/dist/server/pocketbase-auth-bff.js}"
 BFF_SERVICE_NAME="${BFF_SERVICE_NAME:-easybake-auth-bff}"
@@ -28,6 +29,8 @@ BFF_BACKUP_DIR="${BFF_REMOTE_DIR}.previous"
 DEPLOY_LOCK_OWNER="$(hostname)-$$-$(date -u +%Y%m%dT%H%M%SZ)"
 DEPLOY_LOCK_CREATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 DEPLOY_LOCK_ACQUIRED=false
+
+export VITE_EASYBAKE_APP_ENV="${VITE_EASYBAKE_APP_ENV:-${EASYBAKE_APP_ENV}}"
 
 if [[ -n "${DEPLOY_HTTP_USER}" && -z "${DEPLOY_HTTP_PASSWORD}" ]]; then
   read -r -s -p "Basic Auth password for ${DEPLOY_HTTP_USER}: " DEPLOY_HTTP_PASSWORD
@@ -248,7 +251,8 @@ deploy_bff_with_rollback() {
     "${BFF_STAGED_DIR}" \
     "${BFF_BACKUP_DIR}" \
     "${BFF_SERVICE_NAME}" \
-    "${BFF_LOCAL_PORT}" <<'REMOTE_SCRIPT'
+    "${BFF_LOCAL_PORT}" \
+    "${EASYBAKE_APP_ENV}" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 bff_dir="$1"
@@ -257,6 +261,7 @@ staged_dir="$3"
 backup_dir="$4"
 service_name="$5"
 local_port="$6"
+app_env="$7"
 
 rollback() {
   rm -rf "${staged_dir}"
@@ -287,6 +292,11 @@ if [[ ! -f "${bff_entry_path}" ]]; then
   rollback
   exit 1
 fi
+
+sudo mkdir -p "/etc/systemd/system/${service_name}.service.d"
+printf '[Service]\nEnvironment=EASYBAKE_APP_ENV=%s\n' "${app_env}" \
+  | sudo tee "/etc/systemd/system/${service_name}.service.d/20-easybake-app-env.conf" >/dev/null
+sudo systemctl daemon-reload
 
 if ! sudo systemctl restart "${service_name}"; then
   rollback

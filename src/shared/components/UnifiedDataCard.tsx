@@ -66,6 +66,7 @@ export function UnifiedDataCard({
     return extraItems.slice(firstExpansionLimit);
   }, [extraItems, firstExpansionLimit]);
   const hasSecondExpansion = secondExpansionItems.length > 0;
+  const shouldShowSplitExpansionActions = expandedLevel === 1 && hasSecondExpansion;
 
   useEffect(() => {
     if (!isExpandable && expandedLevel !== 0) {
@@ -192,35 +193,75 @@ export function UnifiedDataCard({
       </div>
 
       {isExpandable ? (
-        <div className={styles.footer}>
-          <Button
-            aria-expanded={expandedLevel > 0}
-            className={styles.expandButton}
-            data-expanded-level={String(expandedLevel)}
-            data-has-second-expansion={String(hasSecondExpansion)}
-            icon={
-              <span aria-hidden="true" className={styles.expandIcon}>
-                <DownOutlined />
-              </span>
-            }
-            onClick={(event) => {
-              event.stopPropagation();
-              setExpandedLevel((current) => {
-                if (current === 0) {
-                  return 1;
+        <div className={styles.footer} data-layout={shouldShowSplitExpansionActions ? 'split' : 'single'}>
+          {shouldShowSplitExpansionActions ? (
+            <>
+              <Button
+                aria-expanded={false}
+                className={styles.expandButton}
+                data-action="expand-all"
+                data-expanded-level={String(expandedLevel)}
+                data-has-second-expansion={String(hasSecondExpansion)}
+                icon={
+                  <span aria-hidden="true" className={styles.expandIcon}>
+                    <DownOutlined />
+                  </span>
                 }
-
-                if (current === 1 && hasSecondExpansion) {
-                  return 2;
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setExpandedLevel(2);
+                }}
+                type="text"
+              >
+                展开全部
+              </Button>
+              <Button
+                aria-expanded={true}
+                className={styles.expandButton}
+                data-action="collapse"
+                data-expanded-level={String(expandedLevel)}
+                data-has-second-expansion={String(hasSecondExpansion)}
+                icon={
+                  <span aria-hidden="true" className={styles.expandIcon}>
+                    <DownOutlined />
+                  </span>
                 }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setExpandedLevel(0);
+                }}
+                type="text"
+              >
+                收起
+              </Button>
+            </>
+          ) : (
+            <Button
+              aria-expanded={expandedLevel > 0}
+              className={styles.expandButton}
+              data-action={expandedLevel === 0 ? 'expand' : 'collapse'}
+              data-expanded-level={String(expandedLevel)}
+              data-has-second-expansion={String(hasSecondExpansion)}
+              icon={
+                <span aria-hidden="true" className={styles.expandIcon}>
+                  <DownOutlined />
+                </span>
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpandedLevel((current) => {
+                  if (current === 0) {
+                    return 1;
+                  }
 
-                return 0;
-              });
-            }}
-            type="text"
-          >
-            {expandedLevel === 0 ? '展开' : expandedLevel === 1 && hasSecondExpansion ? '展开全部' : '收起'}
-          </Button>
+                  return 0;
+                });
+              }}
+              type="text"
+            >
+              {expandedLevel === 0 ? '展开' : '收起'}
+            </Button>
+          )}
         </div>
       ) : null}
     </article>

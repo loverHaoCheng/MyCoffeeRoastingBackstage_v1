@@ -3,7 +3,7 @@ import type { RoastPlan } from '@/types/domain';
 
 import { normalizeRoasterModel } from '../constants/roasterModel';
 import { roastPlanJsonSchema } from '../schemas/roastPlanJson.schema';
-import type { RoastPlanJsonInput } from '../types';
+import type { RoastPlanJsonInput, RoastPlanJsonStep } from '../types';
 
 export const sampleRoastPlanJson = JSON.stringify(
   {
@@ -110,6 +110,110 @@ export function createRoastPlanFromJson(jsonText: string, id: number): RoastPlan
   }
 
   return createRoastPlan(payload, id);
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const readString = (value: unknown): string | undefined => {
+  return typeof value === 'string' ? value : undefined;
+};
+
+const readNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const parsed = Number(value.trim());
+
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const readBeanId = (value: unknown): RoastPlanJsonInput['beanId'] | undefined => {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value.trim();
+  }
+
+  return undefined;
+};
+
+const mergeStepDraft = (fallback: RoastPlanJsonStep, value: unknown): RoastPlanJsonStep => {
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  return {
+    time: readString(value.time) ?? fallback.time,
+    event: readString(value.event) ?? fallback.event,
+    operation: readString(value.operation) ?? fallback.operation,
+    temperature: readString(value.temperature) ?? fallback.temperature,
+    airTemperature: readString(value.airTemperature) ?? fallback.airTemperature,
+    firePower: readString(value.firePower) ?? fallback.firePower,
+    drumSpeed: readString(value.drumSpeed) ?? fallback.drumSpeed,
+    note: readString(value.note) ?? fallback.note,
+  };
+};
+
+const emptyStepDraft: RoastPlanJsonStep = {
+  time: '',
+  event: '',
+  operation: '',
+  temperature: '',
+  airTemperature: '',
+  firePower: '',
+  drumSpeed: '',
+};
+
+export function parseRoastPlanJsonDraft(jsonText: string, fallback: RoastPlanJsonInput): RoastPlanJsonInput {
+  let payload: unknown;
+
+  try {
+    payload = JSON.parse(jsonText) as unknown;
+  } catch (error) {
+    throw new AppError('JSON 格式不正确，请检查逗号、引号和括号。', {
+      code: 'BUSINESS',
+      cause: error,
+    });
+  }
+
+  if (!isRecord(payload)) {
+    throw new AppError('JSON 内容必须是一个对象。', {
+      code: 'BUSINESS',
+    });
+  }
+
+  const fallbackSteps = fallback.steps.length > 0 ? fallback.steps : [emptyStepDraft];
+  const inputSteps = Array.isArray(payload.steps) ? payload.steps : [];
+  const steps =
+    inputSteps.length > 0
+      ? inputSteps.map((step, index) => {
+          const fallbackStep = fallbackSteps[index] ?? fallbackSteps[0] ?? emptyStepDraft;
+
+          return mergeStepDraft(fallbackStep, step);
+        })
+      : fallback.steps;
+  const beanId = readBeanId(payload.beanId);
+
+  return {
+    ...fallback,
+    name: readString(payload.name) ?? fallback.name,
+    beanName: readString(payload.beanName) ?? fallback.beanName,
+    ...(beanId == null ? {} : { beanId }),
+    roasterModel: readString(payload.roasterModel) ?? fallback.roasterModel,
+    batchWeightGrams: readNumber(payload.batchWeightGrams) ?? fallback.batchWeightGrams,
+    roastLevel: readString(payload.roastLevel) ?? fallback.roastLevel,
+    purpose: readString(payload.purpose) ?? fallback.purpose,
+    steps,
+  };
 }
 
 export function roastPlanToJsonInput(plan: RoastPlan): RoastPlanJsonInput {

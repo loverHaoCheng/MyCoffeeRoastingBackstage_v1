@@ -110,6 +110,18 @@ const normalizePocketBaseFieldIssueMessage = (
   return `${label}校验失败：${message}`;
 };
 
+const isGenericPocketBaseFailureMessage = (message: string): boolean => {
+  return /something went wrong while processing your request/i.test(message);
+};
+
+const normalizePocketBaseErrorMessage = (status: number, message: string): string => {
+  if (isGenericPocketBaseFailureMessage(message)) {
+    return `PocketBase 请求失败，请稍后重试或联系管理员检查服务日志。（HTTP ${String(status)}）`;
+  }
+
+  return message;
+};
+
 const buildPocketBaseValidationMessage = (
   status: number,
   payload: PocketBaseErrorPayload,
@@ -132,7 +144,7 @@ const buildPocketBaseValidationMessage = (
     return '提交失败，PocketBase 未通过数据校验，请检查必填项、字段格式和关联数据。';
   }
 
-  return rawMessage.length > 0 ? rawMessage : null;
+  return rawMessage.length > 0 ? normalizePocketBaseErrorMessage(status, rawMessage) : null;
 };
 
 export const parseJsonResponse = async (response: Response): Promise<unknown> => {
@@ -157,7 +169,7 @@ export const toAppError = (response: Response, payload: unknown): AppError => {
   const pocketBaseError = parsePocketBaseErrorPayload(payload);
   const message =
     buildPocketBaseValidationMessage(response.status, pocketBaseError) ??
-    pocketBaseError.message ??
+    (pocketBaseError.message ? normalizePocketBaseErrorMessage(response.status, pocketBaseError.message) : undefined) ??
     `PocketBase 请求失败：${String(response.status)}`;
 
   if (response.status === 401 || response.status === 403) {

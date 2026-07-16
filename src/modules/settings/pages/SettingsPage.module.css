@@ -185,6 +185,33 @@
   gap: 10px;
 }
 
+.backupImportOptions {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.backupImportOption:global(.ant-radio-wrapper) {
+  align-items: flex-start;
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 14px;
+  background: var(--app-bg-elevated);
+}
+
+.backupImportOption span:not(:global(.ant-radio)) {
+  display: grid;
+  gap: 4px;
+}
+
+.backupImportOption small {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .collapseButton:global(.ant-btn) {
   display: inline-grid;
   place-items: center;
@@ -291,6 +318,22 @@
   padding-top: 18px;
 }
 
+.backupSection {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.backupFileInput {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .dangerSection {
   padding-top: 4px;
 }
@@ -368,6 +411,10 @@
   .footerStack {
     padding-top: 24px;
     padding-bottom: 2px;
+  }
+
+  .backupSection {
+    grid-template-columns: 1fr;
   }
 
   .section {

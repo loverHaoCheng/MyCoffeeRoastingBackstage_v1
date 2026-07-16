@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RoastPage } from '@/modules/roast';
+import { createRoastPlan, roastPlanService } from '@/modules/roast/services';
 import { costTemplateSettingsStorageKey } from '@/modules/settings/services/costTemplateSettings.service';
 import { pocketBaseConnectionSettingsStorageKey } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { useSettingsStore } from '@/modules/settings/store';
@@ -38,7 +39,10 @@ vi.mock('@/modules/bean/hooks', () => ({
 
 vi.mock('@/modules/roast/hooks', () => ({
   roastBatchQueryKeys: { all: ['roast-batches'] },
-  roastPlanQueryKeys: { all: ['roast-plans'] },
+  roastPlanQueryKeys: {
+    all: ['roast-plans'],
+    list: () => ['roast-plans', 'list'],
+  },
   useDeleteRoastPlan: () => ({
     mutateAsync: vi.fn(),
   }),
@@ -375,6 +379,72 @@ describe('RoastPage', () => {
     expect(screen.getByText('当前已开放')).toBeInTheDocument();
     expect(screen.getByText('当前暂禁用')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'AI 推荐（暂未开放）' })).toBeDisabled();
+  });
+
+  it('fills the manual creation form from JSON instead of creating a plan directly', async () => {
+    const createPlanFromJsonSpy = vi.spyOn(roastPlanService, 'createPlanFromJson');
+    const createPlanSpy = vi.spyOn(roastPlanService, 'createPlan').mockImplementation((input) =>
+      Promise.resolve({
+        code: 0,
+        data: createRoastPlan(input, 99),
+        message: 'ok',
+      }),
+    );
+
+    renderWithQuery(
+      <FloatingActionTestHost>
+        <RoastPage />
+      </FloatingActionTestHost>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON 导入' }));
+    fireEvent.change(screen.getByLabelText('烘焙计划 JSON'), {
+      target: {
+        value: JSON.stringify({
+          name: 'JSON 回填计划',
+          beanId: 'generic',
+          roasterModel: 'tank200d',
+          batchWeightGrams: 320,
+          steps: [
+            {
+              time: '1:30',
+              event: '回温点',
+            },
+          ],
+        }),
+      },
+    });
+
+    await performUiUpdate(() => {
+      fireEvent.click(screen.getByRole('button', { name: /回填到表单/ }));
+    });
+
+    expect(createPlanFromJsonSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('tab', { name: '手动创建', selected: true })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('JSON 回填计划')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('320')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('1:30')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('回温点')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建烘焙计划' })).toBeInTheDocument();
+
+    await performUiUpdate(() => {
+      fireEvent.click(screen.getByRole('button', { name: '创建烘焙计划' }));
+    });
+
+    expect(createPlanSpy).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
+
+    expect(screen.queryByDisplayValue('JSON 回填计划')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('例如 肯尼亚 柏拉 AA Plus 水洗')).toHaveValue('');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON 导入' }));
+
+    expect(screen.getByLabelText('烘焙计划 JSON')).toHaveValue('');
+
+    createPlanSpy.mockRestore();
+    createPlanFromJsonSpy.mockRestore();
   });
 
   it('renders the roast history workspace shell', () => {

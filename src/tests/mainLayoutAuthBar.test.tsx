@@ -74,6 +74,7 @@ describe('MainLayout auth bar', () => {
     renderSettingsRoute();
 
     const nicknameButton = await screen.findByRole('button', { name: '设置昵称' }, { timeout: 3_000 });
+    expect(nicknameButton.querySelector('.anticon-edit')).toBeInTheDocument();
     fireEvent.click(nicknameButton);
 
     expect(await screen.findByText('修改昵称')).toBeInTheDocument();

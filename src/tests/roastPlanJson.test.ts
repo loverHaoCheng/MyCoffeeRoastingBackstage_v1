@@ -1,7 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
-import { createRoastPlanFromJson, sampleRoastPlanJson } from '@/modules/roast/services';
+import { createRoastPlanFromJson, parseRoastPlanJsonDraft, sampleRoastPlanJson } from '@/modules/roast/services';
 import { AppError } from '@/shared/errors/AppError';
+import type { RoastPlanJsonInput } from '@/modules/roast/types';
+
+const fallbackDraft: RoastPlanJsonInput = {
+  name: '',
+  beanName: '',
+  roasterModel: '',
+  batchWeightGrams: 200,
+  roastLevel: '手冲浅烘',
+  purpose: '手冲',
+  steps: [
+    {
+      time: '0:00',
+      event: '入豆',
+      operation: '入豆',
+      temperature: '235°C',
+      airTemperature: '210°C',
+      firePower: '90%',
+      drumSpeed: '45rpm',
+    },
+  ],
+};
 
 describe('createRoastPlanFromJson', () => {
   it('creates a typed roast plan from valid JSON', () => {
@@ -42,5 +63,28 @@ describe('createRoastPlanFromJson', () => {
         },
       ],
     }), 14)).toThrow(AppError);
+  });
+
+  it('parses incomplete JSON into a form draft without requiring final plan fields', () => {
+    const draft = parseRoastPlanJsonDraft(JSON.stringify({
+      name: 'JSON 草稿',
+      steps: [
+        {
+          time: '1:30',
+          event: '回温点',
+        },
+      ],
+    }), fallbackDraft);
+
+    expect(draft.name).toBe('JSON 草稿');
+    expect(draft.roasterModel).toBe('');
+    expect(draft.batchWeightGrams).toBe(200);
+    expect(draft.roastLevel).toBe('手冲浅烘');
+    expect(draft.steps[0]).toMatchObject({
+      time: '1:30',
+      event: '回温点',
+      operation: '入豆',
+      temperature: '235°C',
+    });
   });
 });

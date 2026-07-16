@@ -1,14 +1,12 @@
 import SaveOutlined from '@ant-design/icons/SaveOutlined';
-import Button from 'antd/es/button';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
-import { useRoastCurve, useRoastPlans } from '@/modules/roast/hooks';
+import { useRoastPlans } from '@/modules/roast/hooks';
 import { getRoastLevelSuggestion, normalizeRoastLevel } from '@/modules/roast/constants/roastLevel';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
 import { createDefaultRoastBatchEvaluation } from '@/modules/roast/services/roast-batch/roastBatch.service.shared';
-import { getRoastTrainingReadiness } from '@/modules/roast/utils/roastTrainingReadiness';
 
 import {
   RoastBatchForm,
@@ -16,6 +14,7 @@ import {
   type RoastBatchFormSubmitValue,
 } from './RoastBatchForm';
 import { RoastCurvePanel } from './RoastCurvePanel';
+import { RoastTrainingUploadSection } from './RoastTrainingUploadSection';
 import styles from './RoastBatchDrawer.module.css';
 
 type DrawerMode = 'view' | 'edit';
@@ -67,7 +66,6 @@ const formatOptionalCurrency = (value: number | null | undefined): string => {
 export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchDrawerProps) {
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
-  const roastCurveQuery = useRoastCurve(batch?.id);
   const [form, setForm] = useState<RoastBatchFormState>(() => createFormState(batch));
 
   useEffect(() => {
@@ -75,33 +73,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
   }, [batch]);
 
   if (!batch) return null;
-
-  const trainingReadiness = getRoastTrainingReadiness(batch, Boolean(roastCurveQuery.data));
-  const trainingSummaryText = trainingReadiness.isUploadReady
-    ? '当前记录已满足后续训练上传条件；正式上传入口会在后续版本开放。'
-    : `当前仍缺少：${trainingReadiness.missingLabels.join('、')}。`;
-
-  const trainingSection = (
-    <section className={styles.section}>
-      <h4>AI 训练准备</h4>
-      <p className={styles.trainingSummary}>{trainingSummaryText}</p>
-      <div className={styles.trainingGrid}>
-        {trainingReadiness.items.map((item) => (
-          <article className={styles.trainingItem} data-ready={item.ready ? 'true' : 'false'} key={item.key}>
-            <strong>{item.label}</strong>
-            <span>{item.ready ? '已就绪' : '待补充'}</span>
-            <p>{item.detail}</p>
-          </article>
-        ))}
-      </div>
-      <div className={styles.trainingActionRow}>
-        <Button disabled type="default">
-          上传用于训练（暂未开放）
-        </Button>
-        <span className={styles.trainingHint}>当前版本先完成数据采集与校验，上传与 AI 推荐会在后续阶段开放。</span>
-      </div>
-    </section>
-  );
 
   if (mode === 'edit') {
     const handleSubmit = (submitValue: RoastBatchFormSubmitValue) => {
@@ -129,7 +100,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
           submitLabel="保存烘焙记录"
           value={form}
         />
-        {trainingSection}
+        <RoastTrainingUploadSection batch={batch} />
       </div>
     );
   }
@@ -260,7 +231,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
             </div>
           ) : null}
         </section>
-        {trainingSection}
+        <RoastTrainingUploadSection batch={batch} />
       </div>
     </div>
   );

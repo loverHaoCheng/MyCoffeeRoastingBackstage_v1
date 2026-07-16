@@ -27,6 +27,20 @@ const { loadQrCodeFallbackAssetMock } = vi.hoisted(() => ({
   loadQrCodeFallbackAssetMock: vi.fn().mockResolvedValue({ default: 'author-code.png' }),
 }));
 
+const {
+  createBackupMock,
+  downloadBackupMock,
+  getImportModeMock,
+  importBackupMock,
+  readBackupFileMock,
+} = vi.hoisted(() => ({
+  createBackupMock: vi.fn(),
+  downloadBackupMock: vi.fn(),
+  getImportModeMock: vi.fn(),
+  importBackupMock: vi.fn(),
+  readBackupFileMock: vi.fn(),
+}));
+
 const { syncFromRemoteSafelyMock } = vi.hoisted(() => ({
   syncFromRemoteSafelyMock: vi.fn().mockResolvedValue({
     greenBean: {
@@ -68,6 +82,16 @@ vi.mock('@/modules/settings/services/qrCodeAsset.service', () => ({
   loadQrCodeFallbackAsset: loadQrCodeFallbackAssetMock,
 }));
 
+vi.mock('@/modules/settings/services/userDataBackup.service', () => ({
+  userDataBackupService: {
+    createBackup: createBackupMock,
+    downloadBackup: downloadBackupMock,
+    getImportMode: getImportModeMock,
+    importBackup: importBackupMock,
+    readBackupFile: readBackupFileMock,
+  },
+}));
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     resetSettingsPageTestState({
@@ -77,6 +101,29 @@ describe('SettingsPage', () => {
       syncLocalChangeMock,
       verifyMock,
     });
+
+    const backup = {
+      collections: {
+        green_beans: [{ id: 'bean-1', name: 'Guji' }],
+      },
+      exportedAt: '2026-07-15T08:00:00.000Z',
+      schema: 'easybake.user-data-backup',
+      summary: {
+        green_beans: 1,
+      },
+      version: 1,
+    };
+
+    createBackupMock.mockResolvedValue(backup);
+    downloadBackupMock.mockReturnValue(undefined);
+    getImportModeMock.mockReturnValue('merge-account');
+    importBackupMock.mockResolvedValue({
+      deleted: 0,
+      imported: 1,
+      skipped: 0,
+      updated: 0,
+    });
+    readBackupFileMock.mockResolvedValue(backup);
   });
 
   it('renders the roasted bean supabase connection card', async () => {
@@ -257,6 +304,73 @@ describe('SettingsPage', () => {
     expect(screen.queryByText(/训练上传正式开放后/)).not.toBeInTheDocument();
   });
 
+  it('renders account backup actions in the settings footer', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    expect(await screen.findByRole('button', { name: /主动备份/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /主动上传/ })).toBeInTheDocument();
+  });
+
+  it('downloads the current account data backup on demand', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /主动备份/ }));
+
+    await waitFor(() => {
+      expect(createBackupMock).toHaveBeenCalledTimes(1);
+      expect(downloadBackupMock).toHaveBeenCalledWith(expect.objectContaining({
+        schema: 'easybake.user-data-backup',
+      }));
+    });
+  });
+
+  it('imports a backup file into the current account after confirmation', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    fireEvent.change(await screen.findByLabelText('选择备份文件'), {
+      target: {
+        files: [new File(['{}'], 'easybake-backup.json', { type: 'application/json' })],
+      },
+    });
+
+    expect(await screen.findAllByText('上传备份到当前账号？')).not.toHaveLength(0);
+    expect(screen.getByText('跨账号备份会为所有记录重新分配 ID 后新增到当前账号。生豆编号或名称相同也会保留各自数据，不会删除当前账号已有数据。')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '合并导入备份' }));
+
+    await waitFor(() => {
+      expect(readBackupFileMock).toHaveBeenCalledTimes(1);
+      expect(importBackupMock).toHaveBeenCalledWith(expect.objectContaining({
+        schema: 'easybake.user-data-backup',
+      }), {
+        strategy: 'merge',
+      });
+    });
+  });
+
+  it('lets same-account backup imports choose a full sync strategy', async () => {
+    getImportModeMock.mockReturnValue('same-account');
+    renderWithQuery(<SettingsPage />);
+
+    fireEvent.change(await screen.findByLabelText('选择备份文件'), {
+      target: {
+        files: [new File(['{}'], 'easybake-backup.json', { type: 'application/json' })],
+      },
+    });
+
+    expect(await screen.findByText('选择备份上传方式')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('完全与备份同步'));
+    fireEvent.click(screen.getByRole('button', { name: '完全同步备份' }));
+
+    await waitFor(() => {
+      expect(importBackupMock).toHaveBeenCalledWith(expect.objectContaining({
+        schema: 'easybake.user-data-backup',
+      }), {
+        strategy: 'sync',
+      });
+    });
+  });
+
   it('shows a retry action when a QR code fails to load', async () => {
     loadQrCodeAssetMock
       .mockRejectedValueOnce(new Error('asset unavailable'))
@@ -409,11 +523,11 @@ describe('SettingsPage', () => {
   });
 
   it('keeps the build version label in sync with runtime version updates', async () => {
-    appBuildVersionService.save('0.1.0-initial');
+    appBuildVersionService.save('01020260715162823');
 
     renderWithQuery(<SettingsPage />);
 
-    const buildVersion = screen.getByText('当前 Web 上传版本：0.1.0-initial');
+    const buildVersion = screen.getByText('当前 Web 上传版本：01020260715162823');
     const deleteButtonLabel = screen.getByText('注销账号');
     const deleteButton = deleteButtonLabel.closest('button');
 
@@ -426,10 +540,10 @@ describe('SettingsPage', () => {
     }
 
     act(() => {
-      appBuildVersionService.save('0.1.0-updated');
+      appBuildVersionService.save('01020260715164000');
     });
 
-    expect(await screen.findByText('当前 Web 上传版本：0.1.0-updated')).toBeInTheDocument();
+    expect(await screen.findByText('当前 Web 上传版本：01020260715164000')).toBeInTheDocument();
   });
 
   it('opens the account deletion confirmation when clicking the enabled danger button', async () => {

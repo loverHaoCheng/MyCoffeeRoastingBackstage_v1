@@ -7,8 +7,32 @@ import { loadEnv } from 'vite';
 const packageJson = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
 ) as { version?: string };
-const buildTimestamp = new Date().toISOString();
-const buildVersion = `${packageJson.version ?? '0.0.0'}-${buildTimestamp}`;
+const buildTimestamp = new Date();
+const buildTimestampIso = buildTimestamp.toISOString();
+const buildVersionFormatter = new Intl.DateTimeFormat('en-CA', {
+  day: '2-digit',
+  hour: '2-digit',
+  hourCycle: 'h23',
+  minute: '2-digit',
+  month: '2-digit',
+  second: '2-digit',
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+});
+
+const formatBuildVersionTimestamp = (value: Date): string => {
+  const parts = Object.fromEntries(
+    buildVersionFormatter
+      .formatToParts(value)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  );
+
+  return `${parts.year}${parts.month}${parts.day}${parts.hour}${parts.minute}${parts.second}`;
+};
+
+const packageVersionDigits = (packageJson.version ?? '0.0.0').replace(/\D/g, '') || '000';
+const buildVersion = `${packageVersionDigits}${formatBuildVersionTimestamp(buildTimestamp)}`;
 
 const defaultDevApiProxyTarget = 'https://www.easybake.top';
 
@@ -31,7 +55,7 @@ export default defineConfig(({ mode }) => {
             fileName: 'version.json',
             source: JSON.stringify(
               {
-                generatedAt: buildTimestamp,
+                generatedAt: buildTimestampIso,
                 version: buildVersion,
               },
               null,

@@ -19,6 +19,13 @@ interface GatewayRouteHandlers {
   handleProfileUpdate: RequestHandler;
   handleRealtime: RequestHandler;
   handleRegister: RequestHandler;
+  handleRoastTrainingQualityCheck: RequestHandler;
+  handleRoastTrainingUpload: RequestHandler;
+  handleRoastTrainingUploadStatus: (
+    request: IncomingMessage,
+    response: ServerResponse,
+    requestUrl: URL,
+  ) => Promise<void>;
   handleSession: RequestHandler;
   handleUnverifiedUserCleanup: RequestHandler;
   handleVerificationRequest: RequestHandler;
@@ -57,10 +64,31 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
       return;
     }
 
+    if (path === '/internal/jobs/check-roast-training-samples') {
+      if (ensureMethod(request, response, ['POST'], handlers)) {
+        await handlers.handleRoastTrainingQualityCheck(request, response);
+      }
+      return;
+    }
+
     if (path === '/api/ai/bean-image-recognition') {
       if (ensureMethod(request, response, ['GET', 'POST'], handlers)) {
         await handlers.handleBeanImageRecognition(request, response);
       }
+      return;
+    }
+
+    if (path === '/api/ai/roast-training-upload') {
+      if (!ensureMethod(request, response, ['GET', 'POST'], handlers)) {
+        return;
+      }
+
+      if (request.method === 'GET') {
+        await handlers.handleRoastTrainingUploadStatus(request, response, requestUrl);
+        return;
+      }
+
+      await handlers.handleRoastTrainingUpload(request, response);
       return;
     }
 

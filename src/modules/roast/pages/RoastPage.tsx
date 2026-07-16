@@ -15,6 +15,7 @@ import {
   RoastPlanManualCreator,
   RoastPlanJsonImporter,
 } from '@/modules/roast/components';
+import { defaultRoastPlanFormValues } from '@/modules/roast/constants';
 import type { RoastPlanEditableFieldPath } from '@/modules/roast/components/RoastPlanFieldEditorDrawer';
 import {
   roastPlanQueryKeys,
@@ -24,6 +25,7 @@ import {
   useUpdateRoastPlan,
 } from '@/modules/roast/hooks';
 import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlanStatus';
+import { parseRoastPlanJsonDraft } from '@/modules/roast/services';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -75,6 +77,8 @@ export function RoastPage() {
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [creationTab, setCreationTab] = useState<'ai' | 'json' | 'manual'>('manual');
+  const [creationInitialValues, setCreationInitialValues] = useState<RoastPlanJsonInput | undefined>();
+  const [creationResetSignal, setCreationResetSignal] = useState(0);
 
   const { data: plans = [], isFetching } = useRoastPlans();
   const updateMutation = useUpdateRoastPlan();
@@ -98,6 +102,12 @@ export function RoastPage() {
   );
 
   const selectedPlan = effectivePlans.find((p) => p.id === selectedPlanId) ?? null;
+
+  const resetCreationDraft = () => {
+    setCreationTab('manual');
+    setCreationInitialValues(undefined);
+    setCreationResetSignal((current) => current + 1);
+  };
 
   // 查看
   const handleView = (planId: RoastPlan['id']) => {
@@ -162,6 +172,7 @@ export function RoastPage() {
   // 手动创建
   const handleCreateManual = (input: RoastPlanJsonInput) => {
     setCreationDrawerOpen(false);
+    resetCreationDraft();
     submissionBackupService.save('create', input, 'roastPlan');
     const optimisticPlan = roastPlanService.createOptimisticPlan(input);
 
@@ -188,33 +199,21 @@ export function RoastPage() {
     void createTask;
   };
 
-  // JSON 导入创建
-  const handleCreateFromJson = (jsonText: string) => {
-    setCreationDrawerOpen(false);
-    submissionBackupService.save('create', { jsonText }, 'roastPlan');
-    const optimisticPlan = roastPlanService.createOptimisticPlanFromJson(jsonText);
+  // JSON 导入仅回填表单，最终创建仍由手动表单提交。
+  const handleFillFormFromJson = (jsonText: string) => {
+    try {
+      const nextInitialValues = parseRoastPlanJsonDraft(
+        jsonText,
+        creationInitialValues ?? defaultRoastPlanFormValues,
+      );
 
-    queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) => {
-      return sortPlansByUpdatedAt([
-        optimisticPlan,
-        ...current.filter((plan) => String(plan.id) !== String(optimisticPlan.id)),
-      ]);
-    });
-
-    const createTask = (async () => {
-      try {
-        const response = await roastPlanService.createPlanFromJson(jsonText);
-        const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
-
-        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-      } catch (error: unknown) {
-        const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
-        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，已回滚本次导入，请检查后重试。'));
-      }
-    })();
-
-    void createTask;
+      submissionBackupService.save('create', { input: nextInitialValues, jsonText }, 'roastPlan');
+      setCreationInitialValues(nextInitialValues);
+      setCreationTab('manual');
+      void message.success('JSON 已回填到创建表单，可继续补充和修改。');
+    } catch (error: unknown) {
+      void message.error(getUserFacingErrorMessage(error, 'JSON 解析失败，请检查内容后重试。'));
+    }
   };
 
   // 关闭详情
@@ -225,6 +224,7 @@ export function RoastPage() {
   };
 
   const handleOpenCreateDrawer = () => {
+    resetCreationDraft();
     setCreationDrawerOpen(true);
   };
 
@@ -295,6 +295,7 @@ export function RoastPage() {
               label: '手动创建',
               children: (
                 <RoastPlanManualCreator
+                  initialValues={creationInitialValues}
                   onCancel={() => {
                     setCreationDrawerOpen(false);
                   }}
@@ -310,7 +311,8 @@ export function RoastPage() {
                   onCancel={() => {
                     setCreationDrawerOpen(false);
                   }}
-                  onImport={handleCreateFromJson}
+                  onImport={handleFillFormFromJson}
+                  resetSignal={creationResetSignal}
                 />
               ),
             },
