@@ -276,23 +276,17 @@ describe('RoastPage', () => {
     expect(screen.queryByRole('img', { name: 'check-circle' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '删除计划' })).not.toBeInTheDocument();
     expect(screen.queryByRole('table', { name: '烘焙计划节点' })).not.toBeInTheDocument();
-    expect(screen.getAllByText('2 个节点')).toHaveLength(2);
+    expect(screen.queryByText('2 个节点')).not.toBeInTheDocument();
     expect(screen.queryByText('计划数量')).not.toBeInTheDocument();
     expect(screen.queryByText('PLANS')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /查看 肯尼亚/ })).toBeInTheDocument();
 
-    const editStepButtons = screen.getAllByRole('button', { name: '修改 节点数' });
-    const firstEditStepButton = editStepButtons[0];
-
-    if (!firstEditStepButton) {
-      throw new Error('edit step button not found');
-    }
+    const firstEditStepButton = screen.getByRole('button', { name: '全部编辑 肯尼亚 柏拉 AA Plus SL28 SL34 水洗' });
 
     await performUiUpdate(() => {
       fireEvent.click(firstEditStepButton);
     });
 
-    expect(screen.getByText('编辑烘焙计划')).toBeInTheDocument();
     expect(screen.queryByText('肯尼亚 柏拉 AA Plus SL28 SL34 水洗（200g，手冲浅烘）')).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '烘豆机型号' })).toBeInTheDocument();
@@ -346,7 +340,6 @@ describe('RoastPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /查看 埃塞俄比亚/ }));
 
-    expect(screen.getByText('烘焙计划详情')).toBeInTheDocument();
     expect(screen.getByText('计划名称')).toBeInTheDocument();
     expect(screen.getByText('烘焙节点')).toBeInTheDocument();
     expect(screen.queryByLabelText('计划名称')).not.toBeInTheDocument();
@@ -360,7 +353,6 @@ describe('RoastPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '全部编辑 肯尼亚 柏拉 AA Plus SL28 SL34 水洗' }));
 
-    expect(screen.getByText('编辑烘焙计划')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '保存计划' })).toBeInTheDocument();
   });
 

@@ -37,7 +37,7 @@
 }
 
 .field :global(.ant-input) {
-  font-size: 14px;
+  font-size: var(--app-font-14);
   color: var(--app-text);
 }
 

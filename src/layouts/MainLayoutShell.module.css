@@ -53,12 +53,22 @@
 
 .viewportFrame::before {
   left: 0;
-  background: linear-gradient(90deg, var(--app-bg-surface) 0%, rgb(245 245 247 / 68%) 52%, rgb(245 245 247 / 0) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--app-bg-surface) 0%,
+    color-mix(in srgb, var(--app-bg-surface) 68%, transparent) 52%,
+    transparent 100%
+  );
 }
 
 .viewportFrame::after {
   right: 0;
-  background: linear-gradient(270deg, var(--app-bg-surface) 0%, rgb(245 245 247 / 68%) 52%, rgb(245 245 247 / 0) 100%);
+  background: linear-gradient(
+    270deg,
+    var(--app-bg-surface) 0%,
+    color-mix(in srgb, var(--app-bg-surface) 68%, transparent) 52%,
+    transparent 100%
+  );
 }
 
 .viewportFrame[data-scaled='true']::before,
@@ -88,25 +98,11 @@
 }
 
 .scaleViewport {
-  --layout-content-scale: 1;
+  --app-font-scale: 1;
   margin: 0 auto;
   width: 100%;
   min-height: 100%;
-}
-
-@supports (zoom: 1) {
-  .scaleViewport {
-    zoom: var(--layout-content-scale);
-  }
-}
-
-@supports not (zoom: 1) {
-  .scaleViewport {
-    width: min(100%, calc(100% / var(--layout-content-scale)));
-    min-height: 100%;
-    transform: scale(var(--layout-content-scale));
-    transform-origin: top center;
-  }
+  transition: font-size 160ms ease;
 }
 
 .content {
@@ -128,14 +124,6 @@
   background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  @supports not (zoom: 1) {
-    .scaleViewport {
-      transition: transform 160ms ease, width 160ms ease, min-height 160ms ease;
-    }
-  }
-}
-
 @media (max-width: 767px) {
   .content {
     --content-page-inline-padding: 12px;
@@ -154,7 +142,7 @@
     border: 0;
     border-radius: 0 0 28px 28px;
     background: linear-gradient(180deg, var(--app-bg-elevated) 0%, var(--app-bg-surface) 100%);
-    box-shadow: 0 8px 24px rgb(15 23 42 / 4%);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--app-text) 8%, transparent);
     scrollbar-gutter: auto;
     scrollbar-width: none;
   }

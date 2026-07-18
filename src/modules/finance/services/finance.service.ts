@@ -1,5 +1,3 @@
-import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
-import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/services/api.types';
@@ -150,18 +148,13 @@ const resolveFinanceConnection = ():
 };
 
 const resolveFinanceConnectionCandidates = (): FinanceConnectionCandidate[] => {
-  const candidates: FinanceConnectionCandidate[] = [];
-
-  const greenConnection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
-
-  if (isPocketBaseProjectConnectionConfigured(greenConnection)) {
-    candidates.push({
-      client: new PocketBaseRestClient(greenConnection),
-      dataSource: 'greenBean',
-    });
-  }
-
-  return candidates;
+  return [{
+    client: new PocketBaseRestClient({
+      projectUrl: '',
+      publishableKey: '',
+    }),
+    dataSource: 'greenBean',
+  }];
 };
 
 const isMissingRemoteResourceError = (error: unknown): boolean => {

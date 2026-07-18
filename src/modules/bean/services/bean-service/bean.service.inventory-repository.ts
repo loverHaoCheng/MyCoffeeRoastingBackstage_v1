@@ -49,6 +49,15 @@ export function createGreenBeanInventoryRepository(
   const tableName = options.tableName ?? 'green_beans';
   void options.viewName;
 
+  const toFiniteInteger = (value: unknown, fallback = 0): number => {
+    const normalizedValue = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+    return Math.round(normalizedValue);
+  };
+
+  const toNonNegativeInteger = (value: unknown, fallback = 0): number => {
+    return Math.max(0, toFiniteInteger(value, fallback));
+  };
+
   const loadSettingRecord = async (key: string): Promise<null | RemoteAppSettingRecord> => {
     const rows = await client.list<RemoteAppSettingRecord>('app_settings', {
       limit: 1,
@@ -409,7 +418,13 @@ export function createGreenBeanInventoryRepository(
         throw new AppError('当前生豆缺少采购批次，无法更新剩余库存。', { code: 'DATA' });
       }
 
-      const nextRemainingWeight = latestBatch.remaining_weight_grams - deltaGrams;
+      const normalizedPurchasedWeightGrams = toNonNegativeInteger(latestBatch.purchased_weight_grams, 0);
+      const normalizedCurrentRemainingWeight = toNonNegativeInteger(
+        latestBatch.remaining_weight_grams,
+        normalizedPurchasedWeightGrams,
+      );
+      const normalizedDeltaGrams = toFiniteInteger(deltaGrams, 0);
+      const nextRemainingWeight = normalizedCurrentRemainingWeight - normalizedDeltaGrams;
 
       if (nextRemainingWeight < 0) {
         throw new AppError('剩余库存不足，无法记录本次烘焙。', { code: 'DATA' });
@@ -418,7 +433,7 @@ export function createGreenBeanInventoryRepository(
       await client.update(
         'green_bean_purchase_batches',
         {
-          remaining_weight_grams: Math.min(nextRemainingWeight, latestBatch.purchased_weight_grams),
+          remaining_weight_grams: Math.min(nextRemainingWeight, normalizedPurchasedWeightGrams),
         },
         {
           match: { id: latestBatch.id },

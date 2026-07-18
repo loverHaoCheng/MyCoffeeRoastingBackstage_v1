@@ -1,5 +1,3 @@
-import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
-import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/services/api.types';
@@ -8,6 +6,8 @@ import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import type {
   FinanceExpenseFormInput,
   FinanceExpenseRecord,
+  FinanceIncomeFormInput,
+  FinanceIncomeRecord,
 } from '../types';
 
 interface FinanceLedgerConnectionCandidate {
@@ -29,9 +29,25 @@ interface RemoteFinanceExpenseRecord {
   updated_at: string;
 }
 
+interface RemoteFinanceIncomeRecord {
+  amount: number;
+  channel: FinanceIncomeRecord['channel'];
+  created_at: string;
+  id: string;
+  income_date: string;
+  notes: null | string;
+  source?: FinanceIncomeRecord['source'];
+  source_entity_id?: null | string;
+  status: FinanceIncomeRecord['status'];
+  title: string;
+  updated_at: string;
+}
+
 const EXPENSE_COLLECTION = 'finance_expense_records';
+const INCOME_COLLECTION = 'finance_income_records';
 
 let currentExpenseRecords: FinanceExpenseRecord[] = [];
+let currentIncomeRecords: FinanceIncomeRecord[] = [];
 
 const ok = <T,>(data: T): ApiResponse<T> => ({
   code: 0,
@@ -48,6 +64,12 @@ const normalizeText = (value: null | string | undefined): null | string => {
 const normalizeExpenseInput = (input: FinanceExpenseFormInput): FinanceExpenseFormInput => ({
   ...input,
   customCategoryLabel: normalizeText(input.customCategoryLabel),
+  notes: normalizeText(input.notes),
+  title: input.title.trim(),
+});
+
+const normalizeIncomeInput = (input: FinanceIncomeFormInput): FinanceIncomeFormInput => ({
+  ...input,
   notes: normalizeText(input.notes),
   title: input.title.trim(),
 });
@@ -69,6 +91,11 @@ const getLedgerSyncSnapshot = (records: { id: string; updatedAt: string }[]): st
 const setCurrentExpenseRecords = (records: FinanceExpenseRecord[]): FinanceExpenseRecord[] => {
   currentExpenseRecords = sortByUpdatedAt(records);
   return currentExpenseRecords;
+};
+
+const setCurrentIncomeRecords = (records: FinanceIncomeRecord[]): FinanceIncomeRecord[] => {
+  currentIncomeRecords = sortByUpdatedAt(records);
+  return currentIncomeRecords;
 };
 
 const createLedgerTimestamps = (): { createdAt: string; updatedAt: string } => {
@@ -95,6 +122,20 @@ const mapRemoteExpenseRecord = (record: RemoteFinanceExpenseRecord): FinanceExpe
   updatedAt: record.updated_at,
 });
 
+const mapRemoteIncomeRecord = (record: RemoteFinanceIncomeRecord): FinanceIncomeRecord => ({
+  amount: record.amount,
+  channel: record.channel,
+  createdAt: record.created_at,
+  id: record.id,
+  incomeDate: record.income_date,
+  notes: record.notes,
+  source: record.source ?? 'manual',
+  sourceEntityId: record.source_entity_id ?? null,
+  status: record.status,
+  title: record.title,
+  updatedAt: record.updated_at,
+});
+
 const mapExpenseInputToRemotePayload = (input: FinanceExpenseFormInput) => {
   const timestamps = createLedgerTimestamps();
   const normalizedInput = normalizeExpenseInput(input);
@@ -114,14 +155,29 @@ const mapExpenseInputToRemotePayload = (input: FinanceExpenseFormInput) => {
   };
 };
 
+const mapIncomeInputToRemotePayload = (input: FinanceIncomeFormInput) => {
+  const timestamps = createLedgerTimestamps();
+  const normalizedInput = normalizeIncomeInput(input);
+
+  return {
+    amount: normalizedInput.amount,
+    channel: normalizedInput.channel,
+    created_at: timestamps.createdAt,
+    income_date: normalizedInput.incomeDate,
+    notes: normalizeText(normalizedInput.notes),
+    status: normalizedInput.status,
+    title: normalizedInput.title.trim(),
+    updated_at: timestamps.updatedAt,
+  };
+};
+
 const resolveLedgerConnectionCandidates = (): FinanceLedgerConnectionCandidate[] => {
-  const greenConnection = pocketBaseConnectionSettingsService.resolveProjectConnection('greenBean');
-
-  if (!isPocketBaseProjectConnectionConfigured(greenConnection)) {
-    return [];
-  }
-
-  return [{ client: new PocketBaseRestClient(greenConnection) }];
+  return [{
+    client: new PocketBaseRestClient({
+      projectUrl: '',
+      publishableKey: '',
+    }),
+  }];
 };
 
 const isMissingRemoteResourceError = (error: unknown): boolean => {
@@ -147,6 +203,16 @@ const createRemoteLedgerRepository = (client: Pick<PocketBaseRestClient, 'delete
 
     return ok(rows.map(mapRemoteExpenseRecord));
   },
+  async listIncomeRecords(): Promise<ApiResponse<FinanceIncomeRecord[]>> {
+    const rows = await client.list<RemoteFinanceIncomeRecord>(INCOME_COLLECTION, {
+      orderBy: {
+        ascending: false,
+        column: 'updated_at',
+      },
+    });
+
+    return ok(rows.map(mapRemoteIncomeRecord));
+  },
   async saveExpenseRecord(input: FinanceExpenseFormInput): Promise<ApiResponse<FinanceExpenseRecord>> {
     const rows = await client.insert<RemoteFinanceExpenseRecord>(
       EXPENSE_COLLECTION,
@@ -161,14 +227,41 @@ const createRemoteLedgerRepository = (client: Pick<PocketBaseRestClient, 'delete
 
     return ok(mapRemoteExpenseRecord(savedRow));
   },
+  async saveIncomeRecord(input: FinanceIncomeFormInput): Promise<ApiResponse<FinanceIncomeRecord>> {
+    const rows = await client.insert<RemoteFinanceIncomeRecord>(
+      INCOME_COLLECTION,
+      mapIncomeInputToRemotePayload(input),
+      { select: '*' },
+    );
+    const savedRow = rows[0];
+
+    if (!savedRow) {
+      throw new AppError('收入记录保存失败：未返回数据。', { code: 'DATA' });
+    }
+
+    return ok(mapRemoteIncomeRecord(savedRow));
+  },
 });
+
+const createMissingIncomeCollectionError = (): AppError => {
+  return new AppError(
+    '收入记录保存失败：远端 finance_income_records 集合或主业务 BFF 白名单尚未就绪，请同步最新服务端配置。',
+    {
+      code: 'BUSINESS',
+    },
+  );
+};
 
 export const financeLedgerService = {
   clear(): void {
     currentExpenseRecords = [];
+    currentIncomeRecords = [];
   },
   getBootstrappedExpenseRecords(): FinanceExpenseRecord[] {
     return currentExpenseRecords;
+  },
+  getBootstrappedIncomeRecords(): FinanceIncomeRecord[] {
+    return currentIncomeRecords;
   },
   async listExpenseRecords(): Promise<ApiResponse<FinanceExpenseRecord[]>> {
     const candidates = resolveLedgerConnectionCandidates();
@@ -197,6 +290,31 @@ export const financeLedgerService = {
 
     throw lastError;
   },
+  async listIncomeRecords(): Promise<ApiResponse<FinanceIncomeRecord[]>> {
+    const candidates = resolveLedgerConnectionCandidates();
+
+    if (candidates.length === 0) {
+      throw new AppError('PocketBase 连接配置缺失。', { code: 'CONFIG' });
+    }
+
+    let lastError: unknown = null;
+
+    for (const candidate of candidates) {
+      try {
+        const response = await createRemoteLedgerRepository(candidate.client).listIncomeRecords();
+        setCurrentIncomeRecords(response.data);
+        return response;
+      } catch (error) {
+        lastError = error;
+
+        logger.warn('finance income list unavailable', { error });
+        setCurrentIncomeRecords([]);
+        return ok([]);
+      }
+    }
+
+    throw lastError;
+  },
   async saveExpenseRecord(input: FinanceExpenseFormInput): Promise<ApiResponse<FinanceExpenseRecord>> {
     const candidates = resolveLedgerConnectionCandidates();
 
@@ -219,6 +337,34 @@ export const financeLedgerService = {
         }
 
         logger.warn('finance expense save missing remote table', { error });
+      }
+    }
+
+    throw lastError;
+  },
+  async saveIncomeRecord(input: FinanceIncomeFormInput): Promise<ApiResponse<FinanceIncomeRecord>> {
+    const candidates = resolveLedgerConnectionCandidates();
+
+    if (candidates.length === 0) {
+      throw new AppError('PocketBase 连接配置缺失。', { code: 'CONFIG' });
+    }
+
+    let lastError: unknown = null;
+
+    for (const candidate of candidates) {
+      try {
+        const response = await createRemoteLedgerRepository(candidate.client).saveIncomeRecord(input);
+        setCurrentIncomeRecords([response.data, ...currentIncomeRecords.filter((record) => record.id !== response.data.id)]);
+        return response;
+      } catch (error) {
+        lastError = error;
+
+        if (!isMissingRemoteResourceError(error)) {
+          break;
+        }
+
+        logger.warn('finance income save missing remote table', { error });
+        throw createMissingIncomeCollectionError();
       }
     }
 
@@ -260,6 +406,42 @@ export const financeLedgerService = {
 
     throw lastError;
   },
+  async deleteIncomeRecord(incomeRecordId: string): Promise<void> {
+    const candidates = resolveLedgerConnectionCandidates();
+
+    if (candidates.length === 0) {
+      throw new AppError('PocketBase 连接配置缺失。', { code: 'CONFIG' });
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      throw new AppError('当前网络不可用，无法删除收入记录。', { code: 'NETWORK' });
+    }
+
+    let lastError: unknown = null;
+
+    for (const candidate of candidates) {
+      try {
+        await candidate.client.delete(INCOME_COLLECTION, {
+          match: {
+            id: incomeRecordId,
+          },
+        });
+
+        setCurrentIncomeRecords(currentIncomeRecords.filter((record) => record.id !== incomeRecordId));
+        return;
+      } catch (error) {
+        lastError = error;
+
+        if (!isMissingRemoteResourceError(error)) {
+          break;
+        }
+
+        logger.warn('finance income delete missing remote table', { error });
+      }
+    }
+
+    throw lastError;
+  },
   async syncLocalAndRemote(): Promise<{ downloaded: number; uploaded: number }> {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return { downloaded: 0, uploaded: 0 };
@@ -276,14 +458,28 @@ export const financeLedgerService = {
     for (const candidate of candidates) {
       try {
         const repository = createRemoteLedgerRepository(candidate.client);
+        const beforeExpenseSignature = getLedgerSyncSnapshot(currentExpenseRecords);
+        const beforeIncomeSignature = getLedgerSyncSnapshot(currentIncomeRecords);
         const remoteExpenses = await repository.listExpenseRecords();
-        const beforeSignature = getLedgerSyncSnapshot(currentExpenseRecords);
+        let remoteIncomes: ApiResponse<FinanceIncomeRecord[]>;
+
+        try {
+          remoteIncomes = await repository.listIncomeRecords();
+        } catch (error) {
+          logger.warn('finance income sync unavailable', { error });
+          remoteIncomes = ok([]);
+        }
 
         setCurrentExpenseRecords(remoteExpenses.data);
-        const afterSignature = getLedgerSyncSnapshot(currentExpenseRecords);
+        setCurrentIncomeRecords(remoteIncomes.data);
+        const afterExpenseSignature = getLedgerSyncSnapshot(currentExpenseRecords);
+        const afterIncomeSignature = getLedgerSyncSnapshot(currentIncomeRecords);
 
         return {
-          downloaded: beforeSignature === afterSignature ? 0 : currentExpenseRecords.length,
+          downloaded:
+            beforeExpenseSignature === afterExpenseSignature && beforeIncomeSignature === afterIncomeSignature
+              ? 0
+              : currentExpenseRecords.length + currentIncomeRecords.length,
           uploaded: 0,
         };
       } catch (error) {

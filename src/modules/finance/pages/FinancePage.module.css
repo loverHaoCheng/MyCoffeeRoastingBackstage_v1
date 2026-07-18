@@ -3,6 +3,14 @@
   --page-gap: 14px;
 }
 
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  margin-inline: 4px;
+}
+
 .formulaPanel {
   display: grid;
   gap: 8px;

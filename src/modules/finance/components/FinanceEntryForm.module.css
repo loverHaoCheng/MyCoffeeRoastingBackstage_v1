@@ -13,7 +13,7 @@
 }
 
 .panelEmbedded {
-  gap: 16px;
+  gap: 18px;
   padding: 0;
   border: none;
   border-radius: 0;
@@ -28,50 +28,52 @@
 
 .header h2 {
   margin: 0;
-  color: #6e6e73;
+  color: var(--app-text);
   font-size: 16px;
-  font-weight: 600;
-  line-height: 1.5;
+  font-weight: 700;
+  line-height: 1.3;
   letter-spacing: 0;
 }
 
 .header p {
   margin: 0;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .embeddedDescription {
   margin: 0;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .groupStack {
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
 .groupPanel {
-  padding: 14px;
-  border: 1px solid rgb(229 229 234 / 0.92);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--app-border);
   border-radius: 15px;
-  background: #f7f7f8;
+  background: var(--app-bg-elevated);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 12px;
+  gap: 12px;
 }
 
 .field {
   display: grid;
   grid-template-rows: auto minmax(48px, auto) minmax(18px, auto);
   align-content: start;
-  row-gap: 8px;
+  row-gap: 7px;
   min-width: 0;
 }
 
@@ -80,10 +82,10 @@
 }
 
 .field > span:first-child {
-  color: #6e6e73;
-  font-size: 12px;
+  color: var(--app-text-secondary);
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
 }
 
 .field :global(.ant-input),
@@ -95,11 +97,15 @@
 }
 
 .field :global(.ant-select-selector),
-.field :global(.ant-picker) {
+.field :global(.ant-picker),
+.field :global(.ant-input),
+.field :global(.ant-input-number),
+.field :global(.ant-input-number-affix-wrapper),
+.field :global(.ant-input-affix-wrapper) {
   min-height: 48px;
   border-radius: 14px;
-  border-color: rgb(214 214 219 / 0.9);
-  background: rgb(255 255 255 / 0.92);
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated);
   box-shadow: none;
 }
 
@@ -159,14 +165,14 @@
   display: block;
   min-height: 18px;
   margin: 0;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: normal;
 }
 
 .errorText {
-  color: #d13d32;
+  color: var(--app-danger);
 }
 
 .actions {
@@ -195,12 +201,12 @@
   }
 
   .groupPanel {
-    padding: 12px;
+    padding: 16px;
     border-radius: 15px;
   }
 
   .grid {
     grid-template-columns: 1fr;
-    row-gap: 16px;
+    row-gap: 12px;
   }
 }

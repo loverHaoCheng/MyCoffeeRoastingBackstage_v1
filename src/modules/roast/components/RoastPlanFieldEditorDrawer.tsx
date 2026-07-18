@@ -1,7 +1,7 @@
 import { App } from 'antd';
-import Input from "antd/es/input";
-import InputNumber from "antd/es/input-number";
-import Select from "antd/es/select";
+import { Select } from '@/components/ui/select';
+import Input from '@/shared/components/ui/input';
+import InputNumber from '@/shared/components/ui/input-number';
 import Spin from "antd/es/spin";
 import { useEffect, useMemo, useState } from 'react';
 
@@ -64,11 +64,26 @@ export function RoastPlanFieldEditorDrawer({
   const { data: beans = [], isLoading: beansLoading } = useBeans();
   const updatePlanMutation = useUpdateRoastPlan();
   const [draft, setDraft] = useState<RoastPlanJsonInput | null>(null);
+  const [lastOpenContext, setLastOpenContext] = useState<{
+    fieldPath: RoastPlanEditableFieldPath;
+    plan: RoastPlan;
+  } | null>(null);
 
   const editableFieldPath = fieldPath;
-  const fieldConfig = editableFieldPath ? fieldMeta[editableFieldPath] : undefined;
-  const baseDraft = useMemo(() => (plan ? roastPlanToJsonInput(plan) : null), [plan]);
-  const drawerHeight = editableFieldPath === 'beanId' && placement === 'bottom' ? '240px' : height;
+  useEffect(() => {
+    if (open && plan != null && editableFieldPath != null) {
+      setLastOpenContext({
+        fieldPath: editableFieldPath,
+        plan,
+      });
+    }
+  }, [editableFieldPath, open, plan]);
+
+  const effectivePlan = open && plan != null ? plan : lastOpenContext?.plan ?? null;
+  const effectiveFieldPath = open && editableFieldPath != null ? editableFieldPath : lastOpenContext?.fieldPath;
+  const fieldConfig = effectiveFieldPath ? fieldMeta[effectiveFieldPath] : undefined;
+  const baseDraft = useMemo(() => (effectivePlan ? roastPlanToJsonInput(effectivePlan) : null), [effectivePlan]);
+  const drawerHeight = effectiveFieldPath === 'beanId' && placement === 'bottom' ? '240px' : height;
 
   useEffect(() => {
     if (!baseDraft) {
@@ -76,9 +91,9 @@ export function RoastPlanFieldEditorDrawer({
     }
 
     setDraft(baseDraft);
-  }, [baseDraft, editableFieldPath]);
+  }, [baseDraft, effectiveFieldPath]);
 
-  if (!open || plan == null || editableFieldPath == null) {
+  if (effectivePlan == null || effectiveFieldPath == null) {
     return null;
   }
 
@@ -129,9 +144,9 @@ export function RoastPlanFieldEditorDrawer({
     }
 
     onClose();
-    submissionBackupService.save('update', { input: parsed.data, planId: plan.id }, 'roastPlan');
+    submissionBackupService.save('update', { input: parsed.data, planId: effectivePlan.id }, 'roastPlan');
 
-    const updateTask = updatePlanMutation.mutateAsync({ planId: plan.id, input: parsed.data }).catch(
+    const updateTask = updatePlanMutation.mutateAsync({ planId: effectivePlan.id, input: parsed.data }).catch(
       (error: unknown) => {
         void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
       },
@@ -141,7 +156,7 @@ export function RoastPlanFieldEditorDrawer({
   };
 
   const renderField = () => {
-    switch (editableFieldPath) {
+    switch (effectiveFieldPath) {
       case 'batchWeightGrams':
         return (
           <InputNumber
@@ -197,6 +212,10 @@ export function RoastPlanFieldEditorDrawer({
         return (
           <Select
             onChange={(value) => {
+              if (!value) {
+                return;
+              }
+
               updateDraft('roasterModel', value);
             }}
             options={roasterModelSelectOptions}

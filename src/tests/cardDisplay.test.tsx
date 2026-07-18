@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BeanInventoryCard } from '@/modules/bean/components/BeanInventoryCard';
+import { cardDisplayModules } from '@/modules/settings/constants/cardDisplayModules';
 import { useSettingsStore } from '@/modules/settings/store';
 import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';
 import { createDefaultAppDisplaySettings, createDefaultCostTemplateSettings } from '@/modules/settings/types';
@@ -16,6 +17,8 @@ const createBean = (): Bean => ({
   name: '测试生豆',
   origin: '埃塞俄比亚 · 古吉',
   process: '水洗',
+  purchasedWeightGrams: 25000,
+  remainingWeightGrams: 12500,
   stockKg: 12.5,
   supplierName: '示例供应商',
   tastingEndDays: 40,
@@ -97,6 +100,26 @@ describe('card display settings', () => {
     expect(screen.getByText('轻度成本模板')).toBeInTheDocument();
   });
 
+  it('shows the bean variety in the card subtitle', () => {
+    render(<BeanInventoryCard bean={createBean()} />);
+
+    expect(screen.getByText('豆种 74110')).toBeInTheDocument();
+    expect(screen.queryByText(/编号 EB-/)).not.toBeInTheDocument();
+  });
+
+  it('shows the inventory ratio footer on bean cards', () => {
+    const { container } = render(<BeanInventoryCard bean={createBean()} />);
+
+    expect(screen.getByText('总库存 25 kg · 剩余库存 12.5 kg')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: '测试生豆 剩余库存占比' })).toHaveAttribute('aria-valuenow', '50');
+    expect(screen.getByText('50%')).toBeInTheDocument();
+
+    const footer = container.querySelector('[aria-label="测试生豆 剩余库存占比"]')?.parentElement;
+
+    expect(footer).not.toBeNull();
+    expect(footer).toHaveClass('border-0');
+  });
+
   it('treats non-positive quality metrics as missing values', () => {
     const nextSettings = createDefaultAppDisplaySettings();
     nextSettings.cardDisplaySettings.beanInventory = {
@@ -118,10 +141,12 @@ describe('card display settings', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: '修改 海拔下限' })).toHaveTextContent('待补充');
-    expect(screen.getByRole('button', { name: '修改 海拔上限' })).toHaveTextContent('待补充');
-    expect(screen.getByRole('button', { name: '修改 含水率' })).toHaveTextContent('待补充');
-    expect(screen.getByRole('button', { name: '修改 密度' })).toHaveTextContent('待补充');
+    expect(screen.getByText('海拔下限')).toBeInTheDocument();
+    expect(screen.getByText('海拔上限')).toBeInTheDocument();
+    expect(screen.getByText('含水率')).toBeInTheDocument();
+    expect(screen.getByText('密度')).toBeInTheDocument();
+    expect(screen.getAllByText('待补充')).toHaveLength(4);
+    expect(screen.queryByRole('button', { name: '修改 海拔下限' })).not.toBeInTheDocument();
   });
 
   it('shows all editable fields for newly created local beans', () => {
@@ -147,7 +172,7 @@ describe('card display settings', () => {
     expect(container.textContent).toContain('默认单份重量');
   });
 
-  it('shows expand-all and collapse actions side by side when second-level expansion is available', () => {
+  it('renders detail rows directly without an expand action', () => {
     render(
       <UnifiedDataCard
         metaItems={Array.from({ length: 10 }, (_, index) => ({
@@ -159,15 +184,8 @@ describe('card display settings', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '展开' }));
-
-    expect(screen.getByRole('button', { name: '展开全部' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '收起' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '展开全部' }));
-
-    expect(screen.queryByRole('button', { name: '展开全部' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '收起' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '展开' })).not.toBeInTheDocument();
+    expect(screen.queryByText('字段 10')).not.toBeInTheDocument();
   });
 
   it('wires the full edit button to the card callback', () => {
@@ -178,6 +196,16 @@ describe('card display settings', () => {
     fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试生豆' }));
 
     expect(onEditAll).toHaveBeenCalledWith(1);
+  });
+
+  it('wires the view action to the card callback', () => {
+    const onView = vi.fn();
+
+    render(<BeanInventoryCard bean={createBean()} onView={onView} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '查看 测试生豆' }));
+
+    expect(onView).toHaveBeenCalledWith(1);
   });
 
   it('does not expose the computed cost row as an editable field', () => {
@@ -205,23 +233,51 @@ describe('card display settings', () => {
             value: '埃塞俄比亚 Alo Main Station 74158 日晒 Lot.3 空运批次',
           },
         ]}
+        previewMetaItems={[
+          {
+            key: 'bean',
+            label: '生豆',
+            multiline: true,
+            value: '埃塞俄比亚 Alo Main Station 74158 日晒 Lot.3 空运批次',
+          },
+        ]}
         title="日晒"
       />,
     );
 
-    const labelStyles = window.getComputedStyle(screen.getByText('生豆'));
-    const row = screen.getByText('生豆').parentElement;
+    const label = screen.getByText('生豆');
+    const row = label.closest('button, div');
 
+    expect(label).toHaveClass('whitespace-nowrap');
+    expect(label).toHaveClass('truncate');
     expect(row).not.toBeNull();
+  });
 
-    if (row == null) {
-      throw new Error('card row not found');
-    }
+  it('renders preview fields as read-only rows separated by dividers', () => {
+    render(
+      <BeanInventoryCard
+        bean={createBean()}
+        onEdit={vi.fn()}
+      />,
+    );
 
-    const rowStyles = window.getComputedStyle(row);
+    expect(screen.getByText('库存')).toBeInTheDocument();
+    expect(screen.getByText('12.5 kg')).toBeInTheDocument();
+    expect(screen.getByText('成本')).toBeInTheDocument();
+    expect(screen.getByText('¥86 / kg')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '修改 库存' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '修改 处理法' })).not.toBeInTheDocument();
+  });
 
-    expect(labelStyles.whiteSpace).toBe('nowrap');
-    expect(labelStyles.minWidth).toBe('6em');
-    expect(rowStyles.gap).toBe('12px');
+  it('keeps settings card-display modules aligned with the actual card fields and page names', () => {
+    const roastHistoryModule = cardDisplayModules.find((module) => module.key === 'roastBatch');
+    const roastPlanModule = cardDisplayModules.find((module) => module.key === 'roastPlan');
+
+    expect(roastHistoryModule).toMatchObject({
+      description: '烘焙历史卡片',
+      label: '烘焙历史',
+    });
+    expect(roastHistoryModule?.metaOptions.some((option) => option.key === 'salesMode')).toBe(true);
+    expect(roastPlanModule?.metaOptions.some((option) => option.key === 'roasterModel')).toBe(true);
   });
 });

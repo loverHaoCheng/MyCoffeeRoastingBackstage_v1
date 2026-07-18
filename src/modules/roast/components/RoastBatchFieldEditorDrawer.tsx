@@ -1,10 +1,9 @@
 import { App } from 'antd';
-import DatePicker from "antd/es/date-picker";
-import Input from "antd/es/input";
-import InputNumber from "antd/es/input-number";
-import Select from "antd/es/select";
+import { Select } from '@/components/ui/select';
+import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
+import Input from '@/shared/components/ui/input';
+import InputNumber from '@/shared/components/ui/input-number';
 import Spin from "antd/es/spin";
-import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
@@ -68,16 +67,6 @@ const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | nu
   };
 };
 
-const toPickerValue = (value: string) => {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = dayjs(value);
-
-  return parsed.isValid() ? parsed : null;
-};
-
 export function RoastBatchFieldEditorDrawer({
   batch,
   fieldPath,
@@ -92,10 +81,25 @@ export function RoastBatchFieldEditorDrawer({
   const { data: plans = [] } = useRoastPlans();
   const updateBatchMutation = useUpdateRoastBatch();
   const [draft, setDraft] = useState<RoastBatchUpdateInput | null>(null);
+  const [lastOpenContext, setLastOpenContext] = useState<{
+    batch: RoastBatchRecord;
+    fieldPath: RoastBatchEditableFieldPath;
+  } | null>(null);
 
   const editableFieldPath = fieldPath;
+  useEffect(() => {
+    if (open && batch != null && editableFieldPath != null) {
+      setLastOpenContext({
+        batch,
+        fieldPath: editableFieldPath,
+      });
+    }
+  }, [batch, editableFieldPath, open]);
+
+  const effectiveBatch = open && batch != null ? batch : lastOpenContext?.batch ?? null;
+  const effectiveFieldPath = open && editableFieldPath != null ? editableFieldPath : lastOpenContext?.fieldPath;
   const fieldLabel = useMemo(() => {
-    switch (editableFieldPath) {
+    switch (effectiveFieldPath) {
       case 'developmentRatio':
         return '发展比';
       case 'firstCrackTime':
@@ -125,7 +129,7 @@ export function RoastBatchFieldEditorDrawer({
       default:
         return '信息';
     }
-  }, [editableFieldPath]);
+  }, [effectiveFieldPath]);
 
   const availablePlans = useMemo(
     () => getSelectableRoastPlans(plans, draft?.greenBeanId),
@@ -133,10 +137,10 @@ export function RoastBatchFieldEditorDrawer({
   );
 
   useEffect(() => {
-    setDraft(createDraft(batch));
-  }, [batch, editableFieldPath]);
+    setDraft(createDraft(effectiveBatch));
+  }, [effectiveBatch, effectiveFieldPath]);
 
-  if (!open || batch == null || editableFieldPath == null) {
+  if (effectiveBatch == null || effectiveFieldPath == null) {
     return null;
   }
 
@@ -227,9 +231,9 @@ export function RoastBatchFieldEditorDrawer({
     };
 
     onClose();
-    submissionBackupService.save('update', { batchId: batch.id, input: updateInput }, 'roastBatch');
+    submissionBackupService.save('update', { batchId: effectiveBatch.id, input: updateInput }, 'roastBatch');
 
-    const updateTask = updateBatchMutation.mutateAsync({ batchId: batch.id, input: updateInput }).catch(
+    const updateTask = updateBatchMutation.mutateAsync({ batchId: effectiveBatch.id, input: updateInput }).catch(
       (error: unknown) => {
         void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，本地备份已保留，请检查后重试。'));
       },
@@ -239,18 +243,17 @@ export function RoastBatchFieldEditorDrawer({
   };
 
   const renderField = () => {
-    switch (editableFieldPath) {
+    switch (effectiveFieldPath) {
       case 'roastDate':
         return (
-          <DatePicker
-            aria-label={fieldLabel}
-            format="YYYY-MM-DD HH:mm"
-            onChange={(date: Dayjs | null) => {
-              updateDraft('roastDate', date ? date.second(0).millisecond(0).toISOString() : '');
+          <AdaptiveDateTimeField
+            ariaLabel={fieldLabel}
+            mode="datetime"
+            placeholder="选择烘焙日期与时间"
+            value={draft.roastDate ?? ''}
+            onChange={(nextValue) => {
+              updateDraft('roastDate', nextValue);
             }}
-            showTime={{ format: 'HH:mm' }}
-            style={{ width: '100%' }}
-            value={toPickerValue(draft.roastDate ?? '')}
           />
         );
       case 'greenBeanId':

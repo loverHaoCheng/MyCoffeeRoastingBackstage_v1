@@ -244,7 +244,9 @@ export const localGreenBeanService = {
       currentRecord.purchasedWeightGrams,
       currentRecord.remainingWeightGrams,
     );
-    const nextRemainingWeight = currentRemainingWeight - deltaGrams;
+    const normalizedCurrentRemainingWeight = Math.round(currentRemainingWeight);
+    const normalizedDeltaGrams = Math.round(deltaGrams);
+    const nextRemainingWeight = normalizedCurrentRemainingWeight - normalizedDeltaGrams;
 
     if (nextRemainingWeight < 0) {
       throw new AppError('剩余库存不足，无法记录本次烘焙。', { code: 'DATA' });

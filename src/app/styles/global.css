@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   color-scheme: light;
   --app-theme-mode: light;
@@ -30,6 +32,21 @@
   --app-text-secondary: #6e6e73;
   --app-text-tertiary: #8e8e93;
   --app-focus-ring: #1d1d1f;
+  --app-font-scale: 1;
+  --app-font-10: calc(10px * var(--app-font-scale));
+  --app-font-11: calc(11px * var(--app-font-scale));
+  --app-font-12: calc(12px * var(--app-font-scale));
+  --app-font-13: calc(13px * var(--app-font-scale));
+  --app-font-14: calc(14px * var(--app-font-scale));
+  --app-font-15: calc(15px * var(--app-font-scale));
+  --app-font-16: calc(16px * var(--app-font-scale));
+  --app-font-18: calc(18px * var(--app-font-scale));
+  --app-font-19: calc(19px * var(--app-font-scale));
+  --app-font-20: calc(20px * var(--app-font-scale));
+  --app-font-21: calc(21px * var(--app-font-scale));
+  --app-font-22: calc(22px * var(--app-font-scale));
+  --app-font-24: calc(24px * var(--app-font-scale));
+  --app-font-26: calc(26px * var(--app-font-scale));
   --app-touch-target-size: 44px;
   --app-muted-surface: #f5f5f7;
   --app-selected-surface: rgb(232 232 236 / 98%);
@@ -93,6 +110,7 @@ body {
   overflow: hidden;
   overflow-x: hidden;
   overscroll-behavior-x: none;
+  font-size: var(--app-font-14);
   user-select: none;
   -webkit-user-select: none;
 }

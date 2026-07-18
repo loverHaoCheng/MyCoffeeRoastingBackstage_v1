@@ -6,6 +6,7 @@ import Spin from "antd/es/spin";
 import { useBeanEditableDetail, useUpdateBean } from '@/modules/bean/hooks';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
+import { ReadonlyFieldSectionList } from '@/shared/components/ReadonlyFieldSectionList';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { formatShanghaiDateTime } from '@/shared/time/shanghaiTime';
 import type { Bean } from '@/types/domain';
@@ -49,65 +50,73 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDe
     : '待补充';
 
   if (mode === 'view') {
-    const summaryItems = [
-      { label: '名称', value: bean.name },
-      { label: '产地', value: bean.origin || '待补充' },
-      { label: '处理法', value: bean.process },
-      { label: '风味', value: <FlavorTagChips align="start" tags={bean.flavorTags} /> },
-      { label: '等级', value: bean.grade || '待补充' },
-      { label: '总库存', value: `${formatKg.format(totalWeightGrams / 1000)} kg` },
-      { label: '剩余库存', value: `${formatKg.format(remainingWeightGrams / 1000)} kg` },
-      { label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
-      { label: '成本模板', value: costTemplateLabel },
+    const sections = [
       {
-        label: '默认烘焙量',
-        value: bean.defaultRoastInputGrams ? `${String(bean.defaultRoastInputGrams)} g` : '待补充',
+        key: 'core',
+        title: '基础信息',
+        items: [
+          { key: 'name', label: '名称', value: bean.name },
+          { key: 'code', label: '编号', value: bean.code ?? '待补充' },
+          { key: 'grade', label: '等级', value: bean.grade || '待补充' },
+          { key: 'process', label: '处理法', value: bean.process },
+          { key: 'variety', label: '豆种', value: bean.variety ?? '待补充' },
+          { key: 'harvestSeason', label: '产季', value: bean.harvestSeason ?? '待补充' },
+        ],
       },
       {
-        label: '默认单份售价',
-        value: bean.defaultSaleUnitPrice != null ? formatCurrency.format(bean.defaultSaleUnitPrice) : '待补充',
+        key: 'inventory',
+        title: '库存与成本',
+        items: [
+          { key: 'totalWeight', label: '总库存', value: `${formatKg.format(totalWeightGrams / 1000)} kg` },
+          { key: 'remainingWeight', label: '剩余库存', value: `${formatKg.format(remainingWeightGrams / 1000)} kg` },
+          { key: 'cost', label: '成本', value: `${formatCurrency.format(bean.costPerKg)} / kg` },
+          { key: 'costTemplate', label: '成本模板', value: costTemplateLabel },
+          {
+            key: 'defaultRoastInputGrams',
+            label: '默认烘焙量',
+            value: bean.defaultRoastInputGrams ? `${String(bean.defaultRoastInputGrams)} g` : '待补充',
+          },
+          {
+            key: 'defaultSaleUnitPrice',
+            label: '默认单份售价',
+            value: bean.defaultSaleUnitPrice != null ? formatCurrency.format(bean.defaultSaleUnitPrice) : '待补充',
+          },
+          {
+            key: 'defaultSaleUnitWeightGrams',
+            label: '默认单份重量',
+            value:
+              bean.defaultSaleUnitWeightGrams != null
+                ? `${String(bean.defaultSaleUnitWeightGrams)} g`
+                : '待补充',
+          },
+        ],
       },
       {
-        label: '默认单份重量',
-        value:
-          bean.defaultSaleUnitWeightGrams != null
-            ? `${String(bean.defaultSaleUnitWeightGrams)} g`
-            : '待补充',
+        key: 'origin',
+        title: '产地与风味',
+        items: [
+          { key: 'origin', label: '产地', value: bean.origin || '待补充' },
+          { key: 'supplierName', label: '供应商', value: bean.supplierName ?? '待补充' },
+          {
+            key: 'flavorTags',
+            label: '风味',
+            multiline: true,
+            value: <FlavorTagChips tags={bean.flavorTags} />,
+          },
+          { key: 'updatedAt', label: '更新时间', value: formatShanghaiDateTime(bean.updatedAt) },
+          { key: 'agingDays', label: '养豆时间', value: bean.agingDays != null ? `${String(bean.agingDays)} 天` : '14 天' },
+          {
+            key: 'tastingEndDays',
+            label: '赏味结束期',
+            value: bean.tastingEndDays != null ? `${String(bean.tastingEndDays)} 天` : '40 天',
+          },
+        ],
       },
-      { label: '供应商', value: bean.supplierName ?? '待补充' },
-      {
-        label: '更新时间',
-        value: formatShanghaiDateTime(bean.updatedAt),
-      },
-      { label: '养豆时间', value: bean.agingDays != null ? `${String(bean.agingDays)} 天` : '14 天' },
-      { label: '赏味结束期', value: bean.tastingEndDays != null ? `${String(bean.tastingEndDays)} 天` : '40 天' },
     ];
 
     return (
-      <section className={styles.panel}>
-        <div className={styles.summaryGrid}>
-          {summaryItems.map((item) => (
-            <div className={styles.summaryItem} key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </div>
-          ))}
-        </div>
-
-        <div className={styles.detailSection}>
-        <div className={styles.detailRow}>
-          <span className={styles.detailLabel}>豆种</span>
-          <span>{bean.variety ?? '-'}</span>
-        </div>
-        <div className={styles.detailRow}>
-          <span className={styles.detailLabel}>产季</span>
-          <span>{bean.harvestSeason ?? '-'}</span>
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>编号</span>
-            <span>{bean.code ?? '-'}</span>
-          </div>
-        </div>
+      <section className="grid gap-3">
+        <ReadonlyFieldSectionList sections={sections} />
       </section>
     );
   }

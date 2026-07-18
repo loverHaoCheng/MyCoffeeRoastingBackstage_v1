@@ -2,6 +2,10 @@ export type FinanceRangePreset = 'all' | 'today' | 'week' | 'month' | 'year' | '
 
 export type FinanceExpenseStatus = 'paid' | 'pending';
 
+export type FinanceIncomeStatus = 'received' | 'pending';
+
+export type FinanceIncomeChannel = 'retail' | 'wholesale' | 'other';
+
 export type FinanceExpenseCategory =
   | 'beanPurchase'
   | 'packaging'
@@ -11,6 +15,8 @@ export type FinanceExpenseCategory =
   | 'other';
 
 export type FinanceExpenseSource = 'auto-bean-purchase' | 'manual';
+
+export type FinanceIncomeSource = 'manual';
 
 export interface FinanceDateRange {
   endDate: string;
@@ -31,6 +37,23 @@ export interface FinanceExpenseRecord extends FinanceExpenseFormInput {
   createdAt: string;
   id: string;
   source?: FinanceExpenseSource;
+  sourceEntityId?: null | string;
+  updatedAt: string;
+}
+
+export interface FinanceIncomeFormInput {
+  amount: number;
+  channel: FinanceIncomeChannel;
+  incomeDate: string;
+  notes?: null | string;
+  status: FinanceIncomeStatus;
+  title: string;
+}
+
+export interface FinanceIncomeRecord extends FinanceIncomeFormInput {
+  createdAt: string;
+  id: string;
+  source?: FinanceIncomeSource;
   sourceEntityId?: null | string;
   updatedAt: string;
 }
@@ -56,7 +79,7 @@ export interface FinanceOverviewDetailItem {
   id: string;
   notes: null | string;
   sourceEntityId?: null | string;
-  sourceType?: 'autoBeanPurchase' | 'estimatedRevenue' | 'manualExpense' | 'roastBatchRevenue';
+  sourceType?: 'autoBeanPurchase' | 'estimatedRevenue' | 'manualExpense' | 'manualIncome' | 'roastBatchRevenue';
   sourceLabel: string;
   title: string;
 }

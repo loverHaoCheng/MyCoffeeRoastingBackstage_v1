@@ -51,6 +51,7 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   const themeConfig = useMemo(() => {
     const isDarkMode = appDisplaySettings.themeMode === 'dark';
+    const scaledFontSize = Number((14 * appDisplaySettings.scale).toFixed(2));
 
     return {
       algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
@@ -65,6 +66,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         colorError: '#111111',
         colorText: isDarkMode ? '#f5f5f7' : '#1d1d1f',
         colorTextSecondary: isDarkMode ? '#a1a1aa' : '#6e6e73',
+        fontSize: scaledFontSize,
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
       },
@@ -73,7 +75,7 @@ export function AppProviders({ children }: PropsWithChildren) {
           controlHeight: 40,
         },
         Card: {
-          headerFontSize: 15,
+          headerFontSize: Number((15 * appDisplaySettings.scale).toFixed(2)),
         },
         Layout: {
           bodyBg: isDarkMode ? '#09090a' : '#f5f5f7',
@@ -82,7 +84,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         },
       },
     };
-  }, [appDisplaySettings.themeMode]);
+  }, [appDisplaySettings.scale, appDisplaySettings.themeMode]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -90,11 +92,13 @@ export function AppProviders({ children }: PropsWithChildren) {
     }
 
     document.documentElement.dataset.appTheme = appDisplaySettings.themeMode;
+    document.documentElement.style.setProperty('--app-font-scale', appDisplaySettings.scale.toFixed(2));
 
     return () => {
       delete document.documentElement.dataset.appTheme;
+      document.documentElement.style.removeProperty('--app-font-scale');
     };
-  }, [appDisplaySettings.themeMode]);
+  }, [appDisplaySettings.scale, appDisplaySettings.themeMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {

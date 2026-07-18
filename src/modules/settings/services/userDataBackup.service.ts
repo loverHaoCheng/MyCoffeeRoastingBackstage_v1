@@ -15,6 +15,7 @@ const backupCollections = [
   'roast_curve_records',
   'roast_records',
   'finance_expense_records',
+  'finance_income_records',
   'cost_calculations',
   'app_settings',
 ] as const;
@@ -26,6 +27,7 @@ const optionalBackupCollections = new Set<BackupCollectionName>([
   'bean_sale_specs',
   'cost_calculations',
   'finance_expense_records',
+  'finance_income_records',
   'green_bean_purchase_batches',
   'roast_curve_records',
   'roast_records',

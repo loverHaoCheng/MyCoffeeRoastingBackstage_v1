@@ -24,13 +24,15 @@ export class MockBeanRepository implements BeanRepository {
       throw new AppError('未找到生豆记录。', { code: 'DATA' });
     }
 
-    const nextStockKg = bean.stockKg - deltaGrams / 1000;
+    const normalizedCurrentStockGrams = Math.round(bean.stockKg * 1000);
+    const normalizedDeltaGrams = Math.round(deltaGrams);
+    const nextStockGrams = normalizedCurrentStockGrams - normalizedDeltaGrams;
 
-    if (nextStockKg < 0) {
+    if (nextStockGrams < 0) {
       throw new AppError('剩余库存不足，无法记录本次烘焙。', { code: 'DATA' });
     }
 
-    bean.stockKg = Number(nextStockKg.toFixed(1));
+    bean.stockKg = Number((nextStockGrams / 1000).toFixed(1));
     bean.updatedAt = new Date().toISOString();
 
     return Promise.resolve(ok(bean));

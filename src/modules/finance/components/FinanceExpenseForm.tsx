@@ -1,13 +1,14 @@
+import SaveOutlined from '@ant-design/icons/SaveOutlined';
 import Button from "antd/es/button";
-import DatePicker from "antd/es/date-picker";
-import Input from "antd/es/input";
-import InputNumber from "antd/es/input-number";
-import Select from "antd/es/select";
-import dayjs from 'dayjs';
+import { Select } from '@/components/ui/select';
+import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
+import Input from '@/shared/components/ui/input';
+import InputNumber from '@/shared/components/ui/input-number';
 import { Controller, type FieldPath, useForm, useWatch } from 'react-hook-form';
 
 import { financeExpenseFormSchema } from '@/modules/finance/schemas';
 import type { FinanceExpenseFormInput } from '@/modules/finance/types';
+import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 
 import { buildFinanceExpenseTitle, financeExpenseCategoryOptions } from '../utils/expensePresentation';
 import styles from './FinanceEntryForm.module.css';
@@ -18,6 +19,7 @@ interface FinanceExpenseFormProps {
   customCategorySuggestions?: string[];
   embedded?: boolean;
   isSaving: boolean;
+  onCancel?: () => void;
   onSubmit: (input: FinanceExpenseFormInput) => Promise<void>;
   showHeader?: boolean;
 }
@@ -54,16 +56,11 @@ const joinClassNames = (...classNames: (false | null | string | undefined)[]): s
   return classNames.filter((className): className is string => Boolean(className)).join(' ');
 };
 
-const toPickerValue = (value: string) => {
-  const parsed = dayjs(value, 'YYYY-MM-DD', true);
-
-  return parsed.isValid() ? parsed : null;
-};
-
 export function FinanceExpenseForm({
   customCategorySuggestions,
   embedded = false,
   isSaving,
+  onCancel,
   onSubmit,
   showHeader = true,
 }: FinanceExpenseFormProps) {
@@ -103,11 +100,15 @@ export function FinanceExpenseForm({
       return;
     }
 
-    await onSubmit({
-      ...parsed.data,
-      notes: parsed.data.notes ?? '',
-    });
-    reset(defaultValues);
+    try {
+      await onSubmit({
+        ...parsed.data,
+        notes: parsed.data.notes ?? '',
+      });
+      reset(defaultValues);
+    } catch {
+      return;
+    }
   };
 
   return (
@@ -135,16 +136,12 @@ export function FinanceExpenseForm({
                 control={control}
                 name="expenseDate"
                 render={({ field }) => (
-                  <DatePicker
-                    allowClear={false}
-                    aria-label="支出日期"
-                    format="YYYY-MM-DD"
-                    inputReadOnly
-                    style={{ width: '100%' }}
-                    value={toPickerValue(field.value)}
-                    onChange={(date) => {
-                      field.onChange(date.format('YYYY-MM-DD'));
-                    }}
+                  <AdaptiveDateTimeField
+                    ariaLabel="支出日期"
+                    mode="date"
+                    placeholder="选择支出日期"
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 )}
               />
@@ -274,11 +271,12 @@ export function FinanceExpenseForm({
         </section>
       </div>
 
-      <div className={styles.actions}>
-        <Button htmlType="submit" loading={isSaving} type="primary">
+      <DrawerActionBar compact>
+        {onCancel ? <Button block onClick={onCancel}>取消</Button> : null}
+        <Button aria-label="保存支出记录" block htmlType="submit" icon={<SaveOutlined />} loading={isSaving} type="primary">
           保存支出记录
         </Button>
-      </div>
+      </DrawerActionBar>
     </form>
   );
 }

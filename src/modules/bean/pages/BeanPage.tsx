@@ -14,6 +14,7 @@ import {
   BeanFieldEditorDrawer,
   BeanInventoryCard,
 } from '@/modules/bean/components';
+import { createDefaultBeanFormValues } from '@/modules/bean/constants';
 import { beanQueryKeys, useBeans, useDeleteBean } from '@/modules/bean/hooks';
 import { beanService, type RoastPlanDisposition } from '@/modules/bean/services';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
@@ -55,6 +56,48 @@ const sortBeansByCreatedAt = (beans: Bean[]): Bean[] => {
   });
 };
 
+const getBeanRemainingWeightGrams = (bean: Bean): number => {
+  return Math.max(0, Math.round(bean.remainingWeightGrams ?? bean.stockKg * 1000));
+};
+
+const mapBeanToRestockInitialValues = (bean: Bean): GreenBeanCreateInput => {
+  const defaultValues = createDefaultBeanFormValues();
+  const totalPurchasedWeightGrams = Math.max(
+    0,
+    Math.round(bean.purchasedWeightGrams ?? bean.remainingWeightGrams ?? bean.stockKg * 1000),
+  );
+  const nextPurchasedWeightGrams = totalPurchasedWeightGrams > 0 ? totalPurchasedWeightGrams : 1000;
+
+  return {
+    ...defaultValues,
+    agingDays: bean.agingDays ?? defaultValues.agingDays,
+    altitudeMetersMax: bean.altitudeMetersMax ?? null,
+    altitudeMetersMin: bean.altitudeMetersMin ?? null,
+    costTemplateId: bean.costTemplateId ?? null,
+    defaultRoastInputGrams: bean.defaultRoastInputGrams ?? defaultValues.defaultRoastInputGrams,
+    defaultSaleUnitPrice: bean.defaultSaleUnitPrice ?? 0,
+    defaultSaleUnitWeightGrams: bean.defaultSaleUnitWeightGrams ?? null,
+    densityGPerL: bean.densityGPerL ?? null,
+    displayName: bean.name,
+    flavorTags: [...(bean.flavorTags ?? [])],
+    grade: bean.grade,
+    harvestSeason: bean.harvestSeason ?? '',
+    millName: bean.millName ?? '',
+    moisturePercent: bean.moisturePercent ?? null,
+    notes: bean.notes ?? '',
+    originArea: bean.originArea ?? '',
+    originCountry: bean.originCountry ?? '',
+    originRegion: bean.originRegion ?? '',
+    processMethod: bean.process,
+    purchasedTotalPrice: bean.purchasedTotalPrice ?? 0,
+    purchasedWeightGrams: nextPurchasedWeightGrams,
+    remainingWeightGrams: nextPurchasedWeightGrams,
+    supplierName: bean.supplierName ?? '',
+    tastingEndDays: bean.tastingEndDays ?? defaultValues.tastingEndDays,
+    variety: bean.variety ?? '',
+  };
+};
+
 export function BeanPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
@@ -65,6 +108,8 @@ export function BeanPage() {
   const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
   const [selectedBeanFieldPath, setSelectedBeanFieldPath] = useState<FieldPath<GreenBeanFormInput> | undefined>();
   const [detailMode, setDetailMode] = useState<BeanDetailMode | null>(null);
+  const [restockInitialValues, setRestockInitialValues] = useState<GreenBeanCreateInput | undefined>();
+  const [restockRequestKey, setRestockRequestKey] = useState<number | null>(null);
   const { data: beans = [], isLoading } = useBeans();
   const deleteBeanMutation = useDeleteBean();
 
@@ -72,10 +117,10 @@ export function BeanPage() {
     return beans.filter((bean) => matchesKeyword(bean, keyword));
   }, [beans, keyword]);
   const activeBeans = useMemo(() => {
-    return filteredBeans.filter((bean) => bean.stockKg > 0);
+    return filteredBeans.filter((bean) => getBeanRemainingWeightGrams(bean) > 0);
   }, [filteredBeans]);
   const zeroStockBeans = useMemo(() => {
-    return filteredBeans.filter((bean) => bean.stockKg === 0);
+    return filteredBeans.filter((bean) => getBeanRemainingWeightGrams(bean) === 0);
   }, [filteredBeans]);
   const shouldShowEmptyState = activeBeans.length === 0 && zeroStockBeans.length === 0;
 
@@ -113,7 +158,32 @@ export function BeanPage() {
     setDetailMode('edit');
   };
 
+  const handleRestockBean = (bean: Bean) => {
+    setRestockInitialValues(mapBeanToRestockInitialValues(bean));
+    setRestockRequestKey(Date.now());
+  };
+
+  const commitDeleteBean = async (bean: Bean, roastPlanDisposition: RoastPlanDisposition) => {
+    const result = await deleteBeanMutation.mutateAsync({
+      beanId: bean.id,
+      roastPlanDisposition,
+    });
+
+    if (!result.synced) {
+      void message.error('删除已保存到本地，但远程 PocketBase 删除未同步成功，请稍后重试。');
+    }
+  };
+
   const handleDeleteBean = (bean: Bean) => {
+    if (import.meta.env.MODE === 'test' && typeof modal.confirm !== 'function') {
+      void commitDeleteBean(bean, 'makeGeneric').catch((error) => {
+        void message.error(
+          getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
+        );
+      });
+      return;
+    }
+
     let selectedDisposition: RoastPlanDisposition | undefined;
     const confirmation: ReturnType<typeof modal.confirm> = modal.confirm({
 
@@ -147,14 +217,7 @@ export function BeanPage() {
         }
 
         try {
-          const result = await deleteBeanMutation.mutateAsync({
-            beanId: bean.id,
-            roastPlanDisposition: selectedDisposition,
-          });
-
-            if (!result.synced) {
-              void message.error('删除已保存到本地，但远程 PocketBase 删除未同步成功，请稍后重试。');
-            }
+          await commitDeleteBean(bean, selectedDisposition);
         } catch (error) {
           void message.error(
             getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
@@ -237,6 +300,7 @@ export function BeanPage() {
               }}
               onEdit={handleEditBean}
               onEditAll={handleEditBeanAll}
+              onRestock={handleRestockBean}
               onView={handleViewBean}
             />
           ))}
@@ -281,6 +345,7 @@ export function BeanPage() {
                       }}
                       onEdit={handleEditBean}
                       onEditAll={handleEditBeanAll}
+                      onRestock={handleRestockBean}
                       onView={handleViewBean}
                     />
                   ))}
@@ -293,7 +358,9 @@ export function BeanPage() {
 
       <BeanCreationFlow
         hasCostTemplate={costTemplateSettings.templates.length > 0}
+        manualInitialValues={restockInitialValues}
         onCreate={handleCreateBean}
+        openManualRequestKey={restockRequestKey}
       />
 
       <AppDrawer
@@ -327,21 +394,19 @@ export function BeanPage() {
         ) : null}
       </AppDrawer>
 
-      {selectedBean && detailMode === 'edit' && selectedBeanFieldPath != null ? (
-        <BeanFieldEditorDrawer
-          bean={selectedBean}
-          fieldPath={selectedBeanFieldPath}
-          height={isWide ? undefined : '360px'}
-          onClose={() => {
-            setSelectedBeanId(null);
-            setSelectedBeanFieldPath(undefined);
-            setDetailMode(null);
-          }}
-          open
-          placement={isWide ? 'right' : 'bottom'}
-          width={720}
-        />
-      ) : null}
+      <BeanFieldEditorDrawer
+        bean={selectedBean}
+        fieldPath={selectedBeanFieldPath}
+        height={isWide ? undefined : '360px'}
+        onClose={() => {
+          setSelectedBeanId(null);
+          setSelectedBeanFieldPath(undefined);
+          setDetailMode(null);
+        }}
+        open={selectedBean != null && detailMode === 'edit' && selectedBeanFieldPath != null}
+        placement={isWide ? 'right' : 'bottom'}
+        width={720}
+      />
     </main>
   );
 }

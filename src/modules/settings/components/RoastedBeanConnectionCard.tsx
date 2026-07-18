@@ -1,8 +1,7 @@
-import DownOutlined from "@ant-design/icons/DownOutlined";
 import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import { App } from 'antd';
 import Button from "antd/es/button";
-import Input from "antd/es/input";
+import Input from '@/shared/components/ui/input';
 import Tag from "antd/es/tag";
 import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -19,8 +18,14 @@ import {
   normalizeRoastedBeanPocketBaseProjectConnection,
   type PocketBaseProjectConnection,
 } from '@/modules/settings/types';
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/shared/components/ui/accordion';
 
 import styles from './RoastedBeanConnectionCard.module.css';
+import accordionStyles from './SettingsAccordionItem.module.css';
 
 type ConnectionFieldKey = keyof Pick<PocketBaseProjectConnection, 'projectUrl' | 'publishableKey'>;
 type ConnectionStatus = 'checking' | 'connected' | 'disconnected' | 'unconfigured';
@@ -67,7 +72,6 @@ export function RoastedBeanConnectionCard() {
       normalizeConnectionDraft(pocketBaseConnections.roastedBean),
     );
   });
-  const [isCollapsed, setIsCollapsed] = useState(true);
   const persistedProjectUrl = pocketBaseConnections.roastedBean.projectUrl;
   const persistedPublishableKey = pocketBaseConnections.roastedBean.publishableKey;
 
@@ -261,100 +265,94 @@ export function RoastedBeanConnectionCard() {
   }, [message]);
 
   return (
-    <article className={styles.card} data-collapsed={isCollapsed}>
-      <div className={styles.header}>
-        <div className={styles.titleGroup}>
-          <div className={styles.titleRow}>
-            <h2>熟豆 Supabase 连接</h2>
-            <Tag color={statusTagColor}>{statusTagText}</Tag>
+    <AccordionItem as="article" className={accordionStyles.item} value="roasted-bean-connection">
+      <AccordionTrigger
+        className={accordionStyles.trigger}
+        collapsedAriaLabel="展开"
+        expandedAriaLabel="收起"
+      >
+        <div className={accordionStyles.triggerBody}>
+          <div className={accordionStyles.triggerMain}>
+            <div className={accordionStyles.titleGroup}>
+              <h2 className={accordionStyles.title}>熟豆 Supabase 连接</h2>
+              <Tag color={statusTagColor}>{statusTagText}</Tag>
+            </div>
           </div>
         </div>
-        <Button
-          aria-label={isCollapsed ? '展开' : '收起'}
-          className={styles.collapseButton}
-          data-expanded={!isCollapsed}
-          icon={<DownOutlined />}
-          onClick={() => {
-            setIsCollapsed((current) => !current);
-          }}
-          type="text"
-        />
-      </div>
+      </AccordionTrigger>
 
-        <div aria-hidden={isCollapsed} className={styles.collapse} data-collapsed={isCollapsed}>
-          <div className={styles.collapseInner}>
-          <div className={styles.actionRow}>
-            <Button
-              icon={<ReloadOutlined />}
-              loading={connectionStatus === 'checking'}
-              onClick={handleRetryCheck}
-              onMouseDown={(event) => {
-                event.preventDefault();
-              }}
-              type="default"
-            >
-              重新检测
-            </Button>
-            <Button
-              onClick={handleClear}
-              onMouseDown={(event) => {
-                event.preventDefault();
-              }}
-              type="default"
-            >
-              清空配置
-            </Button>
-          </div>
-
-          <div className={styles.fieldGrid}>
-            <label className={styles.field} data-field-path="projectUrl" htmlFor="roasted-bean-project-url">
-              <span className={styles.fieldLabel}>Supabase URL</span>
-              <Input
-                id="roasted-bean-project-url"
-                onBlur={() => {
-                  persistDraft();
-                }}
-                onChange={(event) => {
-                  handleFieldChange('projectUrl', event.target.value);
-                }}
-                placeholder="https://xxxxx.supabase.co"
-                status={errors.projectUrl ? 'error' : undefined}
-                value={draft.projectUrl}
-              />
-            </label>
-
-            <label className={styles.field} data-field-path="publishableKey" htmlFor="roasted-bean-publishable-key">
-              <span className={styles.fieldLabel}>Publishable Key</span>
-              <Input.Password
-                autoComplete="off"
-                id="roasted-bean-publishable-key"
-                onBlur={() => {
-                  persistDraft();
-                }}
-                onChange={(event) => {
-                  handleFieldChange('publishableKey', event.target.value);
-                }}
-                placeholder="请输入熟豆库的 Publishable Key"
-                status={errors.publishableKey ? 'error' : undefined}
-                value={draft.publishableKey}
-              />
-            </label>
-          </div>
-
-          <p className={styles.helpText}>
-            熟豆数据将会发送至 Brew Guide 中进行展示。
-            <a
-              className={styles.helpLink}
-              href={brewGuideUrl}
-              onClick={handleLearnMoreClick}
-              rel="noreferrer"
-              target="_blank"
-            >
-              进一步了解...
-            </a>
-          </p>
+      <AccordionContent className={accordionStyles.content}>
+        <div className={styles.actionRow}>
+          <Button
+            icon={<ReloadOutlined />}
+            loading={connectionStatus === 'checking'}
+            onClick={handleRetryCheck}
+            onMouseDown={(event) => {
+              event.preventDefault();
+            }}
+            type="default"
+          >
+            重新检测
+          </Button>
+          <Button
+            onClick={handleClear}
+            onMouseDown={(event) => {
+              event.preventDefault();
+            }}
+            type="default"
+          >
+            清空配置
+          </Button>
         </div>
-      </div>
-    </article>
+
+        <div className={styles.fieldGrid}>
+          <label className={styles.field} data-field-path="projectUrl" htmlFor="roasted-bean-project-url">
+            <span className={styles.fieldLabel}>Supabase URL</span>
+            <Input
+              id="roasted-bean-project-url"
+              onBlur={() => {
+                persistDraft();
+              }}
+              onChange={(event) => {
+                handleFieldChange('projectUrl', event.target.value);
+              }}
+              placeholder="https://xxxxx.supabase.co"
+              status={errors.projectUrl ? 'error' : undefined}
+              value={draft.projectUrl}
+            />
+          </label>
+
+          <label className={styles.field} data-field-path="publishableKey" htmlFor="roasted-bean-publishable-key">
+            <span className={styles.fieldLabel}>Publishable Key</span>
+            <Input.Password
+              autoComplete="off"
+              id="roasted-bean-publishable-key"
+              onBlur={() => {
+                persistDraft();
+              }}
+              onChange={(event) => {
+                handleFieldChange('publishableKey', event.target.value);
+              }}
+              placeholder="请输入熟豆库的 Publishable Key"
+              status={errors.publishableKey ? 'error' : undefined}
+              value={draft.publishableKey}
+            />
+          </label>
+        </div>
+
+        <p className={styles.helpText}>
+          熟豆数据将会发送至 Brew Guide 中进行展示。
+          <a
+            className={styles.helpLink}
+            href={brewGuideUrl}
+            onClick={handleLearnMoreClick}
+            rel="noreferrer"
+            target="_blank"
+          >
+            进一步了解...
+          </a>
+        </p>
+      </AccordionContent>
+    </AccordionItem>
   );
 }

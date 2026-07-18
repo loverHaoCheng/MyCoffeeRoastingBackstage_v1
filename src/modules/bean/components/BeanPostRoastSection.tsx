@@ -1,4 +1,4 @@
-import InputNumber from 'antd/es/input-number';
+import InputNumber from '@/shared/components/ui/input-number';
 import { Controller, type Control, type FieldErrors } from 'react-hook-form';
 
 import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';

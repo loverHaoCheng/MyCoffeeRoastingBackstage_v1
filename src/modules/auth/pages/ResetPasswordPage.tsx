@@ -3,7 +3,7 @@ import CloseCircleOutlined from '@ant-design/icons/CloseCircleOutlined';
 import LockOutlined from '@ant-design/icons/LockOutlined';
 import Button from 'antd/es/button';
 import Form from 'antd/es/form';
-import Input from 'antd/es/input';
+import Input from '@/shared/components/ui/input';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 

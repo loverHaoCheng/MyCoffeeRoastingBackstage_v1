@@ -5,7 +5,7 @@ import {
   calculateFinanceOverview,
   resolveFinanceDateRange,
 } from '@/modules/finance/services';
-import type { CostCalculationRecord, FinanceExpenseRecord } from '@/modules/finance/types';
+import type { CostCalculationRecord, FinanceExpenseRecord, FinanceIncomeRecord } from '@/modules/finance/types';
 import type { Bean } from '@/types/domain';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 
@@ -127,11 +127,36 @@ describe('calculateFinanceOverview', () => {
         updatedAt: '2026-07-10T09:00:00.000Z',
       },
     ];
+    const incomeRecords: FinanceIncomeRecord[] = [
+      {
+        amount: 120,
+        channel: 'retail',
+        createdAt: '2026-07-08T10:00:00.000Z',
+        id: 'income-1',
+        incomeDate: '2026-07-08',
+        notes: null,
+        status: 'received',
+        title: '零售收入',
+        updatedAt: '2026-07-08T10:00:00.000Z',
+      },
+      {
+        amount: 200,
+        channel: 'wholesale',
+        createdAt: '2026-07-09T10:00:00.000Z',
+        id: 'income-2',
+        incomeDate: '2026-07-09',
+        notes: null,
+        status: 'pending',
+        title: '待收批发收入',
+        updatedAt: '2026-07-09T10:00:00.000Z',
+      },
+    ];
 
     const overview = calculateFinanceOverview({
       beans,
       calculations,
       expenseRecords,
+      incomeRecords,
       roastBatches,
       range: {
         endDate: '2026-07-31',
@@ -139,13 +164,13 @@ describe('calculateFinanceOverview', () => {
       },
     });
 
-    expect(overview.realizedIncome).toBe(92);
+    expect(overview.realizedIncome).toBe(212);
     expect(overview.totalExpenses).toBe(240);
-    expect(overview.grossProfit).toBe(-128);
-    expect(overview.operatingProfit).toBe(-148);
+    expect(overview.grossProfit).toBe(-8);
+    expect(overview.operatingProfit).toBe(-28);
     expect(overview.estimatedRevenue).toBe(1280);
     expect(overview.expenseRecordCount).toBe(4);
-    expect(overview.incomeRecordCount).toBe(1);
+    expect(overview.incomeRecordCount).toBe(2);
   });
 
   it('matches roast batch revenue to the Shanghai calendar date', () => {
@@ -200,6 +225,7 @@ describe('calculateFinanceOverview', () => {
       beans,
       calculations: [],
       expenseRecords: [],
+      incomeRecords: [],
       roastBatches,
       range,
     });
@@ -207,6 +233,7 @@ describe('calculateFinanceOverview', () => {
       beans,
       calculations: [],
       expenseRecords: [],
+      incomeRecords: [],
       key: 'realizedIncome',
       roastBatches,
       range,

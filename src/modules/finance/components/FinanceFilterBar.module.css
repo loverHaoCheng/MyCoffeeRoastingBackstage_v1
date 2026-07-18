@@ -4,9 +4,9 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  width: min(100%, 430px);
+  width: min(80%, 430px);
   margin: 0 auto;
-  column-gap: 25px;
+  column-gap: 18px;
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: none;
@@ -18,15 +18,16 @@
 
 .presetButton {
   flex: 0 0 auto;
-  min-width: var(--app-touch-target-size);
-  min-height: var(--app-touch-target-size);
+  min-width: 52px;
+  min-height: 38px;
   padding: 0;
-  padding-inline: 0;
+  padding-inline: 2px;
   border: none;
   border-radius: 0;
   background: transparent;
   color: #6e6e73;
   box-shadow: none;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   appearance: none;
@@ -80,14 +81,21 @@
   display: block;
   width: 100%;
   box-sizing: border-box;
-  padding-inline: 4px;
+  padding-inline: 2px;
   overflow: hidden;
 }
 
 @media (max-width: 767px) {
   .presetGroup {
+    width: min(100%, 320px);
     justify-content: space-between;
-    column-gap: 0;
+    column-gap: 8px;
     overflow-x: visible;
+  }
+
+  .presetButton {
+    min-width: 46px;
+    min-height: 34px;
+    font-size: 13px;
   }
 }

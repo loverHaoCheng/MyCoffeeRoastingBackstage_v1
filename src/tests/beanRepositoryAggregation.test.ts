@@ -236,6 +236,197 @@ describe('createGreenBeanInventoryRepository', () => {
     );
   });
 
+  it('syncs remaining_weight_grams as 0 when a bean is updated to zero stock', async () => {
+    const updateCalls: {
+      match?: Record<string, unknown>;
+      payload: Record<string, unknown>;
+      tableName: string;
+    }[] = [];
+    const client = {
+      insert: <T,>(): Promise<T[]> => {
+        return Promise.resolve([] as T[]);
+      },
+      list: <T,>(tableName: string): Promise<T[]> => {
+        if (tableName === 'green_beans') {
+          return Promise.resolve([
+            {
+              altitude_meters_max: null,
+              altitude_meters_min: null,
+              code: 'GB-001',
+              created_at: '2026-07-03T00:00:00.000Z',
+              default_roast_input_grams: 200,
+              density_g_per_l: null,
+              display_name: '测试生豆',
+              aging_days: 14,
+              tasting_end_days: 40,
+              flavor_tags: '柑橘,花香',
+              grade: null,
+              harvest_season: '2025/26',
+              id: 'bean-1',
+              mill_name: null,
+              moisture_percent: null,
+              notes: null,
+              origin_area: '古吉',
+              origin_country: '埃塞俄比亚',
+              origin_region: '耶加雪菲',
+              process_method: '水洗',
+              updated_at: '2026-07-03T00:00:00.000Z',
+              variety: '74110',
+            } as T,
+          ]);
+        }
+
+        if (tableName === 'green_bean_purchase_batches') {
+          return Promise.resolve([
+            {
+              created_at: '2026-07-01T00:00:00.000Z',
+              green_bean_id: 'bean-1',
+              id: 'batch-1',
+              purchased_total_price: 500,
+              purchased_weight_grams: 5000,
+              received_at: '2026-07-01',
+              remaining_weight_grams: 2000,
+              supplier_name: '供应商 A',
+              updated_at: '2026-07-01T00:00:00.000Z',
+            } as T,
+          ]);
+        }
+
+        if (tableName === 'bean_sale_specs' || tableName === 'roast_batches' || tableName === 'app_settings') {
+          return Promise.resolve([] as T[]);
+        }
+
+        return Promise.resolve([] as T[]);
+      },
+      update: <T,>(
+        tableName: string,
+        payload: Record<string, unknown>,
+        options?: { match: Record<string, unknown> },
+      ): Promise<T[]> => {
+        updateCalls.push({ match: options?.match, payload, tableName });
+
+        if (tableName === 'green_beans') {
+          return Promise.resolve([{ id: 'bean-1' } as T]);
+        }
+
+        return Promise.resolve([] as T[]);
+      },
+    } as unknown as PocketBaseRestClient;
+
+    const repository = createGreenBeanInventoryRepository(client);
+
+    await repository.updateBean('bean-1', {
+      agingDays: 14,
+      altitudeMetersMax: null,
+      altitudeMetersMin: null,
+      code: 'GB-001',
+      defaultRoastInputGrams: 200,
+      defaultSaleUnitPrice: 48,
+      defaultSaleUnitWeightGrams: 250,
+      densityGPerL: null,
+      displayName: '测试生豆',
+      flavorTags: ['柑橘', '花香'],
+      grade: 'SHB',
+      harvestSeason: '2025/26',
+      millName: '',
+      moisturePercent: null,
+      notes: '',
+      originArea: '古吉',
+      originCountry: '埃塞俄比亚',
+      originRegion: '耶加雪菲',
+      processMethod: '水洗',
+      purchaseDate: '2026-07-01',
+      purchasedTotalPrice: 500,
+      purchasedWeightGrams: 5000,
+      remainingWeightGrams: 0,
+      supplierName: '供应商 A',
+      tastingEndDays: 40,
+      variety: '74110',
+    });
+
+    const purchaseBatchUpdateCall = updateCalls.find((item) => item.tableName === 'green_bean_purchase_batches');
+
+    expect(purchaseBatchUpdateCall?.payload).toHaveProperty('remaining_weight_grams', 0);
+  });
+
+  it('falls back to purchased weight when adjusting inventory for a batch with empty remaining weight', async () => {
+    const updateCalls: {
+      match?: Record<string, unknown>;
+      payload: Record<string, unknown>;
+      tableName: string;
+    }[] = [];
+    const client = {
+      list: <T,>(tableName: string): Promise<T[]> => {
+        if (tableName === 'green_bean_purchase_batches') {
+          return Promise.resolve([
+            {
+              created_at: '2026-07-01T00:00:00.000Z',
+              green_bean_id: 'bean-1',
+              id: 'batch-1',
+              purchased_total_price: 500,
+              purchased_weight_grams: 200,
+              received_at: '2026-07-01',
+              remaining_weight_grams: Number.NaN,
+              supplier_name: '供应商 A',
+              updated_at: '2026-07-01T00:00:00.000Z',
+            } as T,
+          ]);
+        }
+
+        if (tableName === 'green_beans') {
+          return Promise.resolve([
+            {
+              altitude_meters_max: null,
+              altitude_meters_min: null,
+              code: 'GB-001',
+              created_at: '2026-07-03T00:00:00.000Z',
+              default_roast_input_grams: 200,
+              density_g_per_l: null,
+              display_name: '测试生豆',
+              aging_days: 14,
+              tasting_end_days: 40,
+              flavor_tags: '柑橘,花香',
+              grade: null,
+              harvest_season: '2025/26',
+              id: 'bean-1',
+              mill_name: null,
+              moisture_percent: null,
+              notes: null,
+              origin_area: '古吉',
+              origin_country: '埃塞俄比亚',
+              origin_region: '耶加雪菲',
+              process_method: '水洗',
+              updated_at: '2026-07-03T00:00:00.000Z',
+              variety: '74110',
+            } as T,
+          ]);
+        }
+
+        if (tableName === 'bean_sale_specs' || tableName === 'roast_batches' || tableName === 'app_settings') {
+          return Promise.resolve([] as T[]);
+        }
+
+        return Promise.resolve([] as T[]);
+      },
+      update: <T,>(
+        tableName: string,
+        payload: Record<string, unknown>,
+        options?: { match: Record<string, unknown> },
+      ): Promise<T[]> => {
+        updateCalls.push({ match: options?.match, payload, tableName });
+        return Promise.resolve([] as T[]);
+      },
+    } as unknown as PocketBaseRestClient;
+
+    const repository = createGreenBeanInventoryRepository(client);
+
+    await repository.adjustRemainingWeight('bean-1', 200);
+
+    const purchaseBatchUpdateCall = updateCalls.find((item) => item.tableName === 'green_bean_purchase_batches');
+
+    expect(purchaseBatchUpdateCall?.payload).toHaveProperty('remaining_weight_grams', 0);
+  });
+
   it('removes roast batches before deleting the green bean record', async () => {
     const deleteCalls: { match: Record<string, unknown>; tableName: string }[] = [];
     const client = {

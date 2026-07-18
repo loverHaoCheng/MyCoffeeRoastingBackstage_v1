@@ -3,11 +3,10 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import Button from 'antd/es/button';
 import Checkbox from 'antd/es/checkbox';
-import DatePicker from 'antd/es/date-picker';
-import Input from 'antd/es/input';
-import InputNumber from 'antd/es/input-number';
-import Select from 'antd/es/select';
-import dayjs, { type Dayjs } from 'dayjs';
+import { Select } from '@/components/ui/select';
+import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
+import Input from '@/shared/components/ui/input';
+import InputNumber from '@/shared/components/ui/input-number';
 
 import type { Bean, RoastPlan } from '@/types/domain';
 import type { RoastBatchEvaluation, RoastBatchSalesMode } from '@/modules/roast/types/roastBatch';
@@ -22,18 +21,6 @@ import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 
 import styles from './RoastBatchForm.module.css';
-
-const ROAST_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm';
-
-const toPickerValue = (value: string) => {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = dayjs(value);
-
-  return parsed.isValid() ? parsed : null;
-};
 
 export interface RoastBatchFormState {
   evaluation: RoastBatchEvaluation;
@@ -214,19 +201,17 @@ export function RoastBatchForm({
         <div className={styles.fieldGrid}>
           <div className={styles.field} data-field-path="roastDate">
             {renderRequiredLabel('烘焙日期')}
-            <DatePicker
-              aria-label="烘焙日期"
-              format={ROAST_DATE_TIME_FORMAT}
+            <AdaptiveDateTimeField
+              ariaLabel="烘焙日期"
+              mode="datetime"
               placeholder="选择烘焙日期与时间"
-              showTime={{ format: 'HH:mm' }}
-              value={toPickerValue(value.roastDate)}
-              onChange={(date: Dayjs | null) => {
+              value={value.roastDate}
+              onChange={(nextValue) => {
                 onChange((current) => ({
                   ...current,
-                  roastDate: date ? date.second(0).millisecond(0).toISOString() : '',
+                  roastDate: nextValue,
                 }));
               }}
-              style={{ width: '100%' }}
             />
           </div>
           <div className={styles.field} data-field-path="roastLevel">
@@ -257,7 +242,11 @@ export function RoastBatchForm({
             <Select
               aria-label="生豆"
               disabled={beans.length === 0}
-              onChange={(beanId: string) => {
+              onChange={(beanId) => {
+                if (!beanId) {
+                  return;
+                }
+
                 const bean = beans.find((item) => String(item.id) === beanId);
 
                 onChange((current) => ({
@@ -293,7 +282,11 @@ export function RoastBatchForm({
             <Select
               aria-label="去向"
               value={value.salesMode}
-              onChange={(nextValue: RoastBatchSalesMode) => {
+              onChange={(nextValue) => {
+                if (!nextValue) {
+                  return;
+                }
+
                 onChange((current) => ({
                   ...current,
                   finalSaleUnitPrice:

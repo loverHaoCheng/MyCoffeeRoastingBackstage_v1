@@ -1,5 +1,5 @@
 import SearchOutlined from "@ant-design/icons/SearchOutlined";
-import Input from "antd/es/input";
+import Input from '@/shared/components/ui/input';
 import type { ChangeEvent } from 'react';
 
 import styles from './UnifiedSearchBar.module.css';

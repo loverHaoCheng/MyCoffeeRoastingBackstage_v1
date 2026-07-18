@@ -27,14 +27,6 @@ export function useVisibleCardMetaItems(moduleKey: AppCardModuleKey, metaItems: 
       .map((key) => metaItemByKey.get(key))
       .filter((item): item is UnifiedDataCardMetaItem => item != null);
 
-    if (selectedItems.length >= displayCount) {
-      return selectedItems.slice(0, displayCount);
-    }
-
-    const fallbackItems = metaItems.filter(
-      (item) => !selectedItems.some((selected) => selected.key === item.key),
-    );
-
-    return [...selectedItems, ...fallbackItems].slice(0, displayCount);
+    return selectedItems.slice(0, displayCount);
   }, [appDisplaySettings.cardDisplaySettings, metaItems, moduleKey]);
 }

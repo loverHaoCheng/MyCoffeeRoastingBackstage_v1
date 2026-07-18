@@ -153,6 +153,49 @@ describe('PocketBase auth BFF contract', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('proxies finance income collection writes through the business gateway whitelist', async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/collections/finance_income_records/records')) {
+        expect(init?.method).toBe('POST');
+        expect(init?.headers).toMatchObject({
+          Accept: 'application/json',
+          Authorization: 'session-token',
+          'Content-Type': 'application/json',
+        });
+        expect(JSON.parse(typeof init?.body === 'string' ? init.body : '{}')).toMatchObject({
+          amount: 128,
+          channel: 'retail',
+          title: '零售收入',
+        });
+
+        return Promise.resolve(new Response(JSON.stringify({ id: 'income-1' }), { status: 200 }));
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await requestGateway({
+      body: JSON.stringify({
+        amount: 128,
+        channel: 'retail',
+        title: '零售收入',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: 'easybake_pb_session=session-token',
+      },
+      method: 'POST',
+      path: '/api/collections/finance_income_records/records',
+    });
+
+    expect(response).toMatchObject({
+      body: { id: 'income-1' },
+      status: 200,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('confirms an email verification token through the dedicated auth gateway route', async () => {
     const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
     vi.stubGlobal('fetch', fetchMock);

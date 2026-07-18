@@ -25,52 +25,6 @@
   z-index: 1;
 }
 
-.section {
-  display: grid;
-  gap: 0;
-  padding: 24px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: 15px;
-  background: var(--app-bg);
-  box-shadow: none;
-  transition: gap 260ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.section[data-collapsed='false'] {
-  gap: 18px;
-}
-
-.sectionHeader {
-  display: grid;
-  gap: 8px;
-}
-
-.sectionHeaderRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.sectionHeaderTitleGroup {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;
-}
-
-.sectionHeader h2 {
-  margin: 0;
-  font-size: 20px;
-}
-
-.sectionStatusCopy {
-  margin: 0;
-  color: var(--app-text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 .appearanceGrid {
   display: grid;
   gap: 16px;
@@ -101,7 +55,7 @@
 .cardDisplayModuleHeader strong {
   display: block;
   color: var(--app-text);
-  font-size: 15px;
+  font-size: var(--app-font-15);
 }
 
 .appearanceBlockHeader p,
@@ -109,24 +63,48 @@
 .cardDisplayModuleHeader p {
   margin: 4px 0 0;
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-12);
   line-height: 1.5;
 }
 
-.cardDisplayGrid {
+.cardDisplaySummaryList {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 0;
+  min-width: 0;
+  background: var(--app-bg-elevated);
+  border-radius: 18px;
+  overflow: hidden;
 }
 
-.cardDisplayModule {
+.cardDisplaySummaryRow {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: 18px;
-  background: var(--app-bg-elevated);
+  color: var(--app-text);
+  text-align: left;
+  transition: background-color 180ms ease;
+}
+
+.cardDisplaySummaryRow:hover {
+  background: color-mix(in srgb, var(--app-bg-elevated) 94%, white 6%);
+}
+
+.cardDisplaySummaryMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cardDisplaySummaryChevron {
+  width: 16px;
+  height: 16px;
+  color: var(--app-text-tertiary);
+}
+
+.cardDisplaySummarySeparator {
+  background: var(--app-border-soft);
 }
 
 .cardDisplayCountGroup,
@@ -134,31 +112,73 @@
   width: fit-content;
 }
 
-.cardDisplaySlotGrid {
+.cardDisplayFieldSet {
   display: grid;
+  gap: 10px;
+}
+
+.cardDisplayCheckboxGroup {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.cardDisplaySlot {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
+.cardDisplayCheckboxField {
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--app-bg-elevated) 92%, transparent);
 }
 
-.cardDisplaySlotLabel {
+.cardDisplayCheckboxLabel {
+  font-weight: 400;
+}
+
+.cardDisplaySummaryText {
+  margin: 0;
   color: var(--app-text-secondary);
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: var(--app-font-12);
+  line-height: 1.5;
 }
 
-.cardDisplaySelect:global(.ant-select) {
-  width: 100%;
+.cardDisplayDrawerContent {
+  display: grid;
+  gap: 16px;
 }
 
-.cardDisplaySelect :global(.ant-select-selector) {
-  min-height: 42px;
-  border-radius: 14px !important;
+.cardDisplayDrawerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardDisplayDrawerHeader strong {
+  display: block;
+  color: var(--app-text);
+  font-size: var(--app-font-15);
+}
+
+.cardDisplayDrawerHeader p {
+  margin: 4px 0 0;
+  color: var(--app-text-secondary);
+  font-size: var(--app-font-12);
+  line-height: 1.5;
+}
+
+.cardDisplayDrawerCheckboxGroup {
+  gap: 10px;
+}
+
+.cardDisplayEmptyState {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: var(--app-font-12);
+  line-height: 1.6;
+}
+
+.footerSeparator {
+  margin-top: 2px;
 }
 
 .zoomPanel {
@@ -210,38 +230,6 @@
   color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 1.5;
-}
-
-.collapseButton:global(.ant-btn) {
-  display: inline-grid;
-  place-items: center;
-  min-width: var(--app-touch-target-size);
-  width: var(--app-touch-target-size);
-  height: var(--app-touch-target-size);
-  padding: 0;
-  color: var(--app-text-secondary);
-  font-weight: 500;
-  border-radius: 999px;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.collapseButton :global(.anticon) {
-  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms ease;
-  font-size: 10px;
-}
-
-.collapseButton[data-expanded='true'] :global(.anticon) {
-  transform: rotate(180deg);
-}
-
-.collapseButton:global(.ant-btn:hover),
-.collapseButton:global(.ant-btn:focus-visible),
-.collapseButton:global(.ant-btn:active) {
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none;
 }
 
 .sectionCollapse {
@@ -417,46 +405,16 @@
     grid-template-columns: 1fr;
   }
 
-  .section {
-    padding: 18px;
-    border-radius: 15px;
-  }
-
-  .section[data-collapsed='false'] {
-    gap: 14px;
-  }
-
   .sectionCollapseInner {
     gap: 14px;
   }
 
-  .cardDisplayGrid {
+  .cardDisplayCheckboxGroup {
     grid-template-columns: 1fr;
-  }
-
-  .cardDisplaySlotGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .sectionHeaderTitleGroup {
-    min-width: 0;
-  }
-
-  .sectionHeader h2 {
-    font-size: 20px;
   }
 
   .zoomActions {
     flex-direction: column;
-  }
-
-  .sectionHeaderRow {
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .sectionHeaderRow :global(.ant-btn) {
-    margin-left: auto;
   }
 
   .qrSection {

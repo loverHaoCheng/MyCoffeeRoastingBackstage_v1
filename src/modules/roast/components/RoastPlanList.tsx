@@ -44,7 +44,7 @@ function RoastPlanCard({ onDelete, onEdit, onEditAll, onView, plan }: RoastPlanC
     { key: 'batchWeight', label: '批次重量', value: `${String(plan.batchWeightGrams)} g`, editPath: 'batchWeightGrams' as const },
     { key: 'plannedBatchWeight', label: '计划重量', value: `${formatKg.format(plan.plannedBatchKg)} kg` },
     { key: 'roastPurpose', label: '用途', value: getText('待补充', plan.roastPurpose), multiline: true, editPath: 'purpose' as const },
-    { key: 'roastLevel', label: '烘焙度', value: getText('-', plan.targetRoastLevel), editPath: 'roastLevel' as const },
+    { key: 'roastLevel', label: '烘焙目标', value: getText('-', plan.targetRoastLevel), editPath: 'roastLevel' as const },
     { key: 'status', label: '状态', value: roastPlanStatusLabelMap[plan.status] },
     { key: 'stepCount', label: '节点数', value: `${String(plan.steps.length)} 个节点`, editPath: 'steps' as const },
   ];

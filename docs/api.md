@@ -135,7 +135,12 @@ interface PocketBaseConnectionSettings {
 
 - `cost_calculations`：继续走 PocketBase 主库同步，用于直接成本汇总。
 - `finance_expense_records`：走 PocketBase 主库同步，用于手工经营费用台账。
-- `已实现收入`：不再走手工台账集合，而是根据烘焙历史中去向为“销售”的记录实时聚合。
+- `finance_income_records`：走 PocketBase 主库同步，用于手工补录收入台账。
+- `已实现收入`：根据烘焙历史中去向为“销售”的记录，以及状态为 `received` 的手工补录收入实时聚合。
+
+服务端补充约束：
+
+- 认证 BFF 的 `BUSINESS_COLLECTIONS` 白名单必须同时包含 `finance_expense_records` 与 `finance_income_records`，否则测试端或正式端会出现“支出可写、收入被网关拦截”的不一致行为。
 
 相关前端表单输入契约：
 
@@ -153,6 +158,15 @@ interface FinanceExpenseFormInput {
     | 'other';
   customCategoryLabel?: string | null;
   status: 'paid' | 'pending';
+  notes?: string | null;
+}
+
+interface FinanceIncomeFormInput {
+  title: string;
+  incomeDate: string;
+  amount: number;
+  channel: 'retail' | 'wholesale' | 'other';
+  status: 'received' | 'pending';
   notes?: string | null;
 }
 ```

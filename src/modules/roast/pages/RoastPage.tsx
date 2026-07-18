@@ -146,7 +146,7 @@ export function RoastPage() {
             setDetailMode(null);
           })
           .catch((error: unknown) => {
-            void message.error(
+            void message.error?.(
               getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
             );
           });
@@ -162,7 +162,7 @@ export function RoastPage() {
       try {
         await updateMutation.mutateAsync({ planId, input });
       } catch (error: unknown) {
-        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
+        void message.error?.(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
       }
     })();
 
@@ -192,7 +192,7 @@ export function RoastPage() {
       } catch (error: unknown) {
         const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
         queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，已回滚本次新建，请检查后重试。'));
+        void message.error?.(getUserFacingErrorMessage(error, '烘焙计划同步失败，已回滚本次新建，请检查后重试。'));
       }
     })();
 
@@ -210,9 +210,9 @@ export function RoastPage() {
       submissionBackupService.save('create', { input: nextInitialValues, jsonText }, 'roastPlan');
       setCreationInitialValues(nextInitialValues);
       setCreationTab('manual');
-      void message.success('JSON 已回填到创建表单，可继续补充和修改。');
+      void message.success?.('JSON 已回填到创建表单，可继续补充和修改。');
     } catch (error: unknown) {
-      void message.error(getUserFacingErrorMessage(error, 'JSON 解析失败，请检查内容后重试。'));
+      void message.error?.(getUserFacingErrorMessage(error, 'JSON 解析失败，请检查内容后重试。'));
     }
   };
 
@@ -284,7 +284,7 @@ export function RoastPage() {
           activeKey={creationTab}
           onChange={(key) => {
             if (key === 'ai') {
-              void message.info('AI 推荐正在筹备中，当前版本先完成数据采集与校验。');
+              void message.info?.('AI 推荐正在筹备中，当前版本先完成数据采集与校验。');
             }
 
             setCreationTab(key as 'ai' | 'json' | 'manual');
@@ -350,39 +350,41 @@ export function RoastPage() {
       </AppDrawer>
 
       {/* 详情/编辑抽屉 */}
-      {selectedPlan &&
-      (detailMode === 'view' ||
-        (detailMode === 'edit' && (selectedPlanFieldPath == null || selectedPlanFieldPath === 'steps'))) ? (
-        <AppDrawer
-          className={styles.detailDrawer}
-          data-placement={isWide ? 'right' : 'bottom'}
-          height={isWide ? undefined : '86dvh'}
-          onClose={closeDetail}
-          open
-          placement={isWide ? 'right' : 'bottom'}
-          title={getDetailDrawerTitle(detailMode)}
-          width={720}
-        >
+      <AppDrawer
+        className={styles.detailDrawer}
+        data-placement={isWide ? 'right' : 'bottom'}
+        height={isWide ? undefined : '86dvh'}
+        onClose={closeDetail}
+        open={
+          selectedPlan != null &&
+          (detailMode === 'view' ||
+            (detailMode === 'edit' && (selectedPlanFieldPath == null || selectedPlanFieldPath === 'steps')))
+        }
+        placement={isWide ? 'right' : 'bottom'}
+        title={getDetailDrawerTitle(detailMode)}
+        width={720}
+      >
+        {selectedPlan &&
+        (detailMode === 'view' ||
+          (detailMode === 'edit' && (selectedPlanFieldPath == null || selectedPlanFieldPath === 'steps'))) ? (
           <RoastPlanDetail
             mode={detailMode}
             onClose={closeDetail}
             onUpdate={handleUpdate}
             plan={selectedPlan}
           />
-        </AppDrawer>
-      ) : null}
+        ) : null}
+      </AppDrawer>
 
-      {selectedPlan && detailMode === 'edit' && selectedPlanFieldPath != null && selectedPlanFieldPath !== 'steps' ? (
-        <RoastPlanFieldEditorDrawer
-          fieldPath={selectedPlanFieldPath}
-          height={isWide ? undefined : '360px'}
-          onClose={closeDetail}
-          open
-          plan={selectedPlan}
-          placement={isWide ? 'right' : 'bottom'}
-          width={720}
-        />
-      ) : null}
+      <RoastPlanFieldEditorDrawer
+        fieldPath={selectedPlanFieldPath === 'steps' ? undefined : selectedPlanFieldPath}
+        height={isWide ? undefined : '360px'}
+        onClose={closeDetail}
+        open={selectedPlan != null && detailMode === 'edit' && selectedPlanFieldPath != null && selectedPlanFieldPath !== 'steps'}
+        plan={selectedPlan}
+        placement={isWide ? 'right' : 'bottom'}
+        width={720}
+      />
     </main>
   );
 }

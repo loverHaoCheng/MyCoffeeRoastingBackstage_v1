@@ -1,4 +1,4 @@
-import Input from 'antd/es/input';
+import Input from '@/shared/components/ui/input';
 import Select from 'antd/es/select';
 import { Controller, type Control, type FieldErrors } from 'react-hook-form';
 import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';

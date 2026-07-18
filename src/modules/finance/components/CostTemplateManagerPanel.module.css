@@ -3,7 +3,7 @@
   box-sizing: border-box;
   padding-inline: 4px;
   display: grid;
-  gap: 14px;
+  gap: 8px;
 }
 
 .header {
@@ -102,15 +102,15 @@
 
 .templateGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: calc(100% + 14px);
-  margin: -7px;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  margin: 0;
 }
 
 .templateItem {
   display: grid;
   min-width: 0;
-  margin: 7px;
+  margin: 6px 0;
   grid-template-rows: 1fr;
   opacity: 1;
   transform: translateY(0);
@@ -166,7 +166,7 @@
 
 .templateTitleBlock strong {
   color: var(--app-text);
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .templateMeta {
@@ -203,83 +203,144 @@
   gap: 8px;
 }
 
-.templateDrawer:global(.ant-drawer) :global(.ant-drawer-content) {
+.templateDrawer {
   border-radius: 0;
 }
 
-.templateDrawer[data-placement='bottom'] :global(.ant-drawer-content) {
+.templateDrawer :global(.ant-drawer-content) {
+  border-radius: 0;
+}
+
+.templateDrawer[data-placement='bottom'] {
   border-radius: 20px 20px 0 0;
 }
 
-.templateDrawer:global(.ant-drawer) :global(.ant-drawer-header) {
+.templateDrawer :global(.ant-drawer-header) {
   padding: 18px 24px 10px;
   border-bottom: 0;
   background: transparent;
 }
 
-.templateDrawer:global(.ant-drawer) :global(.ant-drawer-title) {
+.templateDrawer :global(.ant-drawer-title) {
   color: var(--app-text);
   font-size: 18px;
   font-weight: 700;
 }
 
-.templateDrawer:global(.ant-drawer) :global(.ant-drawer-body) {
+.templateDrawer :global(.ant-drawer-body) {
   padding: 0 24px 24px;
   overflow-x: hidden;
 }
 
-.templateDrawerPanel {
+.templateForm {
   display: grid;
-  gap: 16px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  gap: 18px;
 }
 
-.templateEditorHeader {
+.templateSection {
   display: grid;
-  gap: 6px;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 15px;
+  background: var(--app-bg-elevated);
 }
 
-.templateEditorHint {
+.templateSectionHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.templateSectionHeader h3 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.templateSectionHeader p {
+  margin: 0;
   color: var(--app-text-secondary);
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-.fieldGrid {
+.templateFieldGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.templateField,
+.templateFieldWide {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 7px;
+  min-width: 0;
 }
 
-.field {
-  display: grid;
-  gap: 8px;
+.templateField {
+  flex: 1 1 40%;
+  max-width: 40%;
 }
 
-.fieldCompact {
-  align-content: start;
+.templateFieldWide {
+  flex-basis: 100%;
+  max-width: 100%;
 }
 
-.field :global(.ant-input),
-.field :global(.ant-input-number),
-.field :global(.ant-input-affix-wrapper) {
+.templateField :global(.ant-input),
+.templateField :global(.ant-input-number),
+.templateField :global(.ant-input-number-affix-wrapper),
+.templateField :global(.ant-input-affix-wrapper),
+.templateFieldWide :global(.ant-input),
+.templateFieldWide :global(.ant-input-number),
+.templateFieldWide :global(.ant-input-number-affix-wrapper),
+.templateFieldWide :global(.ant-input-affix-wrapper) {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.templateField :global(.ant-input),
+.templateField :global(.ant-input-number),
+.templateField :global(.ant-input-number-affix-wrapper),
+.templateField :global(.ant-input-affix-wrapper),
+.templateFieldWide :global(.ant-input),
+.templateFieldWide :global(.ant-input-number),
+.templateFieldWide :global(.ant-input-number-affix-wrapper),
+.templateFieldWide :global(.ant-input-affix-wrapper),
+.templateFieldWide :global(.ant-input-textarea textarea) {
+  border-radius: 14px;
+}
+
+.templateField :global(.ant-input-number-affix-wrapper .ant-input-number),
+.templateFieldWide :global(.ant-input-number-affix-wrapper .ant-input-number) {
   width: 100%;
 }
 
-.field label {
-  color: var(--app-text);
+.templateField label,
+.templateFieldWide label {
+  color: var(--app-text-secondary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .helpText {
+  min-height: 18px;
   color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.templateLinkedHint {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--app-bg-soft);
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 @media (max-width: 767px) {
@@ -291,23 +352,30 @@
     font-size: 16px;
   }
 
-  .templateGrid,
-  .fieldGrid {
-    grid-template-columns: 1fr;
+  .templateForm {
+    gap: 14px;
   }
 
-  .fieldCompact :global(.ant-input-number),
-  .fieldCompact :global(.ant-input-number-affix-wrapper) {
-    width: max(50%, 10rem);
-    max-width: 100%;
-  }
-
-  .templateDrawer:global(.ant-drawer) :global(.ant-drawer-header) {
+  .templateDrawer :global(.ant-drawer-header) {
     padding: 16px 16px 8px;
   }
 
-  .templateDrawer:global(.ant-drawer) :global(.ant-drawer-body) {
+  .templateDrawer :global(.ant-drawer-body) {
     padding: 0 16px 18px;
+  }
+
+  .templateSection {
+    padding: 16px;
+  }
+
+  .templateFieldGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .templateField {
+    max-width: 100%;
   }
 }
 

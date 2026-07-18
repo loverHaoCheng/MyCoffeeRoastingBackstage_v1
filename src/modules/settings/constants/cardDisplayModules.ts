@@ -46,6 +46,7 @@ export const roastBatchCardMetaOptions: CardDisplayMetaOption[] = [
   { key: 'roastDate', label: '烘焙日期' },
   { key: 'greenBean', label: '生豆' },
   { key: 'roastedBean', label: '熟豆' },
+  { key: 'salesMode', label: '去向' },
   { key: 'roastPlan', label: '烘焙计划' },
   { key: 'inputWeight', label: '入豆量' },
   { key: 'outputWeight', label: '出豆量' },
@@ -60,10 +61,11 @@ export const roastBatchCardMetaOptions: CardDisplayMetaOption[] = [
 
 export const roastPlanCardMetaOptions: CardDisplayMetaOption[] = [
   { key: 'beanName', label: '生豆' },
+  { key: 'roasterModel', label: '烘豆机' },
   { key: 'batchWeight', label: '批次重量' },
   { key: 'plannedBatchWeight', label: '计划重量' },
   { key: 'roastPurpose', label: '用途' },
-  { key: 'roastLevel', label: '烘焙度' },
+  { key: 'roastLevel', label: '烘焙目标' },
   { key: 'status', label: '状态' },
   { key: 'stepCount', label: '节点数' },
 ];
@@ -76,9 +78,9 @@ export const cardDisplayModules: CardDisplayModuleDefinition[] = [
     metaOptions: beanInventoryCardMetaOptions,
   },
   {
-    description: '烘焙批次卡片',
+    description: '烘焙历史卡片',
     key: 'roastBatch',
-    label: '烘焙批次',
+    label: '烘焙历史',
     metaOptions: roastBatchCardMetaOptions,
   },
   {

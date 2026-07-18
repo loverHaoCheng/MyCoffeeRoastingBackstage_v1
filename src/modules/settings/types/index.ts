@@ -183,11 +183,37 @@ const defaultBeanInventoryVisibleKeys = [
   'notes',
 ] as const;
 const legacyDefaultBeanInventoryVisibleKeys = ['stock', 'cost', 'supplier', 'process'] as const;
+const defaultRoastBatchVisibleKeys = [
+  'roastDate',
+  'greenBean',
+  'roastedBean',
+  'salesMode',
+  'roastPlan',
+  'inputWeight',
+  'outputWeight',
+  'lossRate',
+  'roastLevel',
+  'developmentRatio',
+  'firstCrackTime',
+  'totalRoastTime',
+  'notes',
+  'status',
+] as const;
+const defaultRoastPlanVisibleKeys = [
+  'beanName',
+  'roasterModel',
+  'batchWeight',
+  'plannedBatchWeight',
+  'roastPurpose',
+  'roastLevel',
+  'status',
+  'stepCount',
+] as const;
 
 const defaultCardMetaVisibleKeys: Record<AppCardModuleKey, string[]> = {
   beanInventory: [...defaultBeanInventoryVisibleKeys],
-  roastBatch: ['inputWeight', 'outputWeight', 'lossRate', 'roastPlan'],
-  roastPlan: ['beanName', 'batchWeight', 'roastLevel', 'status'],
+  roastBatch: [...defaultRoastBatchVisibleKeys],
+  roastPlan: [...defaultRoastPlanVisibleKeys],
 };
 
 const normalizeVisibleMetaKeys = (
@@ -199,29 +225,19 @@ const normalizeVisibleMetaKeys = (
     return defaultKeys.slice(0, displayCount);
   }
 
-  const normalized = Array.from(
-    new Set(
-      visibleMetaKeys.filter((key): key is string => typeof key === 'string' && defaultKeys.includes(key)),
-    ),
-  );
+  const normalized: string[] = [];
 
-  if (normalized.length === 0) {
-    return defaultKeys.slice(0, displayCount);
-  }
+  for (let index = 0; index < visibleMetaKeys.length && normalized.length < displayCount; index += 1) {
+    const key = visibleMetaKeys[index];
 
-  const nextValue = normalized.slice(0, displayCount);
-
-  while (nextValue.length < displayCount) {
-    const fallbackKey = defaultKeys.find((key) => !nextValue.includes(key));
-
-    if (!fallbackKey) {
-      break;
+    if (typeof key !== 'string' || !defaultKeys.includes(key) || normalized.includes(key)) {
+      continue;
     }
 
-    nextValue.push(fallbackKey);
+    normalized.push(key);
   }
 
-  return nextValue;
+  return normalized;
 };
 
 const normalizeCardMetaDisplaySettings = (

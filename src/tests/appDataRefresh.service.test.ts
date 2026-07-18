@@ -13,6 +13,8 @@ import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { appDisplaySettingsService } from '@/modules/settings/services/appDisplaySettings.service';
 import { appDisplaySettingsSyncService } from '@/modules/settings/services/appDisplaySettingsSync.service';
 import { costTemplateSyncService } from '@/modules/settings/services/costTemplateSync.service';
+import { useSettingsStore } from '@/modules/settings/store';
+import { AppError } from '@/shared/errors/AppError';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
 
 describe('appDataRefresh.service', () => {
@@ -108,5 +110,51 @@ describe('appDataRefresh.service', () => {
     expect(setQueryData).toHaveBeenCalledWith(roastPlanQueryKeys.list(), roastPlanService.getBootstrappedPlans());
     expect(setQueryData).toHaveBeenCalledWith(roastBatchQueryKeys.list(), roastBatchService.getBootstrappedBatches());
     expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.calculations(), financeService.getBootstrappedCalculations());
+    expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.incomes(), financeLedgerService.getBootstrappedIncomeRecords());
+  });
+
+  it('degrades settings connection sync failures into partial refresh warnings', async () => {
+    window.location.hash = '#/finance';
+
+    const setQueryData = vi.fn();
+    const removeQueries = vi.fn();
+    const queryClient = {
+      removeQueries,
+      setQueryData,
+    } as unknown as QueryClient;
+
+    const settingsState = useSettingsStore.getState();
+
+    vi.spyOn(useSettingsStore, 'getState').mockReturnValue({
+      ...settingsState,
+      loadAppDisplaySettings: vi.fn(),
+      loadCostTemplates: vi.fn(),
+      loadPocketBaseConnections: vi.fn().mockRejectedValue(
+        new AppError('PocketBase 连接配置缺失。', { code: 'CONFIG' }),
+      ),
+    });
+    vi.spyOn(beanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 1, uploaded: 0 });
+    vi.spyOn(financeService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 2, uploaded: 0 });
+    vi.spyOn(financeLedgerService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 3, uploaded: 1 });
+    vi.spyOn(costTemplateSyncService, 'syncFromRemoteSafely').mockResolvedValue({
+      defaultTemplateId: null,
+      templates: [],
+      updatedAt: null,
+    });
+    vi.spyOn(appDisplaySettingsSyncService, 'syncSafely').mockResolvedValue(appDisplaySettingsService.load());
+    vi.spyOn(localStorageCleanupService, 'cleanupObsoleteKeys').mockReturnValue([]);
+
+    const result = await refreshQuickAppData(queryClient);
+
+    expect(result).toEqual({
+      downloaded: 6,
+      failed: 1,
+      failedDetails: ['待同步操作同步失败'],
+      success: 0,
+      uploaded: 1,
+    });
+    expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.calculations(), financeService.getBootstrappedCalculations());
+    expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.expenses(), financeLedgerService.getBootstrappedExpenseRecords());
+    expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.incomes(), financeLedgerService.getBootstrappedIncomeRecords());
   });
 });

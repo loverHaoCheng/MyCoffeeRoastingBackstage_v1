@@ -67,4 +67,51 @@ describe('roastBatchService inventory sync', () => {
 
     expect(readRemainingWeight()).toBe(1000);
   });
+
+  it('allows creating a roast record when input weight exactly matches remaining stock', async () => {
+    localGreenBeanService.restore({
+      id: 'local-bean-equal',
+      source: 'local',
+      agingDays: 14,
+      code: 'GB-LOCAL-002',
+      defaultRoastInputGrams: 200,
+      defaultSaleUnitPrice: 88,
+      defaultSaleUnitWeightGrams: 100,
+      displayName: '临界值测试生豆',
+      flavorTags: ['可可'],
+      harvestSeason: '2026',
+      millName: null,
+      notes: null,
+      originArea: null,
+      originCountry: '巴拿马',
+      originRegion: '波奎特',
+      processMethod: '日晒',
+      purchaseDate: '2026-07-03',
+      purchasedTotalPrice: 420,
+      purchasedWeightGrams: 200,
+      remainingWeightGrams: 200,
+      supplierName: '测试供应商',
+      tastingEndDays: 40,
+      variety: 'Geisha',
+      altitudeMetersMax: null,
+      altitudeMetersMin: null,
+      densityGPerL: null,
+      moisturePercent: null,
+      createdAt: '2026-07-03T00:00:00.000Z',
+      updatedAt: '2026-07-03T00:00:00.000Z',
+    });
+
+    const created = await roastBatchService.createBatch({
+      greenBeanId: 'local-bean-equal',
+      greenBeanName: '临界值测试生豆',
+      inputWeightGrams: 200,
+      outputWeightGrams: 172,
+      roastDate: '2026-07-03T11:30:00',
+      roastLevel: '中焙',
+      status: 'completed',
+    });
+
+    expect(created.data.greenBeanId).toBe('local-bean-equal');
+    expect(localGreenBeanService.findRecordById('local-bean-equal')?.remainingWeightGrams).toBe(0);
+  });
 });

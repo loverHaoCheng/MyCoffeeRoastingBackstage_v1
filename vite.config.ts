@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import { loadEnv } from 'vite';
@@ -47,6 +48,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      tailwindcss(),
       {
         name: 'app-version-manifest',
         generateBundle() {

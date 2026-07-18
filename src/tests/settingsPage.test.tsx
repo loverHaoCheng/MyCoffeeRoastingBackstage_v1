@@ -256,6 +256,33 @@ describe('SettingsPage', () => {
     expect(within(card).getByRole('button', { name: '收起' })).toBeInTheDocument();
   });
 
+  it('keeps the settings accordion in single-open mode', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    const roastedBeanCard = screen.getByRole('heading', { name: '熟豆 Supabase 连接' }).closest('article');
+    const appearanceCard = screen.getByRole('heading', { name: '界面外观' }).closest('section');
+
+    expect(roastedBeanCard).not.toBeNull();
+    expect(appearanceCard).not.toBeNull();
+
+    if (roastedBeanCard == null || appearanceCard == null) {
+      throw new Error('settings accordion items not found');
+    }
+
+    fireEvent.click(within(roastedBeanCard).getByRole('button', { name: '展开' }));
+
+    await waitFor(() => {
+      expect(roastedBeanCard.getAttribute('data-collapsed')).toBe('false');
+    });
+
+    fireEvent.click(within(appearanceCard).getByRole('button', { name: '展开' }));
+
+    await waitFor(() => {
+      expect(appearanceCard.getAttribute('data-collapsed')).toBe('false');
+      expect(roastedBeanCard.getAttribute('data-collapsed')).toBe('true');
+    });
+  });
+
   it('loads a QR code only after it is opened and reuses it after reopening', async () => {
     renderWithQuery(<SettingsPage />);
 
@@ -295,7 +322,11 @@ describe('SettingsPage', () => {
   it('renders the staged AI release guidance section', async () => {
     renderWithQuery(<SettingsPage />);
 
-    expect(await screen.findByRole('heading', { name: 'AI 烘焙能力（筹备中）' })).toBeInTheDocument();
+    const heading = await screen.findByRole('heading', { name: 'AI 烘焙能力（筹备中）' });
+    const trigger = heading.closest('section')?.querySelector('button');
+
+    expect(heading).toBeInTheDocument();
+    expect(trigger).toBeDisabled();
     expect(screen.getByText('当前版本先公开入口、规则和数据准备要求。AI 推荐与训练上传会在后续阶段逐步开放。')).toBeInTheDocument();
     expect(screen.queryByText('已正式开放')).not.toBeInTheDocument();
     expect(screen.queryByText('已公开但暂禁用')).not.toBeInTheDocument();

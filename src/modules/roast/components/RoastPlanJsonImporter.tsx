@@ -1,7 +1,7 @@
 import ImportOutlined from "@ant-design/icons/ImportOutlined";
 import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import Button from "antd/es/button";
-import Input from "antd/es/input";
+import Input from '@/shared/components/ui/input';
 import { useEffect, useState } from 'react';
 
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';

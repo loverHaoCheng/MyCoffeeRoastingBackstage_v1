@@ -17,6 +17,7 @@ import { MobileBottomNavigation } from './components/MobileBottomNavigation';
 import { MobileSettingsOverlay } from './components/MobileSettingsOverlay';
 import { RouteTransitionStage, type RouteTransitionDirection } from './components/RouteTransitionStage';
 import { SettingsAuthBar } from './components/SettingsAuthBar';
+import { useMobileKeyboardViewportFocus } from './hooks/useMobileKeyboardViewportFocus';
 import { useMobileSwipeNavigation } from './hooks/useMobileSwipeNavigation';
 import { useViewportRuntimeFlags } from './hooks/useViewportRuntimeFlags';
 import { ViewportScrollContext } from './ViewportContext';
@@ -351,6 +352,11 @@ export function MainLayout() {
     selectedKey,
   });
 
+  useMobileKeyboardViewportFocus({
+    enabled: !isWide,
+    fallbackContainerRef: scrollViewportRef,
+  });
+
   return (
     <ViewportScrollContext.Provider value={scrollViewportRef}>
       <Layout className={styles.shell} data-mobile={!isWide} data-standalone-pwa={isStandalonePwa}>
@@ -375,14 +381,14 @@ export function MainLayout() {
         ) : null}
 
         <Layout className={styles.main}>
-          <div className={styles.viewportFrame} data-scaled={appDisplaySettings.scale < 0.999}>
+          <div className={styles.viewportFrame} data-scaled="false">
             <div className={styles.scrollViewport} data-app-scroll-viewport="true" ref={scrollViewportRef}>
               <GlobalPullToRefresh />
               <div
                 className={styles.scaleViewport}
                 style={
                   {
-                    '--layout-content-scale': appDisplaySettings.scale.toFixed(2),
+                    '--app-font-scale': appDisplaySettings.scale.toFixed(2),
                   } as CSSProperties
                 }
               >

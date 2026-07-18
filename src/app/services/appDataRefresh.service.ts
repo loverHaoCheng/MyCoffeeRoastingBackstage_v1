@@ -32,6 +32,11 @@ interface NamedSyncJob {
   promise: Promise<{ downloaded: number; uploaded: number }>;
 }
 
+interface SharedSettingsSyncResult {
+  failed: number;
+  success: number;
+}
+
 let deferredSettingsSyncPromise: null | Promise<void> = null;
 
 const getCurrentPathname = (): string => {
@@ -106,25 +111,53 @@ const scheduleDeferredSettingsSync = (settingsState: SettingsSyncState): Promise
   return deferredSettingsSyncPromise;
 };
 
+const runSettingsSyncStep = async (
+  result: SharedSettingsSyncResult,
+  label: string,
+  action: () => Promise<void> | void,
+): Promise<void> => {
+  try {
+    await action();
+  } catch (error) {
+    result.failed += 1;
+    logger.warn(`app settings sync step failed: ${label}`, { error });
+  }
+};
+
 const syncSharedAppSettings = async (options: { deferNonCriticalSync?: boolean } = {}) => {
   localStorageCleanupService.cleanupObsoleteKeys();
 
   const settingsState = useSettingsStore.getState();
+  const result: SharedSettingsSyncResult = { failed: 0, success: 0 };
 
-  await settingsState.loadPocketBaseConnections({ forceRemote: true });
-  settingsState.loadCostTemplates();
-  settingsState.loadAppDisplaySettings();
+  await runSettingsSyncStep(result, 'loadPocketBaseConnections', async () => {
+    await settingsState.loadPocketBaseConnections({ forceRemote: true });
+  });
+  await runSettingsSyncStep(result, 'loadCostTemplates', () => {
+    settingsState.loadCostTemplates();
+  });
+  await runSettingsSyncStep(result, 'loadAppDisplaySettings', () => {
+    settingsState.loadAppDisplaySettings();
+  });
 
   if (options.deferNonCriticalSync) {
     void scheduleDeferredSettingsSync(settingsState);
   } else {
-    await costTemplateSyncService.syncFromRemoteSafely();
-    await appDisplaySettingsSyncService.syncSafely(settingsState.appDisplaySettings);
-    settingsState.loadCostTemplates();
-    settingsState.loadAppDisplaySettings();
+    await runSettingsSyncStep(result, 'syncCostTemplates', async () => {
+      await costTemplateSyncService.syncFromRemoteSafely();
+    });
+    await runSettingsSyncStep(result, 'syncAppDisplaySettings', async () => {
+      await appDisplaySettingsSyncService.syncSafely(settingsState.appDisplaySettings);
+    });
+    await runSettingsSyncStep(result, 'reloadCostTemplates', () => {
+      settingsState.loadCostTemplates();
+    });
+    await runSettingsSyncStep(result, 'reloadAppDisplaySettings', () => {
+      settingsState.loadAppDisplaySettings();
+    });
   }
 
-  return { failed: 0, success: 0 };
+  return result;
 };
 
 const getSyncJobsForScope = (scope: AppRefreshScope): NamedSyncJob[] => {
@@ -188,6 +221,7 @@ const hydrateAppQueryCaches = (queryClient: QueryClient, scope: AppRefreshScope)
   if (scope === 'all' || scope === 'finance') {
     queryClient.setQueryData(financeQueryKeys.calculations(), financeService.getBootstrappedCalculations());
     queryClient.setQueryData(financeQueryKeys.expenses(), financeLedgerService.getBootstrappedExpenseRecords());
+    queryClient.setQueryData(financeQueryKeys.incomes(), financeLedgerService.getBootstrappedIncomeRecords());
   }
 
   if (scope === 'all' || scope === 'bean') {

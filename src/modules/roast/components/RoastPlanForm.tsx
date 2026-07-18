@@ -5,9 +5,9 @@ import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import UpOutlined from "@ant-design/icons/UpOutlined";
 import { App } from 'antd';
 import Button from "antd/es/button";
-import Input from "antd/es/input";
-import InputNumber from "antd/es/input-number";
-import Select from "antd/es/select";
+import { Select } from '@/components/ui/select';
+import Input from '@/shared/components/ui/input';
+import InputNumber from '@/shared/components/ui/input-number';
 import { useEffect } from 'react';
 import { Controller, type FieldPath, useFieldArray, useForm } from 'react-hook-form';
 

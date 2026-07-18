@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Input from "antd/es/input";
-import InputNumber from "antd/es/input-number";
-import Select from "antd/es/select";
+import { Select } from '@/components/ui/select';
+import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
+import Input from '@/shared/components/ui/input';
+import InputNumber from '@/shared/components/ui/input-number';
 import { Controller, type FieldPath, useForm } from 'react-hook-form';
 
 import { greenBeanCreateFormSchema } from '@/modules/bean/schemas';
@@ -288,11 +289,8 @@ export function BeanForm({
       })}
     >
       <BeanIdentitySection control={control} errors={errors} optionalHelp={formatOptionalHelp} />
-
       <BeanPostRoastSection control={control} errors={errors} />
-
       <BeanQualitySection control={control} errors={errors} optionalHelp={formatOptionalHelp} />
-
       <section className={styles.section}>
         <header className={styles.sectionHeader}>
           <h3>采购与定价</h3>
@@ -348,7 +346,15 @@ export function BeanForm({
             <Controller
               control={control}
               name="purchaseDate"
-              render={({ field }) => <Input {...field} aria-label="采购日期" type="date" />}
+              render={({ field }) => (
+                <AdaptiveDateTimeField
+                  ariaLabel="采购日期"
+                  mode="date"
+                  placeholder="选择采购日期"
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
             />
             <span className={joinClassNames(styles.helpText, errors.purchaseDate ? styles.helpTextError : undefined)}>
               {getErrorMessage(errors.purchaseDate?.message, '会作为生豆采购支出的统计日期')}
@@ -490,7 +496,6 @@ export function BeanForm({
 
         </div>
       </section>
-
       <BeanNotesSection control={control} />
 
       <BeanFormActions onCancel={onCancel} submitLabel={submitLabel} />

@@ -37,4 +37,29 @@ describe('financeService', () => {
     expect(financeService.getResolvedDataSource()).toBe('greenBean');
     expect(listSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('uses the same-origin business data service even when stored green bean settings are empty', async () => {
+    pocketBaseConnectionSettingsService.save({
+      greenBean: {
+        projectUrl: '',
+        publishableKey: '',
+      },
+      roastedBean: {
+        projectUrl: '',
+        publishableKey: '',
+      },
+      updatedAt: '2026-07-08T12:00:00.000Z',
+    });
+
+    const listSpy = vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([]);
+
+    await expect(financeService.listCalculations()).resolves.toMatchObject({
+      code: 0,
+      data: [],
+      message: 'ok',
+    });
+
+    expect(financeService.getResolvedDataSource()).toBe('greenBean');
+    expect(listSpy).toHaveBeenCalledTimes(1);
+  });
 });

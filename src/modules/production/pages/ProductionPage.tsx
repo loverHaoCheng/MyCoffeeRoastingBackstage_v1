@@ -235,37 +235,35 @@ export function ProductionPage() {
       </AppDrawer>
 
       {/* 详情/编辑抽屉 */}
-      {selectedBatch && (detailMode === 'view' || (detailMode === 'edit' && selectedBatchFieldPath == null)) ? (
-        <AppDrawer
-          className={styles.detailDrawer}
-          data-placement={isWide ? 'right' : 'bottom'}
-          height={isWide ? undefined : '86dvh'}
-          onClose={closeDetail}
-          open
-          placement={isWide ? 'right' : 'bottom'}
-          title={detailMode === 'edit' ? '编辑烘焙记录' : '烘焙记录详情'}
-          width={720}
-        >
+      <AppDrawer
+        className={styles.detailDrawer}
+        data-placement={isWide ? 'right' : 'bottom'}
+        height={isWide ? undefined : '86dvh'}
+        onClose={closeDetail}
+        open={selectedBatch != null && (detailMode === 'view' || (detailMode === 'edit' && selectedBatchFieldPath == null))}
+        placement={isWide ? 'right' : 'bottom'}
+        title={detailMode === 'edit' ? '编辑烘焙记录' : '烘焙记录详情'}
+        width={720}
+      >
+        {selectedBatch && (detailMode === 'view' || (detailMode === 'edit' && selectedBatchFieldPath == null)) ? (
           <RoastBatchDrawer
             batch={selectedBatch}
             mode={detailMode}
             onClose={closeDetail}
             onUpdate={handleUpdate}
           />
-        </AppDrawer>
-      ) : null}
+        ) : null}
+      </AppDrawer>
 
-      {selectedBatch && detailMode === 'edit' && selectedBatchFieldPath != null ? (
-        <RoastBatchFieldEditorDrawer
-          batch={selectedBatch}
-          fieldPath={selectedBatchFieldPath}
-          height={isWide ? undefined : '360px'}
-          onClose={closeDetail}
-          open
-          placement={isWide ? 'right' : 'bottom'}
-          width={720}
-        />
-      ) : null}
+      <RoastBatchFieldEditorDrawer
+        batch={selectedBatch}
+        fieldPath={selectedBatchFieldPath}
+        height={isWide ? undefined : '360px'}
+        onClose={closeDetail}
+        open={selectedBatch != null && detailMode === 'edit' && selectedBatchFieldPath != null}
+        placement={isWide ? 'right' : 'bottom'}
+        width={720}
+      />
     </main>
   );
 }

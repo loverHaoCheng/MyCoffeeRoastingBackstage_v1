@@ -35,7 +35,7 @@
 }
 
 .mobileHeaderButton :global(.anticon) {
-  font-size: 18px;
+  font-size: var(--app-font-18);
 }
 
 .mobileBrand {
@@ -43,7 +43,7 @@
   background: transparent;
   color: var(--app-text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--app-font-13);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -72,7 +72,7 @@
 }
 
 .mobileHeaderAction :global(.anticon) {
-  font-size: 18px;
+  font-size: var(--app-font-18);
 }
 
 :global(:root[data-standalone-pwa='true']) .mobileHeader,

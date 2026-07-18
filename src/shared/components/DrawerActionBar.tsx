@@ -16,7 +16,7 @@ export function DrawerActionBar({ children, compact = false }: DrawerActionBarPr
   const actionCount = Children.toArray(children).filter(Boolean).length;
 
   return (
-    <footer className={styles.bar}>
+    <footer className={styles.bar} data-drawer-action-bar="true">
       <div className={joinClassNames(styles.surface, compact ? styles.compact : undefined, actionCount <= 1 ? styles.single : undefined)}>
         {children}
       </div>

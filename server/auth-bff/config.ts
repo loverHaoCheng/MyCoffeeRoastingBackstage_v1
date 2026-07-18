@@ -33,6 +33,7 @@ export const BUSINESS_COLLECTIONS = new Set([
   'bean_sale_specs',
   'cost_calculations',
   'finance_expense_records',
+  'finance_income_records',
   'green_beans',
   'green_bean_purchase_batches',
   'roast_batches',

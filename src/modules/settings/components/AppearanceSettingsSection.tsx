@@ -1,11 +1,10 @@
-import DownOutlined from '@ant-design/icons/DownOutlined';
 import { App } from 'antd';
 import Button from 'antd/es/button';
 import Radio from 'antd/es/radio';
-import Select from 'antd/es/select';
 import Slider from 'antd/es/slider';
 import Tag from 'antd/es/tag';
-import { useCallback, useEffect, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { cardDisplayModules } from '@/modules/settings/constants/cardDisplayModules';
 import { useAppDisplaySettings } from '@/modules/settings/hooks';
@@ -18,8 +17,25 @@ import {
   type AppDisplaySettings,
   type AppThemeMode,
 } from '@/modules/settings/types';
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/shared/components/ui/accordion';
+import { AppDrawer } from '@/shared/components/AppDrawer';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/shared/components/ui/field';
+import { Separator } from '@/components/ui/separator';
 
 import styles from '../pages/SettingsPage.module.css';
+import accordionStyles from './SettingsAccordionItem.module.css';
 
 const cardDisplayCountOptions: { label: string; value: 0 | 2 | 4 }[] = [
   { label: '0 项', value: 0 },
@@ -48,7 +64,17 @@ const normalizeCardDisplayMetaKeys = (
   }
 
   const defaultKeys = getDefaultVisibleKeys(moduleKey);
-  const nextKeys = Array.from(new Set(selectedKeys.filter((key) => defaultKeys.includes(key)))).slice(0, displayCount);
+  const nextKeys: string[] = [];
+
+  for (let index = 0; index < displayCount; index += 1) {
+    const key = selectedKeys[index];
+
+    if (typeof key !== 'string' || !defaultKeys.includes(key) || nextKeys.includes(key)) {
+      continue;
+    }
+
+    nextKeys.push(key);
+  }
 
   while (nextKeys.length < displayCount) {
     const fallbackKey = defaultKeys.find((key) => !nextKeys.includes(key));
@@ -63,10 +89,24 @@ const normalizeCardDisplayMetaKeys = (
   return nextKeys;
 };
 
+const filterCardDisplayMetaKeys = (
+  moduleKey: AppCardModuleKey,
+  selectedKeys: string[],
+  displayCount: 0 | 2 | 4,
+): string[] => {
+  if (displayCount === 0) {
+    return [];
+  }
+
+  const allowedKeys = getDefaultVisibleKeys(moduleKey);
+
+  return allowedKeys.filter((key) => selectedKeys.includes(key)).slice(0, displayCount);
+};
+
 export function AppearanceSettingsSection() {
   const { message } = App.useApp();
   const { appDisplaySettings, loadAppDisplaySettings, saveAppDisplaySettings } = useAppDisplaySettings();
-  const [isCollapsed, setIsCollapsed] = useState(() => import.meta.env.MODE !== 'test');
+  const [activeCardDisplayModuleKey, setActiveCardDisplayModuleKey] = useState<null | AppCardModuleKey>(null);
 
   useEffect(() => {
     loadAppDisplaySettings();
@@ -103,10 +143,8 @@ export function AppearanceSettingsSection() {
     });
   };
 
-  const handleCardVisibleMetaKeyChange = (moduleKey: AppCardModuleKey, slotIndex: number, selectedKey: string) => {
+  const handleCardVisibleMetaKeysChange = (moduleKey: AppCardModuleKey, selectedKeys: string[]) => {
     const moduleSettings = appDisplaySettings.cardDisplaySettings[moduleKey];
-    const nextSelectedKeys = [...moduleSettings.visibleMetaKeys];
-    nextSelectedKeys[slotIndex] = selectedKey;
 
     persistAppDisplaySettings({
       ...appDisplaySettings,
@@ -114,9 +152,9 @@ export function AppearanceSettingsSection() {
         ...appDisplaySettings.cardDisplaySettings,
         [moduleKey]: {
           ...moduleSettings,
-          visibleMetaKeys: normalizeCardDisplayMetaKeys(
+          visibleMetaKeys: filterCardDisplayMetaKeys(
             moduleKey,
-            nextSelectedKeys,
+            selectedKeys,
             moduleSettings.displayCount,
           ),
         },
@@ -124,29 +162,36 @@ export function AppearanceSettingsSection() {
     });
   };
 
+  const activeCardDisplayModule = useMemo(() => {
+    if (!activeCardDisplayModuleKey) {
+      return null;
+    }
+
+    return cardDisplayModules.find((module) => module.key === activeCardDisplayModuleKey) ?? null;
+  }, [activeCardDisplayModuleKey]);
+
   return (
-    <section className={styles.section} data-collapsed={isCollapsed}>
-      <header className={styles.sectionHeader}>
-        <div className={styles.sectionHeaderRow}>
-          <div className={styles.sectionHeaderTitleGroup}>
-            <h2>界面外观</h2>
-            <Tag color={appDisplaySettings.themeMode === 'dark' ? 'default' : 'blue'}>
-              {appDisplaySettings.themeMode === 'dark' ? '深色' : '浅色'}
-            </Tag>
-            <Tag color="blue">{Math.round(appDisplaySettings.scale * 100)}%</Tag>
+    <>
+      <AccordionItem as="section" className={accordionStyles.item} value="appearance">
+        <AccordionTrigger
+          className={accordionStyles.trigger}
+          collapsedAriaLabel="展开"
+          expandedAriaLabel="收起"
+        >
+          <div className={accordionStyles.triggerBody}>
+            <div className={accordionStyles.triggerMain}>
+              <div className={accordionStyles.titleGroup}>
+                <h2 className={accordionStyles.title}>界面外观</h2>
+                <Tag color={appDisplaySettings.themeMode === 'dark' ? 'default' : 'blue'}>
+                  {appDisplaySettings.themeMode === 'dark' ? '深色' : '浅色'}
+                </Tag>
+                <Tag color="blue">{Math.round(appDisplaySettings.scale * 100)}%</Tag>
+              </div>
+            </div>
           </div>
-          <Button
-            aria-label={isCollapsed ? '展开' : '收起'}
-            className={styles.collapseButton}
-            data-expanded={!isCollapsed}
-            icon={<DownOutlined />}
-            onClick={() => { setIsCollapsed((current) => !current); }}
-            type="text"
-          />
-        </div>
-      </header>
-      <div aria-hidden={isCollapsed} className={styles.sectionCollapse} data-collapsed={isCollapsed}>
-        <div className={styles.sectionCollapseInner}>
+        </AccordionTrigger>
+
+        <AccordionContent className={accordionStyles.content}>
           <div className={styles.appearanceGrid}>
             <article className={styles.appearanceBlock}>
               <div className={styles.appearanceBlockHeader}>
@@ -172,7 +217,7 @@ export function AppearanceSettingsSection() {
               <div className={styles.appearanceBlockHeader}>
                 <div>
                   <strong>显示缩放</strong>
-                  <p>按需调整内容整体缩放，仅在本机生效，不会同步到云端。</p>
+                  <p>按需调整全局字体大小，不改变卡片尺寸、间距和抽屉布局，仅在本机生效。</p>
                 </div>
               </div>
               <div className={styles.zoomPanel}>
@@ -203,67 +248,138 @@ export function AppearanceSettingsSection() {
             <div className={styles.cardDisplayHeader}>
               <div>
                 <strong>卡片信息展示</strong>
-                <p>每个模块都可以选择 0 / 2 / 4 项信息，并按位置指定展示内容。</p>
+                <p>每个模块都可以选择最多 0 / 2 / 4 项信息，外部保留摘要，点击后在底部抽屉里调整字段。</p>
               </div>
               <Tag color="default">共 {cardDisplayModules.length} 个模块</Tag>
             </div>
-            <div className={styles.cardDisplayGrid}>
+            <div className={styles.cardDisplaySummaryList}>
               {cardDisplayModules.map((module) => {
                 const moduleSettings = appDisplaySettings.cardDisplaySettings[module.key];
-                const visibleSlots = Array.from({ length: moduleSettings.displayCount }, (_, index) => index);
+                const selectedLabels = module.metaOptions
+                  .filter((option) => moduleSettings.visibleMetaKeys.includes(option.key))
+                  .map((option) => option.label);
+                const selectedSummary = moduleSettings.displayCount === 0
+                  ? '当前不展示摘要字段'
+                  : selectedLabels.length > 0
+                    ? selectedLabels.join(' · ')
+                    : '点击选择展示字段';
 
                 return (
-                  <article className={styles.cardDisplayModule} key={module.key}>
-                    <div className={styles.cardDisplayModuleHeader}>
-                      <div>
-                        <strong>{module.label}</strong>
-                        <p>{module.description}</p>
+                  <Fragment key={module.key}>
+                    <button
+                      aria-label={`配置 ${module.label} 卡片字段`}
+                      className={styles.cardDisplaySummaryRow}
+                      onClick={() => {
+                        setActiveCardDisplayModuleKey(module.key);
+                      }}
+                      type="button"
+                    >
+                      <div className={styles.cardDisplayModuleHeader}>
+                        <div>
+                          <strong>{module.label}</strong>
+                          <p>{module.description}</p>
+                        </div>
+                        <div className={styles.cardDisplaySummaryMeta}>
+                          <Tag>{moduleSettings.displayCount} 项</Tag>
+                          <ChevronRight aria-hidden="true" className={styles.cardDisplaySummaryChevron} />
+                        </div>
                       </div>
-                      <Tag>{moduleSettings.displayCount} 项</Tag>
-                    </div>
-                    <Radio.Group
-                      buttonStyle="solid"
-                      className={styles.cardDisplayCountGroup}
-                      onChange={(event) => { handleCardDisplayCountChange(module.key, event.target.value as 0 | 2 | 4); }}
-                      optionType="button"
-                      options={cardDisplayCountOptions}
-                      value={moduleSettings.displayCount}
-                    />
-                    {visibleSlots.length > 0 ? (
-                      <div className={styles.cardDisplaySlotGrid}>
-                        {visibleSlots.map((slotIndex) => {
-                          const currentValue = moduleSettings.visibleMetaKeys[slotIndex];
-
-                          return (
-                            <div className={styles.cardDisplaySlot} key={slotIndex}>
-                              <span className={styles.cardDisplaySlotLabel}>第 {slotIndex + 1} 项</span>
-                              <Select
-                                aria-label={`第 ${String(slotIndex + 1)} 项卡片信息选择`}
-                                className={styles.cardDisplaySelect}
-                                onChange={(value) => { handleCardVisibleMetaKeyChange(module.key, slotIndex, value); }}
-                                options={module.metaOptions.map((option) => ({
-                                  disabled: option.key !== currentValue && moduleSettings.visibleMetaKeys.some(
-                                    (selectedKey, selectedIndex) => selectedIndex !== slotIndex && selectedKey === option.key,
-                                  ),
-                                  label: option.label,
-                                  value: option.key,
-                                }))}
-                                placeholder={`请选择第 ${String(slotIndex + 1)} 项`}
-                                showSearch={false}
-                                value={currentValue}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <p className={styles.cardDisplaySummaryText}>{selectedSummary}</p>
+                    </button>
+                    {module.key !== cardDisplayModules[cardDisplayModules.length - 1]?.key ? (
+                      <Separator className={styles.cardDisplaySummarySeparator} />
                     ) : null}
-                  </article>
+                  </Fragment>
                 );
               })}
             </div>
           </article>
-        </div>
-      </div>
-    </section>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AppDrawer
+        destroyOnHidden
+        height="78dvh"
+        onClose={() => {
+          setActiveCardDisplayModuleKey(null);
+        }}
+        open={activeCardDisplayModule != null}
+        placement="bottom"
+        styles={{
+          body: {
+            paddingLeft: '16px',
+            paddingRight: '16px',
+          },
+        }}
+        title={activeCardDisplayModule ? `${activeCardDisplayModule.label}卡片字段` : undefined}
+      >
+        {activeCardDisplayModule ? (() => {
+          const moduleSettings = appDisplaySettings.cardDisplaySettings[activeCardDisplayModule.key];
+          const selectedKeySet = new Set(moduleSettings.visibleMetaKeys);
+          const reachedSelectionLimit =
+            moduleSettings.displayCount > 0 && moduleSettings.visibleMetaKeys.length >= moduleSettings.displayCount;
+
+          return (
+            <section className={styles.cardDisplayDrawerContent}>
+              <header className={styles.cardDisplayDrawerHeader}>
+                <div>
+                  <strong>{activeCardDisplayModule.label}</strong>
+                  <p>{activeCardDisplayModule.description}</p>
+                </div>
+                <Tag>{moduleSettings.displayCount} 项</Tag>
+              </header>
+
+              <Radio.Group
+                buttonStyle="solid"
+                className={styles.cardDisplayCountGroup}
+                onChange={(event) => { handleCardDisplayCountChange(activeCardDisplayModule.key, event.target.value as 0 | 2 | 4); }}
+                optionType="button"
+                options={cardDisplayCountOptions}
+                value={moduleSettings.displayCount}
+              />
+
+              {moduleSettings.displayCount > 0 ? (
+                <FieldSet className={styles.cardDisplayFieldSet}>
+                  <FieldLegend variant="label">展示字段</FieldLegend>
+                  <FieldDescription>
+                    最多选择 {moduleSettings.displayCount} 项，已选择 {moduleSettings.visibleMetaKeys.length} 项。
+                  </FieldDescription>
+                  <FieldGroup className={styles.cardDisplayDrawerCheckboxGroup}>
+                    {activeCardDisplayModule.metaOptions.map((option) => {
+                      const checked = selectedKeySet.has(option.key);
+                      const disabled = !checked && reachedSelectionLimit;
+
+                      return (
+                        <Field className={styles.cardDisplayCheckboxField} key={option.key} orientation="horizontal">
+                          <Checkbox
+                            aria-label={`${activeCardDisplayModule.label} ${option.label}`}
+                            checked={checked}
+                            disabled={disabled}
+                            id={`${activeCardDisplayModule.key}-${option.key}`}
+                            name={`${activeCardDisplayModule.key}-${option.key}`}
+                            onChange={(event) => {
+                              const nextSelectedKeys = event.target.checked
+                                ? [...moduleSettings.visibleMetaKeys, option.key]
+                                : moduleSettings.visibleMetaKeys.filter((key) => key !== option.key);
+
+                              handleCardVisibleMetaKeysChange(activeCardDisplayModule.key, nextSelectedKeys);
+                            }}
+                          />
+                          <FieldLabel className={styles.cardDisplayCheckboxLabel} htmlFor={`${activeCardDisplayModule.key}-${option.key}`}>
+                            {option.label}
+                          </FieldLabel>
+                        </Field>
+                      );
+                    })}
+                  </FieldGroup>
+                </FieldSet>
+              ) : (
+                <p className={styles.cardDisplayEmptyState}>当前已设为 0 项，卡片不会显示摘要字段。</p>
+              )}
+            </section>
+          );
+        })() : null}
+      </AppDrawer>
+    </>
   );
 }

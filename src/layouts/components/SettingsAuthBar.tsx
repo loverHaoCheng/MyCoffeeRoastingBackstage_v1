@@ -2,7 +2,7 @@ import EditOutlined from '@ant-design/icons/EditOutlined';
 import LogoutOutlined from '@ant-design/icons/LogoutOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
-import Input from 'antd/es/input';
+import Input from '@/shared/components/ui/input';
 import Typography from 'antd/es/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';

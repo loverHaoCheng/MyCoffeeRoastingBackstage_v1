@@ -1,7 +1,8 @@
 import { App } from 'antd';
-import Input from "antd/es/input";
-import InputNumber from "antd/es/input-number";
-import Select from "antd/es/select";
+import { Select } from '@/components/ui/select';
+import Input from '@/shared/components/ui/input';
+import InputNumber from '@/shared/components/ui/input-number';
+import AntdSelect from "antd/es/select";
 import { useQuery } from '@tanstack/react-query';
 import { type FieldPath } from 'react-hook-form';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -158,25 +159,41 @@ export function BeanFieldEditorDrawer({
   const updateBeanMutation = useUpdateBean();
   const { costTemplateSettings } = useCostTemplateSettings();
   const editableFieldPath = fieldPath as BeanEditableFieldPath | undefined;
-  const fieldConfig = editableFieldPath ? fieldMeta[editableFieldPath] : undefined;
-  const fallbackDraft = useMemo(() => (bean ? createFallbackEditableDetail(bean) : null), [bean]);
+  const [lastOpenContext, setLastOpenContext] = useState<{
+    bean: Bean;
+    fieldPath: BeanEditableFieldPath;
+  } | null>(null);
+
+  useEffect(() => {
+    if (open && bean != null && editableFieldPath != null) {
+      setLastOpenContext({
+        bean,
+        fieldPath: editableFieldPath,
+      });
+    }
+  }, [bean, editableFieldPath, open]);
+
+  const effectiveBean = open && bean != null ? bean : lastOpenContext?.bean ?? null;
+  const effectiveFieldPath = open && editableFieldPath != null ? editableFieldPath : lastOpenContext?.fieldPath;
+  const fieldConfig = effectiveFieldPath ? fieldMeta[effectiveFieldPath] : undefined;
+  const fallbackDraft = useMemo(() => (effectiveBean ? createFallbackEditableDetail(effectiveBean) : null), [effectiveBean]);
   const editableDetailQuery = useQuery({
-    enabled: open && bean != null && editableFieldPath != null,
+    enabled: open && effectiveBean != null && effectiveFieldPath != null,
     initialData: fallbackDraft ?? undefined,
     queryFn: async () => {
-      if (!bean) {
+      if (!effectiveBean) {
         throw new Error('缺少生豆信息');
       }
 
-      const response = await beanService.getEditableBean(bean.id);
+      const response = await beanService.getEditableBean(effectiveBean.id);
 
       return response.data;
     },
-    queryKey: bean == null ? beanEditableDetailQueryKeys.all : beanEditableDetailQueryKeys.detail(bean.id),
+    queryKey: effectiveBean == null ? beanEditableDetailQueryKeys.all : beanEditableDetailQueryKeys.detail(effectiveBean.id),
   });
   const [draft, setDraft] = useState<GreenBeanFormInput | null>(fallbackDraft);
   const hasUserEditedRef = useRef(false);
-  const sessionKey = String(bean?.id ?? '') + ':' + (editableFieldPath ?? '');
+  const sessionKey = String(effectiveBean?.id ?? '') + ':' + (effectiveFieldPath ?? '');
   const currentDraft = draft ?? fallbackDraft;
 
   useEffect(() => {
@@ -194,7 +211,7 @@ export function BeanFieldEditorDrawer({
 
   const fieldLabel = fieldConfig?.label ?? '修改信息';
 
-  if (!open || bean == null || editableFieldPath == null || currentDraft == null) {
+  if (effectiveBean == null || effectiveFieldPath == null || currentDraft == null) {
     return null;
   }
 
@@ -220,9 +237,9 @@ export function BeanFieldEditorDrawer({
     }
 
     onClose();
-    submissionBackupService.save('update', { beanId: bean.id, input: parsed.data }, 'bean');
+    submissionBackupService.save('update', { beanId: effectiveBean.id, input: parsed.data }, 'bean');
 
-    const updateTask = updateBeanMutation.mutateAsync({ beanId: bean.id, input: parsed.data }).catch(
+    const updateTask = updateBeanMutation.mutateAsync({ beanId: effectiveBean.id, input: parsed.data }).catch(
       (error: unknown) => {
         void message.error(getUserFacingErrorMessage(error, '生豆同步失败，本地备份已保留，请检查后重试。'));
       },
@@ -250,13 +267,13 @@ export function BeanFieldEditorDrawer({
       return null;
     }
 
-    switch (editableFieldPath) {
+    switch (effectiveFieldPath) {
       case 'defaultRoastInputGrams':
         return (
           <InputNumber
             min={1}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? 0);
+              updateDraft(effectiveFieldPath, value ?? 0);
             }}
             precision={0}
             suffix="g"
@@ -268,14 +285,14 @@ export function BeanFieldEditorDrawer({
       case 'tastingEndDays':
         return (
           <InputNumber
-            min={editableFieldPath === 'agingDays' ? 0 : 1}
+            min={effectiveFieldPath === 'agingDays' ? 0 : 1}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? (editableFieldPath === 'agingDays' ? 0 : 40));
+              updateDraft(effectiveFieldPath, value ?? (effectiveFieldPath === 'agingDays' ? 0 : 40));
             }}
             precision={0}
             suffix="天"
             style={{ width: '100%' }}
-            value={currentDraft[editableFieldPath]}
+            value={currentDraft[effectiveFieldPath]}
           />
         );
       case 'defaultSaleUnitPrice':
@@ -283,7 +300,7 @@ export function BeanFieldEditorDrawer({
           <InputNumber
             min={0.01}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? 0);
+              updateDraft(effectiveFieldPath, value ?? 0);
             }}
             precision={2}
             prefix="¥"
@@ -296,7 +313,7 @@ export function BeanFieldEditorDrawer({
           <InputNumber
             min={1}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? null);
+              updateDraft(effectiveFieldPath, value ?? null);
             }}
             precision={0}
             suffix="g"
@@ -310,7 +327,7 @@ export function BeanFieldEditorDrawer({
             allowClear
             aria-label="成本模板"
             onChange={(value: string | undefined) => {
-              updateDraft(editableFieldPath, value ?? null);
+              updateDraft(effectiveFieldPath, value ?? null);
             }}
             options={costTemplateSettings.templates.map((template) => ({
               label: template.name,
@@ -324,11 +341,11 @@ export function BeanFieldEditorDrawer({
         );
       case 'flavorTags':
         return (
-          <Select
+          <AntdSelect
             aria-label="风味"
             mode="tags"
             onChange={(value) => {
-              updateDraft(editableFieldPath, normalizeFlavorTags(value));
+              updateDraft(effectiveFieldPath, normalizeFlavorTags(value));
             }}
             open={false}
             placeholder={fieldConfig.placeholder}
@@ -341,7 +358,7 @@ export function BeanFieldEditorDrawer({
           <InputNumber
             min={0.01}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? 0);
+              updateDraft(effectiveFieldPath, value ?? 0);
             }}
             precision={2}
             prefix="¥"
@@ -355,12 +372,12 @@ export function BeanFieldEditorDrawer({
           <InputNumber
             min={0}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? 0);
+              updateDraft(effectiveFieldPath, value ?? 0);
             }}
             precision={0}
             suffix="g"
             style={{ width: '100%' }}
-            value={currentDraft[editableFieldPath]}
+            value={currentDraft[effectiveFieldPath]}
           />
         );
       case 'altitudeMetersMax':
@@ -369,12 +386,12 @@ export function BeanFieldEditorDrawer({
           <InputNumber
             min={0}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? null);
+              updateDraft(effectiveFieldPath, value ?? null);
             }}
             precision={0}
             suffix="m"
             style={{ width: '100%' }}
-            value={currentDraft[editableFieldPath] ?? null}
+            value={currentDraft[effectiveFieldPath] ?? null}
           />
         );
       case 'densityGPerL':
@@ -382,7 +399,7 @@ export function BeanFieldEditorDrawer({
           <InputNumber
             min={0}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? null);
+              updateDraft(effectiveFieldPath, value ?? null);
             }}
             precision={0}
             suffix="g/L"
@@ -395,7 +412,7 @@ export function BeanFieldEditorDrawer({
           <InputNumber
             min={0}
             onChange={(value) => {
-              updateDraft(editableFieldPath, value ?? null);
+              updateDraft(effectiveFieldPath, value ?? null);
             }}
             precision={2}
             suffix="%"
@@ -408,7 +425,7 @@ export function BeanFieldEditorDrawer({
           <Input.TextArea
             autoSize={{ minRows: 3, maxRows: 8 }}
             onChange={(event) => {
-              updateDraft(editableFieldPath, event.target.value as GreenBeanFormInput[typeof editableFieldPath]);
+              updateDraft(effectiveFieldPath, event.target.value as GreenBeanFormInput[typeof effectiveFieldPath]);
             }}
             placeholder={fieldConfig.placeholder}
             value={currentDraft.notes ?? ''}
@@ -418,10 +435,10 @@ export function BeanFieldEditorDrawer({
         return (
           <Input
             onChange={(event) => {
-              updateDraft(editableFieldPath, event.target.value as GreenBeanFormInput[typeof editableFieldPath]);
+              updateDraft(effectiveFieldPath, event.target.value as GreenBeanFormInput[typeof effectiveFieldPath]);
             }}
             placeholder={fieldConfig.placeholder}
-            value={currentDraft[editableFieldPath] ?? ''}
+            value={currentDraft[effectiveFieldPath] ?? ''}
           />
         );
     }

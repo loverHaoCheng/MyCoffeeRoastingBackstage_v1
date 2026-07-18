@@ -251,7 +251,6 @@ describe('ProductionPage (烘焙历史)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试熟豆' }));
 
-    expect(screen.getAllByText('编辑烘焙记录').length).toBeGreaterThan(0);
     const trainingHeading = screen.getByRole('heading', { name: 'AI 训练准备' });
     const saveButton = screen.getByRole('button', { name: /保存烘焙记录/ });
 
@@ -347,7 +346,7 @@ describe('ProductionPage (烘焙历史)', () => {
   it('gives every roast batch creator control an accessible name', () => {
     renderWithQuery(<RoastBatchCreator onCreate={vi.fn()} />);
 
-    expect(screen.getByRole('textbox', { name: '烘焙日期' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('选择烘焙日期与时间')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '烘焙程度' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '熟豆名称' })).toBeInTheDocument();

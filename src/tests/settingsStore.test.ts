@@ -81,4 +81,27 @@ describe('useSettingsStore cost template defaults', () => {
 
     expect(useSettingsStore.getState().costTemplateSettings.defaultTemplateId).toBeNull();
   });
+
+  it('keeps newly selected roast history and roast plan card fields after saving display settings', () => {
+    const nextSettings = createDefaultAppDisplaySettings();
+
+    nextSettings.cardDisplaySettings.roastBatch = {
+      displayCount: 2,
+      visibleMetaKeys: ['salesMode', 'roastDate'],
+    };
+    nextSettings.cardDisplaySettings.roastPlan = {
+      displayCount: 4,
+      visibleMetaKeys: ['stepCount', 'roastPurpose', 'plannedBatchWeight', 'roasterModel'],
+    };
+
+    const saved = useSettingsStore.getState().saveAppDisplaySettings(nextSettings);
+
+    expect(saved.cardDisplaySettings.roastBatch.visibleMetaKeys).toEqual(['salesMode', 'roastDate']);
+    expect(saved.cardDisplaySettings.roastPlan.visibleMetaKeys).toEqual([
+      'stepCount',
+      'roastPurpose',
+      'plannedBatchWeight',
+      'roasterModel',
+    ]);
+  });
 });

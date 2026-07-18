@@ -6,7 +6,7 @@ import Alert from 'antd/es/alert';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import Form from 'antd/es/form';
-import Input from 'antd/es/input';
+import Input from '@/shared/components/ui/input';
 import Space from 'antd/es/space';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';

@@ -7,6 +7,7 @@ import { useRoastPlans } from '@/modules/roast/hooks';
 import { getRoastLevelSuggestion, normalizeRoastLevel } from '@/modules/roast/constants/roastLevel';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
 import { createDefaultRoastBatchEvaluation } from '@/modules/roast/services/roast-batch/roastBatch.service.shared';
+import { ReadonlyFieldSectionList } from '@/shared/components/ReadonlyFieldSectionList';
 
 import {
   RoastBatchForm,
@@ -114,109 +115,115 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
       <div className={styles.body}>
         <section className={styles.section}>
           <h4>基本信息</h4>
-          <div className={styles.fieldGrid}>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>烘焙日期</span>
-              <span className={styles.fieldValue}>{formatRoastDate(batch.roastDate)}</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>烘焙程度</span>
-              <span className={styles.fieldValue}>{normalizeRoastLevel(batch.roastLevel)}</span>
-            </div>
-          </div>
+          <ReadonlyFieldSectionList
+            sections={[
+              {
+                key: 'basic',
+                items: [
+                  { key: 'roastDate', label: '烘焙日期', value: formatRoastDate(batch.roastDate) },
+                  { key: 'roastLevel', label: '烘焙程度', value: normalizeRoastLevel(batch.roastLevel) },
+                ],
+              },
+            ]}
+          />
         </section>
 
         <section className={styles.section}>
           <h4>生豆信息</h4>
-          <div className={styles.fieldGrid}>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>生豆</span>
-              <span className={styles.fieldValue}>{batch.greenBeanName}</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>熟豆名称</span>
-              <span className={styles.fieldValue}>{batch.roastedBeanName ?? batch.greenBeanName}</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>去向</span>
-              <span className={styles.fieldValue}>{batch.salesMode === 'selfUse' ? '自留' : '销售'}</span>
-            </div>
-            {batch.salesMode === 'sale' ? (
-              <div className={styles.field}>
-                <span className={styles.fieldLabel}>本次最终定价</span>
-                <span className={styles.fieldValue}>{formatOptionalCurrency(batch.finalSaleUnitPrice)}</span>
-              </div>
-            ) : null}
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>烘焙计划</span>
-              <span className={styles.fieldValue}>{formatOptionalText(batch.roastPlanName, '未关联')}</span>
-            </div>
-          </div>
+          <ReadonlyFieldSectionList
+            sections={[
+              {
+                key: 'bean',
+                items: [
+                  { key: 'greenBeanName', label: '生豆', value: batch.greenBeanName },
+                  { key: 'roastedBeanName', label: '熟豆名称', value: batch.roastedBeanName ?? batch.greenBeanName },
+                  { key: 'salesMode', label: '去向', value: batch.salesMode === 'selfUse' ? '自留' : '销售' },
+                  ...(batch.salesMode === 'sale'
+                    ? [
+                        {
+                          key: 'finalSaleUnitPrice',
+                          label: '本次最终定价',
+                          value: formatOptionalCurrency(batch.finalSaleUnitPrice),
+                        },
+                      ]
+                    : []),
+                  { key: 'roastPlanName', label: '烘焙计划', value: formatOptionalText(batch.roastPlanName, '未关联') },
+                ],
+              },
+            ]}
+          />
         </section>
 
         <section className={styles.section}>
           <h4>烘焙数据</h4>
-          <div className={styles.fieldGrid}>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>入豆量 (g)</span>
-              <span className={styles.fieldValue}>{batch.inputWeightGrams} g</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>出豆量 (g)</span>
-              <span className={styles.fieldValue}>{batch.outputWeightGrams} g</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>失水率</span>
-              <span className={styles.fieldValue}>{lossRate}%</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>发展比 (%)</span>
-              <span className={styles.fieldValue}>{batch.developmentRatio ?? '-'}%</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>一爆时间 (s)</span>
-              <span className={styles.fieldValue}>{batch.firstCrackTime ?? '-'} s</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>总烘焙时间 (s)</span>
-              <span className={styles.fieldValue}>{batch.totalRoastTime ?? '-'} s</span>
-            </div>
-          </div>
+          <ReadonlyFieldSectionList
+            sections={[
+              {
+                key: 'metrics',
+                items: [
+                  { key: 'inputWeightGrams', label: '入豆量', value: `${String(batch.inputWeightGrams)} g` },
+                  { key: 'outputWeightGrams', label: '出豆量', value: `${String(batch.outputWeightGrams)} g` },
+                  { key: 'lossRate', label: '失水率', value: `${String(lossRate)}%` },
+                  { key: 'developmentRatio', label: '发展比', value: `${String(batch.developmentRatio ?? '-')}%` },
+                  { key: 'firstCrackTime', label: '一爆时间', value: `${String(batch.firstCrackTime ?? '-')} s` },
+                  { key: 'totalRoastTime', label: '总烘焙时间', value: `${String(batch.totalRoastTime ?? '-')} s` },
+                ],
+              },
+            ]}
+          />
         </section>
 
         <section className={styles.section}>
           <h4>评价表单</h4>
-          <div className={styles.fieldGrid}>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>综合评分</span>
-              <span className={styles.fieldValue}>{batch.evaluation.overallScore ?? '-'}</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>目标达成度</span>
-              <span className={styles.fieldValue}>{batch.evaluation.targetMatchScore ?? '-'}</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>风味描述</span>
-              <span className={styles.fieldValue}>{formatOptionalText(batch.evaluation.flavorNotes, '暂无记录')}</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>缺陷记录</span>
-              <span className={styles.fieldValue}>{formatOptionalText(batch.evaluation.defectNotes, '暂无记录')}</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>下次调整建议</span>
-              <span className={styles.fieldValue}>{formatOptionalText(batch.evaluation.nextAdjustmentNotes, '暂无记录')}</span>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>训练授权</span>
-              <span className={styles.fieldValue}>{batch.evaluation.allowTraining ? '已授权' : '未授权'}</span>
-            </div>
-          </div>
+          <ReadonlyFieldSectionList
+            sections={[
+              {
+                key: 'evaluation',
+                items: [
+                  { key: 'overallScore', label: '综合评分', value: batch.evaluation.overallScore ?? '-' },
+                  { key: 'targetMatchScore', label: '目标达成度', value: batch.evaluation.targetMatchScore ?? '-' },
+                  {
+                    key: 'flavorNotes',
+                    label: '风味描述',
+                    multiline: true,
+                    value: formatOptionalText(batch.evaluation.flavorNotes, '暂无记录'),
+                  },
+                  {
+                    key: 'defectNotes',
+                    label: '缺陷记录',
+                    multiline: true,
+                    value: formatOptionalText(batch.evaluation.defectNotes, '暂无记录'),
+                  },
+                  {
+                    key: 'nextAdjustmentNotes',
+                    label: '下次调整建议',
+                    multiline: true,
+                    value: formatOptionalText(batch.evaluation.nextAdjustmentNotes, '暂无记录'),
+                  },
+                  { key: 'allowTraining', label: '训练授权', value: batch.evaluation.allowTraining ? '已授权' : '未授权' },
+                ],
+              },
+            ]}
+          />
         </section>
 
         <section className={styles.section}>
           <h4>备注</h4>
-          <p className={styles.notes}>{batch.notes ?? '暂无备注'}</p>
+          <ReadonlyFieldSectionList
+            sections={[
+              {
+                key: 'notes',
+                items: [
+                  {
+                    key: 'notesContent',
+                    label: '内容',
+                    multiline: true,
+                    value: formatOptionalText(batch.notes, '暂无备注'),
+                  },
+                ],
+              },
+            ]}
+          />
         </section>
 
         <section className={styles.section}>

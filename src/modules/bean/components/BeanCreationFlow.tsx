@@ -1,8 +1,7 @@
 import PlusOutlined from '@ant-design/icons/PlusOutlined';
 import { App } from 'antd';
 import Button from 'antd/es/button';
-import Drawer from 'antd/es/drawer';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { createDefaultBeanFormValues } from '@/modules/bean/constants';
 import { beanAiRecognitionService } from '@/modules/bean/services';
@@ -21,9 +20,14 @@ type BeanCreationMode = 'ai' | 'manual';
 interface BeanCreationFlowProps {
   hasCostTemplate: boolean;
   onCreate: (input: GreenBeanCreateInput) => void;
+  manualInitialValues?: GreenBeanCreateInput;
+  openManualRequestKey?: number | null;
 }
 
 const actionSheetStyles = {
+  body: {
+    paddingBottom: 0,
+  },
   content: {
     borderRadius: '28px 28px 0 0',
     overflow: 'hidden',
@@ -74,7 +78,12 @@ const mapAiRecognitionToBeanCreateInput = (recognition: BeanImageRecognitionResu
   };
 };
 
-export function BeanCreationFlow({ hasCostTemplate, onCreate }: BeanCreationFlowProps) {
+export function BeanCreationFlow({
+  hasCostTemplate,
+  onCreate,
+  manualInitialValues,
+  openManualRequestKey = null,
+}: BeanCreationFlowProps) {
   const { message } = App.useApp();
   const [isCreateActionSheetOpen, setIsCreateActionSheetOpen] = useState(false);
   const [aiRecognitionUsage, setAiRecognitionUsage] = useState<BeanImageRecognitionUsage | null>(null);
@@ -83,6 +92,7 @@ export function BeanCreationFlow({ hasCostTemplate, onCreate }: BeanCreationFlow
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [creationMode, setCreationMode] = useState<BeanCreationMode>('manual');
   const [recognizedBeanInitialValues, setRecognizedBeanInitialValues] = useState<GreenBeanCreateInput | undefined>();
+  const lastHandledManualRequestKeyRef = useRef<null | number>(null);
 
   const aiRecognitionQuotaText = (() => {
     if (isAiRecognitionUsageLoading) {
@@ -150,6 +160,18 @@ export function BeanCreationFlow({ hasCostTemplate, onCreate }: BeanCreationFlow
     setRecognizedBeanInitialValues(undefined);
   };
 
+  const openManualCreation = (initialValues?: GreenBeanCreateInput) => {
+    if (!hasCostTemplate) {
+      void message.warning('请先前往财务页创建至少一个成本模板，再新增生豆。');
+      return;
+    }
+
+    setIsCreateActionSheetOpen(false);
+    setCreationMode('manual');
+    setRecognizedBeanInitialValues(initialValues);
+    setCreationDrawerOpen(true);
+  };
+
   const openCreationDrawer = (mode: BeanCreationMode) => {
     if (mode === 'ai' && isAiRecognitionActionDisabled) {
       return;
@@ -162,13 +184,13 @@ export function BeanCreationFlow({ hasCostTemplate, onCreate }: BeanCreationFlow
   };
 
   const handleOpenCreateFlow = () => {
+    setAiRecognitionUsage(null);
+    setAiRecognitionUsageError('');
     if (!hasCostTemplate) {
       void message.warning('请先前往财务页创建至少一个成本模板，再新增生豆。');
       return;
     }
 
-    setAiRecognitionUsage(null);
-    setAiRecognitionUsageError('');
     setIsCreateActionSheetOpen(true);
   };
 
@@ -183,19 +205,30 @@ export function BeanCreationFlow({ hasCostTemplate, onCreate }: BeanCreationFlow
     onCreate(input);
   };
 
+  useEffect(() => {
+    if (openManualRequestKey == null || openManualRequestKey === lastHandledManualRequestKeyRef.current) {
+      return;
+    }
+
+    lastHandledManualRequestKeyRef.current = openManualRequestKey;
+    openManualCreation(manualInitialValues);
+  }, [manualInitialValues, openManualRequestKey]);
+
   return (
     <>
       <ViewportFloatingActionButton ariaLabel="新增生豆" icon={<PlusOutlined />} onClick={handleOpenCreateFlow} />
 
-      <Drawer
+      <AppDrawer
         closable={false}
         className={styles.actionSheet}
+        destroyOnHidden
         height={176}
         onClose={() => {
           setIsCreateActionSheetOpen(false);
         }}
         open={isCreateActionSheetOpen}
         placement="bottom"
+        showSwipeHandle={false}
         styles={actionSheetStyles}
         title="选择创建方式"
       >
@@ -229,7 +262,7 @@ export function BeanCreationFlow({ hasCostTemplate, onCreate }: BeanCreationFlow
             </Button>
           </div>
         </div>
-      </Drawer>
+      </AppDrawer>
 
       <AppDrawer
         className={styles.creationDrawer}

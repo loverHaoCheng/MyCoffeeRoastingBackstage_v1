@@ -22,6 +22,13 @@ import { useAppBuildVersion } from '@/app/hooks/useAppBuildVersion';
 import { LegalFooter } from '@/modules/legal/components';
 import { RoastedBeanConnectionCard } from '@/modules/settings/components/RoastedBeanConnectionCard';
 import { AppearanceSettingsSection } from '@/modules/settings/components/AppearanceSettingsSection';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/shared/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
 import { formatShanghaiBuildVersion } from '@/shared/time/shanghaiTime';
 import {
   userDataBackupService,
@@ -31,6 +38,7 @@ import {
 } from '@/modules/settings/services/userDataBackup.service';
 
 import styles from './SettingsPage.module.css';
+import accordionStyles from '../components/SettingsAccordionItem.module.css';
 
 const qrCodeEntries: Record<
   QrCodeKey,
@@ -328,22 +336,38 @@ export function SettingsPage() {
   return (
     <main className={styles.page}>
       <form className={styles.form}>
-        <RoastedBeanConnectionCard />
+        <Accordion
+          className={accordionStyles.list}
+          defaultValue={import.meta.env.MODE === 'test' ? ['appearance'] : []}
+          type="single"
+        >
+          <RoastedBeanConnectionCard />
 
-        <AppearanceSettingsSection />
+          <AppearanceSettingsSection />
 
-        <section aria-label="AI 烘焙能力" className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderRow}>
-              <div className={styles.sectionHeaderTitleGroup}>
-                <h2>AI 烘焙能力（筹备中）</h2>
+          <AccordionItem as="section" className={accordionStyles.item} value="ai-roast">
+            <AccordionTrigger
+              className={accordionStyles.trigger}
+              collapsedAriaLabel="展开"
+              disabled
+              expandedAriaLabel="收起"
+            >
+              <div className={accordionStyles.triggerBody}>
+                <div className={accordionStyles.triggerMain}>
+                  <div className={accordionStyles.titleGroup}>
+                    <h2 className={accordionStyles.title}>AI 烘焙能力（筹备中）</h2>
+                  </div>
+                </div>
               </div>
-            </div>
-            <p className={styles.sectionStatusCopy}>
-              当前版本先公开入口、规则和数据准备要求。AI 推荐与训练上传会在后续阶段逐步开放。
-            </p>
-          </div>
-        </section>
+            </AccordionTrigger>
+
+            <AccordionContent className={accordionStyles.content}>
+              <p className={accordionStyles.contentCopy}>
+                当前版本先公开入口、规则和数据准备要求。AI 推荐与训练上传会在后续阶段逐步开放。
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <section className={styles.qrSection} data-expanded={visibleCode ? 'true' : 'false'}>
           <div className={styles.qrActions}>
@@ -467,6 +491,8 @@ export function SettingsPage() {
               </Radio>
             </Radio.Group>
           </Modal>
+
+          <Separator className={styles.footerSeparator} />
 
           <section className={styles.dangerSection}>
             <Button

@@ -185,16 +185,14 @@ describe('BeanPage', () => {
 
     renderWithQuery(<BeanPage />);
 
-    fireEvent.click(await screen.findByRole('button', { name: '删除 零库存测试豆' }));
+    const actionTrigger = await screen.findByRole('button', { name: '更多操作 零库存测试豆' });
 
-    const deleteDialog = await screen.findByRole('dialog', { name: '确认删除' });
-    const deleteButton = within(deleteDialog).getByRole('button', { name: '删 除' });
-
-    expect(deleteButton).toBeDisabled();
-
-    fireEvent.click(within(deleteDialog).getByRole('radio', { name: /全部改为通用计划/ }));
-    expect(deleteButton).toBeEnabled();
-    fireEvent.click(within(deleteDialog).getByRole('button', { name: '删 除' }));
+    fireEvent.pointerDown(actionTrigger, {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.click(actionTrigger);
+    fireEvent.click(await screen.findByLabelText('删除 零库存测试豆'));
 
     await waitFor(() => {
       expect(deleteBeanSpy).toHaveBeenCalledWith('bean-zero-stock', 'makeGeneric');
@@ -325,6 +323,113 @@ describe('BeanPage', () => {
     expect(await screen.findByText('零库存测试豆')).toBeInTheDocument();
   });
 
+  it('treats beans with remaining weight of 0 as zero-stock even if stockKg is stale', async () => {
+    const beans = [
+      {
+        agingDays: 14,
+        costPerKg: 86,
+        createdAt: '2026-07-03T00:00:00.000Z',
+        flavorTags: ['柑橘', '花香'],
+        grade: 'G1',
+        id: 'bean-remaining-zero',
+        name: '剩余归零测试豆',
+        origin: '埃塞俄比亚 · 古吉',
+        purchasedTotalPrice: 86,
+        purchasedWeightGrams: 1000,
+        process: '水洗',
+        remainingWeightGrams: 0,
+        supplierName: '测试供应商',
+        stockKg: 0.8,
+        tastingEndDays: 40,
+        updatedAt: '2026-07-03T00:00:00.000Z',
+        variety: 'Heirloom',
+      },
+    ];
+
+    beanCacheService.save(beans, 'mock');
+    stubBeanQueries(beans);
+
+    renderWithQuery(<BeanPage />);
+
+    const collapsedSection = await screen.findByLabelText('零库存生豆折叠区');
+
+    expect(within(collapsedSection).getByText('零库存生豆')).toBeInTheDocument();
+    expect(screen.queryByLabelText('有库存生豆列表')).not.toHaveTextContent('剩余归零测试豆');
+
+    fireEvent.click(within(collapsedSection).getByRole('button', { name: '零库存生豆' }));
+
+    expect(within(collapsedSection).getByLabelText('零库存生豆列表')).toHaveTextContent('剩余归零测试豆');
+  });
+
+  it('replaces zero-stock bean editing with restock and prefills a new bean form', async () => {
+    enableBeanCreationPrerequisites();
+
+    const beans = [
+      {
+        agingDays: 21,
+        costPerKg: 103,
+        costTemplateId: 'template-1',
+        createdAt: '2026-07-03T00:00:00.000Z',
+        defaultRoastInputGrams: 240,
+        defaultSaleUnitPrice: 48,
+        defaultSaleUnitWeightGrams: 160,
+        flavorTags: ['柑橘', '黄花'],
+        grade: 'G1',
+        harvestSeason: '2025/26',
+        id: 'bean-restock',
+        millName: '测试处理厂',
+        name: '续购测试豆',
+        notes: '测试备注',
+        origin: '埃塞俄比亚 · 耶加雪菲',
+        originArea: '歌德',
+        originCountry: '埃塞俄比亚',
+        originRegion: '耶加雪菲',
+        process: '水洗',
+        purchaseDate: '2026-07-01',
+        purchasedTotalPrice: 206,
+        purchasedWeightGrams: 2000,
+        remainingWeightGrams: 0,
+        supplierName: '音季',
+        stockKg: 0,
+        tastingEndDays: 45,
+        updatedAt: '2026-07-03T00:00:00.000Z',
+        variety: 'Heirloom',
+      },
+    ];
+
+    beanCacheService.save(beans, 'mock');
+    stubBeanQueries(beans);
+
+    renderWithQuery(<BeanPage />);
+
+    const collapsedSection = await screen.findByLabelText('零库存生豆折叠区');
+
+    fireEvent.click(within(collapsedSection).getByRole('button', { name: '零库存生豆' }));
+
+    expect(screen.queryByRole('button', { name: '全部编辑 续购测试豆' })).not.toBeInTheDocument();
+    expect(within(collapsedSection).getByRole('button', { name: '立即续购 续购测试豆' })).toBeInTheDocument();
+
+    const actionTrigger = within(collapsedSection).getByRole('button', { name: '更多操作 续购测试豆' });
+
+    fireEvent.pointerDown(actionTrigger, {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.click(actionTrigger);
+
+    expect(screen.queryByRole('menuitem', { name: '续购' })).not.toBeInTheDocument();
+
+    fireEvent.click(within(collapsedSection).getByRole('button', { name: '立即续购 续购测试豆' }));
+
+    expect(await screen.findByRole('dialog', { name: '新增生豆' })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('续购测试豆')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Heirloom')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('水洗')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('音季')).toBeInTheDocument();
+    expect(screen.getByLabelText('购买重量')).toHaveValue('2000');
+    expect(screen.getByLabelText('剩余重量')).toHaveValue('2000');
+  });
+
   it('calculates the summary average cost with remaining stock weighting', () => {
     saveBeanSummaryCache();
 
@@ -343,7 +448,7 @@ describe('BeanPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: '全部编辑 测试豆 A' }));
 
-    expect(await screen.findByText('编辑生豆')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: '编辑生豆' })).toBeInTheDocument();
   });
 
   it('matches flavor tags with fuzzy keyword search', async () => {

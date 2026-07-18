@@ -9,16 +9,19 @@ import type {
   FinanceOverviewDrilldownKey,
   FinanceOverviewDrilldownPayload,
   FinanceExpenseRecord,
+  FinanceIncomeRecord,
   FinanceOverviewMetrics,
   FinanceRangePreset,
   RoastBatchRevenueDetail,
 } from '../types';
 import { getFinanceExpenseCategoryLabel } from '../utils/expensePresentation';
+import { getFinanceIncomeChannelLabel } from '../utils/incomePresentation';
 
 interface CalculateFinanceOverviewInput {
   beans: Bean[];
   calculations: CostCalculationRecord[];
   expenseRecords: FinanceExpenseRecord[];
+  incomeRecords: FinanceIncomeRecord[];
   roastBatches: RoastBatchRecord[];
   range: FinanceDateRange;
 }
@@ -27,6 +30,7 @@ interface BuildFinanceOverviewDrilldownInput {
   beans: Bean[];
   calculations: CostCalculationRecord[];
   expenseRecords: FinanceExpenseRecord[];
+  incomeRecords: FinanceIncomeRecord[];
   key: FinanceOverviewDrilldownKey;
   roastBatches: RoastBatchRecord[];
   range: FinanceDateRange;
@@ -245,10 +249,14 @@ export const calculateFinanceOverview = ({
   beans,
   calculations,
   expenseRecords,
+  incomeRecords,
   roastBatches,
   range,
 }: CalculateFinanceOverviewInput): FinanceOverviewMetrics => {
   const roastBatchRevenueRecords = buildRoastBatchRevenueRecords(roastBatches, beans, range);
+  const receivedIncomeRecords = incomeRecords.filter((record) => {
+    return record.status === 'received' && isDateWithinFinanceRange(record.incomeDate, range);
+  });
   const filteredExpenseRecords = expenseRecords.filter((record) => isDateWithinFinanceRange(record.expenseDate, range));
   const filteredBeanPurchases = beans.filter((bean) => {
     const purchaseDate = bean.purchaseDate ?? getFinanceDateTextFromTimestamp(bean.createdAt);
@@ -257,7 +265,10 @@ export const calculateFinanceOverview = ({
     return purchasedTotalPrice > 0 && isDateWithinFinanceRange(purchaseDate, range);
   });
 
-  const realizedIncome = toMoney(roastBatchRevenueRecords.reduce((total, record) => total + record.amount, 0));
+  const realizedIncome = toMoney(
+    roastBatchRevenueRecords.reduce((total, record) => total + record.amount, 0) +
+      receivedIncomeRecords.reduce((total, record) => total + record.amount, 0),
+  );
   const beanPurchaseExpenses = toMoney(
     filteredBeanPurchases.reduce((total, bean) => {
       return total + (bean.purchasedTotalPrice ?? 0);
@@ -286,7 +297,7 @@ export const calculateFinanceOverview = ({
     estimatedRevenue: calculateEstimatedRevenueFromBeans(beans, calculations),
     expenseRecordCount: filteredExpenseRecords.length + filteredBeanPurchases.length,
     grossProfit,
-    incomeRecordCount: roastBatchRevenueRecords.length,
+    incomeRecordCount: roastBatchRevenueRecords.length + receivedIncomeRecords.length,
     operatingProfit,
     realizedIncome,
     totalExpenses,
@@ -297,6 +308,7 @@ export const buildFinanceOverviewDrilldown = ({
   beans,
   calculations,
   expenseRecords,
+  incomeRecords,
   key,
   roastBatches,
   range,
@@ -340,19 +352,36 @@ export const buildFinanceOverviewDrilldown = ({
 
   if (key === 'realizedIncome') {
     const roastBatchRevenueRecords = buildRoastBatchRevenueRecords(roastBatches, beans, range);
-    const records = sortOverviewDetailRecords(
-      roastBatchRevenueRecords.map((record) => ({
-        amount: record.amount,
-        categoryLabel: `${formatRevenueUnitCount(record.saleUnitCount)} 份 × ¥${record.saleUnitPrice.toFixed(2)}`,
-        date: record.date,
-        deleteHint: '烘焙历史收入请前往烘焙历史中修改对应记录。',
-        deletable: false,
+    const manualIncomeRecords: FinanceOverviewDetailItem[] = incomeRecords
+      .filter((record) => record.status === 'received' && isDateWithinFinanceRange(record.incomeDate, range))
+      .map((record) => ({
+        amount: toMoney(record.amount),
+        categoryLabel: getFinanceIncomeChannelLabel(record.channel),
+        date: record.incomeDate,
+        deletable: true,
         id: record.id,
-        notes: record.notes,
-        sourceType: 'roastBatchRevenue',
-        sourceLabel: '烘焙历史销售',
+        notes: record.notes ?? null,
+        sourceEntityId: record.sourceEntityId ?? null,
+        sourceType: 'manualIncome',
+        sourceLabel: '手工补录收入',
         title: record.title,
-      })),
+      }));
+    const records = sortOverviewDetailRecords(
+      [
+        ...roastBatchRevenueRecords.map((record) => ({
+          amount: record.amount,
+          categoryLabel: `${formatRevenueUnitCount(record.saleUnitCount)} 份 × ¥${record.saleUnitPrice.toFixed(2)}`,
+          date: record.date,
+          deleteHint: '烘焙历史收入请前往烘焙历史中修改对应记录。',
+          deletable: false,
+          id: record.id,
+          notes: record.notes,
+          sourceType: 'roastBatchRevenue' as const,
+          sourceLabel: '烘焙历史销售',
+          title: record.title,
+        })),
+        ...manualIncomeRecords,
+      ],
     );
 
     return {

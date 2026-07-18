@@ -6,6 +6,9 @@
   margin-top: auto;
   padding: 0;
   background: transparent;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .surface {
@@ -55,6 +58,12 @@
   border-color: var(--app-border);
   background: var(--app-card-button-surface);
   color: var(--app-text);
+}
+
+:global(:root[data-app-mobile-editing='true']) .bar {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
 }
 
 @media (hover: hover) and (pointer: fine) {

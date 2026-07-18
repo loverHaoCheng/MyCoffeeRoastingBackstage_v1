@@ -3,7 +3,7 @@ import MailOutlined from '@ant-design/icons/MailOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import Form from 'antd/es/form';
-import Input from 'antd/es/input';
+import Input from '@/shared/components/ui/input';
 import Space from 'antd/es/space';
 import { Link, useNavigate } from 'react-router-dom';
 
