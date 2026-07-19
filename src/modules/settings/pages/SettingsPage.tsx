@@ -1,7 +1,7 @@
 import DownloadOutlined from "@ant-design/icons/DownloadOutlined";
 import DeleteOutlined from "@ant-design/icons/DeleteOutlined";
 import UploadOutlined from "@ant-design/icons/UploadOutlined";
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from "antd/es/button";
 import Modal from 'antd/es/modal';
 import Radio from 'antd/es/radio';

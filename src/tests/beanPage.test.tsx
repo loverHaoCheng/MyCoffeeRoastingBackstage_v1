@@ -193,6 +193,9 @@ describe('BeanPage', () => {
     });
     fireEvent.click(actionTrigger);
     fireEvent.click(await screen.findByLabelText('删除 零库存测试豆'));
+    fireEvent.click(await screen.findByRole('radio', { name: '全部改为通用计划：保留计划并解除与当前生豆的关联' }));
+    const confirmationDialog = screen.getByRole('dialog', { name: '确认删除' });
+    fireEvent.click(within(confirmationDialog).getByRole('button', { name: /删\s*除/ }));
 
     await waitFor(() => {
       expect(deleteBeanSpy).toHaveBeenCalledWith('bean-zero-stock', 'makeGeneric');
@@ -438,7 +441,7 @@ describe('BeanPage', () => {
     const summary = screen.getByLabelText('生豆库存概览');
 
     expect(within(summary).getByText('10 kg')).toBeInTheDocument();
-    expect(within(summary).getByText('¥190 / kg')).toBeInTheDocument();
+    expect(within(summary).getByText('¥190.00 / kg')).toBeInTheDocument();
   });
 
   it('opens the full bean form drawer from the card level edit button', async () => {

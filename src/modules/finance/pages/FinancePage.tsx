@@ -1,5 +1,5 @@
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from "antd/es/button";
 import Grid from "antd/es/grid";
 import Spin from "antd/es/spin";
@@ -47,7 +47,10 @@ export function FinancePage() {
   const [isIncomeDrawerOpen, setIsIncomeDrawerOpen] = useState(false);
   const [activeDrilldownKey, setActiveDrilldownKey] = useState<FinanceOverviewDrilldownKey | null>(null);
   const [templateCreateRequestKey, setTemplateCreateRequestKey] = useState(0);
-  const { beans, calculations, expenseRecords, incomeRecords, isFetching, overview, range, roastBatches } = useFinanceOverview(preset, null);
+  const { beans, calculations, expenseRecords, incomeRecords, isFetching, overview, range, roastBatches, templates } = useFinanceOverview(
+    preset,
+    null,
+  );
   const saveExpenseRecordMutation = useSaveFinanceExpenseRecord();
   const saveIncomeRecordMutation = useSaveFinanceIncomeRecord();
   const deleteExpenseRecordMutation = useDeleteFinanceExpenseRecord();
@@ -90,8 +93,9 @@ export function FinancePage() {
       key: activeDrilldownKey,
       roastBatches,
       range,
+      templates,
     });
-  }, [activeDrilldownKey, beans, calculations, expenseRecords, incomeRecords, range, roastBatches]);
+  }, [activeDrilldownKey, beans, calculations, expenseRecords, incomeRecords, range, roastBatches, templates]);
 
   const handleOpenCreateFlow = () => {
     setIsActionSheetOpen(true);
@@ -209,8 +213,8 @@ export function FinancePage() {
 
       <section aria-label="利润计算说明" className={styles.formulaPanel}>
         <p className={styles.formulaText}>
-          <span className={styles.formulaLabel}>毛利润：</span>
-          已经卖出的收入，减去生豆采购、包装支出和邮费支出后，剩下的就是毛利润。
+          <span className={styles.formulaLabel}>收入与利润：</span>
+          收入已扣除成本模板中的包装、能耗和其他费用；利润再扣除生豆成本及关联邮费。
         </p>
         <p className={styles.formulaText}>
           <span className={styles.formulaLabel}>经营利润：</span>
@@ -278,14 +282,18 @@ export function FinancePage() {
         title="新增支出"
       >
         <FinanceExpenseForm
+          beans={beans}
           customCategorySuggestions={customCategorySuggestions}
           embedded
+          expenseRecords={expenseRecords}
           isSaving={saveExpenseRecordMutation.isPending}
           onCancel={() => {
             setIsExpenseDrawerOpen(false);
           }}
           onSubmit={handleSaveExpenseRecord}
+          roastBatches={roastBatches}
           showHeader={false}
+          templates={templates}
         />
       </AppDrawer>
 

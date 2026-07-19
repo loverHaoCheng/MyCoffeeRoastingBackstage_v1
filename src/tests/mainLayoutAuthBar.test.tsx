@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { App as AntApp, ConfigProvider } from 'antd';
+import AntApp from 'antd/es/app';
+import ConfigProvider from 'antd/es/config-provider';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -77,7 +78,7 @@ describe('MainLayout auth bar', () => {
     expect(nicknameButton.querySelector('.anticon-edit')).toBeInTheDocument();
     fireEvent.click(nicknameButton);
 
-    expect(await screen.findByText('修改昵称')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: '修改昵称' })).toBeInTheDocument();
 
     const input = screen.getByPlaceholderText('请输入昵称，留空则不显示');
     fireEvent.change(input, { target: { value: '测试昵称' } });

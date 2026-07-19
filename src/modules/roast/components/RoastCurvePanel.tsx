@@ -1,6 +1,6 @@
 import DownloadOutlined from '@ant-design/icons/DownloadOutlined';
 import ReloadOutlined from '@ant-design/icons/ReloadOutlined';
-import { App } from 'antd';
+import App from 'antd/es/app';
 
 import { useImportHiBeanRoastCurve, useRoastCurve, useUpdateRoastBatch } from '@/modules/roast/hooks';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';

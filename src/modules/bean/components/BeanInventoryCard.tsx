@@ -33,7 +33,7 @@ const formatCompactKg = (value: number): string => {
 
 const formatCurrency = new Intl.NumberFormat('zh-CN', {
   currency: 'CNY',
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
   style: 'currency',
 });
 

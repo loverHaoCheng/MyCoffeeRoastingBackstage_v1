@@ -1,5 +1,5 @@
 import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from "antd/es/button";
 import Input from '@/shared/components/ui/input';
 import Tag from "antd/es/tag";

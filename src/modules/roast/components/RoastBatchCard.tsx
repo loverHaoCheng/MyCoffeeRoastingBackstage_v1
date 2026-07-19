@@ -49,6 +49,9 @@ export function RoastBatchCard({ batch, onDelete, onEdit, onEditAll, onView }: R
       editPath: 'roastedBeanName' as const,
     },
     { key: 'salesMode', label: '去向', value: batch.salesMode === 'selfUse' ? '自留' : '销售', editPath: 'salesMode' as const },
+    ...(batch.salesMode === 'sale'
+      ? [{ key: 'soldUnitCount', label: '已售份数', value: `${String(batch.soldUnitCount ?? 1)} 份`, editPath: 'soldUnitCount' as const }]
+      : []),
     { key: 'roastPlan', label: '烘焙计划', value: getText('未关联', batch.roastPlanName), multiline: true, editPath: 'roastPlanId' as const },
     { key: 'inputWeight', label: '入豆量', value: `${String(batch.inputWeightGrams)} g`, editPath: 'inputWeightGrams' as const },
     { key: 'outputWeight', label: '出豆量', value: `${String(batch.outputWeightGrams)} g`, editPath: 'outputWeightGrams' as const },

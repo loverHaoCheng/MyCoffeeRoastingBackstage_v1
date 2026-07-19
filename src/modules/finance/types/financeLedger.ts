@@ -29,6 +29,7 @@ export interface FinanceExpenseFormInput {
   customCategoryLabel?: null | string;
   expenseDate: string;
   notes?: null | string;
+  roastBatchIds?: string[];
   status: FinanceExpenseStatus;
   title: string;
 }
@@ -59,16 +60,27 @@ export interface FinanceIncomeRecord extends FinanceIncomeFormInput {
 }
 
 export interface FinanceOverviewMetrics {
+  estimatedBeanCost: number;
+  estimatedProfit: number;
   estimatedRevenue: number;
   expenseRecordCount: number;
   grossProfit: number;
   incomeRecordCount: number;
   operatingProfit: number;
   realizedIncome: number;
+  realizedProfit: number;
+  realizedBeanCost: number;
   totalExpenses: number;
 }
 
-export type FinanceOverviewDrilldownKey = 'estimatedRevenue' | 'realizedIncome' | 'totalExpenses';
+export type FinanceOverviewDrilldownKey =
+  | 'estimatedBeanCost'
+  | 'estimatedProfit'
+  | 'estimatedRevenue'
+  | 'realizedBeanCost'
+  | 'realizedIncome'
+  | 'realizedProfit'
+  | 'totalExpenses';
 
 export interface FinanceOverviewDetailItem {
   amount: number;
@@ -94,10 +106,12 @@ export interface FinanceOverviewDrilldownPayload {
 
 export interface RoastBatchRevenueDetail {
   amount: number;
+  beanCost: number;
   date: string;
   id: string;
   notes: null | string;
   saleUnitCount: number;
   saleUnitPrice: number;
+  shippingCost: number;
   title: string;
 }

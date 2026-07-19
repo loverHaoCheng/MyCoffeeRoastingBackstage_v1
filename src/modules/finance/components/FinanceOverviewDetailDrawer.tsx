@@ -18,7 +18,7 @@ interface FinanceOverviewDetailDrawerProps {
 }
 
 const formatCurrency = new Intl.NumberFormat('zh-CN', {
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
   minimumFractionDigits: 0,
 });
 

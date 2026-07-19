@@ -2,7 +2,7 @@ import ApiOutlined from "@ant-design/icons/ApiOutlined";
 import DeleteOutlined from "@ant-design/icons/DeleteOutlined";
 import ScanOutlined from "@ant-design/icons/ScanOutlined";
 import UploadOutlined from "@ant-design/icons/UploadOutlined";
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from "antd/es/button";
 import { useRef, useState, type ChangeEvent } from 'react';
 

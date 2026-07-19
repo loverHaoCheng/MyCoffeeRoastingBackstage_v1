@@ -1798,6 +1798,19 @@
         "type": "number"
       },
       {
+        "help": "已售成品份数；为空时前端按 1 份兼容历史记录。",
+        "hidden": false,
+        "id": "numbersoldunit001",
+        "max": null,
+        "min": 0,
+        "name": "sold_unit_count",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
         "help": "",
         "hidden": false,
         "id": "jsonevaluation001",
@@ -2764,6 +2777,20 @@
         "required": false,
         "system": false,
         "type": "text"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "rbt000000000007",
+        "help": "",
+        "hidden": false,
+        "id": "relation1100000010",
+        "maxSelect": 100,
+        "minSelect": 0,
+        "name": "roast_batch_ids",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       },
       {
         "help": "",

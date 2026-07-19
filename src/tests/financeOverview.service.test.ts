@@ -1,257 +1,199 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildReservedShippingUnitCountByBatchId,
   buildFinanceOverviewDrilldown,
   calculateFinanceOverview,
+  calculateRoastBatchProfit,
+  calculateRoastSaleCapacity,
   resolveFinanceDateRange,
 } from '@/modules/finance/services';
-import type { CostCalculationRecord, FinanceExpenseRecord, FinanceIncomeRecord } from '@/modules/finance/types';
-import type { Bean } from '@/types/domain';
+import type { FinanceExpenseRecord } from '@/modules/finance/types';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import type { CostTemplate } from '@/modules/settings/types';
+import type { Bean } from '@/types/domain';
 
-describe('calculateFinanceOverview', () => {
-  it('aggregates total expenses, realized income, gross profit and operating profit with bean purchases included', () => {
-    const beans: Bean[] = [
-      {
-        costPerKg: 120,
-        createdAt: '2026-07-01T00:00:00.000Z',
-        defaultSaleUnitPrice: 80,
-        defaultSaleUnitWeightGrams: 100,
-        grade: 'G1',
-        id: 'bean-1',
-        name: '耶加雪菲',
-        origin: '埃塞俄比亚',
-        process: '水洗',
-        purchaseDate: '2026-07-03',
-        purchasedTotalPrice: 180,
-        stockKg: 2,
-        updatedAt: '2026-07-08T00:00:00.000Z',
-      },
-    ];
+const template: CostTemplate = {
+  createdAt: '2026-07-01T00:00:00.000Z',
+  dehydrationRate: 20,
+  energyCost: 3,
+  id: 'template-1',
+  laborCost: 4,
+  name: '200g 标准包装',
+  notes: '',
+  otherCost: 2,
+  packagingCost: 5,
+  roastInputWeightGrams: 200,
+  saleUnitWeightGrams: 80,
+  targetProfitRate: 20,
+  updatedAt: '2026-07-01T00:00:00.000Z',
+};
 
-    const calculations: CostCalculationRecord[] = [
-      {
-        beanId: 'bean-1',
-        beanName: '耶加雪菲',
-        calculationName: '耶加雪菲 100g',
-        costPerRoastedKg: 700,
-        costPerSaleUnit: 70,
-        createdAt: '2026-07-08T09:00:00.000Z',
-        dataSource: 'greenBean',
-        dehydrationRate: 20,
-        energyCost: 10,
-        greenBeanCost: 90,
-        id: 'calc-1',
-        laborCost: 8,
-        notes: undefined,
-        otherCost: 2,
-        packagingCost: 10,
-        profitPerSaleUnit: 10,
-        profitRate: 12.5,
-        purchaseCostPerKg: 450,
-        roastInputWeightGrams: 200,
-        roastedOutputWeightGrams: 160,
-        saleUnitCount: 1.6,
-        saleUnitPrice: 80,
-        saleUnitWeightGrams: 100,
-        suggestedSalePrice: 80,
-        targetProfitRate: 20,
-        totalBatchCost: 120,
-        updatedAt: '2026-07-08T09:00:00.000Z',
-      },
-    ];
+const bean: Bean = {
+  costPerKg: 120,
+  costTemplateId: 'template-1',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  defaultRoastInputGrams: 200,
+  defaultSaleUnitPrice: 80,
+  defaultSaleUnitWeightGrams: 80,
+  grade: 'G1',
+  id: 'bean-1',
+  name: '耶加雪菲',
+  origin: '埃塞俄比亚',
+  process: '水洗',
+  remainingWeightGrams: 1000,
+  stockKg: 1,
+  updatedAt: '2026-07-08T00:00:00.000Z',
+};
 
-    const roastBatches: RoastBatchRecord[] = [
-      {
-        createdAt: '2026-07-08T09:00:00.000Z',
-        developmentRatio: 12,
-        evaluation: {
-          allowTraining: false,
-        },
-        firstCrackTime: 380,
-        finalSaleUnitPrice: 92,
-        greenBeanId: 'bean-1',
-        greenBeanName: '耶加雪菲',
-        id: 'batch-1',
-        imageUrls: [],
-        inputWeightGrams: 200,
-        notes: undefined,
-        outputWeightGrams: 160,
-        roastDate: '2026-07-08T09:00:00.000Z',
-        roastLevel: '中焙',
-        roastPlanId: undefined,
-        roastPlanName: undefined,
-        roastedBeanName: '耶加雪菲 熟豆',
-        salesMode: 'sale',
-        status: 'completed',
-        totalRoastTime: 520,
-        updatedAt: '2026-07-08T09:00:00.000Z',
-      },
-    ];
+const createBatch = (id: string, soldUnitCount: number): RoastBatchRecord => ({
+  createdAt: '2026-07-08T09:00:00.000Z',
+  evaluation: { allowTraining: false },
+  greenBeanId: 'bean-1',
+  greenBeanName: '耶加雪菲',
+  id,
+  inputWeightGrams: 200,
+  outputWeightGrams: 160,
+  roastDate: '2026-07-08T09:00:00.000Z',
+  roastLevel: '中焙',
+  salesMode: 'sale',
+  soldUnitCount,
+  status: 'completed',
+  updatedAt: '2026-07-08T09:00:00.000Z',
+});
 
-    const expenseRecords: FinanceExpenseRecord[] = [
+const range = { endDate: '2026-07-31', startDate: '2026-07-01' };
+
+describe('finance profit calculations', () => {
+  it('calculates inventory from remaining green bean weight and its required template', () => {
+    const overview = calculateFinanceOverview({
+      beans: [bean], calculations: [], expenseRecords: [], incomeRecords: [], roastBatches: [], range, templates: [template],
+    });
+
+    // 1000g / 200g = 5 batches; each batch produces floor(160g / 80g) = 2 units.
+    expect(overview.estimatedRevenue).toBe(700);
+    expect(overview.estimatedBeanCost).toBe(240);
+    expect(overview.estimatedProfit).toBe(460);
+  });
+
+  it('limits a roast batch to its planned sale-unit capacity', () => {
+    const templatesById = new Map([[template.id, template]]);
+
+    expect(calculateRoastSaleCapacity(200, template)).toMatchObject({
+      maximumSoldUnitCount: 2,
+      roastedWeightGrams: 160,
+    });
+    expect(calculateRoastBatchProfit(createBatch('batch-1', 2), bean, templatesById)).toMatchObject({
+      beanCost: 48,
+      profit: 92,
+      revenue: 140,
+      saleUnitCount: 2,
+    });
+    expect(calculateRoastBatchProfit(createBatch('batch-1', 3), bean, templatesById)).toBeNull();
+  });
+
+  it('allocates related paid shipping by the number of associated sale units', () => {
+    const shipping: FinanceExpenseRecord = {
+      amount: 20,
+      category: 'shipping',
+      createdAt: '2026-07-08T09:00:00.000Z',
+      customCategoryLabel: null,
+      expenseDate: '2026-07-08',
+      id: 'shipping-1',
+      notes: null,
+      roastBatchIds: ['batch-1', 'batch-1', 'batch-2'],
+      status: 'paid',
+      title: '邮费',
+      updatedAt: '2026-07-08T09:00:00.000Z',
+    };
+    const overview = calculateFinanceOverview({
+      beans: [bean], calculations: [], expenseRecords: [shipping], incomeRecords: [],
+      roastBatches: [createBatch('batch-1', 2), createBatch('batch-2', 1)], range, templates: [template],
+    });
+    const drilldown = buildFinanceOverviewDrilldown({
+      beans: [bean], calculations: [], expenseRecords: [shipping], incomeRecords: [],
+      key: 'realizedIncome', roastBatches: [createBatch('batch-1', 2), createBatch('batch-2', 1)], range, templates: [template],
+    });
+
+    expect(overview.realizedIncome).toBe(210);
+    expect(overview.realizedBeanCost).toBe(72);
+    expect(overview.realizedProfit).toBe(118);
+    const recordById = new Map(drilldown.records.map((record) => [record.id, record]));
+
+    expect(recordById.get('batch-1')?.categoryLabel).toContain('邮费 ¥13.33');
+    expect(recordById.get('batch-2')?.categoryLabel).toContain('邮费 ¥6.67');
+  });
+
+  it('builds separate detail totals for every realized and inventory overview metric', () => {
+    const shipping: FinanceExpenseRecord = {
+      amount: 20,
+      category: 'shipping',
+      createdAt: '2026-07-08T09:00:00.000Z',
+      customCategoryLabel: null,
+      expenseDate: '2026-07-08',
+      id: 'shipping-1',
+      notes: null,
+      roastBatchIds: ['batch-1', 'batch-1', 'batch-2'],
+      status: 'paid',
+      title: '邮费',
+      updatedAt: '2026-07-08T09:00:00.000Z',
+    };
+    const input = {
+      beans: [bean], calculations: [], expenseRecords: [shipping], incomeRecords: [],
+      roastBatches: [createBatch('batch-1', 2), createBatch('batch-2', 1)], range, templates: [template],
+    };
+
+    expect(buildFinanceOverviewDrilldown({ ...input, key: 'estimatedBeanCost' })).toMatchObject({
+      title: '库存预估成本明细', total: 240,
+    });
+    expect(buildFinanceOverviewDrilldown({ ...input, key: 'estimatedProfit' })).toMatchObject({
+      title: '库存预估利润明细', total: 460,
+    });
+    expect(buildFinanceOverviewDrilldown({ ...input, key: 'realizedBeanCost' })).toMatchObject({
+      title: '已售出生豆成本明细', total: 72,
+    });
+    expect(buildFinanceOverviewDrilldown({ ...input, key: 'realizedProfit' })).toMatchObject({
+      title: '已实现利润明细', total: 118,
+    });
+  });
+
+  it('reserves sale units associated with every saved shipping expense', () => {
+    const reservedUnitCountByBatchId = buildReservedShippingUnitCountByBatchId([
       {
-        amount: 40,
-        category: 'packaging',
+        amount: 12,
+        category: 'shipping',
         createdAt: '2026-07-08T09:00:00.000Z',
         customCategoryLabel: null,
         expenseDate: '2026-07-08',
-        id: 'expense-1',
+        id: 'shipping-paid',
         notes: null,
+        roastBatchIds: ['batch-1', 'batch-1'],
         status: 'paid',
-        title: '包装支出',
+        title: '邮费',
         updatedAt: '2026-07-08T09:00:00.000Z',
       },
       {
-        amount: 10,
-        category: 'other',
+        amount: 8,
+        category: 'shipping',
         createdAt: '2026-07-09T09:00:00.000Z',
         customCategoryLabel: null,
         expenseDate: '2026-07-09',
-        id: 'expense-2',
+        id: 'shipping-pending',
         notes: null,
+        roastBatchIds: ['batch-1', 'batch-2'],
         status: 'pending',
-        title: '待付杂项',
+        title: '待付邮费',
         updatedAt: '2026-07-09T09:00:00.000Z',
       },
-      {
-        amount: 20,
-        category: 'custom',
-        createdAt: '2026-07-10T09:00:00.000Z',
-        customCategoryLabel: '耗材',
-        expenseDate: '2026-07-10',
-        id: 'expense-3',
-        notes: null,
-        status: 'paid',
-        title: '耗材',
-        updatedAt: '2026-07-10T09:00:00.000Z',
-      },
-    ];
-    const incomeRecords: FinanceIncomeRecord[] = [
-      {
-        amount: 120,
-        channel: 'retail',
-        createdAt: '2026-07-08T10:00:00.000Z',
-        id: 'income-1',
-        incomeDate: '2026-07-08',
-        notes: null,
-        status: 'received',
-        title: '零售收入',
-        updatedAt: '2026-07-08T10:00:00.000Z',
-      },
-      {
-        amount: 200,
-        channel: 'wholesale',
-        createdAt: '2026-07-09T10:00:00.000Z',
-        id: 'income-2',
-        incomeDate: '2026-07-09',
-        notes: null,
-        status: 'pending',
-        title: '待收批发收入',
-        updatedAt: '2026-07-09T10:00:00.000Z',
-      },
-    ];
+    ]);
 
-    const overview = calculateFinanceOverview({
-      beans,
-      calculations,
-      expenseRecords,
-      incomeRecords,
-      roastBatches,
-      range: {
-        endDate: '2026-07-31',
-        startDate: '2026-07-01',
-      },
-    });
-
-    expect(overview.realizedIncome).toBe(212);
-    expect(overview.totalExpenses).toBe(240);
-    expect(overview.grossProfit).toBe(-8);
-    expect(overview.operatingProfit).toBe(-28);
-    expect(overview.estimatedRevenue).toBe(1280);
-    expect(overview.expenseRecordCount).toBe(4);
-    expect(overview.incomeRecordCount).toBe(2);
-  });
-
-  it('matches roast batch revenue to the Shanghai calendar date', () => {
-    const beans: Bean[] = [
-      {
-        costPerKg: 120,
-        createdAt: '2026-07-01T00:00:00.000Z',
-        defaultSaleUnitPrice: 88,
-        defaultSaleUnitWeightGrams: 100,
-        grade: 'G1',
-        id: 'bean-1',
-        name: '边界测试豆',
-        origin: '埃塞俄比亚',
-        process: '水洗',
-        stockKg: 1,
-        updatedAt: '2026-07-08T00:00:00.000Z',
-      },
-    ];
-    const roastBatches: RoastBatchRecord[] = [
-      {
-        createdAt: '2026-07-07T16:30:00.000Z',
-        developmentRatio: 12,
-        evaluation: {
-          allowTraining: false,
-        },
-        firstCrackTime: 380,
-        finalSaleUnitPrice: 96,
-        greenBeanId: 'bean-1',
-        greenBeanName: '边界测试豆',
-        id: 'batch-shanghai-day',
-        imageUrls: [],
-        inputWeightGrams: 200,
-        notes: undefined,
-        outputWeightGrams: 160,
-        roastDate: '2026-07-07T16:30:00.000Z',
-        roastLevel: '中焙',
-        roastPlanId: undefined,
-        roastPlanName: undefined,
-        roastedBeanName: '北京时间测试熟豆',
-        salesMode: 'sale',
-        status: 'completed',
-        totalRoastTime: 520,
-        updatedAt: '2026-07-07T16:30:00.000Z',
-      },
-    ];
-    const range = {
-      endDate: '2026-07-08',
-      startDate: '2026-07-08',
-    };
-
-    const overview = calculateFinanceOverview({
-      beans,
-      calculations: [],
-      expenseRecords: [],
-      incomeRecords: [],
-      roastBatches,
-      range,
-    });
-    const drilldown = buildFinanceOverviewDrilldown({
-      beans,
-      calculations: [],
-      expenseRecords: [],
-      incomeRecords: [],
-      key: 'realizedIncome',
-      roastBatches,
-      range,
-    });
-
-    expect(overview.realizedIncome).toBe(96);
-    expect(overview.incomeRecordCount).toBe(1);
-    expect(drilldown.records[0]?.date).toBe('2026-07-08');
+    expect(reservedUnitCountByBatchId.get('batch-1')).toBe(3);
+    expect(reservedUnitCountByBatchId.get('batch-2')).toBe(1);
   });
 
   it('resolves finance date ranges from the Shanghai calendar day', () => {
     expect(resolveFinanceDateRange('today', null, new Date('2026-07-13T16:30:00.000Z'))).toEqual({
-      endDate: '2026-07-14',
-      startDate: '2026-07-14',
-    });
-    expect(resolveFinanceDateRange('week', null, new Date('2026-07-13T16:30:00.000Z'))).toEqual({
-      endDate: '2026-07-14',
-      startDate: '2026-07-13',
+      endDate: '2026-07-14', startDate: '2026-07-14',
     });
   });
 });

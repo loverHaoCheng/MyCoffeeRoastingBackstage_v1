@@ -110,7 +110,7 @@ describe('card display settings', () => {
   it('shows the inventory ratio footer on bean cards', () => {
     const { container } = render(<BeanInventoryCard bean={createBean()} />);
 
-    expect(screen.getByText('总库存 25 kg · 剩余库存 12.5 kg')).toBeInTheDocument();
+    expect(screen.getByText('12.5kg/25kg')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: '测试生豆 剩余库存占比' })).toHaveAttribute('aria-valuenow', '50');
     expect(screen.getByText('50%')).toBeInTheDocument();
 
@@ -264,7 +264,7 @@ describe('card display settings', () => {
     expect(screen.getByText('库存')).toBeInTheDocument();
     expect(screen.getByText('12.5 kg')).toBeInTheDocument();
     expect(screen.getByText('成本')).toBeInTheDocument();
-    expect(screen.getByText('¥86 / kg')).toBeInTheDocument();
+    expect(screen.getByText('¥86.00 / kg')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '修改 库存' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '修改 处理法' })).not.toBeInTheDocument();
   });

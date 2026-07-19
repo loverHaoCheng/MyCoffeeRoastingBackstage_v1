@@ -230,7 +230,7 @@ export function DrawerContent({
     setIsDragging(true);
     setDragOffset(0);
     event.preventDefault();
-    event.currentTarget.setPointerCapture?.(pointerId);
+    event.currentTarget.setPointerCapture(pointerId);
   }, [isSwipeDismissEnabled]);
 
   const handleSwipePointerMove = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -253,8 +253,8 @@ export function DrawerContent({
       return;
     }
 
-    if (event.currentTarget.hasPointerCapture?.(pointerId)) {
-      event.currentTarget.releasePointerCapture?.(pointerId);
+    if (event.currentTarget.hasPointerCapture(pointerId)) {
+      event.currentTarget.releasePointerCapture(pointerId);
     }
 
     handleSwipeRelease();
@@ -267,8 +267,8 @@ export function DrawerContent({
       return;
     }
 
-    if (event.currentTarget.hasPointerCapture?.(pointerId)) {
-      event.currentTarget.releasePointerCapture?.(pointerId);
+    if (event.currentTarget.hasPointerCapture(pointerId)) {
+      event.currentTarget.releasePointerCapture(pointerId);
     }
 
     stopDragging();

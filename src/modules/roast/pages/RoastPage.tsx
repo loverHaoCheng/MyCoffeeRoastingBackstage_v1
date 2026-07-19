@@ -1,5 +1,5 @@
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import Empty from "antd/es/empty";
 import Grid from "antd/es/grid";
@@ -32,12 +32,15 @@ import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
+import { FilterSortToggle, MultiFilterSortBar, type MultiFilterDefinition } from '@/shared/components/MultiFilterSortBar';
 import type { RoastPlan } from '@/types/domain';
 import type { RoastPlanJsonInput } from '@/modules/roast/types';
 
 import styles from './RoastPage.module.css';
 
 type DetailMode = 'view' | 'edit';
+type RoastPlanSortKey = 'nameAsc' | 'updatedAsc' | 'updatedDesc' | 'weightAsc' | 'weightDesc';
+type RoastPlanFilterKey = 'bean' | 'level' | 'purpose';
 
 const getDetailDrawerTitle = (mode: DetailMode | null): string => {
   if (mode === 'view') {
@@ -67,11 +70,28 @@ const sortPlansByUpdatedAt = (plans: RoastPlan[]): RoastPlan[] => {
   });
 };
 
+const getFilterOptions = (values: string[]) => Array.from(new Set(values.filter(Boolean)))
+  .sort((left, right) => left.localeCompare(right, 'zh-CN'))
+  .map((value) => ({ label: value, value }));
+
+const sortPlans = (plans: RoastPlan[], sortKey: RoastPlanSortKey): RoastPlan[] => [...plans].sort((left, right) => {
+  switch (sortKey) {
+    case 'nameAsc': return left.name.localeCompare(right.name, 'zh-CN');
+    case 'updatedAsc': return new Date(left.updatedAt).getTime() - new Date(right.updatedAt).getTime();
+    case 'weightAsc': return left.batchWeightGrams - right.batchWeightGrams;
+    case 'weightDesc': return right.batchWeightGrams - left.batchWeightGrams;
+    default: return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  }
+});
+
 export function RoastPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
   const [keyword, setKeyword] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<RoastPlanFilterKey, string[]>>({ bean: [], level: [], purpose: [] });
+  const [sortKey, setSortKey] = useState<RoastPlanSortKey>('updatedDesc');
+  const [isFilterPanelExpanded, setIsFilterPanelExpanded] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<RoastPlan['id'] | null>(null);
   const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | 'steps' | undefined>();
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
@@ -96,10 +116,18 @@ export function RoastPage() {
     [batches, plans],
   );
 
-  const filteredPlans = useMemo(
-    () => effectivePlans.filter((plan) => matchesKeyword(plan, keyword)),
-    [effectivePlans, keyword],
-  );
+  const filterDefinitions = useMemo<MultiFilterDefinition[]>(() => [
+    { key: 'bean', label: '生豆', options: getFilterOptions(effectivePlans.map((plan) => plan.beanName)) },
+    { key: 'level', label: '烘焙目标', options: getFilterOptions(effectivePlans.map((plan) => plan.targetRoastLevel)) },
+    { key: 'purpose', label: '用途', options: getFilterOptions(effectivePlans.map((plan) => plan.roastPurpose)) },
+  ], [effectivePlans]);
+  const filteredPlans = useMemo(() => {
+    const matchingPlans = effectivePlans.filter((plan) => matchesKeyword(plan, keyword) &&
+      (filterValues.bean.length === 0 || filterValues.bean.includes(plan.beanName)) &&
+      (filterValues.level.length === 0 || filterValues.level.includes(plan.targetRoastLevel)) &&
+      (filterValues.purpose.length === 0 || filterValues.purpose.includes(plan.roastPurpose)));
+    return sortPlans(matchingPlans, sortKey);
+  }, [effectivePlans, filterValues, keyword, sortKey]);
 
   const selectedPlan = effectivePlans.find((p) => p.id === selectedPlanId) ?? null;
 
@@ -146,7 +174,7 @@ export function RoastPage() {
             setDetailMode(null);
           })
           .catch((error: unknown) => {
-            void message.error?.(
+            void message.error(
               getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
             );
           });
@@ -162,7 +190,7 @@ export function RoastPage() {
       try {
         await updateMutation.mutateAsync({ planId, input });
       } catch (error: unknown) {
-        void message.error?.(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
+        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
       }
     })();
 
@@ -192,7 +220,7 @@ export function RoastPage() {
       } catch (error: unknown) {
         const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
         queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        void message.error?.(getUserFacingErrorMessage(error, '烘焙计划同步失败，已回滚本次新建，请检查后重试。'));
+        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，已回滚本次新建，请检查后重试。'));
       }
     })();
 
@@ -210,9 +238,9 @@ export function RoastPage() {
       submissionBackupService.save('create', { input: nextInitialValues, jsonText }, 'roastPlan');
       setCreationInitialValues(nextInitialValues);
       setCreationTab('manual');
-      void message.success?.('JSON 已回填到创建表单，可继续补充和修改。');
+      void message.success('JSON 已回填到创建表单，可继续补充和修改。');
     } catch (error: unknown) {
-      void message.error?.(getUserFacingErrorMessage(error, 'JSON 解析失败，请检查内容后重试。'));
+      void message.error(getUserFacingErrorMessage(error, 'JSON 解析失败，请检查内容后重试。'));
     }
   };
 
@@ -238,7 +266,35 @@ export function RoastPage() {
         }}
         placeholder="搜索计划名称、生豆、烘焙程度..."
         sectionAriaLabel="烘焙计划搜索"
+        trailingAction={
+          <FilterSortToggle
+            activeFilterCount={Object.values(filterValues).reduce((total, values) => total + values.length, 0)}
+            expanded={isFilterPanelExpanded}
+            onExpandedChange={setIsFilterPanelExpanded}
+          />
+        }
         value={keyword}
+      />
+
+      <MultiFilterSortBar
+        expanded={isFilterPanelExpanded}
+        filters={filterDefinitions}
+        onChange={(key, values) => {
+          setFilterValues((current) => ({ ...current, [key]: values }));
+        }}
+        onClear={() => {
+          setFilterValues({ bean: [], level: [], purpose: [] });
+        }}
+        onSortChange={(value) => {
+          setSortKey(value as RoastPlanSortKey);
+        }}
+        sortOptions={[
+          { label: '最近更新', value: 'updatedDesc' }, { label: '最早更新', value: 'updatedAsc' },
+          { label: '名称 A-Z', value: 'nameAsc' }, { label: '批次重量由大到小', value: 'weightDesc' },
+          { label: '批次重量由小到大', value: 'weightAsc' },
+        ]}
+        sortValue={sortKey}
+        values={filterValues}
       />
 
       {/* 计划列表 */}
@@ -284,7 +340,7 @@ export function RoastPage() {
           activeKey={creationTab}
           onChange={(key) => {
             if (key === 'ai') {
-              void message.info?.('AI 推荐正在筹备中，当前版本先完成数据采集与校验。');
+              void message.info('AI 推荐正在筹备中，当前版本先完成数据采集与校验。');
             }
 
             setCreationTab(key as 'ai' | 'json' | 'manual');

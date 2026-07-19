@@ -81,6 +81,7 @@ export function AppDrawer({
   width,
   ...props
 }: AppDrawerProps) {
+  void closable;
   useEffect(() => {
     if (!open) {
       return undefined;

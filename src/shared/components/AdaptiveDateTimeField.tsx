@@ -155,11 +155,6 @@ export function AdaptiveDateTimeField({
         style={{ width: '100%' }}
         value={createPickerValue(parsedValue, mode)}
         onChange={(nextValue) => {
-          if (!nextValue) {
-            onChange('');
-            return;
-          }
-
           onChange(
             mode === 'datetime'
               ? nextValue.second(0).millisecond(0).toISOString()
@@ -221,7 +216,7 @@ export function AdaptiveDateTimeField({
                     return;
                   }
 
-                  updateDraftValue({ year: Number(nextValue) });
+                  updateDraftValue({ year: nextValue });
                 }}
               />
             </label>
@@ -238,7 +233,7 @@ export function AdaptiveDateTimeField({
                     return;
                   }
 
-                  updateDraftValue({ month: Number(nextValue) });
+                  updateDraftValue({ month: nextValue });
                 }}
               />
             </label>
@@ -255,7 +250,7 @@ export function AdaptiveDateTimeField({
                     return;
                   }
 
-                  updateDraftValue({ day: Number(nextValue) });
+                  updateDraftValue({ day: nextValue });
                 }}
               />
             </label>
@@ -273,7 +268,7 @@ export function AdaptiveDateTimeField({
                       return;
                     }
 
-                    updateDraftValue({ hour: Number(nextValue) });
+                    updateDraftValue({ hour: nextValue });
                   }}
                 />
               </label>
@@ -292,7 +287,7 @@ export function AdaptiveDateTimeField({
                       return;
                     }
 
-                    updateDraftValue({ minute: Number(nextValue) });
+                    updateDraftValue({ minute: nextValue });
                   }}
                 />
               </label>

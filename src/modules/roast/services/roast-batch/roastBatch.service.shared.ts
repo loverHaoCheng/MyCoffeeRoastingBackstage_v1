@@ -148,6 +148,7 @@ export const getNextBatchState = (
     input.outputWeightGrams ?? currentBatch.outputWeightGrams,
   ),
   salesMode: input.salesMode ?? currentBatch.salesMode,
+  soldUnitCount: input.soldUnitCount ?? currentBatch.soldUnitCount,
   status: input.status ?? currentBatch.status,
 });
 
@@ -171,6 +172,7 @@ export const toPocketBaseRoastBatchPayload = (
   if (input.firstCrackTime !== undefined) payload.first_crack_time = input.firstCrackTime;
   if (input.totalRoastTime !== undefined) payload.total_roast_time = input.totalRoastTime;
   if (input.finalSaleUnitPrice !== undefined) payload.final_sale_unit_price = input.finalSaleUnitPrice ?? null;
+  if (input.soldUnitCount !== undefined) payload.sold_unit_count = input.soldUnitCount;
   if (input.notes !== undefined) payload.notes = toNullableStringValue(input.notes);
   if (input.evaluation !== undefined) payload.evaluation = input.evaluation;
   if (input.imageUrls !== undefined) payload.image_urls = input.imageUrls ?? [];
@@ -275,6 +277,7 @@ export const mapRemoteRoastBatchRecord = (record: Record<string, unknown>): Roas
   firstCrackTime: getOptionalNumberField(record.first_crack_time),
   totalRoastTime: getOptionalNumberField(record.total_roast_time),
   finalSaleUnitPrice: getOptionalNumberField(record.final_sale_unit_price),
+  soldUnitCount: getOptionalNumberField(record.sold_unit_count) ?? 1,
   notes: getOptionalStringField(record.notes),
   evaluation: getRoastBatchEvaluation(record.evaluation),
   imageUrls: getStringArrayField(record.image_urls),

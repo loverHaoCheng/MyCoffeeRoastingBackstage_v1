@@ -22,6 +22,7 @@ interface RemoteFinanceExpenseRecord {
   expense_date: string;
   id: string;
   notes: null | string;
+  roast_batch_ids?: string[];
   source: FinanceExpenseRecord['source'];
   source_entity_id: null | string;
   status: FinanceExpenseRecord['status'];
@@ -65,6 +66,7 @@ const normalizeExpenseInput = (input: FinanceExpenseFormInput): FinanceExpenseFo
   ...input,
   customCategoryLabel: normalizeText(input.customCategoryLabel),
   notes: normalizeText(input.notes),
+  roastBatchIds: input.roastBatchIds ?? [],
   title: input.title.trim(),
 });
 
@@ -115,6 +117,7 @@ const mapRemoteExpenseRecord = (record: RemoteFinanceExpenseRecord): FinanceExpe
   expenseDate: record.expense_date,
   id: record.id,
   notes: record.notes,
+  roastBatchIds: record.roast_batch_ids ?? [],
   source: record.source,
   sourceEntityId: record.source_entity_id,
   status: record.status,
@@ -147,6 +150,7 @@ const mapExpenseInputToRemotePayload = (input: FinanceExpenseFormInput) => {
     custom_category_label: normalizeText(normalizedInput.customCategoryLabel),
     expense_date: normalizedInput.expenseDate,
     notes: normalizeText(normalizedInput.notes),
+    roast_batch_ids: normalizedInput.roastBatchIds ?? [],
     source: 'manual' as const,
     source_entity_id: null,
     status: normalizedInput.status,

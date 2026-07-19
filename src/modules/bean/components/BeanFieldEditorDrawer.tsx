@@ -1,4 +1,4 @@
-import { App } from 'antd';
+import App from 'antd/es/app';
 import { Select } from '@/components/ui/select';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
@@ -324,10 +324,11 @@ export function BeanFieldEditorDrawer({
       case 'costTemplateId':
         return (
           <Select
-            allowClear
             aria-label="成本模板"
             onChange={(value: string | undefined) => {
-              updateDraft(effectiveFieldPath, value ?? null);
+              if (value) {
+                updateDraft(effectiveFieldPath, value);
+              }
             }}
             options={costTemplateSettings.templates.map((template) => ({
               label: template.name,

@@ -126,7 +126,7 @@ export function SelectLabel({ children }: SelectLabelProps) {
   return <>{children}</>;
 }
 
-export function SelectValue(_props: SelectValueProps) {
+export function SelectValue() {
   const { placeholder } = useSelectContext();
 
   return <>{placeholder ?? null}</>;
@@ -145,12 +145,12 @@ const extractSelectTrigger = (
         return undefined;
       }
 
-      return child.props.placeholder as ReactNode;
+      return child.props.placeholder;
     })
     .find((value) => value != null);
 
   return {
-    className: node.props.className as string | undefined,
+    className: node.props.className,
     placeholder,
   };
 };
@@ -160,7 +160,7 @@ const extractSelectLabel = (node: ReactNode): ReactNode | undefined => {
     return undefined;
   }
 
-  return node.props.children as ReactNode;
+  return node.props.children;
 };
 
 const extractSelectItem = <T extends SelectPrimitiveValue>(
@@ -171,9 +171,9 @@ const extractSelectItem = <T extends SelectPrimitiveValue>(
   }
 
   return {
-    disabled: node.props.disabled as boolean | undefined,
-    label: node.props.children as ReactNode,
-    value: node.props.value as T,
+    disabled: node.props.disabled,
+    label: node.props.children,
+    value: node.props.value,
   };
 };
 
@@ -234,7 +234,7 @@ const extractSelectDefinition = <T extends SelectPrimitiveValue>(
       }
 
       if (isValidElement<SelectValueProps>(contentChild) && contentChild.type === SelectValue) {
-        definition.placeholder = contentChild.props.placeholder as ReactNode;
+        definition.placeholder = contentChild.props.placeholder;
       }
     }
   }
@@ -246,6 +246,10 @@ const flattenSelectOptions = <T extends SelectPrimitiveValue>(
   groups: SelectOptionGroup<T>[],
 ): SelectOption<T>[] => {
   return groups.flatMap((group) => group.items);
+};
+
+const serializeOptionValue = (value: SelectPrimitiveValue | null): string => {
+  return value == null ? EMPTY_SELECT_VALUE : serializeValue(value);
 };
 
 export function Select<T extends SelectPrimitiveValue = string>({
@@ -260,11 +264,12 @@ export function Select<T extends SelectPrimitiveValue = string>({
   onChange,
   options,
   placeholder,
-  showSearch: _showSearch,
+  showSearch,
   style,
   value,
   ...props
 }: SelectProps<T>) {
+  void showSearch;
   const selectId = useId();
   const childDefinition = useMemo(() => extractSelectDefinition<T>(children), [children]);
   const groupedOptions = useMemo<SelectOptionGroup<T>[]>(() => {
@@ -314,9 +319,9 @@ export function Select<T extends SelectPrimitiveValue = string>({
               return;
             }
 
-            const matchedOption = flattenedOptions.find((option) => serializeValue(option.value as T) === nextValue);
+            const matchedOption = flattenedOptions.find((option) => serializeOptionValue(option.value) === nextValue);
 
-            onChange?.((matchedOption?.value ?? undefined) as T | undefined);
+            onChange?.((matchedOption?.value ?? undefined));
           }}
           value={serializedValue}
         >
@@ -326,8 +331,8 @@ export function Select<T extends SelectPrimitiveValue = string>({
               return group.items.map((option) => (
                 <option
                   disabled={option.disabled}
-                  key={serializeValue(option.value as T)}
-                  value={serializeValue(option.value as T)}
+                  key={serializeOptionValue(option.value)}
+                  value={serializeOptionValue(option.value)}
                 >
                   {typeof option.label === 'string' ? option.label : String(option.value)}
                 </option>
@@ -339,8 +344,8 @@ export function Select<T extends SelectPrimitiveValue = string>({
                 {group.items.map((option) => (
                   <option
                     disabled={option.disabled}
-                    key={serializeValue(option.value as T)}
-                    value={serializeValue(option.value as T)}
+                    key={serializeOptionValue(option.value)}
+                    value={serializeOptionValue(option.value)}
                   >
                     {typeof option.label === 'string' ? option.label : String(option.value)}
                   </option>

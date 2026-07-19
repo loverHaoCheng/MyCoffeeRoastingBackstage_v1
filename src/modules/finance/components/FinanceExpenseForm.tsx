@@ -1,5 +1,7 @@
 import SaveOutlined from '@ant-design/icons/SaveOutlined';
 import Button from "antd/es/button";
+import AntdSelect from 'antd/es/select';
+import { useMemo } from 'react';
 import { Select } from '@/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
 import Input from '@/shared/components/ui/input';
@@ -7,8 +9,17 @@ import InputNumber from '@/shared/components/ui/input-number';
 import { Controller, type FieldPath, useForm, useWatch } from 'react-hook-form';
 
 import { financeExpenseFormSchema } from '@/modules/finance/schemas';
-import type { FinanceExpenseFormInput } from '@/modules/finance/types';
+import {
+  buildCostTemplateById,
+  buildReservedShippingUnitCountByBatchId,
+  calculateRoastSaleCapacity,
+  resolveBeanCostTemplate,
+} from '@/modules/finance/services/financeProfitCalculation.service';
+import type { FinanceExpenseFormInput, FinanceExpenseRecord } from '@/modules/finance/types';
+import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import type { CostTemplate } from '@/modules/settings/types';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
+import type { Bean } from '@/types/domain';
 
 import { buildFinanceExpenseTitle, financeExpenseCategoryOptions } from '../utils/expensePresentation';
 import styles from './FinanceEntryForm.module.css';
@@ -16,12 +27,21 @@ import styles from './FinanceEntryForm.module.css';
 const { TextArea } = Input;
 
 interface FinanceExpenseFormProps {
+  beans: Bean[];
   customCategorySuggestions?: string[];
   embedded?: boolean;
+  expenseRecords: FinanceExpenseRecord[];
   isSaving: boolean;
   onCancel?: () => void;
   onSubmit: (input: FinanceExpenseFormInput) => Promise<void>;
+  roastBatches: RoastBatchRecord[];
   showHeader?: boolean;
+  templates: CostTemplate[];
+}
+
+interface ShippingBatchOption {
+  batch: RoastBatchRecord;
+  availableUnitCount: number;
 }
 
 const fieldPathMap: Record<string, FieldPath<FinanceExpenseFormInput>> = {
@@ -30,6 +50,7 @@ const fieldPathMap: Record<string, FieldPath<FinanceExpenseFormInput>> = {
   customCategoryLabel: 'customCategoryLabel',
   expenseDate: 'expenseDate',
   notes: 'notes',
+  roastBatchIds: 'roastBatchIds',
   status: 'status',
   title: 'title',
 };
@@ -40,6 +61,7 @@ const defaultValues: FinanceExpenseFormInput = {
   customCategoryLabel: '',
   expenseDate: new Date().toISOString().slice(0, 10),
   notes: '',
+  roastBatchIds: [],
   status: 'paid',
   title: buildFinanceExpenseTitle('packaging'),
 };
@@ -56,13 +78,34 @@ const joinClassNames = (...classNames: (false | null | string | undefined)[]): s
   return classNames.filter((className): className is string => Boolean(className)).join(' ');
 };
 
+const getBatchCountById = (batchIds: string[]): Map<string, number> => {
+  return batchIds.reduce((counts, batchId) => {
+    counts.set(batchId, (counts.get(batchId) ?? 0) + 1);
+    return counts;
+  }, new Map<string, number>());
+};
+
+const repeatBatchId = (batchId: string, count: number): string[] => {
+  return Array.from({ length: count }, () => batchId);
+};
+
+const getRoastBatchDisplayName = (batch: RoastBatchRecord): string => {
+  const roastedBeanName = batch.roastedBeanName?.trim();
+
+  return roastedBeanName && roastedBeanName.length > 0 ? roastedBeanName : batch.greenBeanName;
+};
+
 export function FinanceExpenseForm({
+  beans,
   customCategorySuggestions,
   embedded = false,
+  expenseRecords,
   isSaving,
   onCancel,
   onSubmit,
+  roastBatches,
   showHeader = true,
+  templates,
 }: FinanceExpenseFormProps) {
   const {
     clearErrors,
@@ -75,6 +118,29 @@ export function FinanceExpenseForm({
     defaultValues,
   });
   const selectedCategory = useWatch({ control, name: 'category' });
+  const shippingBatchOptions = useMemo<ShippingBatchOption[]>(() => {
+    const beansById = new Map(beans.map((bean) => [String(bean.id), bean]));
+    const templatesById = buildCostTemplateById(templates);
+    const reservedUnitCountByBatchId = buildReservedShippingUnitCountByBatchId(expenseRecords);
+
+    return roastBatches.flatMap((batch) => {
+      if (batch.salesMode !== 'sale' || batch.status !== 'completed') {
+        return [];
+      }
+
+      const bean = beansById.get(batch.greenBeanId);
+      const template = bean ? resolveBeanCostTemplate(bean, templatesById) : null;
+
+      if (!template) {
+        return [];
+      }
+
+      const maximumUnitCount = calculateRoastSaleCapacity(batch.inputWeightGrams, template).maximumSoldUnitCount;
+      const availableUnitCount = maximumUnitCount - (reservedUnitCountByBatchId.get(batch.id) ?? 0);
+
+      return availableUnitCount > 0 ? [{ batch, availableUnitCount }] : [];
+    });
+  }, [beans, expenseRecords, roastBatches, templates]);
 
   const submitForm = async (values: FinanceExpenseFormInput) => {
     clearErrors();
@@ -194,6 +260,86 @@ export function FinanceExpenseForm({
                       ? `历史类别可直接手动输入，例如 ${customCategorySuggestions.slice(0, 2).join(' / ')}`
                       : '保存后会在下次新增支出时继续复用',
                   )}
+                </span>
+              </label>
+            ) : null}
+
+            {selectedCategory === 'shipping' ? (
+              <label className={joinClassNames(styles.field, styles.fieldWide)}>
+                <span>关联烘焙记录</span>
+                <Controller
+                  control={control}
+                  name="roastBatchIds"
+                  render={({ field }) => {
+                    const selectedBatchIds = field.value ?? [];
+                    const batchCountById = getBatchCountById(selectedBatchIds);
+                    const selectedUniqueBatchIds = Array.from(batchCountById.keys());
+                    const selectedOptions = shippingBatchOptions.filter(({ batch }) => batchCountById.has(batch.id));
+
+                    return (
+                      <div className={styles.shippingControl}>
+                        <AntdSelect
+                          aria-label="关联烘焙记录"
+                          className={styles.shippingSelect}
+                          maxTagCount={0}
+                          maxTagPlaceholder={() => `已关联 ${String(selectedUniqueBatchIds.length)} 条记录，共 ${String(selectedBatchIds.length)} 份`}
+                          mode="multiple"
+                          optionFilterProp="label"
+                          popupMatchSelectWidth
+                          options={shippingBatchOptions.map(({ batch, availableUnitCount }) => ({
+                            label: `${getRoastBatchDisplayName(batch)} · ${batch.roastDate.slice(0, 10)} · 可关联 ${String(availableUnitCount)} 份`,
+                            value: batch.id,
+                          }))}
+                          placeholder="选择销售烘焙记录"
+                          value={selectedUniqueBatchIds}
+                          onChange={(nextBatchIds: string[]) => {
+                            const nextValue = nextBatchIds.flatMap((batchId) => {
+                              return repeatBatchId(batchId, batchCountById.get(batchId) ?? 1);
+                            });
+                            field.onChange(nextValue);
+                          }}
+                        />
+
+                        {selectedOptions.length > 0 ? (
+                          <div className={styles.shippingAllocationList}>
+                            {selectedOptions.map(({ batch, availableUnitCount }) => {
+                              const batchName = getRoastBatchDisplayName(batch);
+                              const count = batchCountById.get(batch.id) ?? 1;
+
+                              return (
+                                <div className={styles.shippingAllocationRow} key={batch.id}>
+                                  <span className={styles.shippingBatchName} title={`${batchName} · ${batch.roastDate.slice(0, 10)}`}>
+                                    {batchName} · {batch.roastDate.slice(0, 10)}
+                                  </span>
+                                  <InputNumber
+                                    aria-label={`${batchName} 关联份数`}
+                                    max={availableUnitCount}
+                                    min={1}
+                                    precision={0}
+                                    suffix="份"
+                                    value={Math.min(count, availableUnitCount)}
+                                    onChange={(nextCount) => {
+                                      const normalizedCount = Math.max(1, Math.min(availableUnitCount, nextCount ?? 1));
+                                      const nextValue = selectedUniqueBatchIds.flatMap((batchId) => {
+                                        return repeatBatchId(
+                                          batchId,
+                                          batchId === batch.id ? normalizedCount : batchCountById.get(batchId) ?? 1,
+                                        );
+                                      });
+                                      field.onChange(nextValue);
+                                    }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  }}
+                />
+                <span className={joinClassNames(styles.helpText, errors.roastBatchIds && styles.errorText)}>
+                  {getHelpText(getErrorMessage(errors.roastBatchIds), '可关联份数会扣除其他邮费支出已关联的份数；邮费按全部关联份数平均分摊')}
                 </span>
               </label>
             ) : null}

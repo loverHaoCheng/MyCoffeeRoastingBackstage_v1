@@ -214,6 +214,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `first_crack_time` | number | 一爆时间 |
 | `total_roast_time` | number | 总烘焙时间 |
 | `final_sale_unit_price` | number | 本次销售单份最终定价，仅影响本次烘焙记录收入 |
+| `sold_unit_count` | number | 已售成品份数，非必填、最小值 `0`、仅整数；空值按 `1` 份兼容历史记录 |
 | `evaluation` | json | 评价表单，包含评分、风味、缺陷、调整建议与训练授权 |
 | `notes` | text | 备注 |
 | `image_urls` | json | 图片地址数组 |
@@ -358,6 +359,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `amount` | number | 支出金额 |
 | `status` | select | `paid / pending` |
 | `notes` | text | 备注 |
+| `roast_batch_ids` | relation(roast_batches) | 邮费关联的销售烘焙记录，多选，最多 100 条；同一 ID 重复次数代表关联份数；非必填，不级联删除 |
 | `source` | select | `auto-bean-purchase / manual` |
 | `source_entity_id` | text | 来源实体 ID |
 | `created_at` | text | 兼容前端时间戳 |

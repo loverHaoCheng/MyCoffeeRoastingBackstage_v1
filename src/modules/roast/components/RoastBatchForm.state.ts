@@ -21,5 +21,6 @@ export const createDefaultRoastBatchFormState = (): RoastBatchFormState => ({
   roastPlanName: '',
   roastedBeanName: '',
   salesMode: 'sale',
+  soldUnitCount: 1,
   totalRoastTime: undefined,
 });

@@ -1,4 +1,4 @@
-import { App } from 'antd';
+import App from 'antd/es/app';
 import { Select } from '@/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
 import Input from '@/shared/components/ui/input';
@@ -7,8 +7,10 @@ import Spin from "antd/es/spin";
 import { useEffect, useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
+import { calculateRoastSaleCapacity, resolveBeanCostTemplate } from '@/modules/finance/services/financeProfitCalculation.service';
 import { ROAST_LEVEL_OPTIONS, normalizeRoastLevel } from '@/modules/roast/constants/roastLevel';
 import { useRoastPlans } from '@/modules/roast/hooks';
+import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { useUpdateRoastBatch } from '@/modules/roast/hooks/useRoastBatches';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
 import { getSelectableRoastPlans, isGenericRoastPlan } from '@/modules/roast/utils/roastPlanSelection';
@@ -29,6 +31,7 @@ export type RoastBatchEditableFieldPath =
   | 'roastPlanId'
   | 'roastedBeanName'
   | 'salesMode'
+  | 'soldUnitCount'
   | 'status'
   | 'totalRoastTime';
 
@@ -62,6 +65,7 @@ const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | nu
     roastPlanName: batch.roastPlanName,
     roastedBeanName: batch.roastedBeanName,
     salesMode: batch.salesMode,
+    soldUnitCount: batch.soldUnitCount,
     status: batch.status,
     totalRoastTime: batch.totalRoastTime,
   };
@@ -79,6 +83,7 @@ export function RoastBatchFieldEditorDrawer({
   const { message } = App.useApp();
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
+  const { costTemplateSettings } = useCostTemplateSettings();
   const updateBatchMutation = useUpdateRoastBatch();
   const [draft, setDraft] = useState<RoastBatchUpdateInput | null>(null);
   const [lastOpenContext, setLastOpenContext] = useState<{
@@ -122,6 +127,8 @@ export function RoastBatchFieldEditorDrawer({
         return '熟豆名称';
       case 'salesMode':
         return '去向';
+      case 'soldUnitCount':
+        return '已售份数';
       case 'status':
         return '状态';
       case 'totalRoastTime':
@@ -135,6 +142,16 @@ export function RoastBatchFieldEditorDrawer({
     () => getSelectableRoastPlans(plans, draft?.greenBeanId),
     [draft?.greenBeanId, plans],
   );
+  const maximumSoldUnitCount = useMemo(() => {
+    const bean = beans.find((item) => String(item.id) === String(draft?.greenBeanId));
+
+    if (!bean || !draft?.inputWeightGrams) {
+      return null;
+    }
+
+    const template = resolveBeanCostTemplate(bean, new Map(costTemplateSettings.templates.map((item) => [item.id, item])));
+    return template ? calculateRoastSaleCapacity(draft.inputWeightGrams, template).maximumSoldUnitCount : null;
+  }, [beans, costTemplateSettings.templates, draft?.greenBeanId, draft?.inputWeightGrams]);
 
   useEffect(() => {
     setDraft(createDraft(effectiveBatch));
@@ -212,6 +229,15 @@ export function RoastBatchFieldEditorDrawer({
       return;
     }
 
+    if (
+      draft.salesMode === 'sale' &&
+      maximumSoldUnitCount != null &&
+      (draft.soldUnitCount ?? 0) > maximumSoldUnitCount
+    ) {
+      void message.warning(`已售份数不能超过本锅最多可售的 ${String(maximumSoldUnitCount)} 份。`);
+      return;
+    }
+
     const updateInput: RoastBatchUpdateInput = {
       developmentRatio: draft.developmentRatio,
       firstCrackTime: draft.firstCrackTime,
@@ -226,6 +252,7 @@ export function RoastBatchFieldEditorDrawer({
       roastPlanName: draft.roastPlanName,
       roastedBeanName: draft.roastedBeanName,
       salesMode: draft.salesMode,
+      soldUnitCount: draft.soldUnitCount,
       status: draft.status,
       totalRoastTime: draft.totalRoastTime,
     };
@@ -293,6 +320,20 @@ export function RoastBatchFieldEditorDrawer({
             ]}
             showSearch={false}
             value={draft.salesMode ?? 'sale'}
+          />
+        );
+      case 'soldUnitCount':
+        return (
+          <InputNumber
+            aria-label={fieldLabel}
+            min={0}
+            max={maximumSoldUnitCount ?? undefined}
+            onChange={(value) => {
+              updateDraft('soldUnitCount', value ?? 0);
+            }}
+            precision={0}
+            style={{ width: '100%' }}
+            value={draft.soldUnitCount ?? 0}
           />
         );
       case 'roastPlanId':

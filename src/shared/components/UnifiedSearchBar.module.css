@@ -6,12 +6,18 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
+  gap: 8px;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   isolation: isolate;
+}
+
+.trailingAction {
+  display: flex;
+  flex: 0 0 auto;
 }
 
 .field {

@@ -45,6 +45,7 @@ const createFormState = (batch: RoastBatchRecord | null): RoastBatchFormState =>
   roastPlanName: batch?.roastPlanName ?? '',
   roastedBeanName: batch?.roastedBeanName ?? '',
   salesMode: batch?.salesMode ?? 'sale',
+  soldUnitCount: batch?.soldUnitCount ?? 1,
   totalRoastTime: batch?.totalRoastTime,
 });
 
@@ -141,6 +142,11 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                   ...(batch.salesMode === 'sale'
                     ? [
                         {
+                          key: 'soldUnitCount',
+                          label: '已售份数',
+                          value: `${String(batch.soldUnitCount ?? 1)} 份`,
+                        },
+                        {
                           key: 'finalSaleUnitPrice',
                           label: '本次最终定价',
                           value: formatOptionalCurrency(batch.finalSaleUnitPrice),
@@ -163,7 +169,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 items: [
                   { key: 'inputWeightGrams', label: '入豆量', value: `${String(batch.inputWeightGrams)} g` },
                   { key: 'outputWeightGrams', label: '出豆量', value: `${String(batch.outputWeightGrams)} g` },
-                  { key: 'lossRate', label: '失水率', value: `${String(lossRate)}%` },
+                  { key: 'lossRate', label: '失水率', value: `${lossRate}%` },
                   { key: 'developmentRatio', label: '发展比', value: `${String(batch.developmentRatio ?? '-')}%` },
                   { key: 'firstCrackTime', label: '一爆时间', value: `${String(batch.firstCrackTime ?? '-')} s` },
                   { key: 'totalRoastTime', label: '总烘焙时间', value: `${String(batch.totalRoastTime ?? '-')} s` },

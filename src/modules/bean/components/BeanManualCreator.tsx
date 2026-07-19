@@ -1,4 +1,4 @@
-import { App } from 'antd';
+import App from 'antd/es/app';
 import { useMemo } from 'react';
 
 import { createDefaultBeanFormValues } from '@/modules/bean/constants';

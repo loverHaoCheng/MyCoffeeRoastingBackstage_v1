@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import Button from 'antd/es/button';
 import Checkbox from 'antd/es/checkbox';
+import App from 'antd/es/app';
 import { Select } from '@/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
 import Input from '@/shared/components/ui/input';
@@ -10,6 +11,8 @@ import InputNumber from '@/shared/components/ui/input-number';
 
 import type { Bean, RoastPlan } from '@/types/domain';
 import type { RoastBatchEvaluation, RoastBatchSalesMode } from '@/modules/roast/types/roastBatch';
+import { calculateRoastSaleCapacity, resolveBeanCostTemplate } from '@/modules/finance/services/financeProfitCalculation.service';
+import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import {
   ROAST_LEVEL_OPTIONS,
   calculateDehydrationRate,
@@ -38,6 +41,7 @@ export interface RoastBatchFormState {
   firstCrackTime: number | undefined;
   totalRoastTime: number | undefined;
   finalSaleUnitPrice: number | undefined;
+  soldUnitCount: number;
   notes: string;
 }
 
@@ -58,6 +62,7 @@ export interface RoastBatchFormSubmitValue {
   salesMode: RoastBatchSalesMode;
   totalRoastTime: number | undefined;
   finalSaleUnitPrice: number | null | undefined;
+  soldUnitCount: number;
 }
 
 interface RoastBatchFormProps {
@@ -108,6 +113,8 @@ export function RoastBatchForm({
   submitLabel,
   value,
 }: RoastBatchFormProps) {
+  const { message } = App.useApp();
+  const { costTemplateSettings } = useCostTemplateSettings();
   const roastLevelManualOverrideRef = useRef(false);
   const availablePlans = useMemo(
     () => getSelectableRoastPlans(plans, value.greenBeanId),
@@ -117,6 +124,14 @@ export function RoastBatchForm({
     () => beans.find((bean) => String(bean.id) === value.greenBeanId) ?? null,
     [beans, value.greenBeanId],
   );
+  const maximumSoldUnitCount = useMemo(() => {
+    if (!selectedBean) {
+      return null;
+    }
+
+    const template = resolveBeanCostTemplate(selectedBean, new Map(costTemplateSettings.templates.map((item) => [item.id, item])));
+    return template ? calculateRoastSaleCapacity(value.inputWeightGrams, template).maximumSoldUnitCount : null;
+  }, [costTemplateSettings.templates, selectedBean, value.inputWeightGrams]);
   const dehydrationRate = useMemo(
     () => calculateDehydrationRate(value.inputWeightGrams, value.outputWeightGrams),
     [value.inputWeightGrams, value.outputWeightGrams],
@@ -165,6 +180,16 @@ export function RoastBatchForm({
       return;
     }
 
+    if (
+      value.salesMode === 'sale' &&
+      maximumSoldUnitCount != null &&
+      value.soldUnitCount > maximumSoldUnitCount
+    ) {
+      void message.warning(`已售份数不能超过本锅最多可售的 ${String(maximumSoldUnitCount)} 份。`);
+      scrollToField('soldUnitCount');
+      return;
+    }
+
     onSubmit({
       evaluation: {
         allowTraining: value.evaluation.allowTraining,
@@ -191,6 +216,7 @@ export function RoastBatchForm({
       salesMode: value.salesMode,
       totalRoastTime: value.totalRoastTime,
       finalSaleUnitPrice: value.salesMode === 'sale' ? value.finalSaleUnitPrice ?? 0 : null,
+      soldUnitCount: value.salesMode === 'sale' ? value.soldUnitCount : 0,
     });
   };
 
@@ -302,6 +328,30 @@ export function RoastBatchForm({
               style={{ width: '100%' }}
             />
           </div>
+          {value.salesMode === 'sale' ? (
+            <div className={styles.field} data-field-path="soldUnitCount">
+              <span className={styles.fieldLabel}>已售份数</span>
+              <InputNumber
+                aria-label="已售份数"
+                min={0}
+                max={maximumSoldUnitCount ?? undefined}
+                precision={0}
+                value={value.soldUnitCount}
+                onChange={(nextValue) => {
+                  onChange((current) => ({
+                    ...current,
+                    soldUnitCount: nextValue ?? 0,
+                  }));
+                }}
+                style={{ width: '100%' }}
+              />
+              <div className={styles.inlineHint}>
+                {maximumSoldUnitCount == null
+                  ? '选择已关联成本模板的生豆后，可计算最多可售份数。'
+                  : `本锅最多可售 ${String(maximumSoldUnitCount)} 份；已实现收入与生豆成本按已售份数计算。`}
+              </div>
+            </div>
+          ) : null}
           {value.salesMode === 'sale' ? (
             <div className={styles.field} data-field-path="finalSaleUnitPrice">
               <span className={styles.fieldLabel}>本次最终定价</span>

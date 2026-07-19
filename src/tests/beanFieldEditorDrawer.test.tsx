@@ -13,6 +13,7 @@ import type { Bean } from '@/types/domain';
 const createBean = (): Bean => ({
   code: 'GB-001',
   costPerKg: 86,
+  costTemplateId: 'template-1',
   createdAt: '2026-07-03T00:00:00.000Z',
   defaultRoastInputGrams: 200,
   defaultSaleUnitPrice: 48,
@@ -33,7 +34,25 @@ describe('BeanFieldEditorDrawer', () => {
   beforeEach(() => {
     useSettingsStore.setState({
       appDisplaySettings: createDefaultAppDisplaySettings(),
-      costTemplateSettings: createDefaultCostTemplateSettings(),
+      costTemplateSettings: {
+        ...createDefaultCostTemplateSettings(),
+        defaultTemplateId: 'template-1',
+        templates: [{
+          createdAt: '2026-07-03T00:00:00.000Z',
+          dehydrationRate: 14,
+          energyCost: 0,
+          id: 'template-1',
+          laborCost: 0,
+          name: '标准模板',
+          notes: '',
+          otherCost: 0,
+          packagingCost: 0,
+          roastInputWeightGrams: 200,
+          saleUnitWeightGrams: 100,
+          targetProfitRate: 30,
+          updatedAt: '2026-07-03T00:00:00.000Z',
+        }],
+      },
     });
   });
 
@@ -125,8 +144,7 @@ describe('BeanFieldEditorDrawer', () => {
       <BeanFieldEditorDrawer bean={bean} fieldPath="costTemplateId" onClose={() => undefined} open />,
     );
 
-    fireEvent.mouseDown(screen.getByRole('combobox'));
-    fireEvent.click(await screen.findByText('标准模板'));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'string:template-1' } });
     fireEvent.click(screen.getByRole('button', { name: /保存成本模板/ }));
 
     await waitFor(() => {

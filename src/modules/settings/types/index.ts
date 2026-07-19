@@ -228,7 +228,7 @@ const normalizeVisibleMetaKeys = (
   const normalized: string[] = [];
 
   for (let index = 0; index < visibleMetaKeys.length && normalized.length < displayCount; index += 1) {
-    const key = visibleMetaKeys[index];
+    const key: unknown = visibleMetaKeys[index];
 
     if (typeof key !== 'string' || !defaultKeys.includes(key) || normalized.includes(key)) {
       continue;

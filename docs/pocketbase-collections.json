@@ -923,6 +923,19 @@
         },
         {
           "system": false,
+          "id": "fld_sold_unit_count",
+          "name": "sold_unit_count",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "min": 0,
+            "onlyInt": true
+          }
+        },
+        {
+          "system": false,
           "id": "fld_notes",
           "name": "notes",
           "type": "text",
@@ -1584,6 +1597,24 @@
           "presentable": false,
           "unique": false,
           "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_fe_roast_batches",
+          "name": "roast_batch_ids",
+          "type": "relation",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {
+            "collectionId": "col_roast_batches",
+            "cascadeDelete": false,
+            "minSelect": 0,
+            "maxSelect": 100,
+            "displayFields": [
+              "green_bean_name"
+            ]
+          }
         },
         {
           "system": false,

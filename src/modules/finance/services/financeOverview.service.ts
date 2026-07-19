@@ -1,6 +1,12 @@
 import type { Bean } from '@/types/domain';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import type { CostTemplate } from '@/modules/settings/types';
 import { toShanghaiDateString } from '@/shared/time/shanghaiTime';
+import {
+  buildCostTemplateById,
+  calculateEstimatedBeanProfit,
+  calculateRoastBatchProfit,
+} from './financeProfitCalculation.service';
 
 import type {
   CostCalculationRecord,
@@ -24,6 +30,7 @@ interface CalculateFinanceOverviewInput {
   incomeRecords: FinanceIncomeRecord[];
   roastBatches: RoastBatchRecord[];
   range: FinanceDateRange;
+  templates: CostTemplate[];
 }
 
 interface BuildFinanceOverviewDrilldownInput {
@@ -34,9 +41,8 @@ interface BuildFinanceOverviewDrilldownInput {
   key: FinanceOverviewDrilldownKey;
   roastBatches: RoastBatchRecord[];
   range: FinanceDateRange;
+  templates: CostTemplate[];
 }
-
-const DEFAULT_DEHYDRATION_RATE = 14;
 
 const createDateTextFromUtcDate = (value: Date): string => {
   return value.toISOString().slice(0, 10);
@@ -72,18 +78,6 @@ const getFinanceDateTextFromTimestamp = (value: string): string => {
   return toShanghaiDateString(value) || value.slice(0, 10);
 };
 
-const clampRate = (value: number): number => {
-  if (value < 0) {
-    return 0;
-  }
-
-  if (value > 100) {
-    return 100;
-  }
-
-  return value;
-};
-
 const toMoney = (value: number): number => {
   return Number(value.toFixed(2));
 };
@@ -106,30 +100,12 @@ const buildBeanMap = (beans: Bean[]): Map<string, Bean> => {
   return new Map(beans.map((bean) => [String(bean.id), bean]));
 };
 
-const buildLatestCalculationByBeanId = (calculations: CostCalculationRecord[]): Map<string, CostCalculationRecord> => {
-  const latestCalculationByBeanId = new Map<string, CostCalculationRecord>();
-
-  calculations.forEach((record) => {
-    const beanKey = record.beanId;
-    const currentLatestRecord = latestCalculationByBeanId.get(beanKey);
-
-    if (!currentLatestRecord) {
-      latestCalculationByBeanId.set(beanKey, record);
-      return;
-    }
-
-    if (new Date(record.updatedAt).getTime() > new Date(currentLatestRecord.updatedAt).getTime()) {
-      latestCalculationByBeanId.set(beanKey, record);
-    }
-  });
-
-  return latestCalculationByBeanId;
-};
-
 const buildRoastBatchRevenueRecords = (
   roastBatches: RoastBatchRecord[],
   beans: Bean[],
   range: FinanceDateRange,
+  templatesById: Map<string, CostTemplate>,
+  shippingCostByBatchId: Map<string, number>,
 ): RoastBatchRevenueDetail[] => {
   const beanMap = buildBeanMap(beans);
 
@@ -142,18 +118,22 @@ const buildRoastBatchRevenueRecords = (
     .map((batch) => {
       const roastDate = getFinanceDateTextFromTimestamp(batch.roastDate);
       const bean = beanMap.get(batch.greenBeanId);
-      const saleUnitPrice = batch.finalSaleUnitPrice ?? bean?.defaultSaleUnitPrice ?? 0;
-      const saleUnitCount = 1;
-      const amount = saleUnitPrice > 0 ? toMoney(saleUnitPrice) : 0;
+      const shippingCost = shippingCostByBatchId.get(batch.id) ?? 0;
+      const metrics = calculateRoastBatchProfit(batch, bean, templatesById, shippingCost);
+      const saleUnitPrice = bean?.defaultSaleUnitPrice ?? 0;
+      const saleUnitCount = batch.soldUnitCount ?? 1;
+      const amount = metrics?.revenue ?? 0;
       const roastedBeanName = batch.roastedBeanName?.trim();
 
       return {
         amount,
+        beanCost: metrics?.beanCost ?? 0,
         date: roastDate,
         id: batch.id,
         notes: batch.notes ?? null,
         saleUnitCount,
         saleUnitPrice,
+        shippingCost,
         title: roastedBeanName && roastedBeanName.length > 0 ? roastedBeanName : batch.greenBeanName,
       };
     })
@@ -165,6 +145,33 @@ const buildRoastBatchRevenueRecords = (
 
       return right.date.localeCompare(left.date);
     });
+};
+
+const buildShippingCostByBatchId = (
+  expenseRecords: FinanceExpenseRecord[],
+  range: FinanceDateRange,
+): Map<string, number> => {
+  const shippingCostByBatchId = new Map<string, number>();
+
+  expenseRecords.forEach((record) => {
+    if (
+      record.category !== 'shipping' ||
+      record.status !== 'paid' ||
+      !isDateWithinFinanceRange(record.expenseDate, range) ||
+      (record.roastBatchIds?.length ?? 0) === 0
+    ) {
+      return;
+    }
+
+    const batchIds = record.roastBatchIds ?? [];
+    const costPerBatch = record.amount / batchIds.length;
+
+    batchIds.forEach((batchId) => {
+      shippingCostByBatchId.set(batchId, (shippingCostByBatchId.get(batchId) ?? 0) + costPerBatch);
+    });
+  });
+
+  return shippingCostByBatchId;
 };
 
 export const isDateWithinFinanceRange = (dateText: string, range: FinanceDateRange): boolean => {
@@ -225,23 +232,12 @@ export const resolveFinanceDateRange = (
 
 export const calculateEstimatedRevenueFromBeans = (
   beans: Bean[],
-  calculations: CostCalculationRecord[],
+  templates: CostTemplate[],
 ): number => {
-  const latestCalculationByBeanId = buildLatestCalculationByBeanId(calculations);
+  const templatesById = buildCostTemplateById(templates);
 
   return toMoney(
-    beans.reduce((total, bean) => {
-      if (bean.stockKg <= 0 || !bean.defaultSaleUnitPrice || !bean.defaultSaleUnitWeightGrams) {
-        return total;
-      }
-
-      const latestCalculation = latestCalculationByBeanId.get(String(bean.id));
-      const dehydrationRate = clampRate(latestCalculation?.dehydrationRate ?? DEFAULT_DEHYDRATION_RATE);
-      const roastedOutputWeightGrams = bean.stockKg * 1000 * (1 - dehydrationRate / 100);
-      const estimatedUnitCount = roastedOutputWeightGrams / bean.defaultSaleUnitWeightGrams;
-
-      return total + estimatedUnitCount * bean.defaultSaleUnitPrice;
-    }, 0),
+    beans.reduce((total, bean) => total + (calculateEstimatedBeanProfit(bean, templatesById)?.revenue ?? 0), 0),
   );
 };
 
@@ -252,8 +248,21 @@ export const calculateFinanceOverview = ({
   incomeRecords,
   roastBatches,
   range,
+  templates,
 }: CalculateFinanceOverviewInput): FinanceOverviewMetrics => {
-  const roastBatchRevenueRecords = buildRoastBatchRevenueRecords(roastBatches, beans, range);
+  void calculations;
+  const templatesById = buildCostTemplateById(templates);
+  const shippingCostByBatchId = buildShippingCostByBatchId(expenseRecords, range);
+  const roastBatchRevenueRecords = buildRoastBatchRevenueRecords(
+    roastBatches,
+    beans,
+    range,
+    templatesById,
+    shippingCostByBatchId,
+  );
+  const estimatedProfitMetrics = beans
+    .map((bean) => calculateEstimatedBeanProfit(bean, templatesById))
+    .filter((metrics): metrics is NonNullable<typeof metrics> => metrics !== null);
   const receivedIncomeRecords = incomeRecords.filter((record) => {
     return record.status === 'received' && isDateWithinFinanceRange(record.incomeDate, range);
   });
@@ -294,12 +303,16 @@ export const calculateFinanceOverview = ({
   const operatingProfit = toMoney(realizedIncome - totalExpenses);
 
   return {
-    estimatedRevenue: calculateEstimatedRevenueFromBeans(beans, calculations),
+    estimatedBeanCost: toMoney(estimatedProfitMetrics.reduce((total, metrics) => total + metrics.beanCost, 0)),
+    estimatedProfit: toMoney(estimatedProfitMetrics.reduce((total, metrics) => total + metrics.profit, 0)),
+    estimatedRevenue: toMoney(estimatedProfitMetrics.reduce((total, metrics) => total + metrics.revenue, 0)),
     expenseRecordCount: filteredExpenseRecords.length + filteredBeanPurchases.length,
     grossProfit,
     incomeRecordCount: roastBatchRevenueRecords.length + receivedIncomeRecords.length,
     operatingProfit,
     realizedIncome,
+    realizedBeanCost: toMoney(roastBatchRevenueRecords.reduce((total, record) => total + record.beanCost, 0)),
+    realizedProfit: toMoney(roastBatchRevenueRecords.reduce((total, record) => total + record.amount - record.beanCost - record.shippingCost, 0)),
     totalExpenses,
   };
 };
@@ -312,47 +325,69 @@ export const buildFinanceOverviewDrilldown = ({
   key,
   roastBatches,
   range,
+  templates,
 }: BuildFinanceOverviewDrilldownInput): FinanceOverviewDrilldownPayload => {
-  if (key === 'estimatedRevenue') {
-    const latestCalculationByBeanId = buildLatestCalculationByBeanId(calculations);
+  if (key === 'estimatedRevenue' || key === 'estimatedBeanCost' || key === 'estimatedProfit') {
+    void calculations;
+    const templatesById = buildCostTemplateById(templates);
+    const inventoryDrilldownConfig = {
+      estimatedBeanCost: {
+        getAmount: (metrics: NonNullable<ReturnType<typeof calculateEstimatedBeanProfit>>) => metrics.beanCost,
+        title: '库存预估成本明细',
+      },
+      estimatedProfit: {
+        getAmount: (metrics: NonNullable<ReturnType<typeof calculateEstimatedBeanProfit>>) => metrics.profit,
+        title: '库存预估利润明细',
+      },
+      estimatedRevenue: {
+        getAmount: (metrics: NonNullable<ReturnType<typeof calculateEstimatedBeanProfit>>) => metrics.revenue,
+        title: '当前库存预估收入明细',
+      },
+    } as const;
+    const config = inventoryDrilldownConfig[key];
     const records = sortOverviewDetailRecords(
       beans
-        .filter((bean) => bean.stockKg > 0 && (bean.defaultSaleUnitPrice ?? 0) > 0 && (bean.defaultSaleUnitWeightGrams ?? 0) > 0)
         .map((bean) => {
-          const latestCalculation = latestCalculationByBeanId.get(String(bean.id));
-          const dehydrationRate = clampRate(latestCalculation?.dehydrationRate ?? DEFAULT_DEHYDRATION_RATE);
-          const roastedOutputWeightGrams = bean.stockKg * 1000 * (1 - dehydrationRate / 100);
-          const estimatedUnitCount = roastedOutputWeightGrams / (bean.defaultSaleUnitWeightGrams ?? 1);
-          const amount = toMoney(estimatedUnitCount * (bean.defaultSaleUnitPrice ?? 0));
+          const metrics = calculateEstimatedBeanProfit(bean, templatesById);
+
+          if (!metrics) {
+            return null;
+          }
 
           return {
-            amount,
-            categoryLabel: `${formatRevenueUnitCount(estimatedUnitCount)} 份 × ¥${(bean.defaultSaleUnitPrice ?? 0).toFixed(2)}`,
+            amount: config.getAmount(metrics),
+            categoryLabel: `${formatRevenueUnitCount(metrics.saleUnitCount)} 份 · 可烘焙 ${String(metrics.plannedBatchCount)} 锅 · 成本 ¥${metrics.beanCost.toFixed(2)} · 利润 ¥${metrics.profit.toFixed(2)}`,
             date: getFinanceDateTextFromTimestamp(bean.updatedAt),
             deletable: false,
             id: `estimated-${String(bean.id)}`,
-            notes: `剩余 ${bean.stockKg.toFixed(2)}kg · 按脱水率 ${dehydrationRate.toFixed(1)}% 估算`,
+            notes: '按关联成本模板的生豆重量、脱水率和出售单份熟豆重量估算',
             sourceEntityId: String(bean.id),
             sourceType: 'estimatedRevenue' as const,
             sourceLabel: '当前库存估算',
             title: bean.name,
           };
         })
-        .filter((record) => record.amount > 0),
+        .filter((record): record is NonNullable<typeof record> => record !== null && record.amount > 0),
     );
 
     return {
-      emptyText: '当前还没有可用于估算收入的库存',
+      emptyText: '当前还没有可用于估算的库存',
       key,
       records,
-      title: '当前库存预估收入明细',
+      title: config.title,
       total: toMoney(records.reduce((sum, record) => sum + record.amount, 0)),
     };
   }
 
-  if (key === 'realizedIncome') {
-    const roastBatchRevenueRecords = buildRoastBatchRevenueRecords(roastBatches, beans, range);
-    const manualIncomeRecords: FinanceOverviewDetailItem[] = incomeRecords
+  if (key === 'realizedIncome' || key === 'realizedBeanCost' || key === 'realizedProfit') {
+    const roastBatchRevenueRecords = buildRoastBatchRevenueRecords(
+      roastBatches,
+      beans,
+      range,
+      buildCostTemplateById(templates),
+      buildShippingCostByBatchId(expenseRecords, range),
+    );
+    const manualIncomeRecords: FinanceOverviewDetailItem[] = key === 'realizedIncome' ? incomeRecords
       .filter((record) => record.status === 'received' && isDateWithinFinanceRange(record.incomeDate, range))
       .map((record) => ({
         amount: toMoney(record.amount),
@@ -365,12 +400,27 @@ export const buildFinanceOverviewDrilldown = ({
         sourceType: 'manualIncome',
         sourceLabel: '手工补录收入',
         title: record.title,
-      }));
+      })) : [];
+    const realizedDrilldownConfig = {
+      realizedBeanCost: {
+        getAmount: (record: RoastBatchRevenueDetail) => record.beanCost,
+        title: '已售出生豆成本明细',
+      },
+      realizedIncome: {
+        getAmount: (record: RoastBatchRevenueDetail) => record.amount,
+        title: '已实现收入明细',
+      },
+      realizedProfit: {
+        getAmount: (record: RoastBatchRevenueDetail) => record.amount - record.beanCost - record.shippingCost,
+        title: '已实现利润明细',
+      },
+    } as const;
+    const config = realizedDrilldownConfig[key];
     const records = sortOverviewDetailRecords(
       [
         ...roastBatchRevenueRecords.map((record) => ({
-          amount: record.amount,
-          categoryLabel: `${formatRevenueUnitCount(record.saleUnitCount)} 份 × ¥${record.saleUnitPrice.toFixed(2)}`,
+          amount: toMoney(config.getAmount(record)),
+          categoryLabel: `${formatRevenueUnitCount(record.saleUnitCount)} 份 × ¥${record.saleUnitPrice.toFixed(2)} · 已售出生豆成本 ¥${record.beanCost.toFixed(2)} · 邮费 ¥${record.shippingCost.toFixed(2)} · 利润 ¥${(record.amount - record.beanCost - record.shippingCost).toFixed(2)}`,
           date: record.date,
           deleteHint: '烘焙历史收入请前往烘焙历史中修改对应记录。',
           deletable: false,
@@ -385,10 +435,10 @@ export const buildFinanceOverviewDrilldown = ({
     );
 
     return {
-      emptyText: '当前时间范围内还没有销售烘焙记录收入',
+      emptyText: '当前时间范围内还没有可展示的销售烘焙记录',
       key,
       records,
-      title: '已实现收入明细',
+      title: config.title,
       total: toMoney(records.reduce((sum, record) => sum + record.amount, 0)),
     };
   }

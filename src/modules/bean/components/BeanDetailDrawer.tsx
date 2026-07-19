@@ -1,4 +1,4 @@
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from "antd/es/button";
 import Result from "antd/es/result";
 import Spin from "antd/es/spin";

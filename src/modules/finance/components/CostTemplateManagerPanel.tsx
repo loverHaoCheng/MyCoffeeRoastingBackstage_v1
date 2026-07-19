@@ -1,4 +1,4 @@
-import { App } from 'antd';
+import App from 'antd/es/app';
 import { useEffect, useId, useState } from 'react';
 
 import { costTemplateFormSchema } from '@/modules/settings/schemas';

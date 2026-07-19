@@ -10,11 +10,17 @@ interface FinanceOverviewPanelProps {
 }
 
 const formatCurrency = new Intl.NumberFormat('zh-CN', {
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
   minimumFractionDigits: 0,
 });
 
 const buildRows = (overview: FinanceOverviewMetrics) => [
+  {
+    drilldownKey: 'estimatedBeanCost' as const,
+    key: 'estimatedBeanCost',
+    label: '库存预估成本',
+    value: `¥${formatCurrency.format(overview.estimatedBeanCost)}`,
+  },
   {
     drilldownKey: 'totalExpenses' as const,
     key: 'totalExpenses',
@@ -28,15 +34,28 @@ const buildRows = (overview: FinanceOverviewMetrics) => [
     value: `¥${formatCurrency.format(overview.realizedIncome)}`,
   },
   {
+    drilldownKey: 'realizedBeanCost' as const,
+    key: 'realizedBeanCost',
+    label: '已售出生豆成本',
+    value: `¥${formatCurrency.format(overview.realizedBeanCost)}`,
+  },
+  {
+    drilldownKey: 'realizedProfit' as const,
+    key: 'realizedProfit',
+    label: '已实现利润',
+    value: `¥${formatCurrency.format(overview.realizedProfit)}`,
+  },
+  {
     drilldownKey: 'estimatedRevenue' as const,
     key: 'estimatedRevenue',
     label: '当前库存预估收入',
     value: `¥${formatCurrency.format(overview.estimatedRevenue)}`,
   },
   {
-    key: 'grossProfit',
-    label: '毛利润',
-    value: `¥${formatCurrency.format(overview.grossProfit)}`,
+    drilldownKey: 'estimatedProfit' as const,
+    key: 'estimatedProfit',
+    label: '库存预估利润',
+    value: `¥${formatCurrency.format(overview.estimatedProfit)}`,
   },
   {
     key: 'operatingProfit',

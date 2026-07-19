@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Select } from '@/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
-import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
 import { Controller, type FieldPath, useForm } from 'react-hook-form';
 
@@ -299,17 +298,20 @@ export function BeanForm({
         <div className={styles.fieldGrid}>
           {enableCostTemplateSelection ? (
             <label className={joinClassNames(styles.field, styles.fieldWide)} data-field-path="costTemplate">
-              {renderLabel('成本模板')}
+              {renderLabel('成本模板', true)}
               <Select
                 aria-label="成本模板"
-                allowClear={!autoApplyDefaultCostTemplate}
                 onChange={(value: string | undefined) => {
+                  if (!value) {
+                    return;
+                  }
+
                   templateSyncShouldDirtyRef.current = true;
                   manualSaleDefaultsRef.current = {
                     price: false,
                     weight: false,
                   };
-                  setSelectedTemplateId(value ?? null);
+                  setSelectedTemplateId(value);
                 }}
                 options={costTemplateSettings.templates.map((template) => ({
                   label: template.name,
@@ -323,8 +325,8 @@ export function BeanForm({
                 {selectedTemplate
                   ? '会带入默认单次烘焙量，并根据当前采购重量与总价实时给出参考售价'
                   : autoApplyDefaultCostTemplate
-                    ? '请先在设置中建立成本模板'
-                    : '如需重算默认规格和售价，可在这里选择成本模板'}
+                    ? '请先在设置中建立成本模板后再录入生豆'
+                    : '必须选择成本模板，用于计算库存预估和销售利润'}
               </span>
               <div className={joinClassNames(styles.linkedHint, styles.inlineHint)}>
                 {selectedTemplate ? (

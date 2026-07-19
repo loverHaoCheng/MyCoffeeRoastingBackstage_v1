@@ -1,4 +1,4 @@
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import Radio from 'antd/es/radio';
 import Slider from 'antd/es/slider';

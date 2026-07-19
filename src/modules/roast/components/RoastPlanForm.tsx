@@ -3,7 +3,7 @@ import MinusCircleOutlined from "@ant-design/icons/MinusCircleOutlined";
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
 import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import UpOutlined from "@ant-design/icons/UpOutlined";
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from "antd/es/button";
 import { Select } from '@/components/ui/select';
 import Input from '@/shared/components/ui/input';

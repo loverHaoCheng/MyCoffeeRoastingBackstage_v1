@@ -1,5 +1,5 @@
 import DownOutlined from "@ant-design/icons/DownOutlined";
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from "antd/es/button";
 import Empty from "antd/es/empty";
 import Grid from "antd/es/grid";
@@ -23,6 +23,7 @@ import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
+import { FilterSortToggle, MultiFilterSortBar, type MultiFilterDefinition } from '@/shared/components/MultiFilterSortBar';
 import type { Bean } from '@/types/domain';
 import type { GreenBeanCreateInput } from '@/modules/bean/types';
 import type { FieldPath } from 'react-hook-form';
@@ -32,6 +33,8 @@ import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';
 import styles from './BeanPage.module.css';
 
 type BeanDetailMode = 'view' | 'edit';
+type BeanSortKey = 'costAsc' | 'costDesc' | 'createdAsc' | 'createdDesc' | 'stockAsc' | 'stockDesc';
+type BeanFilterKey = 'origin' | 'process';
 
 const formatKg = new Intl.NumberFormat('zh-CN', {
   maximumFractionDigits: 1,
@@ -58,6 +61,25 @@ const sortBeansByCreatedAt = (beans: Bean[]): Bean[] => {
 
 const getBeanRemainingWeightGrams = (bean: Bean): number => {
   return Math.max(0, Math.round(bean.remainingWeightGrams ?? bean.stockKg * 1000));
+};
+
+const getFilterOptions = (values: (null | string | undefined)[]) => {
+  return Array.from(new Set(values.map((value) => value?.trim() ?? '').filter(Boolean)))
+    .sort((left, right) => left.localeCompare(right, 'zh-CN'))
+    .map((value) => ({ label: value, value }));
+};
+
+const sortBeans = (beans: Bean[], sortKey: BeanSortKey): Bean[] => {
+  return [...beans].sort((left, right) => {
+    switch (sortKey) {
+      case 'createdAsc': return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      case 'costAsc': return left.costPerKg - right.costPerKg;
+      case 'costDesc': return right.costPerKg - left.costPerKg;
+      case 'stockAsc': return getBeanRemainingWeightGrams(left) - getBeanRemainingWeightGrams(right);
+      case 'stockDesc': return getBeanRemainingWeightGrams(right) - getBeanRemainingWeightGrams(left);
+      default: return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    }
+  });
 };
 
 const mapBeanToRestockInitialValues = (bean: Bean): GreenBeanCreateInput => {
@@ -104,6 +126,11 @@ export function BeanPage() {
   const screens = Grid.useBreakpoint();
   const { costTemplateSettings } = useCostTemplateSettings();
   const [keyword, setKeyword] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<BeanFilterKey, string[]>>({
+    origin: [], process: [],
+  });
+  const [sortKey, setSortKey] = useState<BeanSortKey>('createdDesc');
+  const [isFilterPanelExpanded, setIsFilterPanelExpanded] = useState(false);
   const [isZeroStockCollapsed, setIsZeroStockCollapsed] = useState(true);
   const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
   const [selectedBeanFieldPath, setSelectedBeanFieldPath] = useState<FieldPath<GreenBeanFormInput> | undefined>();
@@ -113,9 +140,19 @@ export function BeanPage() {
   const { data: beans = [], isLoading } = useBeans();
   const deleteBeanMutation = useDeleteBean();
 
+  const filterDefinitions = useMemo<MultiFilterDefinition[]>(() => [
+    { key: 'process', label: '处理法', options: getFilterOptions(beans.map((bean) => bean.process)) },
+    { key: 'origin', label: '产地', options: getFilterOptions(beans.map((bean) => bean.origin)) },
+  ], [beans]);
   const filteredBeans = useMemo(() => {
-    return beans.filter((bean) => matchesKeyword(bean, keyword));
-  }, [beans, keyword]);
+    const matchingBeans = beans.filter((bean) => {
+      return matchesKeyword(bean, keyword) &&
+        (filterValues.process.length === 0 || filterValues.process.includes(bean.process)) &&
+        (filterValues.origin.length === 0 || filterValues.origin.includes(bean.origin));
+    });
+
+    return sortBeans(matchingBeans, sortKey);
+  }, [beans, filterValues, keyword, sortKey]);
   const activeBeans = useMemo(() => {
     return filteredBeans.filter((bean) => getBeanRemainingWeightGrams(bean) > 0);
   }, [filteredBeans]);
@@ -176,7 +213,7 @@ export function BeanPage() {
 
   const handleDeleteBean = (bean: Bean) => {
     if (import.meta.env.MODE === 'test' && typeof modal.confirm !== 'function') {
-      void commitDeleteBean(bean, 'makeGeneric').catch((error) => {
+      void commitDeleteBean(bean, 'makeGeneric').catch((error: unknown) => {
         void message.error(
           getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
         );
@@ -265,7 +302,35 @@ export function BeanPage() {
         }}
         placeholder="搜索生豆、产地、处理法、风味"
         sectionAriaLabel="生豆库存筛选"
+        trailingAction={
+          <FilterSortToggle
+            activeFilterCount={Object.values(filterValues).reduce((total, values) => total + values.length, 0)}
+            expanded={isFilterPanelExpanded}
+            onExpandedChange={setIsFilterPanelExpanded}
+          />
+        }
         value={keyword}
+      />
+
+      <MultiFilterSortBar
+        expanded={isFilterPanelExpanded}
+        filters={filterDefinitions}
+        onChange={(key, values) => {
+          setFilterValues((current) => ({ ...current, [key]: values }));
+        }}
+        onClear={() => {
+          setFilterValues({ origin: [], process: [] });
+        }}
+        onSortChange={(value) => {
+          setSortKey(value as BeanSortKey);
+        }}
+        sortOptions={[
+          { label: '最新创建', value: 'createdDesc' }, { label: '最早创建', value: 'createdAsc' },
+          { label: '库存由多到少', value: 'stockDesc' }, { label: '库存由少到多', value: 'stockAsc' },
+          { label: '成本由高到低', value: 'costDesc' }, { label: '成本由低到高', value: 'costAsc' },
+        ]}
+        sortValue={sortKey}
+        values={filterValues}
       />
 
       <section className={styles.summaryGrid} aria-label="生豆库存概览">
@@ -275,7 +340,7 @@ export function BeanPage() {
         </article>
         <article>
           <span>均价</span>
-          <strong>¥{summary.averageCost.toFixed(0)} / kg</strong>
+          <strong>¥{summary.averageCost.toFixed(2)} / kg</strong>
         </article>
       </section>
 

@@ -24,7 +24,7 @@ const flavorTagsSchema = z.preprocess(
 export const greenBeanCreateFormSchema = z
   .object({
     agingDays: z.number().int().nonnegative('养豆时间不能小于 0').max(3650, '养豆时间不能超过 3650 天'),
-    costTemplateId: z.string().nullable().optional(),
+    costTemplateId: z.string().trim().min(1, '请选择成本模板'),
     code: z.string().trim().min(1, '请输入生豆编号').max(60, '生豆编号长度不能超过 60 个字符'),
     defaultRoastInputGrams: z.number().int().positive('请输入有效的单次烘焙量'),
     displayName: z.string().trim().min(1, '请输入显示名称').max(120, '显示名称长度不能超过 120 个字符'),

@@ -98,6 +98,7 @@ describe('BeanForm', () => {
   it('requires positive quality metrics while allowing them to remain empty', () => {
     const validInput = {
       ...createDefaultBeanFormValues(),
+      costTemplateId: 'template-1',
       defaultSaleUnitPrice: 20,
       defaultSaleUnitWeightGrams: 100,
       displayName: '测试生豆',

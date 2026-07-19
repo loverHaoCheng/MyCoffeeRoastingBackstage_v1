@@ -1,6 +1,6 @@
 import CoffeeOutlined from "@ant-design/icons/CoffeeOutlined";
 import DownloadOutlined from '@ant-design/icons/DownloadOutlined';
-import { App } from 'antd';
+import App from 'antd/es/app';
 import { useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';

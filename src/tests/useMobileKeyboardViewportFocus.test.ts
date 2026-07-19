@@ -120,7 +120,7 @@ describe('resolveRecenteredScrollTop', () => {
     ).toBeNull();
   });
 
-  it('hides action bars while editing and recenters the last focused field after keyboard closes', async () => {
+  it('hides action bars while editing and recenters the last focused field after keyboard closes', () => {
     const visualViewportMock = {
       addEventListener: vi.fn(),
       height: 420,
@@ -137,10 +137,14 @@ describe('resolveRecenteredScrollTop', () => {
 
     render(createElement(KeyboardFocusFixture));
 
-    const container = screen.getByRole('textbox', { name: '备注' }).closest('[data-app-scroll-viewport="true"]') as HTMLDivElement;
-    const field = screen.getByRole('textbox', { name: '备注' }).closest('[data-field-path="notes"]') as HTMLElement;
-    const input = screen.getByRole('textbox', { name: '备注' }) as HTMLInputElement;
-    const footer = document.querySelector('[data-drawer-action-bar="true"]') as HTMLElement;
+    const container = screen.getByRole('textbox', { name: '备注' }).closest('[data-app-scroll-viewport="true"]');
+    const field = screen.getByRole('textbox', { name: '备注' }).closest('[data-field-path="notes"]');
+    const input = screen.getByRole('textbox', { name: '备注' });
+    const footer = document.querySelector('[data-drawer-action-bar="true"]');
+
+    if (!container || !field || !footer) {
+      throw new Error('keyboard focus test fixture is incomplete');
+    }
     const scrollToMock = vi.fn(({ top }: { top: number }) => {
       container.scrollTop = top;
     });

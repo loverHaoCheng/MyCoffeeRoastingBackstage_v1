@@ -1,6 +1,6 @@
 import SearchOutlined from "@ant-design/icons/SearchOutlined";
 import Input from '@/shared/components/ui/input';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 
 import styles from './UnifiedSearchBar.module.css';
 
@@ -9,6 +9,7 @@ interface UnifiedSearchBarProps {
   inputAriaLabel: string;
   placeholder: string;
   sectionAriaLabel: string;
+  trailingAction?: ReactNode;
   value: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
@@ -22,6 +23,7 @@ export function UnifiedSearchBar({
   inputAriaLabel,
   placeholder,
   sectionAriaLabel,
+  trailingAction,
   value,
   onChange,
 }: UnifiedSearchBarProps) {
@@ -37,6 +39,7 @@ export function UnifiedSearchBar({
           value={value}
         />
       </div>
+      {trailingAction ? <div className={styles.trailingAction}>{trailingAction}</div> : null}
     </section>
   );
 }

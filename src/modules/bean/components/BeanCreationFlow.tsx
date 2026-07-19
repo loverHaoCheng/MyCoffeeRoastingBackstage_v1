@@ -1,7 +1,7 @@
 import PlusOutlined from '@ant-design/icons/PlusOutlined';
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Button from 'antd/es/button';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { createDefaultBeanFormValues } from '@/modules/bean/constants';
 import { beanAiRecognitionService } from '@/modules/bean/services';
@@ -160,7 +160,7 @@ export function BeanCreationFlow({
     setRecognizedBeanInitialValues(undefined);
   };
 
-  const openManualCreation = (initialValues?: GreenBeanCreateInput) => {
+  const openManualCreation = useCallback((initialValues?: GreenBeanCreateInput) => {
     if (!hasCostTemplate) {
       void message.warning('请先前往财务页创建至少一个成本模板，再新增生豆。');
       return;
@@ -170,7 +170,7 @@ export function BeanCreationFlow({
     setCreationMode('manual');
     setRecognizedBeanInitialValues(initialValues);
     setCreationDrawerOpen(true);
-  };
+  }, [hasCostTemplate, message]);
 
   const openCreationDrawer = (mode: BeanCreationMode) => {
     if (mode === 'ai' && isAiRecognitionActionDisabled) {
@@ -212,7 +212,7 @@ export function BeanCreationFlow({
 
     lastHandledManualRequestKeyRef.current = openManualRequestKey;
     openManualCreation(manualInitialValues);
-  }, [manualInitialValues, openManualRequestKey]);
+  }, [manualInitialValues, openManualCreation, openManualRequestKey]);
 
   return (
     <>

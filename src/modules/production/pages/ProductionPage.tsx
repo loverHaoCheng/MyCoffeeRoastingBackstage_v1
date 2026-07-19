@@ -1,12 +1,13 @@
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
-import { App } from 'antd';
+import App from 'antd/es/app';
 import Empty from "antd/es/empty";
 import Grid from "antd/es/grid";
 import Spin from "antd/es/spin";
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useBeans } from '@/modules/bean/hooks';
+import { buildCostTemplateById, calculateRoastSaleCapacity, resolveBeanCostTemplate } from '@/modules/finance/services/financeProfitCalculation.service';
 import {
   RoastBatchCard,
   RoastBatchFieldEditorDrawer,
@@ -21,17 +22,22 @@ import {
 } from '@/modules/roast/hooks';
 import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
+import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
+import { FilterSortToggle, MultiFilterSortBar, type MultiFilterDefinition } from '@/shared/components/MultiFilterSortBar';
 import type { RoastBatchCreateInput, RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
 
 import styles from './ProductionPage.module.css';
 
 type DetailMode = 'view' | 'edit';
+type RoastBatchSortKey = 'inputAsc' | 'inputDesc' | 'outputAsc' | 'outputDesc' | 'roastDateAsc' | 'roastDateDesc';
+type RoastBatchFilterKey = 'bean' | 'level' | 'saleProgress' | 'salesMode';
+type RoastBatchSaleProgress = 'full' | 'notFull';
 
 const matchesKeyword = (batch: RoastBatchRecord, keyword: string): boolean => {
   const normalized = keyword.trim().toLowerCase();
@@ -49,22 +55,89 @@ const sortBatchesByRoastDate = (batches: RoastBatchRecord[]): RoastBatchRecord[]
   });
 };
 
+const getFilterOptions = (values: string[]) => Array.from(new Set(values.filter(Boolean)))
+  .sort((left, right) => left.localeCompare(right, 'zh-CN'))
+  .map((value) => ({ label: value, value }));
+
+const sortBatches = (batches: RoastBatchRecord[], sortKey: RoastBatchSortKey): RoastBatchRecord[] => {
+  return [...batches].sort((left, right) => {
+    switch (sortKey) {
+      case 'roastDateAsc': return new Date(left.roastDate).getTime() - new Date(right.roastDate).getTime();
+      case 'inputAsc': return left.inputWeightGrams - right.inputWeightGrams;
+      case 'inputDesc': return right.inputWeightGrams - left.inputWeightGrams;
+      case 'outputAsc': return left.outputWeightGrams - right.outputWeightGrams;
+      case 'outputDesc': return right.outputWeightGrams - left.outputWeightGrams;
+      default: return new Date(right.roastDate).getTime() - new Date(left.roastDate).getTime();
+    }
+  });
+};
+
+const getSaleProgress = (
+  batch: RoastBatchRecord,
+  maximumSoldUnitCount: number | undefined,
+): RoastBatchSaleProgress | null => {
+  if (batch.salesMode !== 'sale' || maximumSoldUnitCount == null) {
+    return null;
+  }
+
+  return (batch.soldUnitCount ?? 1) >= maximumSoldUnitCount ? 'full' : 'notFull';
+};
+
 export function ProductionPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<RoastBatchFilterKey, string[]>>({
+    bean: [], level: [], saleProgress: [], salesMode: [],
+  });
+  const [sortKey, setSortKey] = useState<RoastBatchSortKey>('roastDateDesc');
+  const [isFilterPanelExpanded, setIsFilterPanelExpanded] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [selectedBatchFieldPath, setSelectedBatchFieldPath] = useState<RoastBatchEditableFieldPath | undefined>();
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
   const { data: batches = [], isFetching } = useRoastBatches();
   const { data: beans = [] } = useBeans();
+  const { costTemplateSettings } = useCostTemplateSettings();
   const deleteMutation = useDeleteRoastBatch();
   const updateMutation = useUpdateRoastBatch();
   const isWide = screens.md ?? false;
 
-  const filteredBatches = batches.filter((b) => matchesKeyword(b, keyword));
+  const saleProgressByBatchId = useMemo(() => {
+    const beansById = new Map(beans.map((bean) => [String(bean.id), bean]));
+    const templatesById = buildCostTemplateById(costTemplateSettings.templates);
+
+    return new Map(batches.map((batch) => {
+      const bean = beansById.get(batch.greenBeanId);
+      const template = bean ? resolveBeanCostTemplate(bean, templatesById) : null;
+      const maximumSoldUnitCount = template
+        ? calculateRoastSaleCapacity(batch.inputWeightGrams, template).maximumSoldUnitCount
+        : undefined;
+
+      return [batch.id, getSaleProgress(batch, maximumSoldUnitCount)];
+    }));
+  }, [batches, beans, costTemplateSettings.templates]);
+
+  const filterDefinitions = useMemo<MultiFilterDefinition[]>(() => [
+    { key: 'bean', label: '生豆', options: getFilterOptions(batches.map((batch) => batch.greenBeanName)) },
+    { key: 'level', label: '烘焙度', options: getFilterOptions(batches.map((batch) => batch.roastLevel)) },
+    { key: 'salesMode', label: '去向', options: [{ label: '销售', value: 'sale' }, { label: '自留', value: 'selfUse' }] },
+    { key: 'saleProgress', label: '售出量', options: [{ label: '未售满', value: 'notFull' }, { label: '已售满', value: 'full' }] },
+  ], [batches]);
+  const filteredBatches = useMemo(() => {
+    const matchingBatches = batches.filter((batch) => {
+      const saleProgress = saleProgressByBatchId.get(batch.id);
+
+      return matchesKeyword(batch, keyword) &&
+        (filterValues.bean.length === 0 || filterValues.bean.includes(batch.greenBeanName)) &&
+        (filterValues.level.length === 0 || filterValues.level.includes(batch.roastLevel)) &&
+        (filterValues.salesMode.length === 0 || filterValues.salesMode.includes(batch.salesMode)) &&
+        (filterValues.saleProgress.length === 0 || (saleProgress != null && filterValues.saleProgress.includes(saleProgress)));
+    });
+
+    return sortBatches(matchingBatches, sortKey);
+  }, [batches, filterValues, keyword, saleProgressByBatchId, sortKey]);
   const selectedBatch = batches.find((b) => b.id === selectedBatchId) ?? null;
 
   const handleView = (batchId: string) => {
@@ -175,7 +248,35 @@ export function ProductionPage() {
         }}
         placeholder="搜索生豆、烘焙程度、计划..."
         sectionAriaLabel="烘焙历史搜索"
+        trailingAction={
+          <FilterSortToggle
+            activeFilterCount={Object.values(filterValues).reduce((total, values) => total + values.length, 0)}
+            expanded={isFilterPanelExpanded}
+            onExpandedChange={setIsFilterPanelExpanded}
+          />
+        }
         value={keyword}
+      />
+
+      <MultiFilterSortBar
+        expanded={isFilterPanelExpanded}
+        filters={filterDefinitions}
+        onChange={(key, values) => {
+          setFilterValues((current) => ({ ...current, [key]: values }));
+        }}
+        onClear={() => {
+          setFilterValues({ bean: [], level: [], saleProgress: [], salesMode: [] });
+        }}
+        onSortChange={(value) => {
+          setSortKey(value as RoastBatchSortKey);
+        }}
+        sortOptions={[
+          { label: '最新烘焙', value: 'roastDateDesc' }, { label: '最早烘焙', value: 'roastDateAsc' },
+          { label: '入豆量由多到少', value: 'inputDesc' }, { label: '入豆量由少到多', value: 'inputAsc' },
+          { label: '出豆量由多到少', value: 'outputDesc' }, { label: '出豆量由少到多', value: 'outputAsc' },
+        ]}
+        sortValue={sortKey}
+        values={filterValues}
       />
 
       {/* 列表 */}

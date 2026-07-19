@@ -75,6 +75,7 @@
   align-content: start;
   row-gap: 7px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .fieldWide {
@@ -117,6 +118,8 @@
 .field :global(.ant-input-affix-wrapper) {
   inline-size: 100%;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .field :global(.ant-input),
@@ -140,6 +143,92 @@
   display: flex;
   align-items: center;
   padding-inline: 14px !important;
+}
+
+.field :global(.ant-select-multiple .ant-select-selection-wrap),
+.field :global(.ant-select-multiple .ant-select-selection-overflow),
+.field :global(.ant-select-multiple .ant-select-selection-search) {
+  align-items: center;
+}
+
+.field :global(.ant-select-multiple .ant-select-selection-search-input) {
+  height: 46px !important;
+}
+
+.field :global(.ant-select-selection-overflow) {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.field :global(.ant-select-selection-overflow-item) {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.field :global(.ant-select-selection-item),
+.field :global(.ant-select-selection-placeholder) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field :global(.ant-select-selection-overflow-item-suffix) {
+  flex: 0 0 auto;
+}
+
+.shippingControl {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.shippingSelect {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.shippingSelect :global(.ant-select-selection-overflow-item) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shippingAllocationList {
+  display: grid;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.shippingAllocationRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 108px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--app-bg-elevated) 92%, transparent);
+}
+
+.shippingBatchName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shippingAllocationRow :global(.ant-input-number) {
+  width: 108px;
+  min-width: 0;
 }
 
 .field :global(.ant-picker) {
