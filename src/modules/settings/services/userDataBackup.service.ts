@@ -10,10 +10,16 @@ const backupCollections = [
   'green_beans',
   'green_bean_purchase_batches',
   'bean_sale_specs',
+  'roasting_machines',
   'roast_profiles',
   'roast_batches',
   'roast_curve_records',
   'roast_records',
+  'ai_roast_consents',
+  'ai_roast_profiles',
+  'ai_roast_reviews',
+  'ai_roast_recommendations',
+  'ai_roast_feedback',
   'finance_expense_records',
   'finance_income_records',
   'cost_calculations',
@@ -23,6 +29,11 @@ const backupCollections = [
 type BackupCollectionName = (typeof backupCollections)[number];
 
 const optionalBackupCollections = new Set<BackupCollectionName>([
+  'ai_roast_consents',
+  'ai_roast_feedback',
+  'ai_roast_profiles',
+  'ai_roast_recommendations',
+  'ai_roast_reviews',
   'app_settings',
   'bean_sale_specs',
   'cost_calculations',
@@ -31,10 +42,14 @@ const optionalBackupCollections = new Set<BackupCollectionName>([
   'green_bean_purchase_batches',
   'roast_curve_records',
   'roast_records',
+  'roasting_machines',
 ]);
 
 type BackupRecord = Record<string, unknown>;
 type BackupIdMaps = Partial<Record<BackupCollectionName, Map<string, string>>>;
+interface BackupImportContext {
+  roasterModelLabels: Map<string, string>;
+}
 type BackupImportMode = 'merge-account' | 'same-account';
 export type UserDataBackupImportStrategy = 'merge' | 'sync';
 
@@ -130,11 +145,42 @@ const relationFieldMappings: Partial<Record<BackupCollectionName, Partial<Record
   },
   roast_profiles: {
     green_bean_id: 'green_beans',
+    roaster_machine_id: 'roasting_machines',
   },
   roast_records: {
     green_bean_id: 'green_beans',
   },
+  ai_roast_consents: {
+    machine_id: 'roasting_machines',
+  },
+  ai_roast_feedback: {
+    recommendation_id: 'ai_roast_recommendations',
+    roast_batch_id: 'roast_batches',
+  },
+  ai_roast_profiles: {
+    machine_id: 'roasting_machines',
+  },
+  ai_roast_recommendations: {
+    machine_id: 'roasting_machines',
+  },
+  ai_roast_reviews: {
+    curve_record_id: 'roast_curve_records',
+    machine_id: 'roasting_machines',
+    roast_batch_id: 'roast_batches',
+  },
 };
+
+const clearWhenRelationTargetMissing = new Set<string>([
+  'ai_roast_consents.machine_id',
+  'ai_roast_feedback.recommendation_id',
+  'ai_roast_feedback.roast_batch_id',
+  'ai_roast_profiles.machine_id',
+  'ai_roast_recommendations.machine_id',
+  'ai_roast_reviews.curve_record_id',
+  'ai_roast_reviews.machine_id',
+  'ai_roast_reviews.roast_batch_id',
+  'roast_profiles.roaster_machine_id',
+]);
 
 const appSettingIdKeyPrefixes: {
   collectionName: BackupCollectionName;
@@ -147,6 +193,17 @@ const appSettingIdKeyPrefixes: {
 
 const sanitizeRecordForImport = (record: BackupRecord): BackupRecord => {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !importOmittedFields.has(key)));
+};
+
+const normalizeCollectionPayloadForImport = (
+  collectionName: BackupCollectionName,
+  payload: BackupRecord,
+): BackupRecord => {
+  if (collectionName !== 'roasting_machines') {
+    return payload;
+  }
+
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'model_id'));
 };
 
 const omitRecordId = (record: BackupRecord): BackupRecord => {
@@ -177,19 +234,31 @@ const isOptionalBackupCollectionUnavailableError = (
   collectionName: BackupCollectionName,
   error: unknown,
 ): boolean => {
-  if (!optionalBackupCollections.has(collectionName) || !(error instanceof AppError) || error.code !== 'HTTP') {
+  if (!optionalBackupCollections.has(collectionName) || !(error instanceof AppError)) {
     return false;
   }
 
-  if (error.status === 404) {
+  if (error.status === 404 && (error.code === 'HTTP' || error.code === 'AUTH')) {
     return true;
   }
 
-  if (error.status !== 400) {
-    return false;
+  const normalizedText = getNormalizedErrorText(error);
+
+  if (error.status === 403 && error.code === 'AUTH') {
+    return (
+      normalizedText.includes('collection') ||
+      normalizedText.includes('forbidden') ||
+      normalizedText.includes('permission') ||
+      normalizedText.includes('access') ||
+      normalizedText.includes('开放') ||
+      normalizedText.includes('权限') ||
+      normalizedText.includes('不允许')
+    );
   }
 
-  const normalizedText = getNormalizedErrorText(error);
+  if (error.code !== 'HTTP' || error.status !== 400) {
+    return false;
+  }
 
   return (
     normalizedText.includes('collection') ||
@@ -208,8 +277,10 @@ const isOptionalBackupCollectionListError = (
   return (
     optionalBackupCollections.has(collectionName) &&
     error instanceof AppError &&
-    error.code === 'HTTP' &&
-    (error.status === 400 || error.status === 404)
+    (
+      (error.code === 'HTTP' && (error.status === 400 || error.status === 404)) ||
+      (error.code === 'AUTH' && error.status === 403 && isOptionalBackupCollectionUnavailableError(collectionName, error))
+    )
   );
 };
 
@@ -228,6 +299,25 @@ const isDuplicateRecordImportError = (error: unknown): boolean => {
   );
 };
 
+const isMissingLegacyRoasterModelError = (error: unknown): boolean => {
+  if (!(error instanceof AppError) || error.status !== 400) {
+    return false;
+  }
+
+  const normalizedMessage = getNormalizedErrorText(error);
+
+  return (
+    normalizedMessage.includes('roaster_model') ||
+    normalizedMessage.includes('roastermodel') ||
+    normalizedMessage.includes('roaster model') ||
+    normalizedMessage.includes('烘豆机')
+  ) && (
+    normalizedMessage.includes('required') ||
+    normalizedMessage.includes('不能为空') ||
+    normalizedMessage.includes('missing required value')
+  );
+};
+
 const listBackupCollectionRecords = async (
   client: PocketBaseRestClient,
   collectionName: BackupCollectionName,
@@ -241,7 +331,7 @@ const listBackupCollectionRecords = async (
       ...options,
       orderBy: {
         ascending: true,
-        column: 'created',
+        column: 'created_at',
       },
     });
   } catch (error) {
@@ -281,12 +371,80 @@ const getMappedId = (
   idMaps: BackupIdMaps,
   collectionName: BackupCollectionName,
   value: unknown,
-): unknown => {
+): {
+  mapped: unknown;
+  resolved: boolean;
+} => {
   if (typeof value !== 'string') {
-    return value;
+    return {
+      mapped: value,
+      resolved: true,
+    };
   }
 
-  return idMaps[collectionName]?.get(value) ?? value;
+  const mapped = idMaps[collectionName]?.get(value);
+
+  return {
+    mapped: mapped ?? value,
+    resolved: typeof mapped === 'string',
+  };
+};
+
+const createBackupImportContext = (backup: UserDataBackupFile): BackupImportContext => {
+  const roasterModelLabels = new Map<string, string>();
+
+  (backup.collections.roasting_machines ?? []).forEach((record) => {
+    const id = getTrimmedStringField(record, 'id');
+    const label =
+      getTrimmedStringField(record, 'display_name') ||
+      getTrimmedStringField(record, 'model_key') ||
+      getTrimmedStringField(record, 'model_id');
+
+    if (id && label) {
+      roasterModelLabels.set(id, label);
+    }
+  });
+
+  return {
+    roasterModelLabels,
+  };
+};
+
+const resolveLegacyRoasterModelLabel = (
+  record: BackupRecord,
+  context: BackupImportContext,
+): string => {
+  const explicitLabel = getTrimmedStringField(record, 'roaster_model') || getTrimmedStringField(record, 'roasterModel');
+
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const machineId = getTrimmedStringField(record, 'roaster_machine_id');
+
+  return context.roasterModelLabels.get(machineId) ?? '';
+};
+
+const withLegacyRoasterModelFallback = (
+  collectionName: BackupCollectionName,
+  payload: BackupRecord,
+  record: BackupRecord,
+  context: BackupImportContext,
+): BackupRecord | null => {
+  if (collectionName !== 'roast_profiles' || typeof payload.roaster_model === 'string' && payload.roaster_model.trim()) {
+    return null;
+  }
+
+  const roasterModel = resolveLegacyRoasterModelLabel(record, context);
+
+  if (!roasterModel) {
+    return null;
+  }
+
+  return {
+    ...Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'roaster_machine_id')),
+    roaster_model: roasterModel,
+  };
 };
 
 const rewriteAppSettingKey = (key: string, idMaps: BackupIdMaps): string => {
@@ -309,7 +467,7 @@ const rewriteRecordReferences = (
   record: BackupRecord,
   idMaps: BackupIdMaps,
 ): BackupRecord => {
-  const payload = sanitizeRecordForImport(record);
+  let payload = normalizeCollectionPayloadForImport(collectionName, sanitizeRecordForImport(record));
   const fieldMappings = relationFieldMappings[collectionName] ?? {};
 
   Object.entries(fieldMappings).forEach(([fieldName, targetCollectionName]) => {
@@ -317,7 +475,20 @@ const rewriteRecordReferences = (
       return;
     }
 
-    payload[fieldName] = getMappedId(idMaps, targetCollectionName, payload[fieldName]);
+    const sourceValue = payload[fieldName];
+    const { mapped, resolved } = getMappedId(idMaps, targetCollectionName, sourceValue);
+
+    if (
+      typeof sourceValue === 'string' &&
+      sourceValue.length > 0 &&
+      !resolved &&
+      clearWhenRelationTargetMissing.has(`${collectionName}.${fieldName}`)
+    ) {
+      payload = Object.fromEntries(Object.entries(payload).filter(([key]) => key !== fieldName));
+      return;
+    }
+
+    payload[fieldName] = mapped;
   });
 
   if (collectionName === 'app_settings' && typeof payload.key === 'string') {
@@ -437,6 +608,7 @@ const importBackupRecord = async (
   collectionName: BackupCollectionName,
   record: BackupRecord,
   idMaps: BackupIdMaps,
+  context: BackupImportContext,
   mode: BackupImportMode,
   strategy: UserDataBackupImportStrategy,
 ): Promise<'imported' | 'skipped' | 'updated'> => {
@@ -483,6 +655,21 @@ const importBackupRecord = async (
           return 'skipped';
         }
 
+        if (isMissingLegacyRoasterModelError(error)) {
+          const fallbackPayload = withLegacyRoasterModelFallback(collectionName, payload, record, context);
+
+          if (fallbackPayload) {
+            await client.update<BackupRecord>(collectionName, fallbackPayload, {
+              match: {
+                id: oldId,
+              },
+              select: '*',
+            });
+
+            return 'updated';
+          }
+        }
+
         throw error;
       }
     }
@@ -509,6 +696,26 @@ const importBackupRecord = async (
   } catch (error) {
     if (isOptionalBackupCollectionUnavailableError(collectionName, error)) {
       return 'skipped';
+    }
+
+    if (isMissingLegacyRoasterModelError(error)) {
+      const fallbackPayload = withLegacyRoasterModelFallback(collectionName, payload, record, context);
+
+      if (fallbackPayload) {
+        const rows = await client.insert<BackupRecord>(collectionName, fallbackPayload);
+
+        if (oldId) {
+          const insertedId = getInsertedRecordId(rows, mode === 'same-account' ? oldId : '');
+
+          if (!insertedId) {
+            throw new AppError('备份导入失败：PocketBase 未返回新记录 ID。', { code: 'DATA' });
+          }
+
+          registerImportedId(idMaps, collectionName, oldId, insertedId);
+        }
+
+        return 'imported';
+      }
     }
 
     if (mode === 'same-account' && oldId && isDuplicateRecordImportError(error)) {
@@ -632,6 +839,7 @@ export const userDataBackupService = {
   ): Promise<UserDataBackupImportResult> {
     const client = createClient();
     const idMaps: BackupIdMaps = {};
+    const context = createBackupImportContext(backup);
     const mode = resolveBackupImportMode(backup);
     const effectiveStrategy: UserDataBackupImportStrategy =
       mode === 'same-account' ? options.strategy ?? 'merge' : 'merge';
@@ -648,7 +856,7 @@ export const userDataBackupService = {
       const records = backup.collections[collectionName] ?? [];
 
       for (const record of records) {
-        const result = await importBackupRecord(client, collectionName, record, idMaps, mode, effectiveStrategy);
+        const result = await importBackupRecord(client, collectionName, record, idMaps, context, mode, effectiveStrategy);
 
         if (result === 'imported') {
           imported += 1;

@@ -202,9 +202,8 @@ export const evaluateRoastTrainingSampleQuality = (
     errors.push('烘焙计划节点时间不是递增序列。');
   }
 
-  const sampleRoasterModel = toTrimmedString(sample.roaster_model);
-  if (sampleRoasterModel !== 'tank200d' && sampleRoasterModel !== '其他') {
-    errors.push('烘豆机型号不在允许范围内。');
+  if (!hasText(sample.roaster_model)) {
+    errors.push('训练样本缺少烘焙机信息。');
   }
 
   const report: RoastTrainingQualityReport = {

@@ -1,6 +1,8 @@
 export type Fetcher = typeof fetch;
 
 export interface PocketBaseRestClientOptions {
+  autoManageOwner?: boolean;
+  autoManageTimestamps?: boolean;
   fetcher?: Fetcher;
   projectUrl: string;
   publishableKey?: string;
@@ -9,6 +11,7 @@ export interface PocketBaseRestClientOptions {
 }
 
 export interface PocketBaseRestListOptions {
+  expand?: string;
   limit?: number;
   match?: Record<string, boolean | number | string>;
   orderBy?: {

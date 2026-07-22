@@ -142,6 +142,7 @@ export const listPocketBaseRecords = async (
     filter?: string;
     page?: number;
     perPage?: number;
+    sort?: string;
   } = {},
 ): Promise<unknown> => {
   const searchParams = new URLSearchParams({
@@ -152,6 +153,10 @@ export const listPocketBaseRecords = async (
 
   if (options.filter) {
     searchParams.set('filter', options.filter);
+  }
+
+  if (options.sort) {
+    searchParams.set('sort', options.sort);
   }
 
   const upstream = await proxyPocketBaseRequest(

@@ -181,7 +181,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `name` | text | 方案名称 |
 | `batch_weight_grams` | number | 单批投豆量 |
 | `planned_batch_kg` | number | 计划批量 |
-| `roaster_model` | select | 本计划对应烘豆机型号，仅允许 `tank200d` / `其他` |
+| `roaster_machine_id` | relation(roasting_machines) | 本计划关联的实体烘焙机；界面显示其 `display_name`。历史未匹配记录可为空，新建和编辑时必须选择 |
 | `roast_purpose` | text | 用途 |
 | `status` | select | `draft` / `inProgress` / `completed` / `cancelled` |
 | `steps` | json | 烘焙步骤，节点内包含时间、事件、操作、炉温、风温、火力、转速 |
@@ -267,7 +267,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | --- | --- | --- |
 | `owner` | relation(users) | 归属用户，必填 |
 | `roast_batch_id` | relation(roast_batches) | 关联烘焙记录，必填 |
-| `roaster_model` | select | 烘豆机型号，仅允许 `tank200d` / `其他` |
+| `roaster_model` | text | 烘焙记录关联的实体烘焙机显示名称；不使用固定型号枚举 |
 | `snapshot` | json | 服务端读取 PocketBase 后生成的训练快照 |
 | `quality_status` | select | 质量状态，当前默认 `pending`，预留 `passed` / `failed` |
 | `quality_report` | json | 自动质量检查报告，包含错误、警告与核心指标 |

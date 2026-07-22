@@ -37,3 +37,27 @@ export function useRoastTrainingUpload() {
     },
   });
 }
+
+export function useConfirmRoastTrainingRecommendation(roastBatchId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { confirmedPlanId: string; recommendationId: string }) => {
+      const response = await roastTrainingUploadService.confirmRecommendation(
+        input.recommendationId,
+        input.confirmedPlanId,
+      );
+
+      return response.data;
+    },
+    onSuccess: () => {
+      if (!roastBatchId) {
+        return;
+      }
+
+      void queryClient.invalidateQueries({
+        queryKey: roastTrainingUploadQueryKeys.status(roastBatchId),
+      });
+    },
+  });
+}

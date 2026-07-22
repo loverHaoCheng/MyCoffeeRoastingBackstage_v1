@@ -1,12 +1,16 @@
 export { RoastBatchCard } from './RoastBatchCard';
+export { RoastAiAnalysisSection } from './RoastAiAnalysisSection';
 export { RoastBatchFieldEditorDrawer } from './RoastBatchFieldEditorDrawer';
 export { RoastBatchCreator } from './RoastBatchCreator';
 export { RoastBatchDrawer } from './RoastBatchDrawer';
 export { RoastBatchForm } from './RoastBatchForm';
 export { RoastCurveAttachmentPanel } from './RoastCurveAttachmentPanel';
 export { RoastCurvePanel } from './RoastCurvePanel';
+export { RoastingMachineManager } from './RoastingMachineManager';
+export { RoasterModelSubmission } from './RoasterModelSubmission';
 // 保留旧的烘焙计划组件（供参考）
 export { RoastPlanDetail } from './RoastPlanDetail';
+export { RoastPlanAiRecommender } from './RoastPlanAiRecommender';
 export { RoastPlanFieldEditorDrawer } from './RoastPlanFieldEditorDrawer';
 export { RoastPlanForm } from './RoastPlanForm';
 export { RoastPlanJsonImporter } from './RoastPlanJsonImporter';

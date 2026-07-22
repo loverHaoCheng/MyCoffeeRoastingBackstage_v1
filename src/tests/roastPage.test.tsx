@@ -127,6 +127,48 @@ vi.mock('@/modules/roast/hooks', () => ({
     ],
     isFetching: false,
   }),
+  useRoastPlanRecommendation: () => ({
+    isPending: false,
+    mutateAsync: vi.fn().mockResolvedValue({
+      adjustments: [],
+      confidence: 70,
+      modifiedPlanJson: {
+        batchWeightGrams: 200,
+        beanId: 'local-test-bean-1',
+        beanName: '测试生豆',
+        name: 'AI 推荐测试计划',
+        purpose: '手冲',
+        roastLevel: '浅度烘焙',
+        roasterMachineId: 'machine-1',
+        roasterModel: '店内 Tank200D',
+        steps: [
+          {
+            airTemperature: '190°C',
+            drumSpeed: '45rpm',
+            event: '入豆',
+            firePower: '80%',
+            operation: '入豆',
+            temperature: '200°C',
+            time: '0:00',
+          },
+        ],
+      },
+      overallReview: '基于目标生成保守起始计划。',
+    }),
+  }),
+  useRoastingMachines: () => ({
+    data: [
+      {
+        configuration: {},
+        displayName: '店内 Tank200D',
+        id: 'machine-1',
+        modelId: 'model-1',
+        modelKey: 'TANK Tank200D',
+        status: 'active',
+      },
+    ],
+    isLoading: false,
+  }),
   useUpdateRoastPlan: () => ({
     mutateAsync: vi.fn(),
   }),
@@ -289,7 +331,7 @@ describe('RoastPage', () => {
 
     expect(screen.queryByText('肯尼亚 柏拉 AA Plus SL28 SL34 水洗（200g，手冲浅烘）')).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: '烘豆机型号' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '已关联烘焙机' })).toBeInTheDocument();
     expect(screen.queryByLabelText('生豆名称')).not.toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: '保存计划' });
@@ -356,7 +398,7 @@ describe('RoastPage', () => {
     expect(screen.getByRole('button', { name: '保存计划' })).toBeInTheDocument();
   });
 
-  it('shows the staged AI recommendation tab in the create drawer', () => {
+  it('shows create options in the bottom action sheet', () => {
     renderWithQuery(
       <FloatingActionTestHost>
         <RoastPage />
@@ -364,13 +406,44 @@ describe('RoastPage', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'AI 推荐' }));
 
-    expect(screen.getByLabelText('AI 推荐筹备说明')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'AI 推荐（暂未开放）' })).toBeInTheDocument();
-    expect(screen.getByText('当前已开放')).toBeInTheDocument();
-    expect(screen.getByText('当前暂禁用')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'AI 推荐（暂未开放）' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '手动创建' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'JSON 导入' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI 推荐/ })).toBeEnabled();
+    expect(screen.queryByRole('tab', { name: 'AI 推荐' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '手动创建' }));
+
+    expect(screen.getByRole('heading', { name: '基础信息' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建烘焙计划' })).toBeInTheDocument();
+  });
+
+  it('opens AI recommendation and fills the editable creation form after generation', async () => {
+    renderWithQuery(
+      <FloatingActionTestHost>
+        <RoastPage />
+      </FloatingActionTestHost>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
+    fireEvent.click(screen.getByRole('button', { name: /AI 推荐/ }));
+
+    expect(screen.getByRole('heading', { name: 'AI 推荐条件' })).toBeInTheDocument();
+    expect(screen.getByLabelText('AI 推荐生豆')).toBeInTheDocument();
+    expect(screen.getByLabelText('AI 推荐烘豆机')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('例如 希望提高花香和柑橘酸质，降低尖酸，保留干净甜感。'), {
+      target: {
+        value: '希望提高花香和柑橘酸质，降低尖酸，保留干净甜感。',
+      },
+    });
+
+    await performUiUpdate(() => {
+      fireEvent.click(screen.getByRole('button', { name: '生成 AI 推荐计划' }));
+    });
+
+    expect(screen.getByDisplayValue('AI 推荐测试计划')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建烘焙计划' })).toBeInTheDocument();
   });
 
   it('fills the manual creation form from JSON instead of creating a plan directly', async () => {
@@ -390,7 +463,7 @@ describe('RoastPage', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'JSON 导入' }));
+    fireEvent.click(screen.getByRole('button', { name: 'JSON 导入' }));
     fireEvent.change(screen.getByLabelText('烘焙计划 JSON'), {
       target: {
         value: JSON.stringify({
@@ -413,7 +486,7 @@ describe('RoastPage', () => {
     });
 
     expect(createPlanFromJsonSpy).not.toHaveBeenCalled();
-    expect(screen.getByRole('tab', { name: '手动创建', selected: true })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '手动创建' })).not.toBeInTheDocument();
     expect(screen.getByDisplayValue('JSON 回填计划')).toBeInTheDocument();
     expect(screen.getByDisplayValue('320')).toBeInTheDocument();
     expect(screen.getByDisplayValue('1:30')).toBeInTheDocument();
@@ -427,11 +500,14 @@ describe('RoastPage', () => {
     expect(createPlanSpy).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
+    fireEvent.click(screen.getByRole('button', { name: '手动创建' }));
 
     expect(screen.queryByDisplayValue('JSON 回填计划')).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText('例如 肯尼亚 柏拉 AA Plus 水洗')).toHaveValue('');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'JSON 导入' }));
+    fireEvent.click(screen.getByRole('button', { name: /取\s*消/ }));
+    fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
+    fireEvent.click(screen.getByRole('button', { name: 'JSON 导入' }));
 
     expect(screen.getByLabelText('烘焙计划 JSON')).toHaveValue('');
 

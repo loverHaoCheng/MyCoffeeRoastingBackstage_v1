@@ -4,12 +4,12 @@ import Button from 'antd/es/button';
 import Empty from "antd/es/empty";
 import Grid from "antd/es/grid";
 import Spin from "antd/es/spin";
-import Tabs from "antd/es/tabs";
 import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import {
   RoastPlanDetail,
+  RoastPlanAiRecommender,
   RoastPlanFieldEditorDrawer,
   RoastPlanList,
   RoastPlanManualCreator,
@@ -22,11 +22,13 @@ import {
   useDeleteRoastPlan,
   useRoastBatches,
   useRoastPlans,
+  useRoastingMachines,
   useUpdateRoastPlan,
 } from '@/modules/roast/hooks';
 import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlanStatus';
 import { parseRoastPlanJsonDraft } from '@/modules/roast/services';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
+import { isRoastAiClientEnabled } from '@/modules/roast/services/roastTrainingUpload.service';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
@@ -39,8 +41,23 @@ import type { RoastPlanJsonInput } from '@/modules/roast/types';
 import styles from './RoastPage.module.css';
 
 type DetailMode = 'view' | 'edit';
+type CreationMode = 'ai' | 'json' | 'manual';
 type RoastPlanSortKey = 'nameAsc' | 'updatedAsc' | 'updatedDesc' | 'weightAsc' | 'weightDesc';
 type RoastPlanFilterKey = 'bean' | 'level' | 'purpose';
+
+const actionSheetStyles = {
+  body: {
+    paddingBottom: 0,
+  },
+  content: {
+    borderRadius: '28px 28px 0 0',
+    overflow: 'hidden',
+  },
+  wrapper: {
+    borderRadius: '28px 28px 0 0',
+    overflow: 'hidden',
+  },
+};
 
 const getDetailDrawerTitle = (mode: DetailMode | null): string => {
   if (mode === 'view') {
@@ -95,14 +112,18 @@ export function RoastPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<RoastPlan['id'] | null>(null);
   const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | 'steps' | undefined>();
   const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
+  const [isCreateActionSheetOpen, setIsCreateActionSheetOpen] = useState(false);
   const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
-  const [creationTab, setCreationTab] = useState<'ai' | 'json' | 'manual'>('manual');
+  const [creationMode, setCreationMode] = useState<CreationMode>('manual');
   const [creationInitialValues, setCreationInitialValues] = useState<RoastPlanJsonInput | undefined>();
   const [creationResetSignal, setCreationResetSignal] = useState(0);
 
   const { data: plans = [], isFetching } = useRoastPlans();
+  const { data: roastingMachines = [] } = useRoastingMachines();
   const updateMutation = useUpdateRoastPlan();
   const deleteMutation = useDeleteRoastPlan();
+  const isRoastAiEnabled = isRoastAiClientEnabled();
+  const createActionSheetHeight = isRoastAiEnabled ? 232 : 176;
 
   const isWide = screens.md ?? false;
 
@@ -132,8 +153,25 @@ export function RoastPage() {
   const selectedPlan = effectivePlans.find((p) => p.id === selectedPlanId) ?? null;
 
   const resetCreationDraft = () => {
-    setCreationTab('manual');
-    setCreationInitialValues(undefined);
+    const latestBeanPlan = sortPlansByUpdatedAt(plans).find((plan) => {
+      return String(plan.beanId) !== 'generic' && plan.beanName.trim().length > 0;
+    });
+    const latestAssociatedMachineId = latestBeanPlan?.roasterMachineId;
+    const defaultMachine = roastingMachines.find((machine) => machine.id === latestAssociatedMachineId)
+      ?? roastingMachines[0];
+
+    setCreationMode('manual');
+    setCreationInitialValues({
+      ...defaultRoastPlanFormValues,
+      ...(latestBeanPlan
+        ? {
+            beanId: latestBeanPlan.beanId,
+            beanName: latestBeanPlan.beanName,
+          }
+        : {}),
+      roasterMachineId: defaultMachine?.id,
+      roasterModel: defaultMachine?.displayName ?? '',
+    });
     setCreationResetSignal((current) => current + 1);
   };
 
@@ -237,7 +275,8 @@ export function RoastPage() {
 
       submissionBackupService.save('create', { input: nextInitialValues, jsonText }, 'roastPlan');
       setCreationInitialValues(nextInitialValues);
-      setCreationTab('manual');
+      setCreationMode('manual');
+      setCreationDrawerOpen(true);
       void message.success('JSON 已回填到创建表单，可继续补充和修改。');
     } catch (error: unknown) {
       void message.error(getUserFacingErrorMessage(error, 'JSON 解析失败，请检查内容后重试。'));
@@ -253,7 +292,26 @@ export function RoastPage() {
 
   const handleOpenCreateDrawer = () => {
     resetCreationDraft();
+    setIsCreateActionSheetOpen(true);
+  };
+
+  const handleOpenCreationMode = (mode: CreationMode) => {
+    setIsCreateActionSheetOpen(false);
+    resetCreationDraft();
+    setCreationMode(mode);
     setCreationDrawerOpen(true);
+  };
+
+  const handleAiRecommended = (input: RoastPlanJsonInput) => {
+    submissionBackupService.save('create', { input, source: 'ai-recommendation' }, 'roastPlan');
+    setCreationInitialValues(input);
+    setCreationMode('manual');
+    setCreationDrawerOpen(true);
+  };
+
+  const closeCreationDrawer = () => {
+    setCreationDrawerOpen(false);
+    setCreationMode('manual');
   };
 
   return (
@@ -325,84 +383,92 @@ export function RoastPage() {
         onClick={handleOpenCreateDrawer}
       />
 
+      <AppDrawer
+        closable={false}
+        className={styles.actionSheet}
+        destroyOnHidden
+        height={createActionSheetHeight}
+        onClose={() => {
+          setIsCreateActionSheetOpen(false);
+        }}
+        open={isCreateActionSheetOpen}
+        placement="bottom"
+        showSwipeHandle={false}
+        styles={actionSheetStyles}
+        title="选择创建方式"
+      >
+        <div className={styles.actionSheetBody}>
+          <div className={styles.actionSheetGroup}>
+            <Button block className={styles.actionSheetButton} onClick={() => { handleOpenCreationMode('manual'); }}>
+              手动创建
+            </Button>
+            <Button block className={styles.actionSheetButton} onClick={() => { handleOpenCreationMode('json'); }}>
+              JSON 导入
+            </Button>
+            {isRoastAiEnabled ? (
+              <Button
+                block
+                className={styles.actionSheetButton}
+                onClick={() => { handleOpenCreationMode('ai'); }}
+              >
+                <span className={styles.actionSheetButtonContent}>
+                  <span className={styles.actionSheetButtonTitle}>AI 推荐</span>
+                  <span className={styles.actionSheetButtonMeta}>生成计划草稿</span>
+                </span>
+              </Button>
+            ) : null}
+          </div>
+          <div aria-hidden="true" className={styles.actionSheetSpacer} />
+          <div className={styles.actionSheetCancelGroup}>
+            <Button
+              aria-label="取消"
+              block
+              className={styles.actionSheetButton}
+              onClick={() => {
+                setIsCreateActionSheetOpen(false);
+              }}
+            >
+              取消
+            </Button>
+          </div>
+        </div>
+      </AppDrawer>
+
       {/* 创建抽屉 */}
       <AppDrawer
         className={styles.creationDrawer}
         height="86dvh"
-        onClose={() => {
-          setCreationDrawerOpen(false);
-        }}
+        onClose={closeCreationDrawer}
         open={creationDrawerOpen}
         placement="bottom"
-        title="新增烘焙计划"
+        title={
+          creationMode === 'manual'
+            ? '新增烘焙计划'
+            : creationMode === 'json'
+              ? 'JSON 导入'
+              : 'AI 推荐'
+        }
       >
-        <Tabs
-          activeKey={creationTab}
-          onChange={(key) => {
-            if (key === 'ai') {
-              void message.info('AI 推荐正在筹备中，当前版本先完成数据采集与校验。');
-            }
-
-            setCreationTab(key as 'ai' | 'json' | 'manual');
-          }}
-          items={[
-            {
-              key: 'manual',
-              label: '手动创建',
-              children: (
-                <RoastPlanManualCreator
-                  initialValues={creationInitialValues}
-                  onCancel={() => {
-                    setCreationDrawerOpen(false);
-                  }}
-                  onCreate={handleCreateManual}
-                />
-              ),
-            },
-            {
-              key: 'json',
-              label: 'JSON 导入',
-              children: (
-                <RoastPlanJsonImporter
-                  onCancel={() => {
-                    setCreationDrawerOpen(false);
-                  }}
-                  onImport={handleFillFormFromJson}
-                  resetSignal={creationResetSignal}
-                />
-              ),
-            },
-            {
-              key: 'ai',
-              label: 'AI 推荐',
-              children: (
-                <section className={styles.aiPanel} aria-label="AI 推荐筹备说明">
-                  <div className={styles.aiPanelHeader}>
-                    <h3>AI 推荐（暂未开放）</h3>
-                    <p>当前版本先公开入口和规则说明，正式推荐能力会在训练快照、质量检查和安全边界稳定后开放。</p>
-                  </div>
-                  <div className={styles.aiStageGrid}>
-                    <article className={styles.aiStageItem}>
-                      <strong>当前已开放</strong>
-                      <p>烘豆机型号、风温、转速、曲线与评价表单采集。</p>
-                    </article>
-                    <article className={styles.aiStageItem}>
-                      <strong>当前暂禁用</strong>
-                      <p>AI 生成烘焙计划、训练上传、模型版本与推荐依据展示。</p>
-                    </article>
-                    <article className={styles.aiStageItem}>
-                      <strong>开放前条件</strong>
-                      <p>需要先完成训练数据快照、单次上传限制、质量检查与自动发布链路。</p>
-                    </article>
-                  </div>
-                  <Button block disabled type="primary">
-                    AI 推荐（暂未开放）
-                  </Button>
-                </section>
-              ),
-            },
-          ]}
-        />
+        {creationMode === 'manual' ? (
+          <RoastPlanManualCreator
+            initialValues={creationInitialValues}
+            onCancel={closeCreationDrawer}
+            onCreate={handleCreateManual}
+          />
+        ) : null}
+        {creationMode === 'json' ? (
+          <RoastPlanJsonImporter
+            onCancel={closeCreationDrawer}
+            onImport={handleFillFormFromJson}
+            resetSignal={creationResetSignal}
+          />
+        ) : null}
+        {creationMode === 'ai' && isRoastAiEnabled ? (
+          <RoastPlanAiRecommender
+            onCancel={closeCreationDrawer}
+            onRecommended={handleAiRecommended}
+          />
+        ) : null}
       </AppDrawer>
 
       {/* 详情/编辑抽屉 */}

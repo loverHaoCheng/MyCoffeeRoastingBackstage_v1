@@ -2,7 +2,6 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 
 import Button from 'antd/es/button';
-import Checkbox from 'antd/es/checkbox';
 import App from 'antd/es/app';
 import { Select } from '@/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
@@ -66,6 +65,7 @@ export interface RoastBatchFormSubmitValue {
 }
 
 interface RoastBatchFormProps {
+  analysisSection?: ReactNode;
   beans: Bean[];
   curveSection: ReactNode;
   isSubmitting?: boolean;
@@ -77,6 +77,7 @@ interface RoastBatchFormProps {
   submitDisabled?: boolean;
   submitIcon: ReactNode;
   submitLabel: string;
+  trainingSection?: ReactNode;
   value: RoastBatchFormState;
 }
 
@@ -100,6 +101,7 @@ const renderRequiredLabel = (label: string) => {
 };
 
 export function RoastBatchForm({
+  analysisSection,
   beans,
   curveSection,
   isSubmitting = false,
@@ -111,6 +113,7 @@ export function RoastBatchForm({
   submitDisabled = false,
   submitIcon,
   submitLabel,
+  trainingSection,
   value,
 }: RoastBatchFormProps) {
   const { message } = App.useApp();
@@ -473,7 +476,10 @@ export function RoastBatchForm({
         </div>
       </section>
 
-      <section className={styles.section}>
+      <section className={styles.section} data-section="curve">{curveSection}</section>
+      {analysisSection}
+
+      <section className={styles.section} data-section="evaluation">
         <h4>评价表单</h4>
         <div className={styles.fieldGrid}>
           <div className={styles.field}>
@@ -555,25 +561,10 @@ export function RoastBatchForm({
               placeholder="例如 一爆前减火提前 20 秒，后段风门再开 5%"
             />
           </div>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>训练授权</span>
-            <label className={styles.checkboxField}>
-              <Checkbox
-                checked={value.evaluation.allowTraining}
-                onChange={(event) => {
-                  onChange((current) => ({
-                    ...current,
-                    evaluation: { ...current.evaluation, allowTraining: event.target.checked },
-                  }));
-                }}
-              >
-                允许将本次匿名烘焙数据用于同型号模型训练
-              </Checkbox>
-            </label>
-            <div className={styles.inlineHint}>默认关闭。开启后，本次上传并进入训练流程的数据不支持逐条撤回。</div>
-          </div>
         </div>
       </section>
+
+      {trainingSection}
 
       <section className={styles.section}>
         <h4>备注</h4>
@@ -587,8 +578,6 @@ export function RoastBatchForm({
           rows={3}
         />
       </section>
-
-      <section className={styles.section}>{curveSection}</section>
 
       <DrawerActionBar compact>
         {onCancel ? <Button onClick={onCancel}>取消</Button> : null}

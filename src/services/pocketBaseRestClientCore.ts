@@ -26,6 +26,8 @@ export class PocketBaseRestClient {
   private readonly fetcher: Fetcher;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
+  private readonly autoManageOwner: boolean;
+  private readonly autoManageTimestamps: boolean;
 
   constructor(options: PocketBaseRestClientOptions) {
     const raw = options.fetcher ?? fetch;
@@ -34,6 +36,8 @@ export class PocketBaseRestClient {
       options.useAuthGateway === false ? options.projectUrl : resolvePocketBaseBaseUrl(),
     );
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.autoManageOwner = options.autoManageOwner ?? true;
+    this.autoManageTimestamps = options.autoManageTimestamps ?? true;
   }
 
   async list<T>(collectionName: string, options: PocketBaseRestListOptions = {}): Promise<T[]> {
@@ -43,7 +47,7 @@ export class PocketBaseRestClient {
       });
     }
 
-    const ownerId = collectionName === 'users' ? undefined : resolveOwnerId();
+    const ownerId = this.autoManageOwner && collectionName !== 'users' ? resolveOwnerId() : undefined;
     const filter = buildFilterExpression(options.match, ownerId);
     const requestedLimit = options.limit ?? DEFAULT_PAGE_SIZE;
     const perPage = Math.min(requestedLimit, DEFAULT_PAGE_SIZE);
@@ -64,6 +68,10 @@ export class PocketBaseRestClient {
 
       if (options.select && options.select.trim().length > 0 && options.select.trim() !== '*') {
         url.searchParams.set('fields', options.select);
+      }
+
+      if (options.expand) {
+        url.searchParams.set('expand', options.expand);
       }
 
       if (filter) {
@@ -173,7 +181,7 @@ export class PocketBaseRestClient {
 
     try {
       const requestInit: RequestInit = {
-        body: JSON.stringify(withTimestampFields(this.withOwner(payload), 'insert')),
+        body: JSON.stringify(this.withManagedTimestamps(this.withOwner(payload), 'insert')),
         credentials: 'same-origin',
         headers: mergeHeaders(getRequestHeaders(), {
           'Content-Type': 'application/json',
@@ -229,7 +237,7 @@ export class PocketBaseRestClient {
     return this.mutate<TOutput>(
       collectionName,
       {
-        body: JSON.stringify(withTimestampFields(this.withOwner(payload), 'update')),
+        body: JSON.stringify(this.withManagedTimestamps(this.withOwner(payload), 'update')),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -264,6 +272,10 @@ export class PocketBaseRestClient {
   }
 
   private withOwner(payload: Record<string, unknown>): Record<string, unknown> {
+    if (!this.autoManageOwner) {
+      return payload;
+    }
+
     const ownerId = resolveOwnerId();
 
     if (!ownerId || 'owner' in payload) {
@@ -274,6 +286,13 @@ export class PocketBaseRestClient {
       ...payload,
       owner: ownerId,
     };
+  }
+
+  private withManagedTimestamps(
+    payload: Record<string, unknown>,
+    mode: 'insert' | 'update',
+  ): Record<string, unknown> {
+    return this.autoManageTimestamps ? withTimestampFields(payload, mode) : payload;
   }
 
   private async mutate<T>(

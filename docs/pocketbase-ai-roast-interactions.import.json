@@ -1,0 +1,50 @@
+[
+  {
+    "id": "arr000000000004", "name": "ai_roast_reviews", "type": "base", "system": false,
+    "listRule": "owner = @request.auth.id", "viewRule": "owner = @request.auth.id", "createRule": "@request.auth.id != \"\" && owner = @request.auth.id", "updateRule": "owner = @request.auth.id", "deleteRule": "owner = @request.auth.id",
+    "indexes": ["CREATE INDEX idx_ai_roast_reviews_owner_machine_created ON ai_roast_reviews (owner, machine_id, created)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "arrowner0000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "arrmachine000001", "name": "machine_id", "type": "text", "system": false, "required": true, "presentable": false, "hidden": false, "min": 1, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arrbatch00000001", "name": "roast_batch_id", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arrcurve00000001", "name": "curve_record_id", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arrinput00000001", "name": "input_snapshot", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "arrresult0000001", "name": "analysis_result", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "arrmeta000000001", "name": "generation_meta", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  },
+  {
+    "id": "arp000000000005", "name": "ai_roast_recommendations", "type": "base", "system": false,
+    "listRule": "owner = @request.auth.id", "viewRule": "owner = @request.auth.id", "createRule": "@request.auth.id != \"\" && owner = @request.auth.id", "updateRule": "owner = @request.auth.id", "deleteRule": "owner = @request.auth.id",
+    "indexes": ["CREATE INDEX idx_ai_roast_recommendations_owner_machine_created ON ai_roast_recommendations (owner, machine_id, created)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "arpowner00000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "arpmachine000001", "name": "machine_id", "type": "text", "system": false, "required": true, "presentable": false, "hidden": false, "min": 1, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arpcontext0000001", "name": "request_context", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "arpdraft00000001", "name": "plan_draft", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "arpmeta000000001", "name": "generation_meta", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "arpstatus0000001", "name": "status", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["draft", "confirmed", "dismissed", "completed"] },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  },
+  {
+    "id": "arf000000000006", "name": "ai_roast_feedback", "type": "base", "system": false,
+    "listRule": "owner = @request.auth.id", "viewRule": "owner = @request.auth.id", "createRule": "@request.auth.id != \"\" && owner = @request.auth.id", "updateRule": "owner = @request.auth.id", "deleteRule": "owner = @request.auth.id",
+    "indexes": ["CREATE UNIQUE INDEX idx_ai_roast_feedback_recommendation ON ai_roast_feedback (owner, recommendation_id)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "arfowner00000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "arfrecommend0001", "name": "recommendation_id", "type": "text", "system": false, "required": true, "presentable": false, "hidden": false, "min": 1, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arfbatch00000001", "name": "roast_batch_id", "type": "text", "system": false, "required": true, "presentable": false, "hidden": false, "min": 1, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arfoutcome000000", "name": "outcome", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["better", "same", "worse", "not_assessable"] },
+      { "id": "arffeedback00001", "name": "feedback", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  }
+]

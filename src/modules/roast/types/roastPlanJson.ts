@@ -15,6 +15,7 @@ export interface RoastPlanJsonInput {
   name: string;
   beanName: string;
   beanId?: Bean['id'];
+  roasterMachineId?: string;
   roasterModel: string;
   batchWeightGrams: number;
   roastLevel: string;

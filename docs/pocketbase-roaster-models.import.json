@@ -1,0 +1,27 @@
+[
+  {
+    "id": "rmd000000000007",
+    "name": "roaster_models",
+    "type": "base",
+    "system": false,
+    "listRule": "review_status = \"approved\" || created_by = @request.auth.id",
+    "viewRule": "review_status = \"approved\" || created_by = @request.auth.id",
+    "createRule": "@request.auth.id != \"\" && created_by = @request.auth.id",
+    "updateRule": "created_by = @request.auth.id && review_status != \"approved\"",
+    "deleteRule": "created_by = @request.auth.id && review_status != \"approved\"",
+    "indexes": ["CREATE INDEX idx_roaster_models_status_name ON roaster_models (review_status, brand, model_name)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "rmdcreator000001", "name": "created_by", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": false, "minSelect": 1, "maxSelect": 1 },
+      { "id": "rmdbrand00000001", "name": "brand", "type": "text", "system": false, "required": true, "presentable": true, "hidden": false, "min": 1, "max": 100, "pattern": "", "autogeneratePattern": "" },
+      { "id": "rmdname000000001", "name": "model_name", "type": "text", "system": false, "required": true, "presentable": true, "hidden": false, "min": 1, "max": 100, "pattern": "", "autogeneratePattern": "" },
+      { "id": "rmdtype000000001", "name": "roast_type", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["direct_fire", "semi_hot_air", "hot_air", "other"] },
+      { "id": "rmdspecs00000001", "name": "specifications", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "rmdimages0000001", "name": "parameter_images", "type": "file", "system": false, "required": false, "presentable": false, "hidden": false, "protected": true, "maxSelect": 5, "maxSize": 8388608, "mimeTypes": ["image/jpeg", "image/png", "image/webp"], "thumbs": ["800x800"] },
+      { "id": "rmdstatus0000001", "name": "review_status", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["pending_review", "approved", "rejected"] },
+      { "id": "rmdreview0000001", "name": "review_note", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 1000, "pattern": "", "autogeneratePattern": "" },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  }
+]

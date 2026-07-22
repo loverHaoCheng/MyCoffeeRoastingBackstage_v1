@@ -117,6 +117,7 @@ class RemoteRoastPlanRepository implements RoastPlanRepository {
       beanId: draftPlan.beanId,
       beanName: draftPlan.beanName,
       name: draftPlan.name,
+      roasterMachineId: draftPlan.roasterMachineId,
       roasterModel: draftPlan.roasterModel,
       purpose: draftPlan.roastPurpose,
       roastLevel: draftPlan.targetRoastLevel,
@@ -168,6 +169,7 @@ class RemoteRoastPlanRepository implements RoastPlanRepository {
 
   async listPlans() {
     const records = await this.client.list<RemoteRoastPlanOverviewRecord>('roast_plan_overview', {
+      expand: 'roaster_machine_id',
       orderBy: {
         ascending: false,
         column: 'updated_at',

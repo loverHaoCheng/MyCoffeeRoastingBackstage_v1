@@ -1,0 +1,21 @@
+.drawer :global(.ant-drawer-body) {
+  padding: 20px;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.form label {
+  display: grid;
+  gap: 7px;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+}
+
+.error {
+  margin: -8px 0 0;
+  color: var(--app-danger, #b42318);
+  font-size: 12px;
+}

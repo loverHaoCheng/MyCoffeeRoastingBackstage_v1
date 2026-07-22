@@ -42,8 +42,8 @@ describe('createRoastPlanFromJson', () => {
     expect(() => createRoastPlanFromJson('{ bad json', 13)).toThrow(AppError);
   });
 
-  it('rejects unsupported roaster model values from JSON import', () => {
-    expect(() => createRoastPlanFromJson(JSON.stringify({
+  it('keeps an associated roaster name from JSON import', () => {
+    const plan = createRoastPlanFromJson(JSON.stringify({
       name: '旧计划',
       beanName: '测试豆',
       beanId: 'bean-1',
@@ -62,7 +62,9 @@ describe('createRoastPlanFromJson', () => {
           drumSpeed: '45rpm',
         },
       ],
-    }), 14)).toThrow(AppError);
+    }), 14);
+
+    expect(plan.roasterModel).toBe('HiBean Arc');
   });
 
   it('parses incomplete JSON into a form draft without requiring final plan fields', () => {

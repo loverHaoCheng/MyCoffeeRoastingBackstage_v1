@@ -11,9 +11,11 @@ import { ProductionPage } from '@/modules/production';
 import { RoastBatchCreator } from '@/modules/roast/components';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 import type { RoastCurveRecord } from '@/modules/roast/types/roastCurve';
+import type { RoastTrainingUploadStatus } from '@/modules/roast/types/roastTraining';
 import { renderWithQuery } from '@/tests/renderWithProviders';
 
 const {
+  createRoastPlanMutateAsyncMock,
   roastBatchesMock,
   roastCurveDataMock,
   trainingUploadMutationStateMock,
@@ -96,6 +98,9 @@ const {
   };
 
   return {
+    createRoastPlanMutateAsyncMock: vi.fn().mockResolvedValue({
+      id: 'created-plan-1',
+    }),
     roastBatchesMock: {
       current: [defaultBatch],
       defaultBatch,
@@ -116,16 +121,7 @@ const {
     }),
     trainingUploadStatusQueryStateMock: {
       current: {
-        data: undefined as
-          | undefined
-          | {
-              alreadyUploaded: boolean;
-              disabledReason?: string;
-              enabled: boolean;
-              environment: string;
-              roastBatchId: string;
-              uploadId?: string;
-            },
+        data: undefined as RoastTrainingUploadStatus | undefined,
         error: null as Error | null,
         isError: false,
         isFetching: false,
@@ -155,6 +151,10 @@ vi.mock('@/modules/bean/hooks', () => ({
 
 vi.mock('@/modules/roast/hooks', () => ({
   roastBatchQueryKeys: { all: ['roast-batches'], list: () => ['roast-batches', 'list'] },
+  useCreateRoastPlan: () => ({
+    isPending: false,
+    mutateAsync: createRoastPlanMutateAsyncMock,
+  }),
   useDeleteRoastBatch: () => ({
     mutateAsync: vi.fn(),
   }),
@@ -179,6 +179,7 @@ vi.mock('@/modules/roast/hooks', () => ({
         batchWeightGrams: 200,
         name: '测试计划',
         plannedBatchKg: 0.2,
+        roasterMachineId: 'machine-1',
         roasterModel: 'tank200d',
         roastPurpose: '手冲',
         status: 'draft',
@@ -204,6 +205,18 @@ vi.mock('@/modules/roast/hooks', () => ({
   useUpdateRoastBatch: () => ({
     mutateAsync: vi.fn(),
   }),
+  useRoastingMachines: () => ({
+    data: [
+      {
+        configuration: {},
+        displayName: 'Tank200D',
+        id: 'machine-1',
+        modelKey: 'tank200d',
+        status: 'active',
+      },
+    ],
+    isFetching: false,
+  }),
 }));
 
 vi.mock('@/modules/roast/hooks/useRoastTrainingUpload', () => ({
@@ -212,6 +225,10 @@ vi.mock('@/modules/roast/hooks/useRoastTrainingUpload', () => ({
     mutateAsync: trainingUploadMutateAsyncMock,
   }),
   useRoastTrainingUploadStatus: () => trainingUploadStatusQueryStateMock.current,
+  useConfirmRoastTrainingRecommendation: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
+  }),
 }));
 
 describe('ProductionPage (烘焙历史)', () => {
@@ -223,6 +240,7 @@ describe('ProductionPage (烘焙历史)', () => {
       isPending: false,
     };
     trainingUploadMutateAsyncMock.mockClear();
+    createRoastPlanMutateAsyncMock.mockClear();
     trainingUploadStatusQueryStateMock.current = {
       data: undefined,
       error: null,
@@ -255,9 +273,13 @@ describe('ProductionPage (烘焙历史)', () => {
     const saveButton = screen.getByRole('button', { name: /保存烘焙记录/ });
 
     expect(trainingHeading).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '上传用于训练（正式环境暂未开放）' })).toBeDisabled();
-    expect(saveButton.compareDocumentPosition(trainingHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByRole('button', { name: /生成 AI 曲线复盘/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '生成整体复盘与计划建议' })).toBeDisabled();
+    expect(saveButton.compareDocumentPosition(trainingHeading)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
     expect(saveButton).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: '允许将本次匿名烘焙数据用于同型号模型训练' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '烘焙程度' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '生豆' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '去向' })).toBeInTheDocument();
@@ -299,8 +321,8 @@ describe('ProductionPage (烘焙历史)', () => {
     renderWithQuery(<ProductionPage />);
 
     fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试熟豆' }));
-    fireEvent.click(screen.getByRole('button', { name: '上传用于训练' }));
-    fireEvent.click(await screen.findByRole('button', { name: '确认上传' }));
+    fireEvent.click(screen.getByRole('button', { name: '生成整体复盘与计划建议' }));
+    fireEvent.click(await screen.findByRole('button', { name: '确认生成' }));
 
     await waitFor(() => {
       expect(trainingUploadMutateAsyncMock).toHaveBeenCalledWith('batch-1');
@@ -339,8 +361,84 @@ describe('ProductionPage (烘焙历史)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试熟豆' }));
 
-    expect(screen.getByRole('button', { name: '已上传用于训练' })).toBeDisabled();
-    expect(screen.getByText('这条记录已经上传过训练数据，不能重复上传。')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '生成整体复盘与计划建议' })).not.toBeInTheDocument();
+    expect(screen.getByText('这条记录已经生成过整体复盘与计划建议，不能重复生成。')).toBeInTheDocument();
+  });
+
+  it('shows the saved roast recommendation result instead of readiness cards', () => {
+    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'staging');
+    roastCurveDataMock.current = roastCurveDataMock.defaultCurve;
+    roastBatchesMock.current = [
+      {
+        ...roastBatchesMock.defaultBatch,
+        evaluation: {
+          allowTraining: true,
+          flavorNotes: '甜感清楚，酸质干净',
+          overallScore: 4,
+          targetMatchScore: 5,
+        },
+      },
+    ];
+    trainingUploadStatusQueryStateMock.current = {
+      data: {
+        alreadyUploaded: true,
+        enabled: false,
+        environment: 'staging',
+        recommendation: {
+          adjustments: [
+            {
+              area: '发展期',
+              expectedResult: '预计酸甜更集中，烟感降低。',
+              observation: '发展期略长，尾段烟感偏重。',
+              priority: 'medium',
+              rationale: '降低尾段热量累积可减少焙烤感。',
+              suggestion: '一爆后提前 10 秒降火，并保持风门稳定。',
+            },
+          ],
+          confidence: 82,
+          modifiedPlanJson: {
+            batchWeightGrams: 200,
+            beanId: 'bean-1',
+            beanName: '测试生豆',
+            name: 'AI 优化计划',
+            purpose: '手冲',
+            roastLevel: '手冲浅烘',
+            roasterMachineId: 'machine-1',
+            roasterModel: 'Tank200D',
+            steps: [
+              {
+                airTemperature: '180°C',
+                drumSpeed: '45rpm',
+                event: '入豆',
+                firePower: '80%',
+                operation: '入豆',
+                temperature: '200°C',
+                time: '0:00',
+              },
+            ],
+          },
+          overallReview: '整体复盘显示一爆后热量略重，需要压低尾段焦糖化。',
+          recommendationId: 'recommendation-1',
+          status: 'draft',
+        },
+        roastBatchId: 'batch-1',
+        uploadId: 'upload-1',
+      },
+      error: null,
+      isError: false,
+      isFetching: false,
+    };
+
+    renderWithQuery(<ProductionPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试熟豆' }));
+
+    expect(screen.getByRole('heading', { name: 'AI 整体复盘与计划建议' })).toBeInTheDocument();
+    expect(screen.getByText('整体复盘显示一爆后热量略重，需要压低尾段焦糖化。')).toBeInTheDocument();
+    expect(screen.getByText('调整原因')).toBeInTheDocument();
+    expect(screen.getByText('预计酸甜更集中，烟感降低。')).toBeInTheDocument();
+    expect(screen.getByText('AI 优化计划')).toBeInTheDocument();
+    expect(screen.queryByText('训练授权')).not.toBeInTheDocument();
   });
 
   it('gives every roast batch creator control an accessible name', () => {

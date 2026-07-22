@@ -3,8 +3,11 @@ import { pathToFileURL } from 'node:url';
 
 import { handleDeleteAccount } from './auth-bff/account-handler.js';
 import { handleBeanImageRecognitionUsage } from './auth-bff/ai/handler.js';
+import { handleRoastAnalysis, handleRoastAnalysisStatus } from './auth-bff/ai/roast-analysis-handler.js';
+import { handleRoastPlanRecommendation } from './auth-bff/ai/roast-plan-recommendation-handler.js';
+import { handleRoasterModelRecognition } from './auth-bff/ai/roaster-model-recognition-handler.js';
 import { handleRoastTrainingQualityCheck } from './auth-bff/ai/roast-training-quality-handler.js';
-import { handleRoastTrainingUpload, handleRoastTrainingUploadStatus } from './auth-bff/ai/roast-training-upload-handler.js';
+import { handleRoastTrainingRecommendationConfirm, handleRoastTrainingUpload, handleRoastTrainingUploadStatus } from './auth-bff/ai/roast-training-upload-handler.js';
 import { handleConfirmPasswordReset, handleConfirmVerification, handleLogin, handleLogout, handleRegister, handleRequestPasswordReset, handleRequestVerification, handleSession, handleUpdateProfile } from './auth-bff/auth-handlers.js';
 import { handleBusinessCollectionRequest } from './auth-bff/collection-handler.js';
 import { port } from './auth-bff/config.js';
@@ -28,7 +31,12 @@ const handleRequest = createGatewayRequestHandler({
   handleProfileUpdate: handleUpdateProfile,
   handleRealtime: handleRealtimeRequest,
   handleRegister,
+  handleRoastAnalysis,
+  handleRoastAnalysisStatus,
+  handleRoastPlanRecommendation,
+  handleRoasterModelRecognition,
   handleRoastTrainingQualityCheck,
+  handleRoastTrainingRecommendationConfirm,
   handleRoastTrainingUpload,
   handleRoastTrainingUploadStatus,
   handleSession,

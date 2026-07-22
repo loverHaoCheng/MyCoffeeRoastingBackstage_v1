@@ -141,11 +141,11 @@ const getBeanSnapshot = (curve: HiBeanRoastCurve): RoastCurveBeanSnapshot | unde
   }
 
   return {
-    greenBeanWeightGrams: greenBeanWeight?.unit === 'g' ? greenBeanWeight.value : undefined,
-    name: bean?.name,
-    origin: bean?.origin,
-    processingMethod: bean?.processingMethod,
-    regionCode: bean?.regionCode,
+    greenBeanWeightGrams: greenBeanWeight?.unit === 'g' ? greenBeanWeight.value ?? undefined : undefined,
+    name: bean?.name ?? undefined,
+    origin: bean?.origin ?? undefined,
+    processingMethod: bean?.processingMethod ?? undefined,
+    regionCode: bean?.regionCode ?? undefined,
   };
 };
 

@@ -20,6 +20,11 @@ interface GatewayRouteHandlers {
   handleRealtime: RequestHandler;
   handleRegister: RequestHandler;
   handleRoastTrainingQualityCheck: RequestHandler;
+  handleRoastAnalysis: RequestHandler;
+  handleRoastAnalysisStatus: (request: IncomingMessage, response: ServerResponse, requestUrl: URL) => Promise<void>;
+  handleRoastPlanRecommendation: RequestHandler;
+  handleRoasterModelRecognition: RequestHandler;
+  handleRoastTrainingRecommendationConfirm: RequestHandler;
   handleRoastTrainingUpload: RequestHandler;
   handleRoastTrainingUploadStatus: (
     request: IncomingMessage,
@@ -78,6 +83,26 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
       return;
     }
 
+    if (path === '/api/ai/roast-analysis') {
+      if (ensureMethod(request, response, ['GET', 'POST'], handlers)) {
+        if (request.method === 'GET') await handlers.handleRoastAnalysisStatus(request, response, requestUrl);
+        else await handlers.handleRoastAnalysis(request, response);
+      }
+      return;
+    }
+
+    if (path === '/api/ai/roaster-model-recognition') {
+      if (ensureMethod(request, response, ['POST'], handlers)) await handlers.handleRoasterModelRecognition(request, response);
+      return;
+    }
+
+    if (path === '/api/ai/roast-plan-recommendation') {
+      if (ensureMethod(request, response, ['POST'], handlers)) {
+        await handlers.handleRoastPlanRecommendation(request, response);
+      }
+      return;
+    }
+
     if (path === '/api/ai/roast-training-upload') {
       if (!ensureMethod(request, response, ['GET', 'POST'], handlers)) {
         return;
@@ -89,6 +114,13 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
       }
 
       await handlers.handleRoastTrainingUpload(request, response);
+      return;
+    }
+
+    if (path === '/api/ai/roast-training-upload/confirm') {
+      if (ensureMethod(request, response, ['POST'], handlers)) {
+        await handlers.handleRoastTrainingRecommendationConfirm(request, response);
+      }
       return;
     }
 

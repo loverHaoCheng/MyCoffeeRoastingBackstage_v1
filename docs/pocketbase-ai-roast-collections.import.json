@@ -1,0 +1,72 @@
+[
+  {
+    "id": "arm000000000001",
+    "name": "roasting_machines",
+    "type": "base",
+    "system": false,
+    "listRule": "owner = @request.auth.id",
+    "viewRule": "owner = @request.auth.id",
+    "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+    "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+    "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+    "indexes": ["CREATE INDEX idx_roasting_machines_owner_model ON roasting_machines (owner, model_key)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "armowner00000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "armmodel00000001", "name": "model_key", "type": "text", "system": false, "required": true, "presentable": true, "hidden": false, "min": 1, "max": 100, "pattern": "", "autogeneratePattern": "" },
+      { "id": "armname000000001", "name": "display_name", "type": "text", "system": false, "required": true, "presentable": true, "hidden": false, "min": 1, "max": 100, "pattern": "", "autogeneratePattern": "" },
+      { "id": "armconfig0000001", "name": "configuration", "type": "json", "system": false, "required": false, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "armstatus0000001", "name": "status", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["active", "archived"] },
+      { "id": "relation1653163849", "name": "model_id", "type": "relation", "system": false, "required": false, "presentable": false, "hidden": false, "collectionId": "rmd000000000007", "cascadeDelete": false, "minSelect": 0, "maxSelect": 1 },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  },
+  {
+    "id": "arc000000000002",
+    "name": "ai_roast_consents",
+    "type": "base",
+    "system": false,
+    "listRule": "owner = @request.auth.id",
+    "viewRule": "owner = @request.auth.id",
+    "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+    "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+    "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+    "indexes": ["CREATE UNIQUE INDEX idx_ai_roast_consents_owner_machine ON ai_roast_consents (owner, machine_id)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "arcowner00000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "arcmachine000001", "name": "machine_id", "type": "text", "system": false, "required": true, "presentable": false, "hidden": false, "min": 1, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arcscope00000001", "name": "scope", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["private_only", "anonymous_shared"] },
+      { "id": "arccontent000000", "name": "shared_content", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "arcrevoked000000", "name": "revoked_at", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 40, "pattern": "", "autogeneratePattern": "" },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  },
+  {
+    "id": "arp000000000003",
+    "name": "ai_roast_profiles",
+    "type": "base",
+    "system": false,
+    "listRule": "scope = \"public_model\" || owner = @request.auth.id",
+    "viewRule": "scope = \"public_model\" || owner = @request.auth.id",
+    "createRule": "@request.auth.id != \"\" && owner = @request.auth.id && scope = \"private_machine\"",
+    "updateRule": "@request.auth.id != \"\" && owner = @request.auth.id && scope = \"private_machine\"",
+    "deleteRule": "@request.auth.id != \"\" && owner = @request.auth.id && scope = \"private_machine\"",
+    "indexes": ["CREATE UNIQUE INDEX idx_ai_roast_profiles_scope_model_machine ON ai_roast_profiles (scope, model_key, machine_id)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "arpowner00000001", "name": "owner", "type": "relation", "system": false, "required": false, "presentable": false, "hidden": true, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 0, "maxSelect": 1 },
+      { "id": "arpscope00000001", "name": "scope", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["public_model", "private_machine"] },
+      { "id": "arpmodel00000001", "name": "model_key", "type": "text", "system": false, "required": true, "presentable": true, "hidden": false, "min": 1, "max": 100, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arpmachine000001", "name": "machine_id", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arptraits0000001", "name": "traits", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "arpevidence00001", "name": "evidence_count", "type": "number", "system": false, "required": true, "presentable": true, "hidden": false, "min": 0, "max": null, "onlyInt": true },
+      { "id": "arpconfidence000", "name": "confidence", "type": "number", "system": false, "required": true, "presentable": true, "hidden": false, "min": 0, "max": 100, "onlyInt": false },
+      { "id": "arprevision000000", "name": "revision", "type": "number", "system": false, "required": true, "presentable": false, "hidden": false, "min": 1, "max": null, "onlyInt": true },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  }
+]

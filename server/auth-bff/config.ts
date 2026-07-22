@@ -28,8 +28,17 @@ export const QINIU_DEFAULT_BASE_URL = 'https://api.qnaigc.com/v1';
 
 export const QINIU_DEFAULT_MODEL = 'qwen/qwen3.6-27b';
 
+export const AI_ROAST_DEFAULT_BASE_URL = 'https://api.qnaigc.com/v1';
+
+export const AI_ROAST_DEFAULT_PROVIDER = 'qiniu';
+
 export const BUSINESS_COLLECTIONS = new Set([
   'app_settings',
+  'ai_roast_consents',
+  'ai_roast_feedback',
+  'ai_roast_profiles',
+  'ai_roast_recommendations',
+  'ai_roast_reviews',
   'bean_sale_specs',
   'cost_calculations',
   'finance_expense_records',
@@ -40,16 +49,25 @@ export const BUSINESS_COLLECTIONS = new Set([
   'roast_curve_records',
   'roast_profiles',
   'roast_records',
+  'roaster_models',
+  'roasting_machines',
 ]);
 
 export const REALTIME_SUBSCRIPTIONS = new Set([
   'app_settings/*',
+  'ai_roast_consents/*',
+  'ai_roast_feedback/*',
+  'ai_roast_profiles/*',
+  'ai_roast_recommendations/*',
+  'ai_roast_reviews/*',
   'bean_sale_specs/*',
   'green_beans/*',
   'green_bean_purchase_batches/*',
   'roast_batches/*',
   'roast_curve_records/*',
   'roast_profiles/*',
+  'roaster_models/*',
+  'roasting_machines/*',
 ]);
 
 export const normalizeBaseUrl = (value: string, fallback: string): string => {
@@ -103,3 +121,17 @@ export const aiImageMaxBytes =
 export const qiniuQwenBaseUrl = normalizeBaseUrl(process.env.QINIU_QWEN_BASE_URL ?? QINIU_DEFAULT_BASE_URL, QINIU_DEFAULT_BASE_URL);
 
 export const qiniuQwenModel = (process.env.QINIU_QWEN_MODEL ?? QINIU_DEFAULT_MODEL).trim() || QINIU_DEFAULT_MODEL;
+
+export const aiRoastProvider =
+  (process.env.AI_ROAST_PROVIDER ?? AI_ROAST_DEFAULT_PROVIDER).trim().toLowerCase() || AI_ROAST_DEFAULT_PROVIDER;
+
+export const isSupportedAiRoastProvider = (): boolean => {
+  return ['openai', 'openai-compatible', 'openai_compatible', 'qiniu'].includes(aiRoastProvider);
+};
+
+export const aiRoastBaseUrl = normalizeBaseUrl(
+  process.env.AI_ROAST_BASE_URL ?? AI_ROAST_DEFAULT_BASE_URL,
+  AI_ROAST_DEFAULT_BASE_URL,
+);
+
+export const aiRoastModel = (process.env.AI_ROAST_MODEL ?? '').trim();

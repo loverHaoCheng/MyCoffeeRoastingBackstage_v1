@@ -15,6 +15,7 @@ import {
   type RoastBatchFormSubmitValue,
 } from './RoastBatchForm';
 import { RoastCurvePanel } from './RoastCurvePanel';
+import { RoastAiAnalysisSection } from './RoastAiAnalysisSection';
 import { RoastTrainingUploadSection } from './RoastTrainingUploadSection';
 import styles from './RoastBatchDrawer.module.css';
 
@@ -88,9 +89,21 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
       void onUpdate(batch.id, updateInput);
     };
 
+    const currentBatchForTraining = {
+      ...batch,
+      evaluation: form.evaluation,
+      greenBeanId: form.greenBeanId,
+      greenBeanName: form.greenBeanName,
+      roastLevel: form.roastLevel,
+      roastPlanId: form.roastPlanId === '' ? undefined : form.roastPlanId,
+      roastPlanName: form.roastPlanName === '' ? undefined : form.roastPlanName,
+      totalRoastTime: form.totalRoastTime,
+    };
+
     return (
       <div className={styles.drawer}>
         <RoastBatchForm
+          analysisSection={<div className={styles.analysisSection}><RoastAiAnalysisSection batch={batch} /></div>}
           beans={beans}
           curveSection={<RoastCurvePanel batch={batch} />}
           onCancel={onClose}
@@ -100,9 +113,20 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
           resetKey={batch.id}
           submitIcon={<SaveOutlined />}
           submitLabel="保存烘焙记录"
+          trainingSection={(
+            <RoastTrainingUploadSection
+              batch={currentBatchForTraining}
+              evaluation={form.evaluation}
+              onEvaluationChange={(evaluation) => {
+                setForm((current) => ({
+                  ...current,
+                  evaluation,
+                }));
+              }}
+            />
+          )}
           value={form}
         />
-        <RoastTrainingUploadSection batch={batch} />
       </div>
     );
   }
@@ -180,6 +204,20 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
         </section>
 
         <section className={styles.section}>
+          <RoastCurvePanel batch={batch} />
+          {batch.imageUrls?.length ? (
+            <div className={styles.imageGrid}>
+              {batch.imageUrls.map((url, index) => (
+                <div key={url} className={styles.imagePlaceholder}>
+                  <img src={url} alt={`烘焙记录图片 ${String(index + 1)}`} />
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+        <RoastAiAnalysisSection batch={batch} />
+
+        <section className={styles.section}>
           <h4>评价表单</h4>
           <ReadonlyFieldSectionList
             sections={[
@@ -206,12 +244,13 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                     multiline: true,
                     value: formatOptionalText(batch.evaluation.nextAdjustmentNotes, '暂无记录'),
                   },
-                  { key: 'allowTraining', label: '训练授权', value: batch.evaluation.allowTraining ? '已授权' : '未授权' },
                 ],
               },
             ]}
           />
         </section>
+
+        <RoastTrainingUploadSection batch={batch} />
 
         <section className={styles.section}>
           <h4>备注</h4>
@@ -231,20 +270,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
             ]}
           />
         </section>
-
-        <section className={styles.section}>
-          <RoastCurvePanel batch={batch} />
-          {batch.imageUrls?.length ? (
-            <div className={styles.imageGrid}>
-              {batch.imageUrls.map((url, index) => (
-                <div key={url} className={styles.imagePlaceholder}>
-                  <img src={url} alt={`烘焙记录图片 ${String(index + 1)}`} />
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </section>
-        <RoastTrainingUploadSection batch={batch} />
       </div>
     </div>
   );

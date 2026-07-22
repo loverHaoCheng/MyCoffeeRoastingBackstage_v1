@@ -348,6 +348,8 @@ describe('PocketBase auth BFF contract', () => {
 
   it('creates an immutable roast training sample and upload audit record in staging', async () => {
     vi.stubEnv('EASYBAKE_APP_ENV', 'staging');
+    vi.stubEnv('AI_ROAST_API_KEY', 'test-ai-key');
+    vi.stubEnv('AI_ROAST_MODEL', 'deepseek/deepseek-v4-pro-202606');
     const curveData = Array.from({ length: 60 }, (_item, index) => ({
       beanTemperature: 80 + index,
       timeSeconds: index * 10,
@@ -411,11 +413,64 @@ describe('PocketBase auth BFF contract', () => {
         return Promise.resolve(new Response(JSON.stringify({
           id: 'plan-1',
           name: '测试计划',
+          roaster_machine_id: 'machine-1',
           roaster_model: 'tank200d',
           steps: [
-            { eventName: '入豆', timeLabel: '0:00' },
-            { eventName: '一爆', timeLabel: '7:00' },
-            { eventName: '下豆', timeLabel: '9:50' },
+            { event: '入豆', time: '0:00' },
+            { event: '一爆', time: '7:00' },
+            { event: '下豆', time: '9:50' },
+          ],
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roasting_machines/records/machine-1')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          display_name: 'Tank200D',
+          id: 'machine-1',
+          model_key: 'tank200d',
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/chat/completions')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  adjustments: [
+                    {
+                      area: '发展期',
+                      observation: '评价显示甜感清楚，但仍需观察后段表现。',
+                      priority: 'medium',
+                      suggestion: '下次一爆后保持 RoR 平缓下降，并微调出炉点。',
+                    },
+                  ],
+                  confidence: 78,
+                  modifiedPlanJson: {
+                    batchWeightGrams: 200,
+                    beanId: 'bean-1',
+                    beanName: '测试生豆',
+                    name: '测试计划（建议版）',
+                    purpose: '手冲',
+                    roastLevel: '手冲浅烘',
+                    roasterMachineId: 'machine-1',
+                    roasterModel: 'Tank200D',
+                    steps: [
+                      {
+                        airTemperature: '-',
+                        drumSpeed: '-',
+                        event: '入豆',
+                        firePower: '80%',
+                        operation: '入豆',
+                        temperature: '200°C',
+                        time: '0:00',
+                      },
+                    ],
+                  },
+                  overallReview: '整体曲线可用，下次应微调发展段。',
+                }),
+              },
+            },
           ],
         }), { status: 200 }));
       }
@@ -427,7 +482,7 @@ describe('PocketBase auth BFF contract', () => {
           owner: 'user-1',
           quality_status: 'pending',
           roast_batch_id: 'batch-1',
-          roaster_model: 'tank200d',
+          roaster_model: 'Tank200D',
         });
         expect(payload.snapshot).toMatchObject({
           ownerId: 'user-1',
@@ -448,6 +503,31 @@ describe('PocketBase auth BFF contract', () => {
         });
         expect(payload.quality_checked_at).toEqual(expect.any(String));
         return Promise.resolve(new Response(JSON.stringify({ id: 'sample-1' }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/ai_roast_recommendations/records')) {
+        expect(init?.method).toBe('POST');
+        const payload = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as Record<string, unknown>;
+        expect(payload).toMatchObject({
+          machine_id: 'machine-1',
+          owner: 'user-1',
+          status: 'draft',
+        });
+        expect(payload.plan_draft).toMatchObject({
+          name: '测试计划（建议版）',
+          roasterMachineId: 'machine-1',
+        });
+        expect(payload.request_context).toMatchObject({
+          overallReview: '整体曲线可用，下次应微调发展段。',
+          roastBatchId: 'batch-1',
+          sampleId: 'sample-1',
+        });
+        return Promise.resolve(new Response(JSON.stringify({
+          id: 'recommendation-1',
+          plan_draft: payload.plan_draft,
+          request_context: payload.request_context,
+          status: 'draft',
+        }), { status: 200 }));
       }
 
       if (url.endsWith('/api/collections/roast_training_uploads/records')) {
@@ -480,10 +560,157 @@ describe('PocketBase auth BFF contract', () => {
           quality: {
             status: 'passed',
           },
+          recommendation: {
+            recommendationId: 'recommendation-1',
+          },
           sampleId: 'sample-1',
           uploadId: 'upload-1',
         },
         message: 'ok',
+      },
+      status: 200,
+    });
+  });
+
+  it('keeps AI roast plan recommendation working when optional machine memory queries fail', async () => {
+    vi.stubEnv('EASYBAKE_APP_ENV', 'staging');
+    vi.stubEnv('AI_ROAST_API_KEY', 'test-ai-key');
+    vi.stubEnv('AI_ROAST_MODEL', 'gpt-5.5');
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/collections/users/auth-refresh')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: {
+            email: 'test@example.com',
+            id: 'user-1',
+            verified: true,
+          },
+          token: 'refreshed-token',
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/green_beans/records/bean-1')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          flavor_tags: ['花香', '柑橘'],
+          id: 'bean-1',
+          name: '测试生豆',
+          process: '水洗',
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roasting_machines/records/machine-1')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          configuration: { controls: ['火力'] },
+          display_name: 'tank200 · 顽固 TANK200D咖啡烘焙机',
+          id: 'machine-1',
+          model_key: 'tank200d',
+        }), { status: 200 }));
+      }
+
+      if (
+        url.includes('/api/collections/ai_roast_profiles/records?') ||
+        url.includes('/api/collections/ai_roast_reviews/records?') ||
+        url.includes('/api/collections/ai_roast_recommendations/records?')
+      ) {
+        return Promise.resolve(new Response(JSON.stringify({
+          data: {},
+          message: 'Something went wrong while processing your request.',
+        }), { status: 500 }));
+      }
+
+      if (url.endsWith('/chat/completions')) {
+        const requestBody = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as {
+          messages?: { content: string; role: string }[];
+        };
+        const userMessage = requestBody.messages?.find((message) => message.role === 'user');
+
+        expect(userMessage?.content).toContain('"recentReviews":[]');
+        expect(userMessage?.content).toContain('"recentRecommendations":[]');
+
+        return Promise.resolve(new Response(JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  adjustments: [
+                    {
+                      area: '机器响应',
+                      expectedResult: '降低前段过冲风险，保留花香和酸质。',
+                      observation: '当前没有可用历史机器画像，按保守起始方案设定。',
+                      priority: 'medium',
+                      rationale: 'Tank200D 只按火力做可执行调整。',
+                      suggestion: '前段使用中高火，转黄后逐步收火，一爆后保持温和发展。',
+                    },
+                  ],
+                  confidence: 70,
+                  modifiedPlanJson: {
+                    batchWeightGrams: 200,
+                    beanId: 'bean-1',
+                    beanName: '测试生豆',
+                    name: 'AI 推荐计划',
+                    purpose: '手冲',
+                    roastLevel: '浅度烘焙',
+                    roasterMachineId: 'machine-1',
+                    roasterModel: 'tank200 · 顽固 TANK200D咖啡烘焙机',
+                    steps: [
+                      {
+                        airTemperature: '不可调',
+                        drumSpeed: '不可调',
+                        event: '入豆',
+                        firePower: '80%',
+                        operation: '入豆',
+                        temperature: '205°C',
+                        time: '0:00',
+                      },
+                    ],
+                  },
+                  overallReview: '当前按生豆特征和机器可调火力生成保守起始计划。',
+                }),
+              },
+            },
+          ],
+        }), { status: 200 }));
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(requestGateway({
+      body: JSON.stringify({
+        batchWeightGrams: 200,
+        beanId: 'bean-1',
+        flavorExpectation: '优质花香、酸质、甜感，低烟感、苦度',
+        planName: 'AI 推荐计划',
+        purpose: '手冲',
+        roastLevel: '浅度烘焙',
+        roasterMachineId: 'machine-1',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: 'easybake_pb_session=session-token',
+      },
+      method: 'POST',
+      path: '/api/ai/roast-plan-recommendation',
+    })).resolves.toMatchObject({
+      body: {
+        code: 0,
+        data: {
+          recommendation: {
+            confidence: 70,
+            modifiedPlanJson: {
+              beanId: 'bean-1',
+              name: 'AI 推荐计划',
+              roasterMachineId: 'machine-1',
+              steps: [
+                {
+                  airTemperature: '不可调',
+                  drumSpeed: '不可调',
+                  firePower: '80%',
+                },
+              ],
+            },
+          },
+        },
       },
       status: 200,
     });

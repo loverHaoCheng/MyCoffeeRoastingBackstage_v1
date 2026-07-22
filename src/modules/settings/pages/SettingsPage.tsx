@@ -12,6 +12,7 @@ import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { beanEditableDetailQueryKeys, beanQueryKeys } from '@/modules/bean/hooks';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { roastBatchQueryKeys, roastPlanQueryKeys } from '@/modules/roast/hooks';
+import { RoastingMachineManager } from '@/modules/roast/components';
 import { usePocketBaseConnectionSettings } from '@/modules/settings/hooks';
 import {
   loadQrCodeAsset,
@@ -344,6 +345,26 @@ export function SettingsPage() {
           <RoastedBeanConnectionCard />
 
           <AppearanceSettingsSection />
+
+          <AccordionItem as="section" className={accordionStyles.item} value="roasting-machines">
+            <AccordionTrigger
+              className={accordionStyles.trigger}
+              collapsedAriaLabel="展开"
+              expandedAriaLabel="收起"
+            >
+              <div className={accordionStyles.triggerBody}>
+                <div className={accordionStyles.triggerMain}>
+                  <div className={accordionStyles.titleGroup}>
+                    <h2 className={accordionStyles.title}>烘焙机</h2>
+                  </div>
+                </div>
+              </div>
+            </AccordionTrigger>
+
+            <AccordionContent className={accordionStyles.content}>
+              <RoastingMachineManager inSettings />
+            </AccordionContent>
+          </AccordionItem>
 
           <AccordionItem as="section" className={accordionStyles.item} value="ai-roast">
             <AccordionTrigger

@@ -9,11 +9,18 @@ const backupCollectionNames = [
   'green_beans',
   'green_bean_purchase_batches',
   'bean_sale_specs',
+  'roasting_machines',
   'roast_profiles',
   'roast_batches',
   'roast_curve_records',
   'roast_records',
+  'ai_roast_consents',
+  'ai_roast_profiles',
+  'ai_roast_reviews',
+  'ai_roast_recommendations',
+  'ai_roast_feedback',
   'finance_expense_records',
+  'finance_income_records',
   'cost_calculations',
   'app_settings',
 ] as const;
@@ -50,7 +57,33 @@ describe('userDataBackupService', () => {
     });
   });
 
-  it('retries backup export without sorting when PocketBase rejects a collection sort', async () => {
+  it('keeps exporting when a production environment does not expose optional AI backup collections', async () => {
+    const forbiddenCollectionError = new AppError('集合未开放访问。', {
+      code: 'AUTH',
+      status: 403,
+    });
+
+    vi.spyOn(PocketBaseRestClient.prototype, 'list').mockImplementation(
+      <TOutput,>(collectionName: string): Promise<TOutput[]> => {
+        if (collectionName === 'ai_roast_reviews') {
+          throw forbiddenCollectionError;
+        }
+
+        return Promise.resolve([{ id: `${collectionName}-1` }] as TOutput[]);
+      },
+    );
+
+    await expect(userDataBackupService.createBackup()).resolves.toMatchObject({
+      collections: {
+        ai_roast_reviews: [],
+      },
+      summary: {
+        ai_roast_reviews: 0,
+      },
+    });
+  });
+
+  it('retries backup export without sorting when a legacy collection rejects the created_at sort', async () => {
     const sortError = new AppError('PocketBase 请求失败，请稍后重试或联系管理员检查服务日志。（HTTP 400）', {
       code: 'HTTP',
       status: 400,
@@ -76,7 +109,7 @@ describe('userDataBackupService', () => {
     expect(listSpy).toHaveBeenCalledWith('green_beans', expect.objectContaining({
       orderBy: {
         ascending: true,
-        column: 'created',
+        column: 'created_at',
       },
     }));
     expect(listSpy).toHaveBeenCalledWith('green_beans', {
@@ -91,6 +124,7 @@ describe('userDataBackupService', () => {
       roast_batches: 'batch-new',
       roast_curve_records: 'curve-new',
       roast_profiles: 'plan-new',
+      roasting_machines: 'machine-new',
     };
     const backup: UserDataBackupFile = {
       collections: {
@@ -127,6 +161,17 @@ describe('userDataBackupService', () => {
             id: 'plan-old',
             green_bean_id: 'bean-old',
             name: 'Plan',
+            roaster_machine_id: 'machine-old',
+          },
+        ],
+        roasting_machines: [
+          {
+            id: 'machine-old',
+            display_name: 'Tank200D',
+            model_id: 'model-old',
+            model_key: 'tank200d',
+            owner: 'old-user',
+            status: 'active',
           },
         ],
       },
@@ -145,7 +190,7 @@ describe('userDataBackupService', () => {
 
     await expect(userDataBackupService.importBackup(backup)).resolves.toEqual({
       deleted: 0,
-      imported: 5,
+      imported: 6,
       skipped: 0,
       updated: 0,
     });
@@ -154,8 +199,16 @@ describe('userDataBackupService', () => {
       id: 'bean-old',
       owner: 'old-user',
     }));
+    expect(insertSpy).toHaveBeenCalledWith('roasting_machines', expect.objectContaining({
+      display_name: 'Tank200D',
+      model_key: 'tank200d',
+    }));
+    expect(insertSpy).toHaveBeenCalledWith('roasting_machines', expect.not.objectContaining({
+      model_id: 'model-old',
+    }));
     expect(insertSpy).toHaveBeenCalledWith('roast_profiles', expect.objectContaining({
       green_bean_id: 'bean-new',
+      roaster_machine_id: 'machine-new',
     }));
     expect(insertSpy).toHaveBeenCalledWith('roast_batches', expect.objectContaining({
       green_bean_id: 'bean-new',
@@ -662,15 +715,22 @@ describe('userDataBackupService', () => {
     });
     const collections: UserDataBackupFile['collections'] = {
       app_settings: [{ id: 'app_settings-old', key: 'cost_template_settings', owner: 'old-user', value: {} }],
+      ai_roast_consents: [{ id: 'ai_roast_consents-old', owner: 'old-user' }],
+      ai_roast_feedback: [{ id: 'ai_roast_feedback-old', owner: 'old-user' }],
+      ai_roast_profiles: [{ id: 'ai_roast_profiles-old', owner: 'old-user' }],
+      ai_roast_recommendations: [{ id: 'ai_roast_recommendations-old', owner: 'old-user' }],
+      ai_roast_reviews: [{ id: 'ai_roast_reviews-old', owner: 'old-user' }],
       bean_sale_specs: [{ id: 'bean_sale_specs-old', owner: 'old-user' }],
       cost_calculations: [{ id: 'cost_calculations-old', owner: 'old-user' }],
       finance_expense_records: [{ id: 'finance_expense_records-old', owner: 'old-user' }],
+      finance_income_records: [{ id: 'finance_income_records-old', owner: 'old-user' }],
       green_bean_purchase_batches: [{ id: 'green_bean_purchase_batches-old', owner: 'old-user' }],
       green_beans: [{ id: 'green_beans-old', owner: 'old-user' }],
       roast_batches: [{ id: 'roast_batches-old', owner: 'old-user' }],
       roast_curve_records: [{ id: 'roast_curve_records-old', owner: 'old-user' }],
       roast_profiles: [{ id: 'roast_profiles-old', owner: 'old-user' }],
       roast_records: [{ id: 'roast_records-old', owner: 'old-user' }],
+      roasting_machines: [{ id: 'roasting_machines-old', owner: 'old-user' }],
     };
     const backup: UserDataBackupFile = {
       collections,
@@ -705,5 +765,254 @@ describe('userDataBackupService', () => {
         owner: 'old-user',
       }));
     });
+  });
+
+  it('rewrites AI roast backup references to imported machine, batch, curve, and recommendation ids', async () => {
+    const generatedIds: Record<string, string> = {
+      ai_roast_feedback: 'feedback-new',
+      ai_roast_recommendations: 'recommendation-new',
+      ai_roast_reviews: 'review-new',
+      roast_batches: 'batch-new',
+      roast_curve_records: 'curve-new',
+      roasting_machines: 'machine-new',
+    };
+    const backup: UserDataBackupFile = {
+      collections: {
+        ai_roast_feedback: [
+          {
+            id: 'feedback-old',
+            owner: 'old-user',
+            recommendation_id: 'recommendation-old',
+            roast_batch_id: 'batch-old',
+          },
+        ],
+        ai_roast_recommendations: [
+          {
+            id: 'recommendation-old',
+            machine_id: 'machine-old',
+            owner: 'old-user',
+          },
+        ],
+        ai_roast_reviews: [
+          {
+            curve_record_id: 'curve-old',
+            id: 'review-old',
+            machine_id: 'machine-old',
+            owner: 'old-user',
+            roast_batch_id: 'batch-old',
+          },
+        ],
+        roast_batches: [
+          {
+            id: 'batch-old',
+            owner: 'old-user',
+          },
+        ],
+        roast_curve_records: [
+          {
+            id: 'curve-old',
+            owner: 'old-user',
+            roast_batch_id: 'batch-old',
+          },
+        ],
+        roasting_machines: [
+          {
+            id: 'machine-old',
+            owner: 'old-user',
+          },
+        ],
+      },
+      exportedBy: {
+        email: 'old@example.com',
+        id: 'old-user',
+      },
+      exportedAt: '2026-07-15T08:00:00.000Z',
+      schema: 'easybake.user-data-backup',
+      summary: {},
+      version: 1,
+    };
+
+    vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([]);
+    const insertSpy = vi.spyOn(PocketBaseRestClient.prototype, 'insert').mockImplementation(
+      <TOutput,>(collectionName: string): Promise<TOutput[]> => {
+        return Promise.resolve([{ id: generatedIds[collectionName] ?? `${collectionName}-new` }] as TOutput[]);
+      },
+    );
+
+    await expect(userDataBackupService.importBackup(backup)).resolves.toEqual({
+      deleted: 0,
+      imported: 6,
+      skipped: 0,
+      updated: 0,
+    });
+
+    expect(insertSpy).toHaveBeenCalledWith('ai_roast_reviews', expect.objectContaining({
+      curve_record_id: 'curve-new',
+      machine_id: 'machine-new',
+      roast_batch_id: 'batch-new',
+    }));
+    expect(insertSpy).toHaveBeenCalledWith('ai_roast_recommendations', expect.objectContaining({
+      machine_id: 'machine-new',
+    }));
+    expect(insertSpy).toHaveBeenCalledWith('ai_roast_feedback', expect.objectContaining({
+      recommendation_id: 'recommendation-new',
+      roast_batch_id: 'batch-new',
+    }));
+  });
+
+  it('imports the core backup data when production skips unavailable roasting machine and AI collections', async () => {
+    const unavailableCollectionError = new AppError('集合未开放访问。', {
+      code: 'AUTH',
+      status: 403,
+    });
+    const backup: UserDataBackupFile = {
+      collections: {
+        ai_roast_recommendations: [
+          {
+            id: 'recommendation-old',
+            machine_id: 'machine-old',
+            owner: 'old-user',
+          },
+        ],
+        green_beans: [
+          {
+            id: 'bean-old',
+            owner: 'old-user',
+          },
+        ],
+        roast_profiles: [
+          {
+            green_bean_id: 'bean-old',
+            id: 'plan-old',
+            owner: 'old-user',
+            roaster_machine_id: 'machine-old',
+          },
+        ],
+        roasting_machines: [
+          {
+            display_name: 'Tank200D',
+            id: 'machine-old',
+            owner: 'old-user',
+          },
+        ],
+      },
+      exportedBy: {
+        email: 'old@example.com',
+        id: 'old-user',
+      },
+      exportedAt: '2026-07-15T08:00:00.000Z',
+      schema: 'easybake.user-data-backup',
+      summary: {},
+      version: 1,
+    };
+
+    vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([]);
+    const insertSpy = vi.spyOn(PocketBaseRestClient.prototype, 'insert').mockImplementation(
+      <TOutput,>(collectionName: string): Promise<TOutput[]> => {
+        if (collectionName === 'ai_roast_recommendations' || collectionName === 'roasting_machines') {
+          throw unavailableCollectionError;
+        }
+
+        return Promise.resolve([{ id: `${collectionName}-new` }] as TOutput[]);
+      },
+    );
+
+    await expect(userDataBackupService.importBackup(backup)).resolves.toEqual({
+      deleted: 0,
+      imported: 2,
+      skipped: 2,
+      updated: 0,
+    });
+
+    expect(insertSpy).toHaveBeenCalledWith('roast_profiles', expect.objectContaining({
+      green_bean_id: 'green_beans-new',
+    }));
+    expect(insertSpy).toHaveBeenCalledWith('roast_profiles', expect.not.objectContaining({
+      roaster_machine_id: 'machine-old',
+    }));
+  });
+
+  it('retries roast profile import with legacy roaster_model when production still requires it', async () => {
+    const unavailableCollectionError = new AppError('集合未开放访问。', {
+      code: 'AUTH',
+      status: 403,
+    });
+    const missingRoasterModelError = new AppError('提交失败：roaster_model不能为空', {
+      code: 'HTTP',
+      status: 400,
+    });
+    const backup: UserDataBackupFile = {
+      collections: {
+        green_beans: [
+          {
+            id: 'bean-old',
+            owner: 'old-user',
+          },
+        ],
+        roast_profiles: [
+          {
+            green_bean_id: 'bean-old',
+            id: 'plan-old',
+            owner: 'old-user',
+            roaster_machine_id: 'machine-old',
+          },
+        ],
+        roasting_machines: [
+          {
+            display_name: 'Tank200D',
+            id: 'machine-old',
+            model_key: 'tank200d',
+            owner: 'old-user',
+          },
+        ],
+      },
+      exportedBy: {
+        email: 'old@example.com',
+        id: 'old-user',
+      },
+      exportedAt: '2026-07-15T08:00:00.000Z',
+      schema: 'easybake.user-data-backup',
+      summary: {},
+      version: 1,
+    };
+    let roastProfileAttempts = 0;
+
+    vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([]);
+    const insertSpy = vi.spyOn(PocketBaseRestClient.prototype, 'insert').mockImplementation(
+      <TOutput,>(collectionName: string, payload: Record<string, unknown>): Promise<TOutput[]> => {
+        if (collectionName === 'roasting_machines') {
+          throw unavailableCollectionError;
+        }
+
+        if (collectionName === 'roast_profiles') {
+          roastProfileAttempts += 1;
+
+          if (roastProfileAttempts === 1) {
+            throw missingRoasterModelError;
+          }
+
+          return Promise.resolve([{ id: 'plan-new', ...payload }] as TOutput[]);
+        }
+
+        return Promise.resolve([{ id: `${collectionName}-new` }] as TOutput[]);
+      },
+    );
+
+    await expect(userDataBackupService.importBackup(backup)).resolves.toEqual({
+      deleted: 0,
+      imported: 2,
+      skipped: 1,
+      updated: 0,
+    });
+
+    expect(insertSpy).toHaveBeenCalledWith('roast_profiles', expect.objectContaining({
+      green_bean_id: 'green_beans-new',
+    }));
+    expect(insertSpy).toHaveBeenCalledWith('roast_profiles', expect.objectContaining({
+      roaster_model: 'Tank200D',
+    }));
+    expect(insertSpy).toHaveBeenCalledWith('roast_profiles', expect.not.objectContaining({
+      roaster_machine_id: 'machine-old',
+    }));
   });
 });

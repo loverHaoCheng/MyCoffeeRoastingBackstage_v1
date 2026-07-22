@@ -6,12 +6,10 @@ import Spin from "antd/es/spin";
 import { useEffect, useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
-import {
-  roasterModelSelectOptions,
-} from '@/modules/roast/constants/roasterModel';
 import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
 import { roastPlanToJsonInput } from '@/modules/roast/services/roastPlanJson.service';
 import { useUpdateRoastPlan } from '@/modules/roast/hooks/useRoastPlans';
+import { useRoastingMachines } from '@/modules/roast/hooks/useRoasterMachines';
 import type { RoastPlan } from '@/types/domain';
 
 import type { RoastPlanJsonInput } from '../types';
@@ -48,7 +46,7 @@ const fieldMeta: Record<
   beanId: { label: '生豆', placeholder: '选择对应生豆', type: 'select' },
   purpose: { label: '用途', placeholder: '例如 手冲 / 咖啡馆', type: 'text' },
   roastLevel: { label: '烘焙目标', placeholder: '例如 手冲浅烘', type: 'text' },
-  roasterModel: { label: '烘豆机型号', placeholder: '选择烘豆机型号', type: 'select' },
+  roasterModel: { label: '已关联烘焙机', placeholder: '选择已关联烘焙机', type: 'select' },
 };
 
 export function RoastPlanFieldEditorDrawer({
@@ -62,6 +60,7 @@ export function RoastPlanFieldEditorDrawer({
 }: RoastPlanFieldEditorDrawerProps) {
   const { message } = App.useApp();
   const { data: beans = [], isLoading: beansLoading } = useBeans();
+  const { data: roastingMachines = [], isLoading: roastingMachinesLoading } = useRoastingMachines();
   const updatePlanMutation = useUpdateRoastPlan();
   const [draft, setDraft] = useState<RoastPlanJsonInput | null>(null);
   const [lastOpenContext, setLastOpenContext] = useState<{
@@ -115,7 +114,7 @@ export function RoastPlanFieldEditorDrawer({
     );
   }
 
-  const updateDraft = <K extends RoastPlanEditableFieldPath>(key: K, value: RoastPlanJsonInput[K]) => {
+  const updateDraft = <K extends keyof RoastPlanJsonInput>(key: K, value: RoastPlanJsonInput[K]) => {
     setDraft((current) => {
       if (!current) {
         return current;
@@ -124,7 +123,7 @@ export function RoastPlanFieldEditorDrawer({
       const nextDraft: RoastPlanJsonInput = { ...current };
       nextDraft[key] = value;
 
-      if (key === 'beanId') {
+      if (key === 'beanId' && (typeof value === 'string' || typeof value === 'number')) {
         const nextBeanId = value;
         const selectedBean = beans.find((bean) => String(bean.id) === String(nextBeanId));
         nextDraft.beanName =
@@ -211,17 +210,23 @@ export function RoastPlanFieldEditorDrawer({
       case 'roasterModel':
         return (
           <Select
+            disabled={!roastingMachinesLoading && roastingMachines.length === 0}
+            loading={roastingMachinesLoading}
             onChange={(value) => {
               if (!value) {
                 return;
               }
 
-              updateDraft('roasterModel', value);
+              updateDraft('roasterModel', roastingMachines.find((machine) => machine.id === value)?.displayName ?? '');
+              updateDraft('roasterMachineId', value);
             }}
-            options={roasterModelSelectOptions}
-            placeholder={fieldConfig.placeholder}
+            options={roastingMachines.map((machine) => ({
+              label: `${machine.displayName} · ${machine.modelKey}`,
+              value: machine.id,
+            }))}
+            placeholder={roastingMachines.length === 0 ? '请先在设置中关联烘焙机' : fieldConfig.placeholder}
             showSearch={false}
-            value={draft.roasterModel || undefined}
+            value={draft.roasterMachineId ?? undefined}
           />
         );
     }

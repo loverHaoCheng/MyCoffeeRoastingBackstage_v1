@@ -1,7 +1,6 @@
 import { AppError } from '@/shared/errors/AppError';
 import type { RoastPlan } from '@/types/domain';
 
-import { normalizeRoasterModel } from '../constants/roasterModel';
 import { roastPlanJsonSchema } from '../schemas/roastPlanJson.schema';
 import type { RoastPlanJsonInput, RoastPlanJsonStep } from '../types';
 
@@ -75,7 +74,8 @@ export function createRoastPlan(input: unknown, id: number): RoastPlan {
     name: plan.name,
     beanId: plan.beanId ?? id,
     beanName: plan.beanName,
-    roasterModel: normalizeRoasterModel(plan.roasterModel),
+    roasterMachineId: plan.roasterMachineId,
+    roasterModel: plan.roasterModel,
     batchWeightGrams: plan.batchWeightGrams,
     plannedBatchKg: Number((plan.batchWeightGrams / 1000).toFixed(3)),
     targetRoastLevel: plan.roastLevel,
@@ -208,6 +208,7 @@ export function parseRoastPlanJsonDraft(jsonText: string, fallback: RoastPlanJso
     name: readString(payload.name) ?? fallback.name,
     beanName: readString(payload.beanName) ?? fallback.beanName,
     ...(beanId == null ? {} : { beanId }),
+    roasterMachineId: readString(payload.roasterMachineId) ?? fallback.roasterMachineId,
     roasterModel: readString(payload.roasterModel) ?? fallback.roasterModel,
     batchWeightGrams: readNumber(payload.batchWeightGrams) ?? fallback.batchWeightGrams,
     roastLevel: readString(payload.roastLevel) ?? fallback.roastLevel,
@@ -221,7 +222,8 @@ export function roastPlanToJsonInput(plan: RoastPlan): RoastPlanJsonInput {
     name: plan.name,
     beanId: plan.beanId,
     beanName: plan.beanName,
-    roasterModel: normalizeRoasterModel(plan.roasterModel),
+    roasterMachineId: plan.roasterMachineId,
+    roasterModel: plan.roasterModel,
     batchWeightGrams: plan.batchWeightGrams,
     roastLevel: plan.targetRoastLevel,
     purpose: plan.roastPurpose,

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 const valueWithUnitSchema = z.object({
-  unit: z.string().optional(),
-  value: z.number().optional(),
+  unit: z.string().nullable().optional(),
+  value: z.number().nullable().optional(),
 });
 
 const hibeanRoasterParamSchema = z.object({
@@ -50,10 +50,10 @@ export const hibeanRoastCurveSchema = z.object({
     .object({
       bean: z
         .object({
-          name: z.string().optional(),
-          origin: z.string().optional(),
-          processingMethod: z.number().optional(),
-          regionCode: z.string().optional(),
+          name: z.string().nullable().optional(),
+          origin: z.string().nullable().optional(),
+          processingMethod: z.number().nullable().optional(),
+          regionCode: z.string().nullable().optional(),
         })
         .optional(),
       greenBeanWeight: valueWithUnitSchema.optional(),

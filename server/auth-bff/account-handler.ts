@@ -63,6 +63,12 @@ export const handleDeleteAccount = async (
     { name: 'green_bean_purchase_batches' },
     { name: 'green_beans' },
     { name: 'app_settings', optional: true },
+    { name: 'ai_roast_consents', optional: true },
+    { name: 'ai_roast_feedback', optional: true },
+    { name: 'ai_roast_profiles', optional: true },
+    { name: 'ai_roast_recommendations', optional: true },
+    { name: 'ai_roast_reviews', optional: true },
+    { name: 'roasting_machines', optional: true },
   ];
 
   try {

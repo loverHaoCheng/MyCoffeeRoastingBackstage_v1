@@ -54,19 +54,19 @@
         "primaryKey": false
       },
       {
+        "autogeneratePattern": "",
         "help": "",
         "hidden": false,
         "id": "selecttrainmodel1",
-        "maxSelect": 1,
+        "max": 0,
+        "min": 1,
         "name": "roaster_model",
+        "pattern": "",
         "presentable": true,
+        "primaryKey": false,
         "required": true,
         "system": false,
-        "type": "select",
-        "values": [
-          "tank200d",
-          "其他"
-        ]
+        "type": "text"
       },
       {
         "help": "",

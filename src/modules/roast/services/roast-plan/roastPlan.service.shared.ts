@@ -5,7 +5,6 @@ import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
 import type { ApiResponse } from '@/services/api.types';
 import type { RoastPlan } from '@/types/domain';
 
-import { normalizeRoasterModel } from '../../constants/roasterModel';
 import type { RoastPlanJsonInput } from '../../types';
 import {
   GENERIC_BEAN_ID,
@@ -55,12 +54,39 @@ const mapRoastPlanSteps = (steps: unknown): RoastPlan['steps'] => {
   });
 };
 
+const normalizeRemoteBeanId = (value: null | string): string => {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return GENERIC_BEAN_ID;
+  }
+
+  return normalized;
+};
+
+const normalizeRemoteBeanName = (value: null | string): string => {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return GENERIC_BEAN_NAME;
+  }
+
+  return normalized;
+};
+
+const normalizeOptionalRelationId = (value: null | string): string | undefined => {
+  const normalized = value?.trim();
+
+  return normalized?.length ? normalized : undefined;
+};
+
 export const mapRemoteRoastPlanRecord = (record: RemoteRoastPlanOverviewRecord): RoastPlan => ({
   id: record.id,
   name: record.name,
-  beanId: record.green_bean_id ?? GENERIC_BEAN_ID,
-  beanName: record.bean_name ?? GENERIC_BEAN_NAME,
-  roasterModel: normalizeRoasterModel(record.roaster_model),
+  beanId: normalizeRemoteBeanId(record.green_bean_id),
+  beanName: normalizeRemoteBeanName(record.bean_name),
+  roasterMachineId: normalizeOptionalRelationId(record.roaster_machine_id),
+  roasterModel: record.expand?.roaster_machine_id?.display_name?.trim() ?? '',
   batchWeightGrams: record.batch_weight_grams,
   plannedBatchKg: toPlannedBatchKilograms(record.batch_weight_grams),
   targetRoastLevel: record.target_roast_level ?? '',
@@ -113,6 +139,27 @@ const resolveGreenBeanId = async (client: PocketBaseRestClient, input: RoastPlan
   });
 };
 
+const resolveRoasterMachineId = async (client: PocketBaseRestClient, input: RoastPlanJsonInput): Promise<string> => {
+  const requestedMachineId = input.roasterMachineId?.trim();
+
+  if (requestedMachineId) {
+    return requestedMachineId;
+  }
+
+  const records = await client.list<{ id: string }>('roasting_machines', {
+    limit: 1,
+    match: { display_name: input.roasterModel.trim() },
+    select: 'id',
+  });
+  const machine = records[0];
+
+  if (!machine) {
+    throw new AppError('未找到对应的已关联烘焙机，请在烘焙计划中重新选择。', { code: 'BUSINESS' });
+  }
+
+  return machine.id;
+};
+
 export const toRemoteRoastPlanPayload = async (
   client: PocketBaseRestClient,
   input: RoastPlanJsonInput,
@@ -125,7 +172,7 @@ export const toRemoteRoastPlanPayload = async (
     is_active: true,
     name: input.name,
     planned_batch_kg: toPocketBaseCompatiblePlannedBatchKilograms(input.batchWeightGrams),
-    roaster_model: normalizeRoasterModel(input.roasterModel),
+    roaster_machine_id: await resolveRoasterMachineId(client, input),
     roast_purpose: input.purpose ?? null,
     status,
     steps: input.steps.map((step) => ({
@@ -162,6 +209,7 @@ export const getRoastPlanById = async (
   planId: RoastPlan['id'],
 ): Promise<RoastPlan> => {
   const records = await client.list<RemoteRoastPlanOverviewRecord>('roast_plan_overview', {
+    expand: 'roaster_machine_id',
     limit: 1,
     match: {
       id: String(planId),

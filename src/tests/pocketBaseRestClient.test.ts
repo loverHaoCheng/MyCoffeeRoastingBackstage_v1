@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
 
 describe('PocketBaseRestClient', () => {
   it('falls back to the current origin when project url is omitted', async () => {
@@ -208,5 +209,35 @@ describe('PocketBaseRestClient', () => {
       message: 'PocketBase 请求失败，请稍后重试或联系管理员检查服务日志。（HTTP 400）',
       status: 400,
     });
+  });
+
+  it('can delegate public collection access rules to PocketBase without an owner filter', async () => {
+    pocketBaseSessionService.save({
+      user: { email: 'roaster@example.com', id: 'roaster-user' },
+    });
+    let requestUrl = '';
+    const requestBodies: string[] = [];
+    const client = new PocketBaseRestClient({
+      autoManageOwner: false,
+      autoManageTimestamps: false,
+      fetcher: (input, init) => {
+        requestUrl = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+        if (typeof init?.body === 'string') {
+          requestBodies.push(init.body);
+        }
+        return Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+      },
+      projectUrl: 'http://81.70.224.75',
+    });
+
+    await client.list('roaster_models', { orderBy: { column: 'model_name' } });
+
+    expect(requestUrl).toContain('sort=model_name');
+    expect(requestUrl).not.toContain('owner');
+
+    await client.insert('roaster_models', { created_by: 'roaster-user', model_name: 'Tank200D' });
+
+    expect(requestBodies).toEqual(['{"created_by":"roaster-user","model_name":"Tank200D"}']);
+    pocketBaseSessionService.clear();
   });
 });

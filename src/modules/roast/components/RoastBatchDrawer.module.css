@@ -93,6 +93,38 @@
   line-height: 1.6;
 }
 
+.consentCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 16px;
+  background: var(--app-bg-soft);
+}
+
+.consentCard strong {
+  color: var(--app-text);
+  font-size: 14px;
+}
+
+.consentCard :global(.ant-checkbox-wrapper) {
+  color: var(--app-text);
+  line-height: 1.5;
+}
+
+.consentCard p {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.consentState {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .trainingGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -125,6 +157,134 @@
 
 .trainingItem p {
   margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.reviewCard,
+.adjustmentCard,
+.planDraftPanel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 18px;
+  background: var(--app-bg);
+}
+
+.reviewCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reviewCardHeader strong {
+  color: var(--app-text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.reviewCardHeader span {
+  flex: 0 0 auto;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.reviewCard p,
+.adjustmentCard p,
+.planDraftPanel p {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.recommendationStack {
+  display: grid;
+  gap: 10px;
+}
+
+.recommendationStack h5 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.adjustmentCard dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.adjustmentCard dl div {
+  display: grid;
+  gap: 3px;
+}
+
+.adjustmentCard dt {
+  color: var(--app-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.adjustmentCard dd {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.planDraftMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.planDraftMeta span {
+  padding: 5px 9px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 999px;
+  color: var(--app-text-secondary);
+  background: var(--app-bg-soft);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.planStepList {
+  display: grid;
+  gap: 8px;
+}
+
+.planStepCard {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 14px;
+  background: var(--app-bg-elevated);
+}
+
+.planStepCard strong {
+  color: var(--app-text);
+  font-size: 13px;
+}
+
+.planStepCard span {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.aiRecommendationList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
   color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 1.5;
@@ -177,6 +337,20 @@
   font-size: 13px;
 }
 
+.planCreationDrawer :global(.ant-drawer-content) {
+  border-radius: 20px 20px 0 0;
+}
+
+.planCreationDrawer :global(.ant-drawer-header) {
+  padding: 18px 24px 10px;
+  border-bottom: 0;
+}
+
+.planCreationDrawer :global(.ant-drawer-body) {
+  padding: 0 24px 24px;
+  overflow-x: hidden;
+}
+
 @media (max-width: 767px) {
   .fieldGrid {
     display: grid;
@@ -189,5 +363,9 @@
 
   .trainingGrid {
     grid-template-columns: 1fr;
+  }
+
+  .planCreationDrawer :global(.ant-drawer-body) {
+    padding: 0 16px 24px;
   }
 }

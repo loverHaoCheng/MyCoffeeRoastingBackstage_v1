@@ -58,6 +58,13 @@ export interface BeanImageRecognitionResult {
   variety: string;
 }
 
+export interface RoasterModelRecognitionResult {
+  brand: string;
+  modelName: string;
+  roastType: 'direct_fire' | 'hot_air' | 'other' | 'semi_hot_air';
+  specifications: Record<string, unknown>;
+}
+
 export class PocketBaseGatewayError extends Error {
   payload: unknown;
   status: number;

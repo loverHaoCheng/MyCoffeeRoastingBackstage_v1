@@ -44,6 +44,7 @@ export interface RoastPlan extends EntityTimestamps {
   name: string;
   beanName: string;
   beanId: Bean['id'];
+  roasterMachineId?: string;
   roasterModel: string;
   batchWeightGrams: number;
   plannedBatchKg: number;

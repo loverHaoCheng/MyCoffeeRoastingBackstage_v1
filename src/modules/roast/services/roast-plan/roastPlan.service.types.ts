@@ -19,7 +19,12 @@ export interface RemoteRoastPlanOverviewRecord {
   id: string;
   name: string;
   planned_batch_kg: number;
-  roaster_model: null | string;
+  roaster_machine_id: null | string;
+  expand?: {
+    roaster_machine_id?: {
+      display_name?: string;
+    };
+  };
   roast_purpose: null | string;
   status: string;
   steps: unknown;

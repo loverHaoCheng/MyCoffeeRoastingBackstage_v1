@@ -2,7 +2,7 @@ import type { IncomingMessage } from 'node:http';
 
 import { aiImageMaxBytes, qiniuQwenBaseUrl, qiniuQwenModel } from '../config.js';
 import { parseJsonResponse, parseLimitedJsonBody, readRequestBuffer } from '../http.js';
-import type { BeanImageRecognitionResult } from '../types.js';
+import type { BeanImageRecognitionResult, RoasterModelRecognitionResult } from '../types.js';
 import { isRecord, toTrimmedString } from '../utils.js';
 
 export const buildQiniuQwenUrl = (path: string): string => {
@@ -192,18 +192,34 @@ export const extractBalancedJsonObject = (text: string): string => {
   return '';
 };
 
+export const extractBalancedJsonObjects = (text: string): string[] => {
+  const objects: string[] = [];
+
+  for (let startIndex = text.indexOf('{'); startIndex >= 0; startIndex = text.indexOf('{', startIndex + 1)) {
+    const candidate = extractBalancedJsonObject(text.slice(startIndex));
+
+    if (candidate) {
+      objects.push(candidate);
+      startIndex += candidate.length - 1;
+    }
+  }
+
+  return objects;
+};
+
 export const extractJsonFromModelText = (text: string): unknown => {
   const trimmedText = text.trim();
-  const fencedJsonMatch = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmedText);
-  const candidates = [
-    fencedJsonMatch?.[1] ?? '',
+  const fencedJsonMatches = Array.from(trimmedText.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi))
+    .map((match) => match[1]);
+  const candidates = Array.from(new Set([
+    ...fencedJsonMatches,
     trimmedText,
-    extractBalancedJsonObject(trimmedText),
-  ].filter((candidate) => candidate.trim().length > 0);
+    ...extractBalancedJsonObjects(trimmedText),
+  ].filter((candidate) => candidate.trim().length > 0)));
 
   for (const candidate of candidates) {
     const balancedCandidate = candidate.trim().startsWith('{')
-      ? candidate
+      ? extractBalancedJsonObject(candidate) || candidate
       : extractBalancedJsonObject(candidate);
 
     if (!balancedCandidate) {
@@ -472,4 +488,30 @@ export const requestQiniuBeanImageRecognition = async (imageDataUrl: string): Pr
   }
 
   return normalizedRecognition;
+};
+
+export const requestQiniuRoasterModelRecognition = async (imageDataUrl: string): Promise<RoasterModelRecognitionResult> => {
+  const apiKey = (process.env.QINIU_QWEN_API_KEY ?? '').trim();
+  if (!apiKey) throw new Error('服务器未配置图像识别 API Key。');
+  const upstream = await fetch(buildQiniuQwenUrl('/chat/completions'), {
+    body: JSON.stringify({
+      enable_thinking: false,
+      max_tokens: 2048,
+      messages: [
+        { content: '你是烘焙机参数识别助手，只根据图片提取设备参数。只输出 JSON，不要 Markdown。字段固定为 brand、modelName、roastType、specifications。roastType 只能为 direct_fire、semi_hot_air、hot_air、other。specifications 保存图片中可确认的参数，键使用英文或简短中文，无法确认的值不要编造。', role: 'system' },
+        { content: [{ text: '识别这张烘焙机参数表，提取品牌、型号、烘焙类型和所有可确认的机器参数。', type: 'text' }, { image_url: { url: imageDataUrl }, type: 'image_url' }], role: 'user' },
+      ],
+      model: qiniuQwenModel,
+      temperature: 0,
+    }),
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    method: 'POST',
+  });
+  const payload = await parseJsonResponse(upstream);
+  if (!upstream.ok) throw new Error(`烘焙机参数识别失败（${String(upstream.status)}）。`);
+  const content = getModelContentText(payload);
+  const parsed = extractJsonFromModelText(content);
+  if (!isRecord(parsed)) throw new Error('烘焙机参数识别返回内容无效。');
+  const roastType = toTrimmedString(parsed.roastType);
+  return { brand: toTrimmedString(parsed.brand), modelName: toTrimmedString(parsed.modelName), roastType: ['direct_fire', 'semi_hot_air', 'hot_air'].includes(roastType) ? roastType as RoasterModelRecognitionResult['roastType'] : 'other', specifications: isRecord(parsed.specifications) ? parsed.specifications : {} };
 };

@@ -9,11 +9,12 @@ import { Select } from '@/components/ui/select';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
 import { useEffect } from 'react';
-import { Controller, type FieldPath, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, type FieldPath, useFieldArray, useForm, useWatch } from 'react-hook-form';
 
 import { useBeans } from '@/modules/bean/hooks';
-import { roasterModelSelectOptions } from '@/modules/roast/constants/roasterModel';
+import { useRoastingMachines } from '@/modules/roast/hooks';
 import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
+import { getRoasterControlCapabilities } from '@/modules/roast/utils/roasterControlCapabilities';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 
 import type { RoastPlanJsonInput } from '../types';
@@ -53,6 +54,7 @@ export function RoastPlanForm({
 }: RoastPlanFormProps) {
   const { message } = App.useApp();
   const { data: beans = [], isLoading: beansLoading } = useBeans();
+  const { data: roastingMachines = [], isLoading: roastingMachinesLoading } = useRoastingMachines();
   const beanOptions = [
     { label: GENERIC_BEAN_NAME, value: GENERIC_BEAN_ID },
     ...beans.map((bean) => ({
@@ -60,6 +62,10 @@ export function RoastPlanForm({
       value: String(bean.id),
     })),
   ];
+  const roastingMachineOptions = roastingMachines.map((machine) => ({
+    label: `${machine.displayName} · ${machine.modelKey}`,
+    value: machine.id,
+  }));
   const { control, handleSubmit, reset, setFocus, setValue } = useForm<RoastPlanJsonInput>({
     defaultValues: initialValues,
   });
@@ -67,6 +73,15 @@ export function RoastPlanForm({
     control,
     name: 'steps',
   });
+  const selectedRoasterMachineId = useWatch({
+    control,
+    name: 'roasterMachineId',
+  });
+  const selectedMachine = roastingMachines.find((machine) => machine.id === selectedRoasterMachineId);
+  const adjustableControls = getRoasterControlCapabilities(selectedMachine);
+  const showAirTemperature = adjustableControls.includes('airTemperature');
+  const showDrumSpeed = adjustableControls.includes('drumSpeed');
+  const showFirePower = adjustableControls.includes('firePower');
 
   useEffect(() => {
     reset(initialValues);
@@ -83,9 +98,17 @@ export function RoastPlanForm({
 
     const selectedBean = beans.find((bean) => String(bean.id) === String(values.beanId));
     const isGenericPlan = String(values.beanId) === GENERIC_BEAN_ID;
+    const submitMachine = roastingMachines.find((machine) => machine.id === values.roasterMachineId);
+    const submitControls = getRoasterControlCapabilities(submitMachine);
     const payload = {
       ...values,
       beanName: isGenericPlan ? GENERIC_BEAN_NAME : selectedBean?.name ?? values.beanName,
+      steps: values.steps.map((step) => ({
+        ...step,
+        airTemperature: submitControls.includes('airTemperature') ? step.airTemperature : '不可调',
+        drumSpeed: submitControls.includes('drumSpeed') ? step.drumSpeed : '不可调',
+        firePower: submitControls.includes('firePower') ? step.firePower : '不可调',
+      })),
     };
     const validationResult = roastPlanJsonSchema.safeParse(payload);
 
@@ -112,119 +135,142 @@ export function RoastPlanForm({
 
   return (
     <form className={styles.form} onSubmit={(event) => void handleSubmit(submitForm)(event)}>
-      <section className={styles.fieldGrid}>
-        <label className={styles.field} data-field-path="name">
-          {renderLabel('计划名称', true)}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h3>基础信息</h3>
+          <p>选择生豆、烘焙机和目标，让计划可以被烘焙记录直接引用。</p>
+        </div>
+
+        <div className={styles.fieldGrid}>
+          <label className={styles.field} data-field-path="name">
+            {renderLabel('计划名称', true)}
+            <Controller
+              control={control}
+              name="name"
+              render={({ field }) => <Input {...field} placeholder="例如 肯尼亚 柏拉 AA Plus 水洗" />}
+            />
+          </label>
+
+          <label className={styles.field} data-field-path="beanId">
+            {renderLabel('生豆', true)}
+            <Controller
+              control={control}
+              name="beanId"
+              render={({ field }) => (
+                <Select
+                  aria-label="生豆"
+                  loading={beansLoading}
+                  onChange={(beanId) => {
+                    const selectedBean = beans.find((bean) => String(bean.id) === beanId);
+
+                    field.onChange(beanId);
+                    setValue('beanName', beanId === GENERIC_BEAN_ID ? GENERIC_BEAN_NAME : selectedBean?.name ?? '');
+                  }}
+                  options={beanOptions}
+                  placeholder="从生豆库存选择，或使用通用计划"
+                  showSearch={false}
+                  value={field.value == null ? undefined : String(field.value)}
+                />
+              )}
+            />
+          </label>
+
           <Controller
             control={control}
-            name="name"
-            render={({ field }) => <Input {...field} placeholder="例如 肯尼亚 柏拉 AA Plus 水洗" />}
+            name="beanName"
+            render={({ field }) => <input {...field} type="hidden" />}
           />
-        </label>
 
-        <label className={styles.field} data-field-path="beanId">
-          {renderLabel('生豆', true)}
-          <Controller
-            control={control}
-            name="beanId"
-            render={({ field }) => (
-              <Select
-                aria-label="生豆"
-                loading={beansLoading}
-                onChange={(beanId) => {
-                  const selectedBean = beans.find((bean) => String(bean.id) === beanId);
+          <label className={styles.field} data-field-path="batchWeightGrams">
+            {renderLabel('批次重量', true)}
+            <Controller
+              control={control}
+              name="batchWeightGrams"
+              render={({ field }) => (
+                <InputNumber
+                  min={1}
+                  onChange={(value) => {
+                    field.onChange(value ?? 0);
+                  }}
+                  precision={0}
+                  suffix="g"
+                  value={field.value}
+                />
+              )}
+            />
+          </label>
 
-                  field.onChange(beanId);
-                  setValue('beanName', beanId === GENERIC_BEAN_ID ? GENERIC_BEAN_NAME : selectedBean?.name ?? '');
-                }}
-                options={beanOptions}
-                placeholder="从生豆库存选择，或使用通用计划"
-                showSearch={false}
-                value={field.value == null ? undefined : String(field.value)}
-              />
-            )}
-          />
-        </label>
+          <label className={styles.field} data-field-path="roasterModel">
+            {renderLabel('已关联烘焙机', true)}
+            <Controller
+              control={control}
+              name="roasterMachineId"
+              render={({ field }) => (
+                <Select
+                  aria-label="已关联烘焙机"
+                  disabled={!roastingMachinesLoading && roastingMachineOptions.length === 0}
+                  loading={roastingMachinesLoading}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    setValue('roasterModel', roastingMachines.find((machine) => machine.id === value)?.displayName ?? '');
+                  }}
+                  options={roastingMachineOptions}
+                  placeholder={roastingMachineOptions.length === 0 ? '请先在设置中关联烘焙机' : '选择已关联的烘焙机'}
+                  showSearch={false}
+                  value={field.value ?? undefined}
+                />
+              )}
+            />
+          </label>
 
-        <Controller
-          control={control}
-          name="beanName"
-          render={({ field }) => <input {...field} type="hidden" />}
-        />
-
-        <label className={styles.field} data-field-path="batchWeightGrams">
-          {renderLabel('批次重量', true)}
-          <Controller
-            control={control}
-            name="batchWeightGrams"
-            render={({ field }) => (
-              <InputNumber
-                min={1}
-                onChange={(value) => {
-                  field.onChange(value ?? 0);
-                }}
-                precision={0}
-                suffix="g"
-                value={field.value}
-              />
-            )}
-          />
-        </label>
-
-        <label className={styles.field} data-field-path="roasterModel">
-          {renderLabel('烘豆机型号', true)}
           <Controller
             control={control}
             name="roasterModel"
-            render={({ field }) => (
-              <Select
-                aria-label="烘豆机型号"
-                onChange={(value) => {
-                  field.onChange(value);
-                }}
-                options={roasterModelSelectOptions}
-                placeholder="请选择烘豆机型号"
-                showSearch={false}
-                value={field.value || undefined}
-              />
-            )}
+            render={({ field }) => <input {...field} type="hidden" />}
           />
-        </label>
 
-        <label className={styles.field} data-field-path="roastLevel">
-          {renderLabel('烘焙目标', true)}
-          <Controller
-            control={control}
-            name="roastLevel"
-            render={({ field }) => <Input {...field} placeholder="例如 手冲浅烘" />}
-          />
-        </label>
+          <label className={styles.field} data-field-path="roastLevel">
+            {renderLabel('烘焙目标', true)}
+            <Controller
+              control={control}
+              name="roastLevel"
+              render={({ field }) => <Input {...field} placeholder="例如 手冲浅烘" />}
+            />
+          </label>
 
-        <label className={styles.field} data-field-path="purpose">
-          {renderLabel('用途')}
-          <Controller
-            control={control}
-            name="purpose"
-            render={({ field }) => <Input {...field} placeholder="例如 手冲" />}
-          />
-        </label>
+          <label className={styles.field} data-field-path="purpose">
+            {renderLabel('用途')}
+            <Controller
+              control={control}
+              name="purpose"
+              render={({ field }) => <Input {...field} placeholder="例如 手冲" />}
+            />
+          </label>
+        </div>
       </section>
 
-      <section className={styles.steps}>
+      <section className={[styles.section, styles.steps].filter(Boolean).join(' ')}>
         <div className={styles.stepsHeader}>
-          <h3>烘焙节点</h3>
+          <div className={styles.sectionHeader}>
+            <h3>烘焙节点</h3>
+            <p>
+              {showAirTemperature || showDrumSpeed
+                ? '按时间记录每一步火力、风温、转速和操作，便于复盘与复制。'
+                : '按时间记录每一步炉温、火力和操作，便于复盘与复制。'}
+            </p>
+          </div>
           <Button
             aria-label="添加节点"
             icon={<PlusOutlined />}
             onClick={() => {
               append({
-                time: '',
+                airTemperature: showAirTemperature ? '-' : '不可调',
+                drumSpeed: showDrumSpeed ? '' : '不可调',
                 event: '',
+                firePower: showFirePower ? '' : '不可调',
                 operation: '',
                 temperature: '-',
-                airTemperature: '-',
-                firePower: '',
-                drumSpeed: '',
+                time: '',
               });
             }}
           >
@@ -310,30 +356,36 @@ export function RoastPlanForm({
                           render={({ field: itemField }) => <Input {...itemField} />}
                         />
                       </label>
-                      <label className={styles.field} data-field-path={`steps.${stepIndex}.firePower`}>
-                        {renderLabel('火力', true)}
-                        <Controller
-                          control={control}
-                          name={`steps.${stepIndex}.firePower` as `steps.${number}.firePower`}
-                          render={({ field: itemField }) => <Input {...itemField} />}
-                        />
-                      </label>
-                      <label className={styles.field} data-field-path={`steps.${stepIndex}.airTemperature`}>
-                        {renderLabel('风温', true)}
-                        <Controller
-                          control={control}
-                          name={`steps.${stepIndex}.airTemperature` as `steps.${number}.airTemperature`}
-                          render={({ field: itemField }) => <Input {...itemField} />}
-                        />
-                      </label>
-                      <label className={styles.field} data-field-path={`steps.${stepIndex}.drumSpeed`}>
-                        {renderLabel('转速', true)}
-                        <Controller
-                          control={control}
-                          name={`steps.${stepIndex}.drumSpeed` as `steps.${number}.drumSpeed`}
-                          render={({ field: itemField }) => <Input {...itemField} />}
-                        />
-                      </label>
+                      {showFirePower ? (
+                        <label className={styles.field} data-field-path={`steps.${stepIndex}.firePower`}>
+                          {renderLabel('火力', true)}
+                          <Controller
+                            control={control}
+                            name={`steps.${stepIndex}.firePower` as `steps.${number}.firePower`}
+                            render={({ field: itemField }) => <Input {...itemField} />}
+                          />
+                        </label>
+                      ) : null}
+                      {showAirTemperature ? (
+                        <label className={styles.field} data-field-path={`steps.${stepIndex}.airTemperature`}>
+                          {renderLabel('风温', true)}
+                          <Controller
+                            control={control}
+                            name={`steps.${stepIndex}.airTemperature` as `steps.${number}.airTemperature`}
+                            render={({ field: itemField }) => <Input {...itemField} />}
+                          />
+                        </label>
+                      ) : null}
+                      {showDrumSpeed ? (
+                        <label className={styles.field} data-field-path={`steps.${stepIndex}.drumSpeed`}>
+                          {renderLabel('转速', true)}
+                          <Controller
+                            control={control}
+                            name={`steps.${stepIndex}.drumSpeed` as `steps.${number}.drumSpeed`}
+                            render={({ field: itemField }) => <Input {...itemField} />}
+                          />
+                        </label>
+                      ) : null}
                     </div>
                   </>
                 );

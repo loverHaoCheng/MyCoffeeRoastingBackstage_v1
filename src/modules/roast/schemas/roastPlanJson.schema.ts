@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { isRoasterModelOption } from '@/modules/roast/constants/roasterModel';
-
 export const roastPlanJsonStepSchema = z.object({
   time: z.string().min(1, '时间不能为空'),
   event: z.string().min(1, '事件不能为空'),
@@ -17,7 +15,8 @@ export const roastPlanJsonSchema = z.object({
   name: z.string().min(1, '计划名称不能为空'),
   beanName: z.string(),
   beanId: z.union([z.number().int().positive(), z.string().min(1)]).optional(),
-  roasterModel: z.string().refine(isRoasterModelOption, '烘豆机型号仅支持 tank200d 或 其他'),
+  roasterMachineId: z.string().trim().min(1, '请选择已关联烘焙机').optional(),
+  roasterModel: z.string().trim().min(1, '请选择已关联烘焙机'),
   batchWeightGrams: z.number().positive('批次重量必须大于 0'),
   roastLevel: z.string().min(1, '烘焙目标不能为空'),
   purpose: z.string().optional(),
