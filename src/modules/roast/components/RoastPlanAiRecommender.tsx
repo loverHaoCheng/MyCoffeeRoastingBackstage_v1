@@ -3,8 +3,9 @@ import Button from 'antd/es/button';
 import { Controller, useForm } from 'react-hook-form';
 
 import { useBeans } from '@/modules/bean/hooks';
-import { useRoastPlanRecommendation, useRoastingMachines } from '@/modules/roast/hooks';
+import { useRoastAiUsage, useRoastPlanRecommendation, useRoastingMachines } from '@/modules/roast/hooks';
 import type { RoastPlanJsonInput, RoastPlanRecommendationInput } from '@/modules/roast/types';
+import { formatRoastAiUsageText, isRoastAiUsageAvailable } from '@/modules/roast/services/roastAiUsage.service';
 import { Select } from '@/components/ui/select';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
@@ -48,6 +49,7 @@ export function RoastPlanAiRecommender({ onCancel, onRecommended }: RoastPlanAiR
   const { message } = App.useApp();
   const { data: beans = [], isLoading: beansLoading } = useBeans();
   const { data: roastingMachines = [], isLoading: roastingMachinesLoading } = useRoastingMachines();
+  const usageQuery = useRoastAiUsage('roast_plan_recommendation');
   const recommendationMutation = useRoastPlanRecommendation();
   const beanOptions = [
     { label: '通用', value: GENERIC_BEAN_ID },
@@ -72,11 +74,22 @@ export function RoastPlanAiRecommender({ onCancel, onRecommended }: RoastPlanAiR
       roasterMachineId: roastingMachines[0]?.id ?? '',
     },
   });
+  const usageErrorText = usageQuery.error instanceof Error ? usageQuery.error.message : '';
+  const usageText = formatRoastAiUsageText(usageQuery.data, {
+    error: usageErrorText,
+    isLoading: usageQuery.isLoading,
+  });
+  const canUseQuota = isRoastAiUsageAvailable(usageQuery.data);
 
   const submitForm = async (values: RoastPlanRecommendationInput) => {
     if (!values.beanId) {
       void message.warning('请选择生豆或“通用”。');
       setFocus('beanId');
+      return;
+    }
+
+    if (!canUseQuota) {
+      void message.warning('本月 AI 推荐烘焙计划额度不足或暂不可用。');
       return;
     }
 
@@ -225,6 +238,8 @@ export function RoastPlanAiRecommender({ onCancel, onRecommended }: RoastPlanAiR
         </div>
       </section>
 
+      <p className={styles.actionHint}>{usageText}</p>
+
       <DrawerActionBar compact>
         {onCancel ? (
           <Button onClick={onCancel} type="default">
@@ -232,9 +247,9 @@ export function RoastPlanAiRecommender({ onCancel, onRecommended }: RoastPlanAiR
           </Button>
         ) : null}
         <Button
-          disabled={roastingMachineOptions.length === 0}
+          disabled={roastingMachineOptions.length === 0 || !canUseQuota}
           htmlType="submit"
-          loading={recommendationMutation.isPending}
+          loading={recommendationMutation.isPending || usageQuery.isLoading}
           type="primary"
         >
           生成 AI 推荐计划

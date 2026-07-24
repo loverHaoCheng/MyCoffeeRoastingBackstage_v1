@@ -16,6 +16,8 @@ import { renderWithQuery } from '@/tests/renderWithProviders';
 
 const {
   createRoastPlanMutateAsyncMock,
+  roastAnalysisAnalyzeMock,
+  roastAnalysisGetStatusMock,
   roastBatchesMock,
   roastCurveDataMock,
   trainingUploadMutationStateMock,
@@ -101,6 +103,19 @@ const {
     createRoastPlanMutateAsyncMock: vi.fn().mockResolvedValue({
       id: 'created-plan-1',
     }),
+    roastAnalysisAnalyzeMock: vi.fn().mockResolvedValue({
+      confidence: 80,
+      issues: [],
+      nextRoastAdjustments: ['下一炉一爆后保持升温率平缓下降。'],
+      primaryAdjustment: {
+        action: '一爆后减少降火幅度。',
+        area: 'development',
+        direction: 'increase',
+        rationale: '本次一爆后能量衔接偏弱。',
+      },
+      summary: '本次曲线一爆后能量衔接偏弱，杯测时重点关注甜感和尾段干净度。',
+    }),
+    roastAnalysisGetStatusMock: vi.fn().mockResolvedValue(null),
     roastBatchesMock: {
       current: [defaultBatch],
       defaultBatch,
@@ -161,6 +176,17 @@ vi.mock('@/modules/roast/hooks', () => ({
   useImportHiBeanRoastCurve: () => ({
     isPending: false,
     mutateAsync: vi.fn(),
+  }),
+  useInvalidateRoastAiUsage: () => vi.fn(),
+  useRoastAiUsage: () => ({
+    data: {
+      enabled: true,
+      monthlyLimit: 10,
+      remainingUses: 10,
+      usedThisMonth: 0,
+    },
+    error: null,
+    isLoading: false,
   }),
   useRoastCurve: () => ({
     data: roastCurveDataMock.current,
@@ -231,6 +257,13 @@ vi.mock('@/modules/roast/hooks/useRoastTrainingUpload', () => ({
   }),
 }));
 
+vi.mock('@/modules/roast/services/roastAnalysis.service', () => ({
+  roastAnalysisService: {
+    analyze: roastAnalysisAnalyzeMock,
+    getStatus: roastAnalysisGetStatusMock,
+  },
+}));
+
 describe('ProductionPage (烘焙历史)', () => {
   beforeEach(() => {
     roastBatchesMock.current = [roastBatchesMock.defaultBatch];
@@ -240,6 +273,8 @@ describe('ProductionPage (烘焙历史)', () => {
       isPending: false,
     };
     trainingUploadMutateAsyncMock.mockClear();
+    roastAnalysisAnalyzeMock.mockClear();
+    roastAnalysisGetStatusMock.mockClear();
     createRoastPlanMutateAsyncMock.mockClear();
     trainingUploadStatusQueryStateMock.current = {
       data: undefined,
@@ -292,8 +327,8 @@ describe('ProductionPage (烘焙历史)', () => {
     expect(screen.getByRole('spinbutton', { name: '总烘焙时间' })).toBeInTheDocument();
   });
 
-  it('enables roast training upload in staging when the record is ready and authorized', async () => {
-    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'staging');
+  it('enables roast training upload in production when the record is ready and authorized', async () => {
+    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'production');
     roastCurveDataMock.current = roastCurveDataMock.defaultCurve;
     roastBatchesMock.current = [
       {
@@ -310,7 +345,7 @@ describe('ProductionPage (烘焙历史)', () => {
       data: {
         alreadyUploaded: false,
         enabled: true,
-        environment: 'staging',
+        environment: 'production',
         roastBatchId: 'batch-1',
       },
       error: null,
@@ -329,8 +364,33 @@ describe('ProductionPage (烘焙历史)', () => {
     });
   });
 
+  it('generates roast analysis from the batch id when duration only exists in the imported curve', async () => {
+    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'production');
+    roastCurveDataMock.current = roastCurveDataMock.defaultCurve;
+    roastBatchesMock.current = [
+      {
+        ...roastBatchesMock.defaultBatch,
+        totalRoastTime: undefined,
+      },
+    ];
+
+    renderWithQuery(<ProductionPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '查看 测试熟豆' }));
+    const analyzeButton = await screen.findByRole('button', { name: /生成 AI 曲线复盘/ });
+
+    await waitFor(() => {
+      expect(analyzeButton).toBeEnabled();
+    });
+    fireEvent.click(analyzeButton);
+
+    await waitFor(() => {
+      expect(roastAnalysisAnalyzeMock).toHaveBeenCalledWith('batch-1');
+    });
+  });
+
   it('keeps roast training upload disabled after the record has already uploaded', () => {
-    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'staging');
+    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'production');
     roastCurveDataMock.current = roastCurveDataMock.defaultCurve;
     roastBatchesMock.current = [
       {
@@ -348,7 +408,7 @@ describe('ProductionPage (烘焙历史)', () => {
         alreadyUploaded: true,
         disabledReason: '这条烘焙记录已经上传过训练数据。',
         enabled: false,
-        environment: 'staging',
+        environment: 'production',
         roastBatchId: 'batch-1',
         uploadId: 'upload-1',
       },
@@ -366,7 +426,7 @@ describe('ProductionPage (烘焙历史)', () => {
   });
 
   it('shows the saved roast recommendation result instead of readiness cards', () => {
-    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'staging');
+    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'production');
     roastCurveDataMock.current = roastCurveDataMock.defaultCurve;
     roastBatchesMock.current = [
       {
@@ -457,7 +517,7 @@ describe('ProductionPage (烘焙历史)', () => {
     expect(screen.getByRole('spinbutton', { name: '一爆时间' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '总烘焙时间' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '备注' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '导入 HiBean JSON' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '导入曲线 JSON' })).toBeInTheDocument();
     expect(screen.queryByText('图片记录（预留接口）')).not.toBeInTheDocument();
   });
 });

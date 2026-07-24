@@ -26,7 +26,7 @@ export const getRequiredSuperuserToken = async (): Promise<string> => {
 
   if (!credentials) {
     throw new PocketBaseGatewayError(500, {
-      message: '服务器未配置 PocketBase 管理员账号，无法使用 AI 识别。',
+      message: '服务器未配置 PocketBase 管理员账号，无法使用 AI 功能。',
     });
   }
 
@@ -154,13 +154,14 @@ export const logAiRecognitionFailure = async (
   superuserToken: string,
   input: {
     errorMessage: string;
+    feature?: string;
     month: string;
     ownerId: string;
   },
 ): Promise<void> => {
   await createAiUsageLog(superuserToken, {
     errorMessage: input.errorMessage.slice(0, 500),
-    feature: AI_FEATURE_BEAN_IMAGE_RECOGNITION,
+    feature: input.feature ?? AI_FEATURE_BEAN_IMAGE_RECOGNITION,
     month: input.month,
     ownerId: input.ownerId,
     status: 'failed',
@@ -174,13 +175,17 @@ export const readBeanImageRecognitionUsageState = async (
   ownerId: string,
   month: string,
 ): Promise<AiUsageState> => {
-  const usageLimit = await getAiUsageLimit(superuserToken, ownerId, AI_FEATURE_BEAN_IMAGE_RECOGNITION);
-  const usedThisMonth = await countSuccessfulAiUsage(
-    superuserToken,
-    ownerId,
-    AI_FEATURE_BEAN_IMAGE_RECOGNITION,
-    month,
-  );
+  return readAiUsageState(superuserToken, ownerId, AI_FEATURE_BEAN_IMAGE_RECOGNITION, month);
+};
+
+export const readAiUsageState = async (
+  superuserToken: string,
+  ownerId: string,
+  feature: string,
+  month: string,
+): Promise<AiUsageState> => {
+  const usageLimit = await getAiUsageLimit(superuserToken, ownerId, feature);
+  const usedThisMonth = await countSuccessfulAiUsage(superuserToken, ownerId, feature, month);
 
   return {
     enabled: usageLimit.enabled,

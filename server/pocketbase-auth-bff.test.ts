@@ -324,32 +324,12 @@ describe('PocketBase auth BFF contract', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('rejects roast training uploads in production before touching PocketBase', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-
-    await expect(requestGateway({
-      body: JSON.stringify({ roastBatchId: 'batch-1' }),
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: 'easybake_pb_session=session-token',
-      },
-      method: 'POST',
-      path: '/api/ai/roast-training-upload',
-    })).resolves.toMatchObject({
-      body: {
-        code: 403,
-        message: '正式环境暂未开放训练上传。',
-      },
-      status: 403,
-    });
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('creates an immutable roast training sample and upload audit record in staging', async () => {
-    vi.stubEnv('EASYBAKE_APP_ENV', 'staging');
+  it('creates a private roast review and excludes an unconsented sample from public training in production', async () => {
+    vi.stubEnv('EASYBAKE_APP_ENV', 'production');
     vi.stubEnv('AI_ROAST_API_KEY', 'test-ai-key');
     vi.stubEnv('AI_ROAST_MODEL', 'deepseek/deepseek-v4-pro-202606');
+    vi.stubEnv('PB_SUPERUSER_EMAIL', 'admin@example.com');
+    vi.stubEnv('PB_SUPERUSER_PASSWORD', 'admin-password');
     const curveData = Array.from({ length: 60 }, (_item, index) => ({
       beanTemperature: 80 + index,
       timeSeconds: index * 10,
@@ -366,6 +346,21 @@ describe('PocketBase auth BFF contract', () => {
         }), { status: 200 }));
       }
 
+      if (url.endsWith('/api/collections/_superusers/auth-with-password')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: { email: 'admin@example.com', id: 'admin-1', verified: true },
+          token: 'superuser-token',
+        }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/ai_usage_limits/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/ai_usage_logs/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
+      }
+
       if (url.includes('/api/collections/roast_training_uploads/records?')) {
         return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
       }
@@ -373,7 +368,7 @@ describe('PocketBase auth BFF contract', () => {
       if (url.endsWith('/api/collections/roast_batches/records/batch-1')) {
         return Promise.resolve(new Response(JSON.stringify({
           evaluation: {
-            allowTraining: true,
+            allowTraining: false,
             flavorNotes: '甜感清楚',
             overallScore: 4,
             targetMatchScore: 5,
@@ -495,11 +490,11 @@ describe('PocketBase auth BFF contract', () => {
         expect(init?.method).toBe('PATCH');
         const payload = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as Record<string, unknown>;
         expect(payload).toMatchObject({
-          quality_status: 'passed',
+          quality_status: 'failed',
         });
         expect(payload.quality_report).toMatchObject({
-          errors: [],
-          passed: true,
+          errors: ['训练授权未开启。'],
+          passed: false,
         });
         expect(payload.quality_checked_at).toEqual(expect.any(String));
         return Promise.resolve(new Response(JSON.stringify({ id: 'sample-1' }), { status: 200 }));
@@ -541,6 +536,16 @@ describe('PocketBase auth BFF contract', () => {
         return Promise.resolve(new Response(JSON.stringify({ id: 'upload-1' }), { status: 200 }));
       }
 
+      if (url.endsWith('/api/collections/ai_usage_logs/records')) {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(typeof init?.body === 'string' ? init.body : '{}')).toMatchObject({
+          feature: 'roast_training_recommendation',
+          owner: 'user-1',
+          status: 'success',
+        });
+        return Promise.resolve(new Response(JSON.stringify({ id: 'usage-log-1' }), { status: 200 }));
+      }
+
       throw new Error(`Unexpected URL: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -558,13 +563,213 @@ describe('PocketBase auth BFF contract', () => {
         code: 0,
         data: {
           quality: {
-            status: 'passed',
+            status: 'failed',
           },
           recommendation: {
             recommendationId: 'recommendation-1',
           },
           sampleId: 'sample-1',
           uploadId: 'upload-1',
+          usage: {
+            monthlyLimit: 10,
+            remainingUses: 9,
+            usedThisMonth: 1,
+          },
+        },
+        message: 'ok',
+      },
+      status: 200,
+    });
+  });
+
+  it('builds roast analysis input from PocketBase records when the client sends only a batch id', async () => {
+    vi.stubEnv('EASYBAKE_APP_ENV', 'production');
+    vi.stubEnv('AI_ROAST_API_KEY', 'test-ai-key');
+    vi.stubEnv('AI_ROAST_MODEL', 'gpt-5.5');
+    vi.stubEnv('PB_SUPERUSER_EMAIL', 'admin@example.com');
+    vi.stubEnv('PB_SUPERUSER_PASSWORD', 'admin-password');
+    const curveData = [
+      { bean_temperature: 100, heat_power: 80, rate_of_rise: 10, time_seconds: 0 },
+      { bean_temperature: 150, heat_power: 70, rate_of_rise: 8, time_seconds: 300 },
+      { bean_temperature: 196, heat_power: 55, rate_of_rise: 6, time_seconds: 430 },
+      { bean_temperature: 204, heat_power: 45, rate_of_rise: 4, time_seconds: 540 },
+    ];
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/collections/users/auth-refresh')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: {
+            email: 'test@example.com',
+            id: 'user-1',
+            verified: true,
+          },
+          token: 'refreshed-token',
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/_superusers/auth-with-password')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: { email: 'admin@example.com', id: 'admin-1', verified: true },
+          token: 'superuser-token',
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roast_batches/records/batch-1')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          evaluation: {
+            flavorNotes: '柑橘酸明显，甜感偏薄',
+            overallScore: 4,
+            targetMatchScore: 3,
+          },
+          green_bean_id: 'bean-1',
+          green_bean_name: '测试生豆',
+          id: 'batch-1',
+          input_weight_grams: 200,
+          output_weight_grams: 168,
+          roast_level: '手冲浅烘',
+          roast_plan_id: 'plan-1',
+          roast_plan_name: '测试计划',
+          total_roast_time: 0,
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roast_profiles/records/plan-1')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          batch_weight_grams: 200,
+          id: 'plan-1',
+          name: '测试计划',
+          roaster_machine_id: 'machine-1',
+          steps: [
+            { eventName: '入豆', firePower: '80%', timeLabel: '0:00' },
+            { eventName: '一爆开始', firePower: '55%', timeLabel: '7:10' },
+            { eventName: '下豆', firePower: '0%', timeLabel: '9:00' },
+          ],
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/roasting_machines/records/machine-1')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          configuration: { controls: ['火力'] },
+          display_name: 'Tank200D',
+          id: 'machine-1',
+          model_key: 'tank200d',
+        }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/roast_curve_records/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          items: [{
+            curve_data: curveData,
+            id: 'curve-1',
+            metrics: {
+              development_ratio: 20,
+              drop_temperature: 204,
+              drop_time: 540,
+              first_crack_temperature: 196,
+              first_crack_time: 430,
+              roast_duration: 540,
+            },
+            roast_batch_id: 'batch-1',
+          }],
+          totalPages: 1,
+        }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/ai_roast_reviews/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/ai_usage_limits/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/ai_usage_logs/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
+      }
+
+      if (url.endsWith('/chat/completions')) {
+        const requestBody = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as {
+          messages?: { content: string; role: string }[];
+        };
+        const userMessage = requestBody.messages?.find((message) => message.role === 'user');
+
+        expect(userMessage?.content).toContain('"inputWeightGrams":200');
+        expect(userMessage?.content).toContain('"samples"');
+        expect(userMessage?.content).toContain('"model":"tank200d"');
+        expect(userMessage?.content).toContain('"firstCrackTimeSeconds":430');
+        expect(userMessage?.content).toContain('"totalTimeSeconds":540');
+
+        return Promise.resolve(new Response(JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  confidence: 76,
+                  issues: [
+                    {
+                      category: '发展期',
+                      evidence: '一爆后升温率下降偏快，甜感可能偏薄。',
+                      severity: 'medium',
+                    },
+                  ],
+                  nextRoastAdjustments: ['下一炉一爆后减少降火幅度，让升温率缓慢下降。'],
+                  primaryAdjustment: {
+                    action: '一爆后减少降火幅度。',
+                    area: 'development',
+                    direction: 'increase',
+                    rationale: '曲线显示一爆后能量衔接偏弱。',
+                  },
+                  summary: '结合原计划和实际曲线，本次一爆后能量衔接偏弱。',
+                }),
+              },
+            },
+          ],
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/ai_roast_reviews/records')) {
+        expect(init?.method).toBe('POST');
+        const payload = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as Record<string, unknown>;
+        expect(payload).toMatchObject({
+          curve_record_id: 'curve-1',
+          machine_id: 'machine-1',
+          owner: 'user-1',
+          roast_batch_id: 'batch-1',
+        });
+        return Promise.resolve(new Response(JSON.stringify({ id: 'review-1' }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/ai_usage_logs/records')) {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(typeof init?.body === 'string' ? init.body : '{}')).toMatchObject({
+          feature: 'roast_analysis',
+          owner: 'user-1',
+          status: 'success',
+        });
+        return Promise.resolve(new Response(JSON.stringify({ id: 'usage-log-1' }), { status: 200 }));
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(requestGateway({
+      body: JSON.stringify({ roastBatchId: 'batch-1' }),
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: 'easybake_pb_session=session-token',
+      },
+      method: 'POST',
+      path: '/api/ai/roast-analysis',
+    })).resolves.toMatchObject({
+      body: {
+        code: 0,
+        data: {
+          analysis: {
+            confidence: 76,
+            summary: '结合原计划和实际曲线，本次一爆后能量衔接偏弱。',
+          },
+          alreadyReviewed: false,
+          reviewId: 'review-1',
         },
         message: 'ok',
       },
@@ -576,6 +781,8 @@ describe('PocketBase auth BFF contract', () => {
     vi.stubEnv('EASYBAKE_APP_ENV', 'staging');
     vi.stubEnv('AI_ROAST_API_KEY', 'test-ai-key');
     vi.stubEnv('AI_ROAST_MODEL', 'gpt-5.5');
+    vi.stubEnv('PB_SUPERUSER_EMAIL', 'admin@example.com');
+    vi.stubEnv('PB_SUPERUSER_PASSWORD', 'admin-password');
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url.endsWith('/api/collections/users/auth-refresh')) {
         return Promise.resolve(new Response(JSON.stringify({
@@ -586,6 +793,21 @@ describe('PocketBase auth BFF contract', () => {
           },
           token: 'refreshed-token',
         }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/_superusers/auth-with-password')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: { email: 'admin@example.com', id: 'admin-1', verified: true },
+          token: 'superuser-token',
+        }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/ai_usage_limits/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
+      }
+
+      if (url.includes('/api/collections/ai_usage_logs/records?')) {
+        return Promise.resolve(new Response(JSON.stringify({ items: [], totalPages: 1 }), { status: 200 }));
       }
 
       if (url.endsWith('/api/collections/green_beans/records/bean-1')) {
@@ -669,6 +891,16 @@ describe('PocketBase auth BFF contract', () => {
             },
           ],
         }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/collections/ai_usage_logs/records')) {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(typeof init?.body === 'string' ? init.body : '{}')).toMatchObject({
+          feature: 'roast_plan_recommendation',
+          owner: 'user-1',
+          status: 'success',
+        });
+        return Promise.resolve(new Response(JSON.stringify({ id: 'usage-log-1' }), { status: 200 }));
       }
 
       throw new Error(`Unexpected URL: ${url}`);

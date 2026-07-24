@@ -366,28 +366,40 @@ export function SettingsPage() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem as="section" className={accordionStyles.item} value="ai-roast">
+          <AccordionItem as="section" className={accordionStyles.item} value="ai-roast-guide">
             <AccordionTrigger
               className={accordionStyles.trigger}
               collapsedAriaLabel="展开"
-              disabled
               expandedAriaLabel="收起"
             >
               <div className={accordionStyles.triggerBody}>
                 <div className={accordionStyles.triggerMain}>
                   <div className={accordionStyles.titleGroup}>
-                    <h2 className={accordionStyles.title}>AI 烘焙能力（筹备中）</h2>
+                    <h2 className={accordionStyles.title}>AI 烘焙功能</h2>
                   </div>
                 </div>
               </div>
             </AccordionTrigger>
 
             <AccordionContent className={accordionStyles.content}>
-              <p className={accordionStyles.contentCopy}>
-                当前版本先公开入口、规则和数据准备要求。AI 推荐与训练上传会在后续阶段逐步开放。
-              </p>
+              <div className={styles.aiCapabilityList}>
+                <article className={styles.aiCapabilityItem}>
+                  <strong>AI 推荐烘焙计划</strong>
+                  <p>开炉前使用。新建计划时选择 AI 推荐，填写生豆、烘焙机、预期烘焙度和希望呈现的风味，即可获得一份适合当前机器的起始计划。结果会先进入可编辑页面，确认后才会创建计划。</p>
+                </article>
+                <article className={styles.aiCapabilityItem}>
+                  <strong>AI 曲线复盘</strong>
+                  <p>一炉烘焙完成并导入曲线后使用。它会结合原计划和实际曲线，指出影响风味的关键表现，预测杯中结果，并提示杯测时应重点关注什么以及下一炉的调整方向。</p>
+                </article>
+                <article className={styles.aiCapabilityItem}>
+                  <strong>整体复盘与计划建议</strong>
+                  <p>完成曲线导入和杯测评价后使用。它会综合计划、曲线和评价，分析结果可能的成因，并生成一份可继续编辑的优化计划，供下一炉确认使用。</p>
+                </article>
+              </div>
+              <p className={accordionStyles.contentCopy}>三项功能均按月提供可用次数。AI 提供的是辅助判断，建议结合实际豆况、设备状态和杯测结果作最终决定。</p>
             </AccordionContent>
           </AccordionItem>
+
         </Accordion>
 
         <section className={styles.qrSection} data-expanded={visibleCode ? 'true' : 'false'}>

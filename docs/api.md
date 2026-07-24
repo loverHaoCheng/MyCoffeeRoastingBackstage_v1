@@ -97,6 +97,37 @@ interface BeanImageRecognitionResponse {
 - 请求参数错误、七牛云失败、模型返回不可解析等写入 `failed` 日志，不计入额度。
 - `enabled = false` 或当月成功次数达到 `monthly_limit` 时，BFF 不会调用七牛云。
 
+## 烘焙 AI 额度
+
+接口：
+
+```text
+GET /api/ai/roast-usage?feature=roast_analysis
+GET /api/ai/roast-usage?feature=roast_training_recommendation
+GET /api/ai/roast-usage?feature=roast_plan_recommendation
+```
+
+说明：
+
+- 测试端和正式端均开放该接口；由 `ai_usage_limits` 控制用户是否可用及每月额度。
+- 三个功能分别独立计次，未配置 `ai_usage_limits` 时默认各 `10 次/月`。
+- 成功调用 `POST /api/ai/roast-analysis`、`POST /api/ai/roast-training-upload`、`POST /api/ai/roast-plan-recommendation` 后，BFF 写入 `ai_usage_logs.status = success` 并扣减对应 feature 的额度。
+- 已存在保存结果时只返回旧结果，不重复调用模型，也不扣减额度。
+- 进入生成阶段后的模型或保存失败会尽量写入 `failed` 日志用于排查，不参与额度扣减。
+- `POST /api/ai/roast-analysis` 推荐只提交 `{ roastBatchId }`；BFF 会从 PocketBase 读取对应烘焙记录、烘焙计划、实体烘豆机和曲线后再生成复盘，避免前端缓存缺失导致误判。
+- `GET /api/ai/roast-analysis?roastBatchId=...` 除保存结果外，会返回 BFF 侧读取到的曲线就绪摘要。前端应优先使用该摘要判断曲线是否可复盘，避免测试端与正式端 PocketBase 读取规则差异造成按钮误禁用。
+
+返回：
+
+```ts
+interface RoastAiUsage {
+  enabled: boolean;
+  monthlyLimit: number;
+  usedThisMonth: number;
+  remainingUses: number;
+}
+```
+
 ## 烘焙计划 JSON
 
 前端 JSON 快速创建功能会先在本地校验字段，再转换为标准 `RoastPlan`。后续接入 Go 后端时，可将校验后的计划通过 REST 接口提交。

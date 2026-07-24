@@ -7,10 +7,8 @@ import type {
   RoastTrainingUploadStatus,
 } from '../types/roastTraining';
 
-export const EASYBAKE_APP_ENV_STAGING = 'staging';
-
 export const isRoastAiClientEnabled = (): boolean => {
-  return import.meta.env.MODE === 'test' || import.meta.env.VITE_EASYBAKE_APP_ENV === EASYBAKE_APP_ENV_STAGING;
+  return true;
 };
 
 export const isRoastTrainingUploadClientEnabled = (): boolean => {

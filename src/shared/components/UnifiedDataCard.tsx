@@ -1,10 +1,9 @@
 import {
   Ellipsis,
-  Eye,
   PencilLine,
   Trash2,
 } from 'lucide-react';
-import { type ReactNode, useMemo } from 'react';
+import { type MouseEvent, type PointerEvent, type ReactNode, useMemo, useRef } from 'react';
 
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/shared/components/ui/button';
@@ -18,6 +17,11 @@ import {
 import { cn } from '@/shared/utils/cn';
 
 const isTestMode = import.meta.env.MODE === 'test';
+const CARD_TAP_MOVE_TOLERANCE_PX = 12;
+
+const isInteractiveTarget = (target: EventTarget | null): boolean => {
+  return target instanceof Element && target.closest('a, button, input, select, textarea, [role="menuitem"]') != null;
+};
 
 export interface UnifiedDataCardMetaItem {
   key: string;
@@ -90,6 +94,8 @@ export function UnifiedDataCard({
   editAllLabel,
   deleteLabel,
 }: UnifiedDataCardProps) {
+  const cardTapStartRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const shouldIgnoreCardClickRef = useRef(false);
   const previewItems = useMemo(() => {
     if (previewMetaItems) {
       return previewMetaItems;
@@ -97,11 +103,64 @@ export function UnifiedDataCard({
 
     return metaItems.slice(0, Math.min(metaItems.length, 2));
   }, [metaItems, previewMetaItems]);
-  const showActionMenu = onView != null || onEditAll != null || onDelete != null;
+  const showActionMenu = onEditAll != null || onDelete != null;
+
+  const handleCardPointerDown = (event: PointerEvent<HTMLElement>) => {
+    if (!onView || isInteractiveTarget(event.target)) {
+      return;
+    }
+
+    shouldIgnoreCardClickRef.current = false;
+    cardTapStartRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    };
+  };
+
+  const handleCardPointerMove = (event: PointerEvent<HTMLElement>) => {
+    const tapStart = cardTapStartRef.current;
+
+    if (!tapStart || tapStart.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const movedDistance = Math.hypot(event.clientX - tapStart.x, event.clientY - tapStart.y);
+
+    if (movedDistance > CARD_TAP_MOVE_TOLERANCE_PX) {
+      shouldIgnoreCardClickRef.current = true;
+    }
+  };
+
+  const handleCardPointerCancel = () => {
+    cardTapStartRef.current = null;
+    shouldIgnoreCardClickRef.current = true;
+  };
+
+  const handleCardClick = (event: MouseEvent<HTMLElement>) => {
+    if (!onView || isInteractiveTarget(event.target)) {
+      return;
+    }
+
+    if (shouldIgnoreCardClickRef.current) {
+      shouldIgnoreCardClickRef.current = false;
+      return;
+    }
+
+    onView();
+  };
 
   return (
     <article
-      className="relative grid gap-1.5 overflow-hidden rounded-[15px] border border-[var(--app-emphasis-border-soft)] px-3 py-2.5 text-[var(--app-text)]"
+      className={cn(
+        'relative grid gap-1.5 overflow-hidden rounded-[15px] border border-[var(--app-emphasis-border-soft)] px-3 py-2.5 text-[var(--app-text)]',
+        onView ? 'cursor-pointer' : undefined,
+      )}
+      data-card-opens-detail={onView ? 'true' : undefined}
+      onClick={handleCardClick}
+      onPointerCancel={handleCardPointerCancel}
+      onPointerDown={handleCardPointerDown}
+      onPointerMove={handleCardPointerMove}
       style={{ ...getCardStyle(), ...cardStyle }}
     >
       <div
@@ -141,16 +200,6 @@ export function UnifiedDataCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {onView ? (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      onView();
-                    }}
-                  >
-                    <Eye className="h-4 w-4 text-[var(--app-text-secondary)]" />
-                    查看详情
-                  </DropdownMenuItem>
-                ) : null}
                 {onEditAll ? (
                   <DropdownMenuItem
                     aria-label={editAllLabel ?? `全部编辑 ${title}`}
@@ -164,7 +213,7 @@ export function UnifiedDataCard({
                 ) : null}
                 {onDelete ? (
                   <>
-                    {(onView || onEditAll) ? <DropdownMenuSeparator /> : null}
+                    {onEditAll ? <DropdownMenuSeparator /> : null}
                     <DropdownMenuItem
                       aria-label={deleteLabel ?? `删除 ${title}`}
                       className="text-[var(--app-danger)] focus:text-[var(--app-danger)]"

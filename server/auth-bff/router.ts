@@ -22,6 +22,7 @@ interface GatewayRouteHandlers {
   handleRoastTrainingQualityCheck: RequestHandler;
   handleRoastAnalysis: RequestHandler;
   handleRoastAnalysisStatus: (request: IncomingMessage, response: ServerResponse, requestUrl: URL) => Promise<void>;
+  handleRoastAiUsage: (request: IncomingMessage, response: ServerResponse, requestUrl: URL) => Promise<void>;
   handleRoastPlanRecommendation: RequestHandler;
   handleRoasterModelRecognition: RequestHandler;
   handleRoastTrainingRecommendationConfirm: RequestHandler;
@@ -87,6 +88,13 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
       if (ensureMethod(request, response, ['GET', 'POST'], handlers)) {
         if (request.method === 'GET') await handlers.handleRoastAnalysisStatus(request, response, requestUrl);
         else await handlers.handleRoastAnalysis(request, response);
+      }
+      return;
+    }
+
+    if (path === '/api/ai/roast-usage') {
+      if (ensureMethod(request, response, ['GET'], handlers)) {
+        await handlers.handleRoastAiUsage(request, response, requestUrl);
       }
       return;
     }

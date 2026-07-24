@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { handleDeleteAccount } from './auth-bff/account-handler.js';
 import { handleBeanImageRecognitionUsage } from './auth-bff/ai/handler.js';
 import { handleRoastAnalysis, handleRoastAnalysisStatus } from './auth-bff/ai/roast-analysis-handler.js';
+import { handleRoastAiUsage } from './auth-bff/ai/roast-usage-handler.js';
 import { handleRoastPlanRecommendation } from './auth-bff/ai/roast-plan-recommendation-handler.js';
 import { handleRoasterModelRecognition } from './auth-bff/ai/roaster-model-recognition-handler.js';
 import { handleRoastTrainingQualityCheck } from './auth-bff/ai/roast-training-quality-handler.js';
@@ -32,6 +33,7 @@ const handleRequest = createGatewayRequestHandler({
   handleRealtime: handleRealtimeRequest,
   handleRegister,
   handleRoastAnalysis,
+  handleRoastAiUsage,
   handleRoastAnalysisStatus,
   handleRoastPlanRecommendation,
   handleRoasterModelRecognition,

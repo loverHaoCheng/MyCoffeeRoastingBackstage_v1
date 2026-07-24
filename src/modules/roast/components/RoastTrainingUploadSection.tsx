@@ -3,12 +3,13 @@ import Button from 'antd/es/button';
 import Checkbox from 'antd/es/checkbox';
 import { useState } from 'react';
 
-import { useCreateRoastPlan, useRoastCurve } from '@/modules/roast/hooks';
+import { useCreateRoastPlan, useRoastAiUsage, useRoastCurve } from '@/modules/roast/hooks';
 import {
   useConfirmRoastTrainingRecommendation,
   useRoastTrainingUpload,
   useRoastTrainingUploadStatus,
 } from '@/modules/roast/hooks/useRoastTrainingUpload';
+import { formatRoastAiUsageText, isRoastAiUsageAvailable } from '@/modules/roast/services/roastAiUsage.service';
 import { isRoastTrainingUploadClientEnabled } from '@/modules/roast/services/roastTrainingUpload.service';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 import type { RoastTrainingRecommendation } from '@/modules/roast/types/roastTraining';
@@ -52,6 +53,7 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
   const { message, modal } = App.useApp();
   const [editingRecommendation, setEditingRecommendation] = useState<RoastTrainingRecommendation | null>(null);
   const roastCurveQuery = useRoastCurve(batch.id);
+  const usageQuery = useRoastAiUsage('roast_training_recommendation');
   const trainingUploadStatusQuery = useRoastTrainingUploadStatus(batch.id);
   const trainingUploadMutation = useRoastTrainingUpload();
   const createPlanMutation = useCreateRoastPlan();
@@ -65,21 +67,23 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
     evaluation: effectiveEvaluation,
   };
   const trainingReadiness = getRoastTrainingReadiness(effectiveBatch, Boolean(roastCurveQuery.data));
-  const hasTrainingConsent = effectiveEvaluation.allowTraining;
   const serverUploadStatus = trainingUploadStatusQuery.data;
   const recommendation = serverUploadStatus?.recommendation ?? trainingUploadMutation.data?.recommendation;
   const hasRecommendation = recommendation != null;
+  const usageErrorText = usageQuery.error instanceof Error ? usageQuery.error.message : '';
+  const usageText = formatRoastAiUsageText(usageQuery.data, {
+    error: usageErrorText,
+    isLoading: usageQuery.isLoading,
+  });
+  const canUseQuota = isRoastAiUsageAvailable(usageQuery.data);
   const trainingUploadError =
     trainingUploadStatusQuery.error instanceof Error ? trainingUploadStatusQuery.error.message : '';
   const trainingUploadSubmitError =
     trainingUploadMutation.error instanceof Error ? trainingUploadMutation.error.message : '';
   const isAlreadyUploaded = serverUploadStatus?.alreadyUploaded === true;
-  const missingReadyLabels = [
-    ...trainingReadiness.missingLabels,
-    ...(!hasTrainingConsent ? ['训练授权'] : []),
-  ];
+  const missingReadyLabels = trainingReadiness.missingLabels;
   const isTrainingDataReady = trainingReadiness.missingLabels.length === 0;
-  const isTrainingFormReady = missingReadyLabels.length === 0;
+  const isTrainingFormReady = isTrainingDataReady;
   const canFallbackToServerValidation =
     isTrainingUploadClientEnabled &&
     trainingUploadStatusQuery.isError &&
@@ -87,13 +91,10 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
   const isTrainingUploadEnabled =
     isTrainingUploadClientEnabled &&
     isTrainingFormReady &&
+    canUseQuota &&
     (serverUploadStatus?.enabled === true || canFallbackToServerValidation);
-  const trainingUploadButtonLabel = isTrainingUploadClientEnabled
-    ? '生成整体复盘与计划建议'
-    : '生成整体复盘与计划建议（正式环境暂未开放）';
-  const trainingHintText = !isTrainingUploadClientEnabled
-    ? '正式环境仍保持禁用；测试环境会先开放点按测试。'
-    : trainingUploadSubmitError
+  const trainingUploadButtonLabel = '生成整体复盘与计划建议';
+  const trainingHintText = trainingUploadSubmitError
       ? trainingUploadSubmitError
       : trainingUploadError && canFallbackToServerValidation
         ? '状态查询暂未刷新，可直接点击上传，服务端会做最终校验。'
@@ -101,17 +102,15 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
           ? trainingUploadError
         : hasRecommendation || isAlreadyUploaded
           ? '这条记录已经生成过整体复盘与计划建议，不能重复生成。'
-          : isTrainingDataReady && !hasTrainingConsent
-            ? '训练授权开启后，保存并生成时会写入匿名训练快照与计划建议。'
-            : !isTrainingFormReady
-              ? `当前仍缺少：${missingReadyLabels.join('、')}。`
-              : serverUploadStatus?.enabled === true
-                ? '将结合计划、曲线和杯测评价做整体复盘，并保存一份可编辑的新计划草稿。'
-                : '当前表单已满足要求，请先保存烘焙记录后再生成。';
+          : !canUseQuota
+            ? '本月整体复盘与计划建议额度不足或暂不可用。'
+          : !isTrainingFormReady
+            ? `当前仍缺少：${missingReadyLabels.join('、')}。`
+            : serverUploadStatus?.enabled === true
+              ? '将结合计划、曲线和杯测评价做整体复盘，并保存一份可编辑的新计划草稿。'
+              : '当前表单已满足要求，请先保存烘焙记录后再生成。';
   const trainingSummaryText = isTrainingFormReady
     ? `${readinessSubject}已满足整体复盘与计划建议生成条件。`
-    : isTrainingDataReady && !hasTrainingConsent
-      ? `${readinessSubject}已满足其余条件，但仍需开启训练授权后才能生成。`
     : `当前仍缺少：${missingReadyLabels.join('、')}。`;
 
   const handleTrainingUpload = () => {
@@ -234,25 +233,6 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
           <>
             <h4>AI 训练准备</h4>
             <p className={styles.trainingSummary}>{trainingSummaryText}</p>
-            <div className={styles.consentCard}>
-              <strong>训练授权</strong>
-              {onEvaluationChange ? (
-                <Checkbox
-                  checked={hasTrainingConsent}
-                  onChange={(event) => {
-                    onEvaluationChange({
-                      ...effectiveEvaluation,
-                      allowTraining: event.target.checked,
-                    });
-                  }}
-                >
-                  允许将本次匿名烘焙数据用于同型号模型训练
-                </Checkbox>
-              ) : (
-                <span className={styles.consentState}>{hasTrainingConsent ? '已授权' : '未授权'}</span>
-              )}
-              <p>默认关闭。开启后，本次上传并进入训练流程的数据不支持逐条撤回。</p>
-            </div>
             <div className={styles.trainingGrid}>
               {trainingReadiness.items.map((item) => (
                 <article className={styles.trainingItem} data-ready={item.ready ? 'true' : 'false'} key={item.key}>
@@ -266,15 +246,37 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
         )}
         <div className={styles.trainingActionRow}>
           {!hasRecommendation && !isAlreadyUploaded ? (
+            <div className={styles.consentCard}>
+              <strong>训练授权</strong>
+              {onEvaluationChange ? (
+                <Checkbox
+                  checked={effectiveEvaluation.allowTraining}
+                  onChange={(event) => {
+                    onEvaluationChange({
+                      ...effectiveEvaluation,
+                      allowTraining: event.target.checked,
+                    });
+                  }}
+                >
+                  允许将本次匿名烘焙数据用于同型号模型训练
+                </Checkbox>
+              ) : (
+                <span className={styles.consentState}>{effectiveEvaluation.allowTraining ? '已授权' : '未授权'}</span>
+              )}
+              <p>默认关闭。未授权仍可生成本人的复盘与计划建议，但不会用于同型号公共模型训练。</p>
+            </div>
+          ) : null}
+          {!hasRecommendation && !isAlreadyUploaded ? (
             <Button
               disabled={!isTrainingUploadEnabled || trainingUploadMutation.isPending}
-              loading={trainingUploadStatusQuery.isFetching || trainingUploadMutation.isPending}
+              loading={trainingUploadStatusQuery.isFetching || trainingUploadMutation.isPending || usageQuery.isLoading}
               onClick={handleTrainingUpload}
               type="default"
             >
               {trainingUploadButtonLabel}
             </Button>
           ) : null}
+          {!hasRecommendation && !isAlreadyUploaded ? <span className={styles.trainingHint}>{usageText}</span> : null}
           {recommendation && recommendation.status !== 'confirmed' ? (
             <Button
               loading={createPlanMutation.isPending || confirmRecommendationMutation.isPending}
@@ -315,9 +317,5 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
 }
 
 export function RoastTrainingUploadSection(props: RoastTrainingUploadSectionProps) {
-  if (!isRoastTrainingUploadClientEnabled()) {
-    return null;
-  }
-
   return <RoastTrainingUploadSectionContent {...props} />;
 }

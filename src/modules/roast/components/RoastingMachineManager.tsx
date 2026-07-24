@@ -1,15 +1,18 @@
+import DeleteOutlined from '@ant-design/icons/DeleteOutlined';
 import PlusOutlined from '@ant-design/icons/PlusOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
-import Drawer from 'antd/es/drawer';
 import Empty from 'antd/es/empty';
 import Input from 'antd/es/input';
 import Select from 'antd/es/select';
 import { useState } from 'react';
 
+import { AppDrawer } from '@/shared/components/AppDrawer';
+import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 
-import { useCreateRoastingMachine, useRoasterModels, useRoastingMachines } from '../hooks';
+import { useArchiveRoastingMachine, useCreateRoastingMachine, useRoasterModels, useRoastingMachines } from '../hooks';
+import type { RoastingMachine } from '../types';
 import { RoasterModelSubmission } from './RoasterModelSubmission';
 
 import styles from './RoastingMachineManager.module.css';
@@ -19,13 +22,14 @@ interface RoastingMachineManagerProps {
 }
 
 export function RoastingMachineManager({ inSettings = false }: RoastingMachineManagerProps) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [open, setOpen] = useState(false);
   const [modelId, setModelId] = useState('');
   const [displayName, setDisplayName] = useState('');
   const models = useRoasterModels();
   const machines = useRoastingMachines();
   const createMachine = useCreateRoastingMachine();
+  const archiveMachine = useArchiveRoastingMachine();
   const selectedModel = models.data?.find((model) => model.id === modelId);
 
   const submit = async () => {
@@ -47,6 +51,25 @@ export function RoastingMachineManager({ inSettings = false }: RoastingMachineMa
     } catch (error) {
       void message.error(getUserFacingErrorMessage(error, '烘焙机创建失败，请稍后重试。'));
     }
+  };
+
+  const confirmArchive = (machine: RoastingMachine) => {
+    modal.confirm({
+      cancelText: '取消',
+      centered: true,
+      content: `删除后，这台烘焙机会从可选列表中隐藏；已创建的历史计划和记录仍会保留原有关联信息。确认删除“${machine.displayName}”吗？`,
+      okText: '删除',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await archiveMachine.mutateAsync(machine.id);
+          void message.success('烘焙机已删除。');
+        } catch (error) {
+          void message.error(getUserFacingErrorMessage(error, '烘焙机删除失败，请稍后重试。'));
+        }
+      },
+      title: '删除已关联烘焙机',
+    });
   };
 
   return (
@@ -72,8 +95,20 @@ export function RoastingMachineManager({ inSettings = false }: RoastingMachineMa
         <ul className={styles.machineList}>
           {machines.data.map((machine) => (
             <li key={machine.id}>
-              <strong>{machine.displayName}</strong>
-              <span>{machine.modelKey}</span>
+              <div className={styles.machineInfo}>
+                <strong>{machine.displayName}</strong>
+                <span>{machine.modelKey}</span>
+              </div>
+              <Button
+                aria-label={`删除${machine.displayName}`}
+                className={styles.deleteButton}
+                danger
+                icon={<DeleteOutlined />}
+                loading={archiveMachine.isPending}
+                onClick={() => { confirmArchive(machine); }}
+                shape="circle"
+                type="text"
+              />
             </li>
           ))}
         </ul>
@@ -81,46 +116,57 @@ export function RoastingMachineManager({ inSettings = false }: RoastingMachineMa
         <Empty className={styles.empty} description="尚未关联烘焙机" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       )}
 
-      <Drawer
+      <AppDrawer
         className={styles.drawer}
-        destroyOnHidden
+        height="76dvh"
         onClose={() => { setOpen(false); }}
         open={open}
+        placement="bottom"
         title="添加烘焙机"
       >
         <div className={styles.form}>
-          <label>
-            <span>机型模板</span>
-            <Select
-              loading={models.isLoading}
-              onChange={(value) => { setModelId(value); }}
-              options={(models.data ?? []).map((model) => ({
-                label: `${model.brand} ${model.modelName}`,
-                value: model.id,
-              }))}
-              placeholder="选择已审核或我提交的机型"
-              value={modelId || undefined}
-            />
-          </label>
-          <label>
-            <span>我的机器名称</span>
-            <Input
-              onChange={(event) => { setDisplayName(event.target.value); }}
-              placeholder="例如：店内 Tank200D"
-              value={displayName}
-            />
-          </label>
-          <Button
-            block
-            disabled={!selectedModel || !displayName.trim()}
-            loading={createMachine.isPending}
-            onClick={() => { void submit(); }}
-            type="primary"
-          >
-            关联烘焙机
-          </Button>
+          <section className={styles.formSection}>
+            <header className={styles.sectionHeader}>
+              <h3>关联已有机型</h3>
+              <p>选择已审核或自己提交的机型模板，再给这台实体机器起一个便于识别的名称。</p>
+            </header>
+            <div className={styles.fieldGrid}>
+              <label className={styles.field}>
+                <span>机型模板</span>
+                <Select
+                  loading={models.isLoading}
+                  onChange={(value) => { setModelId(value); }}
+                  options={(models.data ?? []).map((model) => ({
+                    label: `${model.brand} ${model.modelName}`,
+                    value: model.id,
+                  }))}
+                  placeholder="选择已审核或我提交的机型"
+                  value={modelId || undefined}
+                />
+              </label>
+              <label className={styles.field}>
+                <span>我的机器名称</span>
+                <Input
+                  onChange={(event) => { setDisplayName(event.target.value); }}
+                  placeholder="例如：店内 Tank200D"
+                  value={displayName}
+                />
+              </label>
+            </div>
+          </section>
+          <DrawerActionBar compact>
+            <Button onClick={() => { setOpen(false); }}>取消</Button>
+            <Button
+              disabled={!selectedModel || !displayName.trim()}
+              loading={createMachine.isPending}
+              onClick={() => { void submit(); }}
+              type="primary"
+            >
+              关联烘焙机
+            </Button>
+          </DrawerActionBar>
         </div>
-      </Drawer>
+      </AppDrawer>
     </section>
   );
 }

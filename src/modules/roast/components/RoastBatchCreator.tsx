@@ -5,9 +5,9 @@ import { useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks';
 import { useImportHiBeanRoastCurve, useRoastPlans, useUpdateRoastBatch } from '@/modules/roast/hooks';
+import { parseRoastCurveJson } from '@/modules/roast/services/roastCurve.service';
 import type { RoastBatchCreateInput } from '@/modules/roast/types/roastBatch';
 import type { RoastCurveRecord } from '@/modules/roast/types/roastCurve';
-import { parseHibeanRoastCurveJson } from '@/modules/roast/services/roastCurve.service';
 import { toRoastBatchCurveSummaryInput } from '@/modules/roast/utils/roastCurveSummary';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 
@@ -54,7 +54,7 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
     const readFile = async () => {
       try {
         const jsonText = await file.text();
-        const parsed = parseHibeanRoastCurveJson(jsonText, previewRoastBatchId, file.name);
+        const parsed = parseRoastCurveJson(jsonText, previewRoastBatchId, file.name);
         const preview: RoastCurveRecord = {
           ...parsed,
           id: '保存后生成',
@@ -72,9 +72,9 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
           firstCrackTime: summaryInput.firstCrackTime ?? current.firstCrackTime,
           totalRoastTime: summaryInput.totalRoastTime ?? current.totalRoastTime,
         }));
-        void message.success('HiBean JSON 已读取，保存烘焙记录后会自动绑定曲线。');
+        void message.success('曲线 JSON 已读取，保存烘焙记录后会自动绑定曲线。');
       } catch (error: unknown) {
-        void message.error(getUserFacingErrorMessage(error, 'HiBean JSON 读取失败，请检查文件内容。'));
+        void message.error(getUserFacingErrorMessage(error, '曲线 JSON 读取失败，请检查文件内容。'));
       }
     };
 
@@ -123,10 +123,10 @@ export function RoastBatchCreator({ onCancel, onCreate }: RoastBatchCreatorProps
       curveSection={
         <RoastCurveAttachmentPanel
           actionIcon={<DownloadOutlined />}
-          actionLabel={pendingCurve ? '重新选择 HiBean JSON' : '导入 HiBean JSON'}
+          actionLabel={pendingCurve ? '重新选择曲线 JSON' : '导入曲线 JSON'}
           curve={pendingCurve?.preview ?? null}
           disabled={isSubmitting}
-          emptyText="可先选择 HiBean 导出的 JSON，保存后会自动绑定到本次烘焙记录。"
+          emptyText="可先选择 HiBean 或 Artisan 导出的 JSON，保存后会自动绑定到本次烘焙记录。"
           isBusy={importCurveMutation.isPending || updateBatchMutation.isPending}
           removeLabel="移除曲线 JSON"
           sourceText={pendingCurve ? `已选择：${pendingCurve.fileName}` : '暂无曲线'}

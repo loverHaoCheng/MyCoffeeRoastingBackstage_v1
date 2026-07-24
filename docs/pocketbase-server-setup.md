@@ -257,6 +257,12 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 - `owner,roast_batch_id`
 - `roast_batch_id` 唯一索引，保证一个烘焙记录只有一条当前有效曲线
 
+标准化约定：
+
+- 测试端与正式端必须使用同一套 `roast_curve_records` collection 结构。
+- 新写入的 `curve_data`、`event_list`、`phase_list`、`metrics` JSON 必须使用应用标准 camelCase 字段，例如 `timeSeconds`、`beanTemperature`、`rateOfRise`、`roastDuration`。
+- 读取历史备份或旧数据时可兼容 `time_seconds`、`bean_temperature`、`rate_of_rise`、`roast_duration` 等旧字段，但这些兼容字段不得作为新写入格式。
+
 ### `roast_training_samples`
 
 用途：保存用于后续训练的不可变快照。当前阶段只在测试环境写入，不触发训练、不生成推荐。
@@ -386,15 +392,15 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 
 ### `ai_usage_limits`
 
-用途：控制每个用户每月可使用的 AI 图片识别次数，当前由 PocketBase Dashboard 直接维护。
+用途：控制每个用户每月可使用的 AI 功能次数，当前由 PocketBase Dashboard 直接维护。未配置用户记录时，BFF 对各功能默认按 `10 次/月` 放行。
 
 字段建议：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `owner` | relation(users) | 归属用户，单选，必填 |
-| `feature` | text | 功能码，生豆图片识别固定为 `bean_image_recognition` |
-| `monthly_limit` | number | 月度成功识别次数上限，默认建议 10，允许 0 |
+| `feature` | select | 功能码选项：`bean_image_recognition`、`roast_analysis`、`roast_training_recommendation`、`roast_plan_recommendation` |
+| `monthly_limit` | number | 月度成功调用次数上限，默认建议 10，允许 0 |
 | `enabled` | bool | 是否启用该用户的功能 |
 | `created_at` | date | 创建时间 |
 | `updated_at` | date | 更新时间 |
@@ -413,16 +419,24 @@ deleteRule: 留空
 
 - `owner,feature` 唯一索引
 
+后台调整方式：
+
+1. 在 PocketBase Dashboard 打开 `ai_usage_limits`。
+2. 为指定用户创建或编辑一条记录，`owner` 选择该用户，`feature` 填对应功能码。
+3. `monthly_limit` 即该用户该功能的月度上限；填写 `0` 表示本月额度为 0。
+4. `enabled = false` 表示关闭该用户该功能。
+5. 若某个用户没有对应 `owner + feature` 记录，BFF 默认按 `10 次/月` 处理。
+
 ### `ai_usage_logs`
 
-用途：记录 AI 图片识别成功/失败结果。只有 `status = success` 会参与额度统计，失败不扣次数。
+用途：记录 AI 功能成功/失败结果。只有 `status = success` 会参与额度统计，失败不扣次数。
 
 字段建议：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `owner` | relation(users) | 归属用户，单选，必填 |
-| `feature` | text | 功能码，生豆图片识别固定为 `bean_image_recognition` |
+| `feature` | select | 功能码选项：`bean_image_recognition`、`roast_analysis`、`roast_training_recommendation`、`roast_plan_recommendation` |
 | `month` | text | 月份，格式如 `2026-07` |
 | `status` | select | `success / failed`，单选 |
 | `error_message` | text | 失败原因，成功时为空 |

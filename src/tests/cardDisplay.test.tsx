@@ -26,6 +26,18 @@ const createBean = (): Bean => ({
   updatedAt: '2026-06-28T10:00:00.000Z',
 });
 
+const createPointerEvent = (type: 'pointerdown' | 'pointermove', clientX: number, clientY: number): Event => {
+  const event = new Event(type, { bubbles: true });
+
+  Object.defineProperties(event, {
+    clientX: { value: clientX },
+    clientY: { value: clientY },
+    pointerId: { value: 1 },
+  });
+
+  return event;
+};
+
 describe('card display settings', () => {
   beforeEach(() => {
     useSettingsStore.setState({
@@ -206,6 +218,35 @@ describe('card display settings', () => {
     fireEvent.click(screen.getByRole('button', { name: '查看 测试生豆' }));
 
     expect(onView).toHaveBeenCalledWith(1);
+  });
+
+  it('opens a card from a short touch without using the action menu', () => {
+    const onView = vi.fn();
+    const { container } = render(
+      <UnifiedDataCard metaItems={[]} onView={onView} title="可查看卡片" />,
+    );
+    const card = container.querySelector('[data-card-opens-detail="true"]');
+
+    expect(card).not.toBeNull();
+    fireEvent(card!, createPointerEvent('pointerdown', 24, 24));
+    fireEvent.click(card!);
+
+    expect(onView).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not open a card after a touch scroll', () => {
+    const onView = vi.fn();
+    const { container } = render(
+      <UnifiedDataCard metaItems={[]} onView={onView} title="可滚动卡片" />,
+    );
+    const card = container.querySelector('[data-card-opens-detail="true"]');
+
+    expect(card).not.toBeNull();
+    fireEvent(card!, createPointerEvent('pointerdown', 24, 24));
+    fireEvent(card!, createPointerEvent('pointermove', 24, 48));
+    fireEvent.click(card!);
+
+    expect(onView).not.toHaveBeenCalled();
   });
 
   it('does not expose the computed cost row as an editable field', () => {

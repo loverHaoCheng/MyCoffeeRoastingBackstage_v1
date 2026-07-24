@@ -6,4 +6,10 @@ export {
 } from './roastPlanJson.service';
 export { roastPlanService } from './roastPlan.service';
 export { roastPlanRecommendationService } from './roastPlanRecommendation.service';
-export { roastCurveService, parseHibeanRoastCurveJson } from './roastCurve.service';
+export { formatRoastAiUsageText, isRoastAiUsageAvailable, roastAiUsageService } from './roastAiUsage.service';
+export {
+  parseArtisanRoastCurveJson,
+  parseHibeanRoastCurveJson,
+  parseRoastCurveJson,
+  roastCurveService,
+} from './roastCurve.service';

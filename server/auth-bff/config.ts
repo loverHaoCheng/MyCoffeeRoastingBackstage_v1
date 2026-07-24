@@ -16,9 +16,13 @@ export const DEFAULT_AI_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
 
 export const EASYBAKE_APP_ENV_PRODUCTION = 'production';
 
-export const EASYBAKE_APP_ENV_STAGING = 'staging';
-
 export const AI_FEATURE_BEAN_IMAGE_RECOGNITION = 'bean_image_recognition';
+
+export const AI_FEATURE_ROAST_ANALYSIS = 'roast_analysis';
+
+export const AI_FEATURE_ROAST_TRAINING_RECOMMENDATION = 'roast_training_recommendation';
+
+export const AI_FEATURE_ROAST_PLAN_RECOMMENDATION = 'roast_plan_recommendation';
 
 export const AI_USAGE_LIMITS_COLLECTION = 'ai_usage_limits';
 
@@ -102,10 +106,6 @@ export const port = Number.isFinite(portCandidate) && portCandidate > 0 ? portCa
 
 export const getEasyBakeAppEnv = (): string => {
   return (process.env.EASYBAKE_APP_ENV ?? EASYBAKE_APP_ENV_PRODUCTION).trim().toLowerCase();
-};
-
-export const isStagingAppEnv = (): boolean => {
-  return getEasyBakeAppEnv() === EASYBAKE_APP_ENV_STAGING;
 };
 
 export const aiImageMaxBytesCandidate = Number.parseInt(

@@ -47,8 +47,11 @@ export const roasterMachineService = {
     const [created] = await client.insert<Record<string, unknown>>('roasting_machines', { configuration: input.configuration, display_name: input.displayName, model_id: input.modelId, model_key: input.modelKey, status: 'active' });
     return toMachine(created);
   },
+  async archive(machineId: string): Promise<void> {
+    await client.update<Record<string, unknown>>('roasting_machines', { status: 'archived' }, { match: { id: machineId } });
+  },
   async listMachines(): Promise<RoastingMachine[]> {
-    return (await client.list<Record<string, unknown>>('roasting_machines', { orderBy: { column: 'created', ascending: false } })).map(toMachine);
+    return (await client.list<Record<string, unknown>>('roasting_machines', { match: { status: 'active' }, orderBy: { column: 'created', ascending: false } })).map(toMachine);
   },
   async listModels(): Promise<RoasterModel[]> {
     return (await roasterModelClient.list<Record<string, unknown>>('roaster_models', { orderBy: { column: 'model_name' } })).map(toModel);

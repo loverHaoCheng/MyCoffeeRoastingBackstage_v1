@@ -1,21 +1,93 @@
 .drawer :global(.ant-drawer-body) {
-  padding: 20px;
+  padding: 18px 18px 0;
 }
 
 .form {
   display: grid;
+  min-height: 100%;
   gap: 16px;
 }
 
-.form label {
+.section {
   display: grid;
-  gap: 7px;
-  color: var(--app-text-secondary);
-  font-size: 13px;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  background: var(--app-bg-elevated);
 }
 
-.error {
-  margin: -8px 0 0;
-  color: var(--app-danger, #b42318);
-  font-size: 12px;
+.sectionHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.sectionHeader h3 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.sectionHeader p {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.fullField {
+  grid-column: 1 / -1;
+}
+
+.labelText {
+  overflow: hidden;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.requiredMark {
+  margin-left: 4px;
+  color: var(--app-danger);
+  font-style: normal;
+}
+
+.field :global(.ant-input),
+.field :global(.ant-select),
+.field :global(.ant-input-affix-wrapper) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.field :global(.ant-input),
+.field :global(.ant-select-selector),
+.field :global(.ant-input-affix-wrapper) {
+  border-radius: 14px;
+}
+
+@media (max-width: 767px) {
+  .drawer :global(.ant-drawer-body) {
+    padding: 16px 16px 0;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
 }

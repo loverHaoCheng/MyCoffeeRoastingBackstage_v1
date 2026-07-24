@@ -1,4 +1,5 @@
 import SaveOutlined from '@ant-design/icons/SaveOutlined';
+import Button from 'antd/es/button';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 
@@ -16,6 +17,7 @@ import {
 } from './RoastBatchForm';
 import { RoastCurvePanel } from './RoastCurvePanel';
 import { RoastAiAnalysisSection } from './RoastAiAnalysisSection';
+import { RoastEvaluationEditor } from './RoastEvaluationEditor';
 import { RoastTrainingUploadSection } from './RoastTrainingUploadSection';
 import styles from './RoastBatchDrawer.module.css';
 
@@ -134,6 +136,14 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
   const lossRate = batch.inputWeightGrams > 0
     ? (((batch.inputWeightGrams - batch.outputWeightGrams) / batch.inputWeightGrams) * 100).toFixed(1)
     : '-';
+  const viewBatchWithEvaluation = {
+    ...batch,
+    evaluation: form.evaluation,
+  };
+
+  const handleSaveEvaluation = () => {
+    onUpdate?.(batch.id, { evaluation: form.evaluation });
+  };
 
   return (
     <div className={styles.drawer}>
@@ -219,38 +229,24 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
 
         <section className={styles.section}>
           <h4>评价表单</h4>
-          <ReadonlyFieldSectionList
-            sections={[
-              {
-                key: 'evaluation',
-                items: [
-                  { key: 'overallScore', label: '综合评分', value: batch.evaluation.overallScore ?? '-' },
-                  { key: 'targetMatchScore', label: '目标达成度', value: batch.evaluation.targetMatchScore ?? '-' },
-                  {
-                    key: 'flavorNotes',
-                    label: '风味描述',
-                    multiline: true,
-                    value: formatOptionalText(batch.evaluation.flavorNotes, '暂无记录'),
-                  },
-                  {
-                    key: 'defectNotes',
-                    label: '缺陷记录',
-                    multiline: true,
-                    value: formatOptionalText(batch.evaluation.defectNotes, '暂无记录'),
-                  },
-                  {
-                    key: 'nextAdjustmentNotes',
-                    label: '下次调整建议',
-                    multiline: true,
-                    value: formatOptionalText(batch.evaluation.nextAdjustmentNotes, '暂无记录'),
-                  },
-                ],
-              },
-            ]}
+          <RoastEvaluationEditor
+            evaluation={form.evaluation}
+            onChange={(evaluation) => {
+              setForm((current) => ({ ...current, evaluation }));
+            }}
           />
+          <Button block className={styles.evaluationSaveAction} disabled={!onUpdate} onClick={handleSaveEvaluation} type="primary">
+            保存评价
+          </Button>
         </section>
 
-        <RoastTrainingUploadSection batch={batch} />
+        <RoastTrainingUploadSection
+          batch={viewBatchWithEvaluation}
+          evaluation={form.evaluation}
+          onEvaluationChange={(evaluation) => {
+            setForm((current) => ({ ...current, evaluation }));
+          }}
+        />
 
         <section className={styles.section}>
           <h4>备注</h4>

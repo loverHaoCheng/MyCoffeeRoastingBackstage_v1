@@ -6,6 +6,7 @@ export type {
   RoastPlanRecommendationInput,
   RoastPlanRecommendationResult,
 } from './roastPlanRecommendation';
+export type { RoastAiFeature, RoastAiUsage } from './roastAiUsage';
 export type { RoasterModel, RoasterModelRecognition, RoastingMachine } from './roasterMachine';
 export type {
   RoastCurveBeanSnapshot,

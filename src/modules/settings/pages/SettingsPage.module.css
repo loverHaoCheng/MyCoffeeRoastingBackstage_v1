@@ -25,6 +25,38 @@
   z-index: 1;
 }
 
+.aiCapabilityList {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 12px;
+}
+
+.aiCapabilityItem {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+}
+
+.aiCapabilityItem + .aiCapabilityItem {
+  border-top: 1px solid var(--app-border-soft);
+}
+
+.aiCapabilityItem strong {
+  color: var(--app-text);
+  font-size: var(--app-font-14);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.aiCapabilityItem p {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: var(--app-font-13);
+  line-height: 1.65;
+}
+
 .appearanceGrid {
   display: grid;
   gap: 16px;

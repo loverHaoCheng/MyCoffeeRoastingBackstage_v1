@@ -22,11 +22,12 @@ import {
   useDeleteRoastPlan,
   useRoastBatches,
   useRoastPlans,
+  useRoastAiUsage,
   useRoastingMachines,
   useUpdateRoastPlan,
 } from '@/modules/roast/hooks';
 import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlanStatus';
-import { parseRoastPlanJsonDraft } from '@/modules/roast/services';
+import { formatRoastAiUsageText, isRoastAiUsageAvailable, parseRoastPlanJsonDraft } from '@/modules/roast/services';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { isRoastAiClientEnabled } from '@/modules/roast/services/roastTrainingUpload.service';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -120,6 +121,7 @@ export function RoastPage() {
 
   const { data: plans = [], isFetching } = useRoastPlans();
   const { data: roastingMachines = [] } = useRoastingMachines();
+  const roastPlanRecommendationUsageQuery = useRoastAiUsage('roast_plan_recommendation');
   const updateMutation = useUpdateRoastPlan();
   const deleteMutation = useDeleteRoastPlan();
   const isRoastAiEnabled = isRoastAiClientEnabled();
@@ -151,6 +153,13 @@ export function RoastPage() {
   }, [effectivePlans, filterValues, keyword, sortKey]);
 
   const selectedPlan = effectivePlans.find((p) => p.id === selectedPlanId) ?? null;
+  const roastPlanRecommendationUsageError =
+    roastPlanRecommendationUsageQuery.error instanceof Error ? roastPlanRecommendationUsageQuery.error.message : '';
+  const roastPlanRecommendationUsageText = formatRoastAiUsageText(roastPlanRecommendationUsageQuery.data, {
+    error: roastPlanRecommendationUsageError,
+    isLoading: roastPlanRecommendationUsageQuery.isLoading,
+  });
+  const canUseRoastPlanRecommendation = isRoastAiEnabled && isRoastAiUsageAvailable(roastPlanRecommendationUsageQuery.data);
 
   const resetCreationDraft = () => {
     const latestBeanPlan = sortPlansByUpdatedAt(plans).find((plan) => {
@@ -409,11 +418,13 @@ export function RoastPage() {
               <Button
                 block
                 className={styles.actionSheetButton}
+                disabled={!canUseRoastPlanRecommendation}
+                loading={roastPlanRecommendationUsageQuery.isLoading}
                 onClick={() => { handleOpenCreationMode('ai'); }}
               >
                 <span className={styles.actionSheetButtonContent}>
                   <span className={styles.actionSheetButtonTitle}>AI 推荐</span>
-                  <span className={styles.actionSheetButtonMeta}>生成计划草稿</span>
+                  <span className={styles.actionSheetButtonMeta}>{roastPlanRecommendationUsageText}</span>
                 </span>
               </Button>
             ) : null}

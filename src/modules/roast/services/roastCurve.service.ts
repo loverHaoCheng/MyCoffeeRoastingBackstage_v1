@@ -17,7 +17,7 @@ import {
   mapRemoteRoastCurveRecord,
   toPocketBaseRoastCurvePayload,
 } from './roast-curve/roastCurve.service.shared';
-import { parseHibeanRoastCurveJson } from './roastCurveImport.service';
+import { parseRoastCurveJson } from './roastCurveImport.service';
 import type {
   RoastCurveImportInput,
   RoastCurveImportResult,
@@ -106,7 +106,7 @@ export const roastCurveService = {
 
   async importHiBeanCurve(input: RoastCurveImportInput): Promise<ApiResponse<RoastCurveImportResult>> {
     try {
-      const parsed = parseHibeanRoastCurveJson(input.jsonText, input.roastBatchId, input.fileName);
+      const parsed = parseRoastCurveJson(input.jsonText, input.roastBatchId, input.fileName);
       const record = await resolveRoastCurveRepository().upsert(parsed);
 
       return ok({
@@ -115,9 +115,9 @@ export const roastCurveService = {
       });
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError('导入 HiBean 曲线失败。', { code: 'NETWORK', cause: error });
+      throw new AppError('导入曲线 JSON 失败。', { code: 'NETWORK', cause: error });
     }
   },
 };
 
-export { parseHibeanRoastCurveJson };
+export { parseArtisanRoastCurveJson, parseHibeanRoastCurveJson, parseRoastCurveJson } from './roastCurveImport.service';

@@ -43,7 +43,7 @@ export function RoastCurvePanel({ batch }: RoastCurvePanelProps) {
       try {
         await importFile(file);
       } catch (error: unknown) {
-        void message.error(getUserFacingErrorMessage(error, 'HiBean 曲线导入失败，请检查文件内容或 PocketBase 配置。'));
+        void message.error(getUserFacingErrorMessage(error, '曲线 JSON 导入失败，请检查文件内容或 PocketBase 配置。'));
       }
     };
 
@@ -52,7 +52,7 @@ export function RoastCurvePanel({ batch }: RoastCurvePanelProps) {
         centered: true,
         content: '该烘焙记录已存在曲线，重新导入会覆盖当前曲线。',
         okText: '覆盖导入',
-        title: '覆盖 HiBean 曲线',
+        title: '覆盖曲线 JSON',
         onOk: runImport,
       });
       return;
@@ -66,10 +66,10 @@ export function RoastCurvePanel({ batch }: RoastCurvePanelProps) {
       actionIcon={curve ? <ReloadOutlined /> : <DownloadOutlined />}
       actionLabel={curve ? '覆盖导入' : '导入 JSON'}
       curve={curve}
-      emptyText="导入 HiBean JSON 后会在这里展示 BT、RoR 与关键事件。"
+      emptyText="导入 HiBean 或 Artisan JSON 后会在这里展示温度、RoR 与关键事件。"
       isBusy={isBusy}
       isLoading={curveQuery.isFetching}
-      sourceText={curve ? `来源：HiBean · ${curve.originalFileName ?? '未记录文件名'}` : '暂无曲线'}
+      sourceText={curve ? `来源：${curve.source === 'artisan' ? 'Artisan' : 'HiBean'} · ${curve.originalFileName ?? '未记录文件名'}` : '暂无曲线'}
       onFileSelected={handleFile}
     />
   );

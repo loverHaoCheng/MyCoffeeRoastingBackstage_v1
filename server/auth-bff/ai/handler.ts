@@ -25,10 +25,11 @@ export const handleBeanImageRecognitionUsage = async (
     superuserToken = await getRequiredSuperuserToken();
   } catch (error) {
     const statusCode = error instanceof PocketBaseGatewayError ? error.status : 500;
-    const message =
+    const rawMessage =
       error instanceof PocketBaseGatewayError
         ? normalizeErrorPayload(error.payload).message ?? error.message
         : 'PocketBase 管理员登录失败，无法使用 AI 识别。';
+    const message = rawMessage.replace('AI 功能', 'AI 识别');
 
     sendApiError(response, statusCode, message);
     return;

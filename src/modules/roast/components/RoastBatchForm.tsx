@@ -23,6 +23,7 @@ import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 import { scrollToField } from '@/shared/forms/scrollToField';
 
 import styles from './RoastBatchForm.module.css';
+import { RoastEvaluationEditor } from './RoastEvaluationEditor';
 
 export interface RoastBatchFormState {
   evaluation: RoastBatchEvaluation;
@@ -80,14 +81,6 @@ interface RoastBatchFormProps {
   trainingSection?: ReactNode;
   value: RoastBatchFormState;
 }
-
-const SCORE_OPTIONS = [
-  { label: '1 分', value: 1 },
-  { label: '2 分', value: 2 },
-  { label: '3 分', value: 3 },
-  { label: '4 分', value: 4 },
-  { label: '5 分', value: 5 },
-];
 
 const renderRequiredLabel = (label: string) => {
   return (
@@ -481,87 +474,12 @@ export function RoastBatchForm({
 
       <section className={styles.section} data-section="evaluation">
         <h4>评价表单</h4>
-        <div className={styles.fieldGrid}>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>综合评分</span>
-            <Select
-              aria-label="综合评分"
-              allowClear
-              options={SCORE_OPTIONS}
-              placeholder="选择 1-5 分"
-              showSearch={false}
-              value={value.evaluation.overallScore}
-              onChange={(nextValue) => {
-                onChange((current) => ({
-                  ...current,
-                  evaluation: { ...current.evaluation, overallScore: nextValue },
-                }));
-              }}
-            />
-          </div>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>目标达成度</span>
-            <Select
-              aria-label="目标达成度"
-              allowClear
-              options={SCORE_OPTIONS}
-              placeholder="选择 1-5 分"
-              showSearch={false}
-              value={value.evaluation.targetMatchScore}
-              onChange={(nextValue) => {
-                onChange((current) => ({
-                  ...current,
-                  evaluation: { ...current.evaluation, targetMatchScore: nextValue },
-                }));
-              }}
-            />
-          </div>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>风味描述</span>
-            <Input.TextArea
-              aria-label="风味描述"
-              rows={3}
-              value={value.evaluation.flavorNotes ?? ''}
-              onChange={(event) => {
-                onChange((current) => ({
-                  ...current,
-                  evaluation: { ...current.evaluation, flavorNotes: event.target.value },
-                }));
-              }}
-              placeholder="记录杯测印象、甜感、酸质、醇厚度等"
-            />
-          </div>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>缺陷记录</span>
-            <Input.TextArea
-              aria-label="缺陷记录"
-              rows={3}
-              value={value.evaluation.defectNotes ?? ''}
-              onChange={(event) => {
-                onChange((current) => ({
-                  ...current,
-                  evaluation: { ...current.evaluation, defectNotes: event.target.value },
-                }));
-              }}
-              placeholder="例如 烟感偏重、发展不足、风味发木"
-            />
-          </div>
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>下次调整建议</span>
-            <Input.TextArea
-              aria-label="下次调整建议"
-              rows={3}
-              value={value.evaluation.nextAdjustmentNotes ?? ''}
-              onChange={(event) => {
-                onChange((current) => ({
-                  ...current,
-                  evaluation: { ...current.evaluation, nextAdjustmentNotes: event.target.value },
-                }));
-              }}
-              placeholder="例如 一爆前减火提前 20 秒，后段风门再开 5%"
-            />
-          </div>
-        </div>
+        <RoastEvaluationEditor
+          evaluation={value.evaluation}
+          onChange={(evaluation) => {
+            onChange((current) => ({ ...current, evaluation }));
+          }}
+        />
       </section>
 
       {trainingSection}

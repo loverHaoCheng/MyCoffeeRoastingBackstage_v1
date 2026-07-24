@@ -4,6 +4,7 @@ import {
   isRoastTrainingUploadClientEnabled,
   roastTrainingUploadService,
 } from '../services/roastTrainingUpload.service';
+import { roastAiUsageQueryKeys } from './useRoastAiUsage';
 
 export const roastTrainingUploadQueryKeys = {
   all: ['roast-training-upload'] as const,
@@ -33,6 +34,9 @@ export function useRoastTrainingUpload() {
     onSuccess: (_result, roastBatchId) => {
       void queryClient.invalidateQueries({
         queryKey: roastTrainingUploadQueryKeys.status(roastBatchId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: roastAiUsageQueryKeys.feature('roast_training_recommendation'),
       });
     },
   });

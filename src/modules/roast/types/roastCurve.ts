@@ -1,4 +1,4 @@
-export type RoastCurveSource = 'hibean';
+export type RoastCurveSource = 'hibean' | 'artisan';
 
 export interface RoastCurvePoint {
   timeSeconds: number;

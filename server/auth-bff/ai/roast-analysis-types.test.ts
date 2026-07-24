@@ -151,6 +151,33 @@ describe('roast analysis schema', () => {
     });
   });
 
+  it('accepts relay model output with recommendation-style aliases and synthesizes the primary strategy', () => {
+    expect(
+      normalizeRoastAnalysisResult({
+        adjustments: [
+          {
+            observation: '一爆后升温率回落较快，甜感可能不足。',
+            priority: '高',
+            suggestion: '下一炉一爆后火力下调幅度减少 5%，让升温率保持缓慢下降。',
+          },
+        ],
+        confidence: '78%',
+        overallReview: '结合原计划和实际曲线，本次一爆后能量衔接偏弱，可能让杯中甜感和层次感变薄，杯测时需要重点确认酸甜平衡与尾段干净度。',
+      }),
+    ).toEqual({
+      confidence: 78,
+      issues: [],
+      nextRoastAdjustments: ['下一炉一爆后火力下调幅度减少 5%，让升温率保持缓慢下降。'],
+      primaryAdjustment: {
+        action: '下一炉一爆后火力下调幅度减少 5%，让升温率保持缓慢下降。',
+        area: 'development',
+        direction: 'decrease',
+        rationale: '结合原计划和实际曲线，本次一爆后能量衔接偏弱，可能让杯中甜感和层次感变薄，杯测时需要重点确认酸甜平衡与尾段干净度。',
+      },
+      summary: '结合原计划和实际曲线，本次一爆后能量衔接偏弱，可能让杯中甜感和层次感变薄，杯测时需要重点确认酸甜平衡与尾段干净度。',
+    });
+  });
+
   it('removes programming field names from user-facing analysis text', () => {
     expect(
       normalizeRoastAnalysisResult({

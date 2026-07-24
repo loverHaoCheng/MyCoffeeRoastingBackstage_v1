@@ -1,13 +1,20 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { refreshAuthenticatedSession } from '../auth-common.js';
-import { isStagingAppEnv } from '../config.js';
+import { AI_FEATURE_ROAST_PLAN_RECOMMENDATION } from '../config.js';
 import { parseJsonBody, sendApiError, sendApiSuccess } from '../http.js';
 import { normalizeErrorPayload, proxyPocketBaseRequest } from '../pocketbase-client.js';
 import { escapeFilterValue, listPocketBaseRecords } from '../record-utils.js';
 import { PocketBaseGatewayError } from '../types.js';
 import { isRecord, toTrimmedString } from '../utils.js';
 import { requestRoastPlanRecommendation } from './roast-plan-recommendation-client.js';
+import {
+  createSuccessfulRoastAiUsage,
+  ensureRoastAiUsageAvailable,
+  logRoastAiUsageFailure,
+  readRoastAiUsageContext,
+  type RoastAiUsageContext,
+} from './roast-usage-handler.js';
 import type { RoastPlanDraft } from './roast-training-recommendation-types.js';
 
 const GREEN_BEANS_COLLECTION = 'green_beans';
@@ -364,11 +371,6 @@ export const handleRoastPlanRecommendation = async (
   request: IncomingMessage,
   response: ServerResponse,
 ): Promise<void> => {
-  if (!isStagingAppEnv()) {
-    sendApiError(response, 403, '正式环境暂未开放 AI 烘焙计划推荐。');
-    return;
-  }
-
   const authResponse = await refreshAuthenticatedSession(request, response);
 
   if (!authResponse) {
@@ -382,7 +384,12 @@ export const handleRoastPlanRecommendation = async (
     return;
   }
 
+  let usageContext: RoastAiUsageContext | null = null;
+
   try {
+    usageContext = await readRoastAiUsageContext(authResponse.record.id, AI_FEATURE_ROAST_PLAN_RECOMMENDATION);
+    ensureRoastAiUsageAvailable(usageContext);
+
     const bean = body.beanId === GENERIC_BEAN_ID
       ? null
       : await getRecordById(authResponse.token, GREEN_BEANS_COLLECTION, body.beanId);
@@ -424,11 +431,20 @@ export const handleRoastPlanRecommendation = async (
       ...recommendation,
       modifiedPlanJson: lockPlanDraftToUserSelection(recommendation.modifiedPlanJson, basePlanDraft, adjustableControls),
     };
+    const usage = await createSuccessfulRoastAiUsage(usageContext);
 
     sendApiSuccess(response, {
       recommendation: lockedRecommendation,
+      usage,
     });
   } catch (error) {
+    if (usageContext) {
+      await logRoastAiUsageFailure(
+        usageContext,
+        error instanceof Error ? error.message : 'AI 烘焙计划推荐失败。',
+      );
+    }
+
     handlePocketBaseError(response, error, 'AI 烘焙计划推荐失败。');
   }
 };

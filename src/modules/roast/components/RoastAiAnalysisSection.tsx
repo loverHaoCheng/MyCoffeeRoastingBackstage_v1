@@ -3,11 +3,11 @@ import Button from 'antd/es/button';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { useRoastCurve, useRoastPlans, useRoastingMachines } from '@/modules/roast/hooks';
+import { useInvalidateRoastAiUsage, useRoastAiUsage, useRoastCurve } from '@/modules/roast/hooks';
+import { formatRoastAiUsageText, isRoastAiUsageAvailable } from '@/modules/roast/services/roastAiUsage.service';
 import { roastAnalysisService, type RoastAnalysisResult } from '@/modules/roast/services/roastAnalysis.service';
 import { isRoastAiClientEnabled } from '@/modules/roast/services/roastTrainingUpload.service';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
-import { buildRoastAnalysisRequest } from '@/modules/roast/utils/roastAnalysisPayload';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 
 import styles from './RoastBatchDrawer.module.css';
@@ -69,29 +69,45 @@ const toHumanReadableRoastText = (text: string): string => {
 
 function RoastAiAnalysisSectionContent({ batch }: RoastAiAnalysisSectionProps) {
   const { message } = App.useApp();
-  const { data: plans = [] } = useRoastPlans();
-  const { data: machines = [] } = useRoastingMachines();
   const curveQuery = useRoastCurve(batch.id);
+  const usageQuery = useRoastAiUsage('roast_analysis');
+  const invalidateRoastAiUsage = useInvalidateRoastAiUsage();
   const [analysis, setAnalysis] = useState<RoastAnalysisResult | null>(null);
-  const savedAnalysisQuery = useQuery({ queryKey: ['roast-analysis', batch.id], queryFn: () => roastAnalysisService.getStatus(batch.id) });
+  const savedAnalysisQuery = useQuery({ queryKey: ['roast-analysis', batch.id], queryFn: () => roastAnalysisService.getStatusDetail(batch.id) });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const plan = plans.find((item) => item.id === batch.roastPlanId);
-  const machine = machines.find((item) => item.id === plan?.roasterMachineId);
   const curve = curveQuery.data;
-  const displayedAnalysis = analysis ?? savedAnalysisQuery.data ?? null;
-  const hasUploadedCurve = Boolean(curve?.id && curve.curveData.length > 0);
-  const canAnalyze = Boolean(plan && machine && hasUploadedCurve && batch.totalRoastTime && batch.totalRoastTime > 0 && !displayedAnalysis);
+  const displayedAnalysis = analysis ?? savedAnalysisQuery.data?.analysis ?? null;
+  const statusReadiness = savedAnalysisQuery.data?.readiness;
+  const hasUploadedCurve = [
+    statusReadiness?.hasCurve === true,
+    Boolean(curve?.id && curve.curveData.length > 0),
+  ].some(Boolean);
+  const effectiveTotalRoastTime = statusReadiness?.totalTimeSeconds ?? batch.totalRoastTime ?? curve?.metrics.roastDuration ?? curve?.metrics.dropTime;
+  const usageErrorText = usageQuery.error instanceof Error ? usageQuery.error.message : '';
+  const usageText = formatRoastAiUsageText(usageQuery.data, {
+    error: usageErrorText,
+    isLoading: usageQuery.isLoading,
+  });
+  const canUseQuota = isRoastAiUsageAvailable(usageQuery.data);
+  const canAnalyze = Boolean(
+    hasUploadedCurve &&
+    effectiveTotalRoastTime &&
+    effectiveTotalRoastTime > 0 &&
+    !displayedAnalysis &&
+    canUseQuota,
+  );
 
   const handleAnalyze = async () => {
-    if (!plan || !machine || !curve || !hasUploadedCurve || !batch.totalRoastTime) {
-      void message.warning('请先关联烘焙计划、烘焙机并导入曲线后再生成复盘。');
+    if (!hasUploadedCurve || !effectiveTotalRoastTime || effectiveTotalRoastTime <= 0) {
+      void message.warning('请先导入包含有效采样点和总时长的曲线后再生成复盘。');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const result = await roastAnalysisService.analyze(buildRoastAnalysisRequest(batch, curve, plan, machine));
+      const result = await roastAnalysisService.analyze(batch.id);
       setAnalysis(result);
+      invalidateRoastAiUsage('roast_analysis');
     } catch (error: unknown) {
       void message.error(getUserFacingErrorMessage(error, 'AI 曲线复盘失败，请稍后重试。'));
     } finally {
@@ -103,8 +119,20 @@ function RoastAiAnalysisSectionContent({ batch }: RoastAiAnalysisSectionProps) {
     <section className={styles.section}>
       <h4>AI 曲线复盘</h4>
       <p className={styles.trainingSummary}>结合原计划和实际曲线，分析明显瑕疵、预测杯中表现，并给出杯测关注点与下一炉曲线调整策略。</p>
-      {!displayedAnalysis ? <Button disabled={!canAnalyze} loading={isSubmitting || curveQuery.isLoading || savedAnalysisQuery.isLoading} onClick={() => void handleAnalyze()}>生成 AI 曲线复盘</Button> : null}
-      {!displayedAnalysis && !canAnalyze ? <p className={styles.trainingHint}>需要已关联烘焙计划、实体烘焙机和曲线数据。</p> : null}
+      {!displayedAnalysis ? (
+        <div className={styles.trainingActionRow}>
+          <Button
+            disabled={!canAnalyze}
+            loading={isSubmitting || curveQuery.isLoading || savedAnalysisQuery.isLoading || usageQuery.isLoading}
+            onClick={() => void handleAnalyze()}
+          >
+            生成 AI 曲线复盘
+          </Button>
+          <span className={styles.trainingHint}>{usageText}</span>
+        </div>
+      ) : null}
+      {!displayedAnalysis && !canAnalyze && !canUseQuota ? <p className={styles.trainingHint}>本月 AI 曲线复盘额度不足或暂不可用。</p> : null}
+      {!displayedAnalysis && !canAnalyze && canUseQuota ? <p className={styles.trainingHint}>需要先导入包含有效采样点和总时长的曲线数据。</p> : null}
       {displayedAnalysis ? (
         <div className={styles.trainingGrid}>
           <article className={styles.trainingItem}>

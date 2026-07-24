@@ -156,6 +156,16 @@ vi.mock('@/modules/roast/hooks', () => ({
       overallReview: '基于目标生成保守起始计划。',
     }),
   }),
+  useRoastAiUsage: () => ({
+    data: {
+      enabled: true,
+      monthlyLimit: 10,
+      remainingUses: 10,
+      usedThisMonth: 0,
+    },
+    error: null,
+    isLoading: false,
+  }),
   useRoastingMachines: () => ({
     data: [
       {
@@ -410,6 +420,7 @@ describe('RoastPage', () => {
     expect(screen.getByRole('button', { name: '手动创建' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'JSON 导入' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /AI 推荐/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /AI 推荐 本月剩余 10 \/ 10/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'AI 推荐' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '手动创建' }));

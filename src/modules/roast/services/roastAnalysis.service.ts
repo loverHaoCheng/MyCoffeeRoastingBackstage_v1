@@ -66,13 +66,35 @@ export interface RoastAnalysisRequest {
   signals: Record<string, number | string>;
 }
 
+export interface RoastAnalysisReadiness {
+  curvePointCount: number;
+  curveRecordId: string;
+  hasCurve: boolean;
+  totalTimeSeconds: number;
+}
+
+export interface RoastAnalysisStatus {
+  analysis: RoastAnalysisResult | null;
+  model: string;
+  readiness?: RoastAnalysisReadiness;
+  reviewed: boolean;
+  reviewId?: string;
+}
+
 export const roastAnalysisService = {
   async getStatus(roastBatchId: string): Promise<RoastAnalysisResult | null> {
-    const response = await httpClient.get<{ analysis: RoastAnalysisResult | null }>(`/ai/roast-analysis?${new URLSearchParams({ roastBatchId }).toString()}`);
-    return response.data.analysis;
+    const status = await this.getStatusDetail(roastBatchId);
+    return status.analysis;
   },
-  async analyze(input: RoastAnalysisRequest): Promise<RoastAnalysisResult> {
-    const response = await httpClient.post<{ analysis: RoastAnalysisResult }>('/ai/roast-analysis', input);
+  async getStatusDetail(roastBatchId: string): Promise<RoastAnalysisStatus> {
+    const response = await httpClient.get<RoastAnalysisStatus>(`/ai/roast-analysis?${new URLSearchParams({ roastBatchId }).toString()}`);
+    return response.data;
+  },
+  async analyze(roastBatchIdOrInput: RoastAnalysisRequest | string): Promise<RoastAnalysisResult> {
+    const payload = typeof roastBatchIdOrInput === 'string'
+      ? { roastBatchId: roastBatchIdOrInput }
+      : roastBatchIdOrInput;
+    const response = await httpClient.post<{ analysis: RoastAnalysisResult }>('/ai/roast-analysis', payload);
     return response.data.analysis;
   },
 };

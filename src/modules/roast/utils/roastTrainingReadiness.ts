@@ -56,7 +56,7 @@ export const getRoastTrainingReadiness = (
       ready: hasText(batch.roastLevel),
     },
     {
-      detail: hasCurve ? '已绑定曲线 JSON' : '需要导入 HiBean 曲线 JSON',
+      detail: hasCurve ? '已绑定曲线 JSON' : '需要导入 HiBean 或 Artisan 曲线 JSON',
       key: 'curve',
       label: '曲线数据',
       ready: hasCurve,

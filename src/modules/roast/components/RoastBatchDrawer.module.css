@@ -78,6 +78,10 @@
   font-weight: 500;
 }
 
+.evaluationSaveAction {
+  width: 100%;
+}
+
 .notes {
   margin: 0;
   font-size: 14px;

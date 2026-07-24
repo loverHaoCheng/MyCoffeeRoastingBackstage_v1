@@ -18,5 +18,6 @@ export {
   useImportHiBeanRoastCurve,
   useRoastCurve,
 } from './useRoastCurves';
+export { roastAiUsageQueryKeys, useInvalidateRoastAiUsage, useRoastAiUsage } from './useRoastAiUsage';
 export { useRoastPlanRecommendation } from './useRoastPlanRecommendation';
-export { roasterMachineQueryKeys, useCreateRoasterModel, useCreateRoastingMachine, useRoasterModels, useRoastingMachines } from './useRoasterMachines';
+export { roasterMachineQueryKeys, useArchiveRoastingMachine, useCreateRoasterModel, useCreateRoastingMachine, useRoasterModels, useRoastingMachines } from './useRoasterMachines';

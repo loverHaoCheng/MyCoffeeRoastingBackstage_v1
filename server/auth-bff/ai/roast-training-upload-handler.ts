@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { refreshAuthenticatedSession } from '../auth-common.js';
-import { isStagingAppEnv } from '../config.js';
+import { AI_FEATURE_ROAST_TRAINING_RECOMMENDATION, getEasyBakeAppEnv } from '../config.js';
 import { parseJsonBody, sendApiError, sendApiSuccess } from '../http.js';
 import { normalizeErrorPayload, proxyPocketBaseRequest } from '../pocketbase-client.js';
 import { escapeFilterValue, getFirstListItem, isOptionalCollectionMissing, listPocketBaseRecords } from '../record-utils.js';
@@ -9,6 +9,13 @@ import { PocketBaseGatewayError } from '../types.js';
 import { isRecord, toTrimmedString } from '../utils.js';
 import { checkAndUpdateRoastTrainingSampleQuality, TRAINING_SAMPLES_COLLECTION } from './roast-training-quality-service.js';
 import { requestRoastTrainingRecommendation } from './roast-training-recommendation-client.js';
+import {
+  createSuccessfulRoastAiUsage,
+  ensureRoastAiUsageAvailable,
+  logRoastAiUsageFailure,
+  readRoastAiUsageContext,
+  type RoastAiUsageContext,
+} from './roast-usage-handler.js';
 import type {
   RoastPlanDraft,
   RoastTrainingRecommendationResult,
@@ -111,11 +118,6 @@ const buildReadiness = (
       key: 'evaluation',
       label: '评价表单',
       ready: isEvaluationReady(evaluation),
-    },
-    {
-      key: 'consent',
-      label: '训练授权',
-      ready: evaluation.allowTraining === true,
     },
   ];
   const missingLabels = items.filter((item) => !item.ready).map((item) => item.label);
@@ -322,16 +324,6 @@ const buildStatus = async (
   ownerId: string,
   roastBatchId: string,
 ): Promise<TrainingUploadStatus> => {
-  if (!isStagingAppEnv()) {
-    return {
-      alreadyUploaded: false,
-      disabledReason: '正式环境暂未开放训练上传。',
-      enabled: false,
-      environment: 'production',
-      roastBatchId,
-    };
-  }
-
   const existingUpload = await getExistingUpload(token, ownerId, roastBatchId);
   const batch = await getRecordById(token, ROAST_BATCHES_COLLECTION, roastBatchId);
 
@@ -340,7 +332,7 @@ const buildStatus = async (
       alreadyUploaded: Boolean(existingUpload),
       disabledReason: '未找到这条烘焙记录。',
       enabled: false,
-      environment: 'staging',
+      environment: getEasyBakeAppEnv(),
       roastBatchId,
       uploadId: toTrimmedString(existingUpload?.id) || undefined,
     };
@@ -360,7 +352,7 @@ const buildStatus = async (
         ? undefined
         : `当前仍缺少：${readiness.missingLabels.join('、')}。`,
     enabled: !existingUpload && readiness.isUploadReady,
-    environment: 'staging',
+    environment: getEasyBakeAppEnv(),
     recommendation: toRecommendationView(recommendation),
     readiness,
     roastBatchId,
@@ -517,11 +509,6 @@ export const handleRoastTrainingUpload = async (
   request: IncomingMessage,
   response: ServerResponse,
 ): Promise<void> => {
-  if (!isStagingAppEnv()) {
-    sendApiError(response, 403, '正式环境暂未开放训练上传。');
-    return;
-  }
-
   const authResponse = await refreshAuthenticatedSession(request, response);
 
   if (!authResponse) {
@@ -535,6 +522,8 @@ export const handleRoastTrainingUpload = async (
     sendApiError(response, 400, '缺少烘焙记录 ID。');
     return;
   }
+
+  let usageContext: RoastAiUsageContext | null = null;
 
   try {
     const existingUpload = await getExistingUpload(authResponse.token, authResponse.record.id, roastBatchId);
@@ -562,6 +551,9 @@ export const handleRoastTrainingUpload = async (
       });
       return;
     }
+
+    usageContext = await readRoastAiUsageContext(authResponse.record.id, AI_FEATURE_ROAST_TRAINING_RECOMMENDATION);
+    ensureRoastAiUsageAvailable(usageContext);
 
     const snapshot = await buildTrainingSnapshot(authResponse.token, authResponse.record.id, roastBatch, roastCurve);
     const basePlanDraft = buildPlanDraftFromSnapshot(snapshot);
@@ -612,14 +604,23 @@ export const handleRoastTrainingUpload = async (
       sample_id: toTrimmedString(sample.id),
       status: 'uploaded',
     });
+    const usage = await createSuccessfulRoastAiUsage(usageContext);
 
     sendApiSuccess(response, {
       quality: qualityCheck,
       recommendation: toRecommendationView(recommendationRecord),
       sampleId: toTrimmedString(sample.id),
       uploadId: toTrimmedString(upload.id),
+      usage,
     });
   } catch (error) {
+    if (usageContext) {
+      await logRoastAiUsageFailure(
+        usageContext,
+        error instanceof Error ? error.message : '整体复盘与计划建议生成失败。',
+      );
+    }
+
     handlePocketBaseError(response, error, '训练上传失败。');
   }
 };
@@ -628,11 +629,6 @@ export const handleRoastTrainingRecommendationConfirm = async (
   request: IncomingMessage,
   response: ServerResponse,
 ): Promise<void> => {
-  if (!isStagingAppEnv()) {
-    sendApiError(response, 403, '正式环境暂未开放 AI 计划确认。');
-    return;
-  }
-
   const authResponse = await refreshAuthenticatedSession(request, response);
 
   if (!authResponse) {
