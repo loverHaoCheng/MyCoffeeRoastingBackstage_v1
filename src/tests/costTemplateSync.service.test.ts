@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { appSettingsSyncService } from '@/modules/settings/services/appSettingsSync.service';
 import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
 import { costTemplateSyncService } from '@/modules/settings/services/costTemplateSync.service';
-import { createDefaultCostTemplateSettings, type CostTemplate, type CostTemplateSettings } from '@/modules/settings/types';
+import type { CostTemplate, CostTemplateSettings } from '@/modules/settings/types';
 
 const createTemplate = (overrides?: Partial<CostTemplate>): CostTemplate => ({
   createdAt: '2026-07-07T09:00:00.000Z',
@@ -28,7 +28,7 @@ describe('costTemplateSyncService', () => {
     vi.restoreAllMocks();
   });
 
-  it('clears local templates when no remote record exists', async () => {
+  it('keeps local templates when no remote record exists', async () => {
     costTemplateSettingsService.save({
       defaultTemplateId: 'template-1',
       templates: [createTemplate()],
@@ -39,8 +39,12 @@ describe('costTemplateSyncService', () => {
 
     const result = await costTemplateSyncService.syncFromRemote();
 
-    expect(result).toEqual(createDefaultCostTemplateSettings());
-    expect(costTemplateSettingsService.load()).toEqual(createDefaultCostTemplateSettings());
+    expect(result).toEqual({
+      defaultTemplateId: 'template-1',
+      templates: [createTemplate()],
+      updatedAt: '2026-07-07T10:00:00.000Z',
+    });
+    expect(costTemplateSettingsService.load()).toEqual(result);
   });
 
   it('persists a cleared default template back to pocket base on local change', async () => {

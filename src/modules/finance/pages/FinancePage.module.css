@@ -115,14 +115,6 @@
   box-shadow: none !important;
 }
 
-.expenseDrawer :global(.ant-drawer-content) {
-  border-radius: 0;
-}
-
-.expenseDrawer[data-placement='bottom'] :global(.ant-drawer-content) {
-  border-radius: 20px 20px 0 0;
-}
-
 .expenseDrawer :global(.ant-drawer-header) {
   padding: 18px 24px 10px;
   border-bottom: 0;

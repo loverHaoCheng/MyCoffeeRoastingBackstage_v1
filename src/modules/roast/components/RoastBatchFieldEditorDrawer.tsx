@@ -258,13 +258,16 @@ export function RoastBatchFieldEditorDrawer({
     };
 
     onClose();
-    submissionBackupService.save('update', { batchId: effectiveBatch.id, input: updateInput }, 'roastBatch');
+    const backupId = submissionBackupService.save('update', { batchId: effectiveBatch.id, input: updateInput }, 'roastBatch');
 
-    const updateTask = updateBatchMutation.mutateAsync({ batchId: effectiveBatch.id, input: updateInput }).catch(
-      (error: unknown) => {
-        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，本地备份已保留，请检查后重试。'));
-      },
-    );
+    const updateTask = updateBatchMutation
+      .mutateAsync({ batchId: effectiveBatch.id, input: updateInput })
+      .then(() => {
+        submissionBackupService.clear(backupId);
+      })
+      .catch((error: unknown) => {
+        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，本次修改未保存，请保留编辑内容并重试。'));
+      });
 
     void updateTask;
   };

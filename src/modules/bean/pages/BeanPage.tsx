@@ -266,7 +266,7 @@ export function BeanPage() {
   };
 
   const handleCreateBean = (input: GreenBeanCreateInput) => {
-    submissionBackupService.save('create', input, 'bean');
+    const backupId = submissionBackupService.save('create', input, 'bean');
     const optimisticBean = beanService.createOptimisticBean(input);
 
     queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), (current = []) => {
@@ -282,6 +282,7 @@ export function BeanPage() {
         const nextBeans = beanService.finalizeOptimisticBean(String(optimisticBean.id), response.data);
 
         queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
+        submissionBackupService.clear(backupId);
       } catch (error) {
         const nextBeans = beanService.rollbackOptimisticBean(String(optimisticBean.id));
         queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);

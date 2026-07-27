@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { requestEmailAction, sendClientSession, sendUnverifiedResponse, toGenericEmailActionResult } from './auth-common.js';
+import { isAuthIdentityRateLimited } from './auth-rate-limit.js';
 import { authCollection } from './config.js';
 import { clearAuthCookie, getAuthCookieValue, parseJsonBody, sendJson, setAuthCookie } from './http.js';
 import { normalizeAuthResponse, normalizeUser, proxyPocketBaseRequest, sendUpstreamError } from './pocketbase-client.js';
@@ -22,6 +23,13 @@ export const handleLogin = async (request: IncomingMessage, response: ServerResp
   if (!identity || !password) {
     sendJson(response, 400, {
       message: '邮箱和密码不能为空。',
+    });
+    return;
+  }
+
+  if (isAuthIdentityRateLimited(identity, '/api/auth/login')) {
+    sendJson(response, 429, {
+      message: '请求过于频繁，请稍后再试。',
     });
     return;
   }
@@ -81,6 +89,20 @@ export const handleRegister = async (request: IncomingMessage, response: ServerR
   if (!email || !password || !passwordConfirm) {
     sendJson(response, 400, {
       message: '注册信息不能为空。',
+    });
+    return;
+  }
+
+  if (password.length < 8 || passwordConfirm.length < 8) {
+    sendJson(response, 400, {
+      message: '密码至少需要 8 位。',
+    });
+    return;
+  }
+
+  if (password !== passwordConfirm) {
+    sendJson(response, 400, {
+      message: '两次输入的密码不一致。',
     });
     return;
   }
@@ -231,7 +253,7 @@ export const handleUpdateProfile = async (
   }
 
   const updateUpstream = await proxyPocketBaseRequest(
-    `/api/collections/${authCollection}/records/${authResponse.record.id}`,
+    `/api/collections/${encodeURIComponent(authCollection)}/records/${encodeURIComponent(authResponse.record.id)}`,
     {
       body: JSON.stringify({
         name,

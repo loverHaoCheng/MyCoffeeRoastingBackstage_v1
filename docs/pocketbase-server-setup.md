@@ -22,10 +22,28 @@
 PB_BASE_URL=http://127.0.0.1:8090
 PB_SUPERUSER_EMAIL=你的 PocketBase 管理员邮箱
 PB_SUPERUSER_PASSWORD=你的 PocketBase 管理员密码
+PB_AUTH_COOKIE_SECURE=true
+PB_REQUEST_TIMEOUT_MS=15000
+AI_REQUEST_TIMEOUT_MS=90000
 QINIU_QWEN_API_KEY=你的七牛云 API Key
 QINIU_QWEN_BASE_URL=https://api.qnaigc.com/v1
 QINIU_QWEN_MODEL=qwen/qwen3.6-27b
+AI_ROAST_PROVIDER=openai
+AI_ROAST_BASE_URL=https://api.openai.com/v1
+AI_ROAST_API_KEY=烘焙 AI（曲线复盘/计划建议）使用的 API Key，例如 OpenAI 的 sk- 开头密钥
+AI_ROAST_MODEL=烘焙 AI 使用的模型 ID，例如 gpt-5.5
+INTERNAL_JOBS_TOKEN=用 openssl rand -hex 32 生成的内部任务令牌
 ```
+
+> 注意：`AI_ROAST_API_KEY` 与 `AI_ROAST_MODEL` 缺失时，烘焙 AI 曲线复盘与计划建议接口会返回“服务器未配置烘焙 AI API Key/模型”。这组 `AI_ROAST_*` 变量与图像识别的 `QINIU_QWEN_*` 相互独立，需要分别配置。`AI_ROAST_PROVIDER=openai` 时 BFF 会按 OpenAI 新版接口规范发送请求（`max_completion_tokens`、默认温度）；使用七牛云等 OpenAI 兼容网关时省略 `AI_ROAST_PROVIDER` 与 `AI_ROAST_BASE_URL` 即可沿用默认值。
+
+### 内部任务端点鉴权（INTERNAL_JOBS_TOKEN）
+
+- `/internal/jobs/cleanup-unverified-users` 与 `/internal/jobs/check-roast-training-samples` 使用共享密钥鉴权：请求必须携带 `X-Internal-Jobs-Token` 请求头，且值与 `INTERNAL_JOBS_TOKEN` 一致。
+- 未配置 `INTERNAL_JOBS_TOKEN` 时，内部任务端点整体禁用（返回 404）。
+- systemd 定时任务的调用命令需同步加请求头，例如：`curl -X POST -H "X-Internal-Jobs-Token: ${INTERNAL_JOBS_TOKEN}" http://127.0.0.1:3001/internal/jobs/cleanup-unverified-users`。
+- Nginx 侧应同时配置 `location ^~ /internal/ { return 404; }`，禁止公网访问内部任务路径（纵深防御）。
+- 测试端与正式端使用各自独立生成的令牌，并放入对应的 `/etc/easybake/*.env`（`root:root 0600`）。
 
 ## 当前客户端兼容约定
 
@@ -394,6 +412,10 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 
 用途：控制每个用户每月可使用的 AI 功能次数，当前由 PocketBase Dashboard 直接维护。未配置用户记录时，BFF 对各功能默认按 `10 次/月` 放行。
 
+可直接导入 [pocketbase-ai-usage-collections.import.json](pocketbase-ai-usage-collections.import.json) 创建 `ai_usage_limits` 与 `ai_usage_logs`；导入后不要将任一规则改为空字符串。
+
+`feature` 必须是 select，且测试端与正式端均须包含：`bean_image_recognition`、`roaster_model_recognition`、`roast_analysis`、`roast_training_recommendation`、`roast_plan_recommendation`。
+
 字段建议：
 
 | 字段 | 类型 | 说明 |
@@ -408,11 +430,11 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 权限规则：
 
 ```text
-listRule: 留空
-viewRule: 留空
-createRule: 留空
-updateRule: 留空
-deleteRule: 留空
+listRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
+viewRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
+createRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
+updateRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
+deleteRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
 ```
 
 建议索引：
@@ -429,7 +451,7 @@ deleteRule: 留空
 
 ### `ai_usage_logs`
 
-用途：记录 AI 功能成功/失败结果。只有 `status = success` 会参与额度统计，失败不扣次数。
+用途：记录 AI 功能成功/失败结果。BFF 在调用模型前先写入 `status = success` 作为并发预占；调用失败时会改为 `failed`，因此最终只有成功调用会参与额度统计，失败不扣次数。`feature` 的 select 允许值必须与 `ai_usage_limits` 完全一致。
 
 字段建议：
 
@@ -443,7 +465,7 @@ deleteRule: 留空
 | `created_at` | date | 创建时间 |
 | `updated_at` | date | 更新时间 |
 
-权限规则同样全部留空，仅允许 superuser 与 BFF 服务端维护。
+权限规则同样全部设为 `null`/Dashboard“锁定”，仅允许 superuser 与 BFF 服务端维护。严禁使用空字符串 `""`，其语义是公开访问。
 
 建议索引：
 
@@ -462,7 +484,7 @@ deleteRule: 留空
 
 1. 打开 PocketBase Dashboard。
 2. 进入 `Collections`。
-3. 使用 `Import collections` 导入 [docs/pocketbase-collections.import.json](/Users/keepwatchthemoon/个人/gitProject/MyCoffeeRoastingBackstage_v1/docs/pocketbase-collections.import.json)。
+3. 使用 `Import collections` 导入仓库内的 `docs/pocketbase-collections.import.json`。
 4. 确认新增了 `finance_expense_records` 集合。
 
 说明：
@@ -477,3 +499,11 @@ deleteRule: 留空
 - 前面挂 Nginx，统一做 HTTPS 和域名
 - BFF 的 `PB_BASE_URL` 必须指向同机 PocketBase 内网地址，例如 `http://127.0.0.1:8090`；不能填写前端站点域名或 PocketBase 公网地址
 - 备份以服务器上的 PocketBase 数据目录为准
+
+## 原子库存扩展
+
+烘焙记录与采购批次库存必须使用 `server/pocketbase-extension` 构建的自定义 PocketBase 二进制。该扩展提供烘焙记录事务端点和采购批次版本更新端点，BFF 负责认证与白名单代理。
+
+发布顺序：先构建候选二进制并在独立数据副本上验证，再通过 systemd 覆盖文件指向候选二进制、重启单个服务并请求 `/api/easybake/health`。测试端验证通过后再按同一版本切换正式端；保留旧二进制和旧发布目录用于回滚。
+
+BFF 的敏感配置使用 `/etc/easybake/*.env`，权限必须为 `root:root 0600`。服务单元使用 `EnvironmentFile=` 引用，禁止继续在 systemd 单元或 drop-in 中保存 API 密钥和管理员密码。

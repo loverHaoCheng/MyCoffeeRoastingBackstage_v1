@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { sendJson } from '../http.js';
+import { authorizeInternalJobRequest } from '../internal-jobs-auth.js';
 import { normalizeErrorPayload } from '../pocketbase-client.js';
 import { PocketBaseGatewayError } from '../types.js';
 import { getRequiredSuperuserToken } from './usage-service.js';
@@ -10,20 +11,11 @@ import {
   listPendingRoastTrainingSamples,
 } from './roast-training-quality-service.js';
 
-const isLoopbackRequest = (request: IncomingMessage): boolean => {
-  const remoteAddress = request.socket.remoteAddress;
-
-  return remoteAddress === '127.0.0.1' || remoteAddress === '::1' || remoteAddress === '::ffff:127.0.0.1';
-};
-
 export const handleRoastTrainingQualityCheck = async (
   request: IncomingMessage,
   response: ServerResponse,
 ): Promise<void> => {
-  if (!isLoopbackRequest(request)) {
-    sendJson(response, 403, {
-      message: 'Forbidden',
-    });
+  if (!authorizeInternalJobRequest(request, response)) {
     return;
   }
 

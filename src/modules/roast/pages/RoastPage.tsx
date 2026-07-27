@@ -231,13 +231,14 @@ export function RoastPage() {
 
   // 更新计划
   const handleUpdate = (planId: RoastPlan['id'], input: RoastPlanJsonInput) => {
-    submissionBackupService.save('update', { input, planId }, 'roastPlan');
+    const backupId = submissionBackupService.save('update', { input, planId }, 'roastPlan');
 
     const updateTask = (async () => {
       try {
         await updateMutation.mutateAsync({ planId, input });
+        submissionBackupService.clear(backupId);
       } catch (error: unknown) {
-        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
+        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本次修改未保存，请保留编辑内容并重试。'));
       }
     })();
 
@@ -248,7 +249,7 @@ export function RoastPage() {
   const handleCreateManual = (input: RoastPlanJsonInput) => {
     setCreationDrawerOpen(false);
     resetCreationDraft();
-    submissionBackupService.save('create', input, 'roastPlan');
+    const backupId = submissionBackupService.save('create', input, 'roastPlan');
     const optimisticPlan = roastPlanService.createOptimisticPlan(input);
 
     queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) => {
@@ -264,6 +265,7 @@ export function RoastPage() {
         const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
 
         queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
+        submissionBackupService.clear(backupId);
       } catch (error: unknown) {
         const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
         queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);

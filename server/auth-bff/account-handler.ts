@@ -58,6 +58,10 @@ export const handleDeleteAccount = async (
     { name: 'coffee_beans', optional: true },
     { name: 'bean_sale_specs', optional: true },
     { name: 'roast_batches', optional: true },
+    { name: 'roast_curve_records', optional: true },
+    { name: 'roast_training_samples', optional: true },
+    { name: 'roast_training_uploads', optional: true },
+    { name: 'roaster_models', optional: true },
     { name: 'roast_profiles' },
     { name: 'roast_records' },
     { name: 'green_bean_purchase_batches' },
@@ -91,7 +95,7 @@ export const handleDeleteAccount = async (
     }
 
     const deleteUserUpstream = await proxyPocketBaseRequest(
-      `/api/collections/${authCollection}/records/${authResponse.record.id}`,
+      `/api/collections/${encodeURIComponent(authCollection)}/records/${encodeURIComponent(authResponse.record.id)}`,
       {
         headers: {
           Accept: 'application/json',

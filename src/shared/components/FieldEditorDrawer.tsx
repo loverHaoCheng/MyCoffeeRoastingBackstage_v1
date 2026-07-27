@@ -58,6 +58,7 @@ export function FieldEditorDrawer({
   return (
     <AppDrawer
       className={styles.drawer}
+      data-placement={placement}
       destroyOnHidden={destroyOnHidden}
       height={height}
       onClose={onClose}

@@ -2,6 +2,12 @@ import { AI_FEATURE_BEAN_IMAGE_RECOGNITION, AI_USAGE_LIMITS_COLLECTION, AI_USAGE
 import { normalizeAuthResponse, proxyPocketBaseRequest } from '../pocketbase-client.js';
 import { escapeFilterValue, getFirstListItem, listPocketBaseRecords, listRecordIdsByFilter } from '../record-utils.js';
 import { AiUsageLimitRecord, AiUsageState, PocketBaseGatewayError } from '../types.js';
+import { isRecord, toTrimmedString } from '../utils.js';
+
+interface AiUsageReservation {
+  logId: string;
+  state: AiUsageState;
+}
 
 export const formatShanghaiMonth = (date: Date): string => {
   return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 7);
@@ -125,7 +131,7 @@ export const createAiUsageLog = async (
     ownerId: string;
     status: 'failed' | 'success';
   },
-): Promise<void> => {
+): Promise<string> => {
   const now = new Date().toISOString();
   const upstream = await proxyPocketBaseRequest(`/api/collections/${AI_USAGE_LOGS_COLLECTION}/records`, {
     body: JSON.stringify({
@@ -143,6 +149,86 @@ export const createAiUsageLog = async (
       'Content-Type': 'application/json',
     },
     method: 'POST',
+  });
+
+  if (!upstream.response.ok) {
+    throw new PocketBaseGatewayError(upstream.response.status, upstream.payload);
+  }
+
+  const logId = isRecord(upstream.payload) ? toTrimmedString(upstream.payload.id) : '';
+
+  if (!logId) {
+    throw new PocketBaseGatewayError(502, {
+      message: 'AI 使用记录创建成功但未返回记录 ID。',
+    });
+  }
+
+  return logId;
+};
+
+export const reserveAiUsage = async (
+  superuserToken: string,
+  ownerId: string,
+  feature: string,
+  month: string,
+): Promise<AiUsageReservation> => {
+  const upstream = await proxyPocketBaseRequest('/api/easybake/ai-usage/reserve', {
+    body: JSON.stringify({ feature, month, ownerId }),
+    headers: {
+      Accept: 'application/json',
+      Authorization: superuserToken,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+
+  if (!upstream.response.ok) {
+    throw new PocketBaseGatewayError(upstream.response.status, upstream.payload);
+  }
+
+  const payload = isRecord(upstream.payload) ? upstream.payload : null;
+  const logId = payload ? toTrimmedString(payload.logId) : '';
+  const monthlyLimit = payload?.monthlyLimit;
+  const remainingUses = payload?.remainingUses;
+  const usedThisMonth = payload?.usedThisMonth;
+
+  if (
+    !logId ||
+    typeof monthlyLimit !== 'number' ||
+    typeof remainingUses !== 'number' ||
+    typeof usedThisMonth !== 'number'
+  ) {
+    throw new PocketBaseGatewayError(502, { message: 'AI 额度预占响应无效。' });
+  }
+
+  return {
+    logId,
+    state: {
+      enabled: true,
+      monthlyLimit,
+      remainingUses,
+      usedThisMonth,
+    },
+  };
+};
+
+export const releaseAiUsageReservation = async (
+  superuserToken: string,
+  logId: string,
+  errorMessage: string,
+): Promise<void> => {
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${encodeURIComponent(AI_USAGE_LOGS_COLLECTION)}/records/${encodeURIComponent(logId)}`, {
+    body: JSON.stringify({
+      error_message: errorMessage.slice(0, 500),
+      status: 'failed',
+      updated_at: new Date().toISOString(),
+    }),
+    headers: {
+      Accept: 'application/json',
+      Authorization: superuserToken,
+      'Content-Type': 'application/json',
+    },
+    method: 'PATCH',
   });
 
   if (!upstream.response.ok) {

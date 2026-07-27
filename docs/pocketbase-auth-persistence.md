@@ -33,7 +33,7 @@ npm run auth:bff:start
 
 `PB_BASE_URL` 仅用于 BFF 进程访问 PocketBase，上游默认值和生产环境显式配置都应为 `http://127.0.0.1:8090`。前端开发代理使用 `VITE_DEV_API_PROXY_TARGET=https://www.easybake.top` 访问 BFF，这是浏览器入口地址，不能复制给 `PB_BASE_URL`。
 
-日常发布优先使用项目根目录的 `./deploy.sh`。脚本先保存前端构建快照，再构建、上传和验证 BFF；BFF 以整个 `dist/server/` 目录发布，探测失败时自动恢复前一个目录并重启旧服务，只有 BFF 成功后才发布前端。前端会先上传至独立版本目录，再原子切换 Nginx 的入口链接；公网验收失败时自动切回上一版本。静态入口目录保持 `755`，确保 Nginx 可读取资源。它会验证本机与公网的无凭据认证端点均返回 `400`。
+日常发布优先使用项目根目录的 `./deploy.sh`。脚本先保存前端构建快照，再构建、上传和验证 BFF；BFF 以整个 `dist/server/` 目录构建后发布到 `dist/releases/<release>`，并通过 `dist/current.next -> dist/current` 原子切换。systemd 固定执行 `dist/current/pocketbase-auth-bff.js`，`dist/current.previous` 保留上一版本；探测失败会自动切回上一链接并重启旧服务，只有 BFF 成功后才发布前端。前端会先上传至独立版本目录，再原子切换 Nginx 的入口链接；公网验收失败时自动切回上一版本。静态入口目录保持 `755`，确保 Nginx 可读取资源。它会验证本机与公网的无凭据认证端点均返回 `400`。
 
 前端发布目录默认最多保留 `5` 个版本：`/var/www/easybake` 当前链接和 `/var/www/easybake.previous` 回退链接所指向的版本绝不参与清理，其余版本按修改时间保留最新版本，超过数量的目录只会在公网验收成功后删除。可通过 `FRONTEND_RELEASES_TO_KEEP` 覆盖总保留数，最小为 `2`。如服务器目录、服务名或 SSH 主机不同，可设置 `BFF_REMOTE_TARGET`、`BFF_REMOTE_PATH`、`BFF_SERVICE_NAME`、`REMOTE_SSH_TARGET`、`FRONTEND_RELEASES_PATH`、`FRONTEND_CURRENT_LINK`、`FRONTEND_REMOTE_SSH_TARGET` 覆盖默认值。
 
@@ -65,6 +65,8 @@ location ^~ /api/ {
 ```
 
 `/api/*` 必须全部由 BFF 承接，避免浏览器直连 PocketBase 或暴露 Token。BFF 的 `PB_BASE_URL` 必须指向 PocketBase 的内网地址，例如 `http://127.0.0.1:8090`，不得填写站点公网域名，否则会形成代理循环。
+
+认证接口限流只信任本机 Nginx 覆盖后的 `X-Real-IP`，不得改为读取客户端可伪造的 `X-Forwarded-For` 首段。保留上述 `proxy_set_header X-Real-IP $remote_addr` 配置。
 
 ### 4. 重新加载 Nginx
 

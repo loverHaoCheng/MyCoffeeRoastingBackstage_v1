@@ -31,6 +31,15 @@ describe('userDataBackupService', () => {
     pocketBaseSessionService.clear();
   });
 
+  it('rejects backup files larger than the import limit before reading them', async () => {
+    const file = new File(['{}'], 'oversized.json', { type: 'application/json' });
+    Object.defineProperty(file, 'size', { value: 20 * 1024 * 1024 + 1 });
+
+    await expect(userDataBackupService.readBackupFile(file)).rejects.toMatchObject({
+      message: '备份文件超过 20MB，请拆分数据后重试。',
+    });
+  });
+
   it('keeps exporting when an optional backup collection is not initialized', async () => {
     const missingCollectionError = new AppError('PocketBase 记录或集合不存在，请先执行初始化。', {
       code: 'HTTP',
@@ -292,6 +301,62 @@ describe('userDataBackupService', () => {
       purchased_weight_grams: 1000,
       remaining_weight_grams: 1000,
     }));
+  });
+
+  it('includes the current purchase batch version when fully synchronizing a same-account backup', async () => {
+    pocketBaseSessionService.save({
+      user: {
+        email: 'current@example.com',
+        id: 'current-user',
+      },
+    });
+    const backup: UserDataBackupFile = {
+      collections: {
+        green_bean_purchase_batches: [{
+          id: 'purchase-1',
+          owner: 'current-user',
+          purchased_weight_grams: 1000,
+          remaining_weight_grams: 800,
+        }],
+      },
+      exportedBy: {
+        email: 'current@example.com',
+        id: 'current-user',
+      },
+      exportedAt: '2026-07-26T12:00:00.000Z',
+      schema: 'easybake.user-data-backup',
+      summary: {},
+      version: 1,
+    };
+
+    vi.spyOn(PocketBaseRestClient.prototype, 'list').mockImplementation(
+      <TOutput,>(collectionName: string, options?: { match?: Record<string, unknown> }): Promise<TOutput[]> => {
+        if (collectionName === 'green_bean_purchase_batches' && options?.match?.id === 'purchase-1') {
+          return Promise.resolve([{ id: 'purchase-1', updated_at: '2026-07-26T12:01:00.000Z' }] as TOutput[]);
+        }
+
+        return Promise.resolve([]);
+      },
+    );
+    const updateSpy = vi.spyOn(PocketBaseRestClient.prototype, 'update').mockResolvedValue([]);
+
+    await expect(userDataBackupService.importBackup(backup, { strategy: 'sync' })).resolves.toEqual({
+      deleted: 0,
+      imported: 0,
+      skipped: 0,
+      updated: 1,
+    });
+
+    expect(updateSpy).toHaveBeenCalledWith(
+      'green_bean_purchase_batches',
+      expect.objectContaining({
+        __expected_updated_at: '2026-07-26T12:01:00.000Z',
+        remaining_weight_grams: 800,
+      }),
+      expect.objectContaining({
+        match: { id: 'purchase-1' },
+      }),
+    );
   });
 
   it('supplements same-account backups by id instead of merging beans with the same code', async () => {

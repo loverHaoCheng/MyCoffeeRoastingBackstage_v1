@@ -10,10 +10,10 @@ import { isRecord, toTrimmedString } from '../utils.js';
 import { parseRoastAnalysisPayload, type RoastAnalysisRequest } from './roast-analysis-types.js';
 import { requestRoastAnalysis } from './roast-analysis-client.js';
 import {
-  createSuccessfulRoastAiUsage,
   ensureRoastAiUsageAvailable,
-  logRoastAiUsageFailure,
   readRoastAiUsageContext,
+  releaseRoastAiUsageReservation,
+  reserveRoastAiUsage,
   type RoastAiUsageContext,
 } from './roast-usage-handler.js';
 
@@ -224,7 +224,7 @@ const getRecordById = async (
     return null;
   }
 
-  const upstream = await proxyPocketBaseRequest(`/api/collections/${collectionName}/records/${recordId}`, {
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${encodeURIComponent(collectionName)}/records/${encodeURIComponent(recordId)}`, {
     headers: {
       Accept: 'application/json',
       Authorization: token,
@@ -477,6 +477,7 @@ export const handleRoastAnalysis = async (request: IncomingMessage, response: Se
     usageContext = await readRoastAiUsageContext(session.record.id, AI_FEATURE_ROAST_ANALYSIS);
     ensureRoastAiUsageAvailable(usageContext);
 
+    const usage = await reserveRoastAiUsage(usageContext);
     const analysis = await requestRoastAnalysis(input);
 
     const created = await proxyPocketBaseRequest(`/api/collections/${AI_ROAST_REVIEWS_COLLECTION}/records`, {
@@ -497,8 +498,6 @@ export const handleRoastAnalysis = async (request: IncomingMessage, response: Se
       throw new PocketBaseGatewayError(created.response.status, created.payload);
     }
 
-    const usage = await createSuccessfulRoastAiUsage(usageContext);
-
     sendApiSuccess(response, {
       alreadyReviewed: false,
       analysis,
@@ -509,7 +508,7 @@ export const handleRoastAnalysis = async (request: IncomingMessage, response: Se
   } catch (error) {
     if (usageContext) {
       const message = error instanceof Error ? error.message : '烘焙 AI 分析失败。';
-      await logRoastAiUsageFailure(usageContext, message);
+      await releaseRoastAiUsageReservation(usageContext, message);
     }
 
     if (error instanceof PocketBaseGatewayError) {

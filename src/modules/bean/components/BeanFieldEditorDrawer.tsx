@@ -237,13 +237,16 @@ export function BeanFieldEditorDrawer({
     }
 
     onClose();
-    submissionBackupService.save('update', { beanId: effectiveBean.id, input: parsed.data }, 'bean');
+    const backupId = submissionBackupService.save('update', { beanId: effectiveBean.id, input: parsed.data }, 'bean');
 
-    const updateTask = updateBeanMutation.mutateAsync({ beanId: effectiveBean.id, input: parsed.data }).catch(
-      (error: unknown) => {
-        void message.error(getUserFacingErrorMessage(error, '生豆同步失败，本地备份已保留，请检查后重试。'));
-      },
-    );
+    const updateTask = updateBeanMutation
+      .mutateAsync({ beanId: effectiveBean.id, input: parsed.data })
+      .then(() => {
+        submissionBackupService.clear(backupId);
+      })
+      .catch((error: unknown) => {
+        void message.error(getUserFacingErrorMessage(error, '生豆同步失败，本次修改未保存，请保留编辑内容并重试。'));
+      });
 
     void updateTask;
   };

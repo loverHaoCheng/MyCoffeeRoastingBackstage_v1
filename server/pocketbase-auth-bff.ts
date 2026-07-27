@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { handleDeleteAccount } from './auth-bff/account-handler.js';
@@ -11,16 +12,21 @@ import { handleRoastTrainingQualityCheck } from './auth-bff/ai/roast-training-qu
 import { handleRoastTrainingRecommendationConfirm, handleRoastTrainingUpload, handleRoastTrainingUploadStatus } from './auth-bff/ai/roast-training-upload-handler.js';
 import { handleConfirmPasswordReset, handleConfirmVerification, handleLogin, handleLogout, handleRegister, handleRequestPasswordReset, handleRequestVerification, handleSession, handleUpdateProfile } from './auth-bff/auth-handlers.js';
 import { handleBusinessCollectionRequest } from './auth-bff/collection-handler.js';
+import { handleGreenBeanTransactionRequest } from './auth-bff/green-bean-transaction-handler.js';
+import { handleRoastBatchTransactionRequest } from './auth-bff/roast-batch-transaction-handler.js';
 import { port } from './auth-bff/config.js';
-import { sendJson, sendMethodNotAllowed } from './auth-bff/http.js';
+import { RequestBodyTooLargeError, UpstreamTimeoutError, sendJson, sendMethodNotAllowed } from './auth-bff/http.js';
 import { handleRealtimeRequest } from './auth-bff/realtime-handler.js';
 import { createGatewayRequestHandler } from './auth-bff/router.js';
 import { handleUnverifiedUserCleanup } from './auth-bff/unverified-user-cleanup-handler.js';
+import { isAuthRateLimited } from './auth-bff/auth-rate-limit.js';
 
 const handleRequest = createGatewayRequestHandler({
   handleAccountDeletion: handleDeleteAccount,
   handleBeanImageRecognition: handleBeanImageRecognitionUsage,
   handleBusinessCollection: handleBusinessCollectionRequest,
+  handleRoastBatchTransaction: handleRoastBatchTransactionRequest,
+  handleGreenBeanTransaction: handleGreenBeanTransactionRequest,
   handleConfirmPasswordReset,
   handleConfirmVerification,
   handleLogin,
@@ -44,6 +50,7 @@ const handleRequest = createGatewayRequestHandler({
   handleSession,
   handleUnverifiedUserCleanup,
   handleVerificationRequest: handleRequestVerification,
+  isAuthRateLimited,
   sendJson,
   sendMethodNotAllowed,
 });
@@ -58,18 +65,34 @@ export const handleAuthGatewayRequest = async (
       return;
     }
 
-    const message = error instanceof Error && error.message.trim().length > 0 ? error.message : '登录网关服务异常。';
+    if (error instanceof RequestBodyTooLargeError) {
+      sendJson(response, 413, { message: error.message });
+      return;
+    }
 
-    sendJson(response, 500, {
-      message,
-    });
+    if (error instanceof UpstreamTimeoutError) {
+      sendJson(response, 504, { message: '上游服务响应超时，请稍后重试。' });
+      return;
+    }
+
+    // 详细异常仅留在运行时日志中，不能回传主机、端口或上游实现信息。
+    console.error('Unhandled BFF request error', error);
+    sendJson(response, 500, { message: '服务暂时不可用，请稍后重试。' });
   });
 };
 
 const isDirectExecution = (): boolean => {
   const entryPath = process.argv[1];
 
-  return Boolean(entryPath && import.meta.url === pathToFileURL(entryPath).href);
+  if (!entryPath) {
+    return false;
+  }
+
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(entryPath)).href;
+  } catch {
+    return false;
+  }
 };
 
 const startStandaloneServer = (): void => {

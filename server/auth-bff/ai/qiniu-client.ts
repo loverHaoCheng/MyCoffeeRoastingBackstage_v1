@@ -1,7 +1,7 @@
 import type { IncomingMessage } from 'node:http';
 
-import { aiImageMaxBytes, qiniuQwenBaseUrl, qiniuQwenModel } from '../config.js';
-import { parseJsonResponse, parseLimitedJsonBody, readRequestBuffer } from '../http.js';
+import { aiImageMaxBytes, aiRequestTimeoutMs, qiniuQwenBaseUrl, qiniuQwenModel } from '../config.js';
+import { fetchWithTimeout, parseJsonResponse, parseLimitedJsonBody, readRequestBuffer } from '../http.js';
 import type { BeanImageRecognitionResult, RoasterModelRecognitionResult } from '../types.js';
 import { isRecord, toTrimmedString } from '../utils.js';
 
@@ -360,23 +360,17 @@ export const getQiniuErrorMessage = (payload: unknown): string => {
 };
 
 export const formatQiniuRequestError = (status: number, payload: unknown, action: string): string => {
-  const upstreamMessage = getQiniuErrorMessage(payload);
-  const suffix = upstreamMessage ? `上游信息：${upstreamMessage}` : '上游未返回可读错误信息。';
+  void payload;
 
   if (status === 401 || status === 403) {
-    return (
-      `七牛云 Qwen ${action}被拒绝：${String(status)}。` +
-      `请检查 QINIU_QWEN_API_KEY 是否有效且已开通当前模型，` +
-      `QINIU_QWEN_MODEL=${qiniuQwenModel} 是否与七牛云控制台模型 ID 完全一致，` +
-      `以及该模型是否允许当前账号调用视觉/多模态能力。${suffix}`
-    );
+    return `图像识别${action}暂时不可用，请联系管理员检查服务配置。`;
   }
 
-  return `七牛云 Qwen ${action}失败：${String(status)}。${suffix}`;
+  return `图像识别${action}失败，请稍后重试。`;
 };
 
 export const requestQiniuJsonRepair = async (apiKey: string, modelText: string): Promise<unknown> => {
-  const upstream = await fetch(buildQiniuQwenUrl('/chat/completions'), {
+  const upstream = await fetchWithTimeout(buildQiniuQwenUrl('/chat/completions'), {
     body: JSON.stringify({
       enable_thinking: false,
       max_tokens: 1024,
@@ -402,7 +396,7 @@ export const requestQiniuJsonRepair = async (apiKey: string, modelText: string):
       'Content-Type': 'application/json',
     },
     method: 'POST',
-  });
+  }, aiRequestTimeoutMs);
   const payload = await parseJsonResponse(upstream);
 
   if (!upstream.ok) {
@@ -425,7 +419,7 @@ export const requestQiniuBeanImageRecognition = async (imageDataUrl: string): Pr
     throw new Error('服务器未配置七牛云 Qwen API Key。');
   }
 
-  const upstream = await fetch(buildQiniuQwenUrl('/chat/completions'), {
+  const upstream = await fetchWithTimeout(buildQiniuQwenUrl('/chat/completions'), {
     body: JSON.stringify({
       enable_thinking: false,
       max_tokens: 2048,
@@ -460,7 +454,7 @@ export const requestQiniuBeanImageRecognition = async (imageDataUrl: string): Pr
       'Content-Type': 'application/json',
     },
     method: 'POST',
-  });
+  }, aiRequestTimeoutMs);
   const payload = await parseJsonResponse(upstream);
 
   if (!upstream.ok) {
@@ -493,7 +487,7 @@ export const requestQiniuBeanImageRecognition = async (imageDataUrl: string): Pr
 export const requestQiniuRoasterModelRecognition = async (imageDataUrl: string): Promise<RoasterModelRecognitionResult> => {
   const apiKey = (process.env.QINIU_QWEN_API_KEY ?? '').trim();
   if (!apiKey) throw new Error('服务器未配置图像识别 API Key。');
-  const upstream = await fetch(buildQiniuQwenUrl('/chat/completions'), {
+  const upstream = await fetchWithTimeout(buildQiniuQwenUrl('/chat/completions'), {
     body: JSON.stringify({
       enable_thinking: false,
       max_tokens: 2048,
@@ -506,7 +500,7 @@ export const requestQiniuRoasterModelRecognition = async (imageDataUrl: string):
     }),
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     method: 'POST',
-  });
+  }, aiRequestTimeoutMs);
   const payload = await parseJsonResponse(upstream);
   if (!upstream.ok) throw new Error(`烘焙机参数识别失败（${String(upstream.status)}）。`);
   const content = getModelContentText(payload);

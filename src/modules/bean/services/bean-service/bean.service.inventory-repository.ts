@@ -43,7 +43,7 @@ import type {
 } from './bean.service.types';
 
 export function createGreenBeanInventoryRepository(
-  client: Pick<PocketBaseRestClient, 'delete' | 'insert' | 'list' | 'update'>,
+  client: Pick<PocketBaseRestClient, 'delete' | 'insert' | 'list' | 'request' | 'update'>,
   options: { tableName?: string; viewName?: string } = {},
 ): BeanRepository {
   const tableName = options.tableName ?? 'green_beans';
@@ -389,11 +389,12 @@ export function createGreenBeanInventoryRepository(
       return;
     }
 
-    await client.update(
-      'green_bean_purchase_batches',
-      {
-        ...payload,
-        remaining_weight_grams: payload.remaining_weight_grams,
+      await client.update(
+        'green_bean_purchase_batches',
+        {
+          __expected_updated_at: latestBatch.updated_at ?? '',
+          ...payload,
+          remaining_weight_grams: payload.remaining_weight_grams,
       },
       {
         match: { id: latestBatch.id },
@@ -408,42 +409,51 @@ export function createGreenBeanInventoryRepository(
       return ok(beans.data.find((bean) => String(bean.id) === String(beanId)) ?? null);
     },
     async adjustRemainingWeight(beanId, deltaGrams) {
-      const purchaseRows = await client.list<RemotePurchaseBatchRecord>('green_bean_purchase_batches', {
-        match: { green_bean_id: beanId },
-      });
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const purchaseRows = await client.list<RemotePurchaseBatchRecord>('green_bean_purchase_batches', {
+          match: { green_bean_id: beanId },
+        });
+        const latestBatch = getLatestPurchaseBatchRecord(purchaseRows);
 
-      const latestBatch = getLatestPurchaseBatchRecord(purchaseRows);
+        if (!latestBatch) {
+          throw new AppError('当前生豆缺少采购批次，无法更新剩余库存。', { code: 'DATA' });
+        }
 
-      if (!latestBatch) {
-        throw new AppError('当前生豆缺少采购批次，无法更新剩余库存。', { code: 'DATA' });
+        const normalizedPurchasedWeightGrams = toNonNegativeInteger(latestBatch.purchased_weight_grams, 0);
+        const normalizedCurrentRemainingWeight = toNonNegativeInteger(
+          latestBatch.remaining_weight_grams,
+          normalizedPurchasedWeightGrams,
+        );
+        const normalizedDeltaGrams = toFiniteInteger(deltaGrams, 0);
+        const nextRemainingWeight = normalizedCurrentRemainingWeight - normalizedDeltaGrams;
+
+        if (nextRemainingWeight < 0) {
+          throw new AppError('剩余库存不足，无法记录本次烘焙。', { code: 'DATA' });
+        }
+
+        try {
+          await client.update(
+            'green_bean_purchase_batches',
+            {
+              __expected_updated_at: latestBatch.updated_at ?? '',
+              remaining_weight_grams: Math.min(nextRemainingWeight, normalizedPurchasedWeightGrams),
+            },
+            {
+              match: { id: latestBatch.id },
+              select: '*',
+            },
+          );
+          const bean = await getLatestInventoryBean(beanId);
+          beanCacheService.save([bean], 'remote');
+          return ok(bean);
+        } catch (error) {
+          if (!(error instanceof AppError) || error.status !== 409 || attempt === 2) {
+            throw error;
+          }
+        }
       }
 
-      const normalizedPurchasedWeightGrams = toNonNegativeInteger(latestBatch.purchased_weight_grams, 0);
-      const normalizedCurrentRemainingWeight = toNonNegativeInteger(
-        latestBatch.remaining_weight_grams,
-        normalizedPurchasedWeightGrams,
-      );
-      const normalizedDeltaGrams = toFiniteInteger(deltaGrams, 0);
-      const nextRemainingWeight = normalizedCurrentRemainingWeight - normalizedDeltaGrams;
-
-      if (nextRemainingWeight < 0) {
-        throw new AppError('剩余库存不足，无法记录本次烘焙。', { code: 'DATA' });
-      }
-
-      await client.update(
-        'green_bean_purchase_batches',
-        {
-          remaining_weight_grams: Math.min(nextRemainingWeight, normalizedPurchasedWeightGrams),
-        },
-        {
-          match: { id: latestBatch.id },
-          select: '*',
-        },
-      );
-
-      const bean = await getLatestInventoryBean(beanId);
-      beanCacheService.save([bean], 'remote');
-      return ok(bean);
+      throw new AppError('库存更新冲突，请刷新后重试。', { code: 'DATA' });
     },
     async getEditableBean(beanId) {
       return ok(await getEditableBeanDetail(beanId));
@@ -481,6 +491,23 @@ export function createGreenBeanInventoryRepository(
       return ok(bean);
     },
     async deleteBean(beanId, roastPlanDisposition: RoastPlanDisposition) {
+      // 优先走服务端事务级联删除端点：单事务内完成全部删除，要么全成功、要么全回滚。
+      try {
+        const disposition = roastPlanDisposition === 'makeGeneric' ? 'makeGeneric' : 'delete';
+        await client.request(
+          `/api/green-beans/${encodeURIComponent(String(beanId))}?roastPlanDisposition=${disposition}`,
+          { method: 'DELETE' },
+        );
+        return;
+      } catch (error) {
+        // 仅当服务端尚未部署该端点（404/405）时，回退到旧的客户端级联删除。
+        const status = error instanceof AppError ? error.status : undefined;
+
+        if (status !== 404 && status !== 405) {
+          throw error;
+        }
+      }
+
       const relatedRoastBatches = await client.list<{ id: string }>('roast_batches', {
         match: { green_bean_id: beanId },
         select: 'id',

@@ -7,7 +7,14 @@ import { normalizeErrorPayload } from '../pocketbase-client.js';
 import type { AiUsageState } from '../types.js';
 import { PocketBaseGatewayError } from '../types.js';
 import { parseImageRecognitionRequest, requestQiniuBeanImageRecognition } from './qiniu-client.js';
-import { createAiUsageLog, formatShanghaiMonth, getRequiredSuperuserToken, logAiRecognitionFailure, readBeanImageRecognitionUsageState } from './usage-service.js';
+import {
+  formatShanghaiMonth,
+  getRequiredSuperuserToken,
+  logAiRecognitionFailure,
+  readBeanImageRecognitionUsageState,
+  releaseAiUsageReservation,
+  reserveAiUsage,
+} from './usage-service.js';
 
 export const handleBeanImageRecognitionUsage = async (
   request: IncomingMessage,
@@ -76,6 +83,7 @@ export const handleBeanImageRecognitionUsage = async (
   }
 
   let imageDataUrl = '';
+  let reservationLogId = '';
 
   try {
     imageDataUrl = (await parseImageRecognitionRequest(request)).imageDataUrl;
@@ -92,31 +100,36 @@ export const handleBeanImageRecognitionUsage = async (
   }
 
   try {
-    const recognition = await requestQiniuBeanImageRecognition(imageDataUrl);
-
-    await createAiUsageLog(superuserToken, {
-      feature: AI_FEATURE_BEAN_IMAGE_RECOGNITION,
-      month,
+    const reservation = await reserveAiUsage(
+      superuserToken,
       ownerId,
-      status: 'success',
-    });
-
-    const nextUsedThisMonth = usageState.usedThisMonth + 1;
+      AI_FEATURE_BEAN_IMAGE_RECOGNITION,
+      month,
+    );
+    reservationLogId = reservation.logId;
+    usageState = reservation.state;
+    const recognition = await requestQiniuBeanImageRecognition(imageDataUrl);
 
     sendApiSuccess(response, {
       monthlyLimit: usageState.monthlyLimit,
       recognition,
-      remainingUses: Math.max(usageState.monthlyLimit - nextUsedThisMonth, 0),
-      usedThisMonth: nextUsedThisMonth,
+      remainingUses: usageState.remainingUses,
+      usedThisMonth: usageState.usedThisMonth,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'AI 图片识别失败。';
 
-    await logAiRecognitionFailure(superuserToken, {
-      errorMessage: message,
-      month,
-      ownerId,
-    });
+    if (reservationLogId) {
+      await releaseAiUsageReservation(superuserToken, reservationLogId, message).catch(() => {
+        // 预占记录无法释放时保守保留已占用次数，避免并发请求突破额度上限。
+      });
+    } else {
+      await logAiRecognitionFailure(superuserToken, {
+        errorMessage: message,
+        month,
+        ownerId,
+      });
+    }
     sendApiError(response, 502, message);
   }
 };

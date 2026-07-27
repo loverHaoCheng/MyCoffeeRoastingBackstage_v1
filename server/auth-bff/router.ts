@@ -25,6 +25,8 @@ interface GatewayRouteHandlers {
   handleRoastAiUsage: (request: IncomingMessage, response: ServerResponse, requestUrl: URL) => Promise<void>;
   handleRoastPlanRecommendation: RequestHandler;
   handleRoasterModelRecognition: RequestHandler;
+  handleRoastBatchTransaction: BusinessCollectionHandler;
+  handleGreenBeanTransaction: BusinessCollectionHandler;
   handleRoastTrainingRecommendationConfirm: RequestHandler;
   handleRoastTrainingUpload: RequestHandler;
   handleRoastTrainingUploadStatus: (
@@ -35,6 +37,7 @@ interface GatewayRouteHandlers {
   handleSession: RequestHandler;
   handleUnverifiedUserCleanup: RequestHandler;
   handleVerificationRequest: RequestHandler;
+  isAuthRateLimited: (request: IncomingMessage, route: string) => boolean;
   sendJson: (response: ServerResponse, statusCode: number, body: unknown) => void;
   sendMethodNotAllowed: (response: ServerResponse, allowedMethods: string[]) => void;
 }
@@ -147,6 +150,13 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
     const authRoute = authRoutes[path];
 
     if (authRoute) {
+      if (isPublicAuthRoute(path) && handlers.isAuthRateLimited(request, path)) {
+        handlers.sendJson(response, 429, {
+          message: '请求过于频繁，请稍后再试。',
+        });
+        return;
+      }
+
       if (ensureMethod(request, response, authRoute.allowedMethods, handlers)) {
         await authRoute.handler(request, response);
       }
@@ -158,10 +168,29 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
       return;
     }
 
+    if (await handlers.handleRoastBatchTransaction(request, response, requestUrl)) {
+      return;
+    }
+
+    if (await handlers.handleGreenBeanTransaction(request, response, requestUrl)) {
+      return;
+    }
+
     if (await handlers.handleBusinessCollection(request, response, requestUrl)) {
       return;
     }
 
     handlers.sendJson(response, 404, { message: 'Not Found' });
   };
+};
+
+const isPublicAuthRoute = (path: string): boolean => {
+  return [
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/confirm-password-reset',
+    '/api/auth/confirm-verification',
+    '/api/auth/request-password-reset',
+    '/api/auth/request-verification',
+  ].includes(path);
 };

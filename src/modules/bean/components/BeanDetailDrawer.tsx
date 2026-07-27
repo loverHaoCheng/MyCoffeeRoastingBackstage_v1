@@ -159,13 +159,14 @@ export function BeanDetailDrawer({ bean, focusFieldPath, mode, onClose }: BeanDe
         onCancel={onClose}
         onSubmit={(input) => {
           onClose();
-          submissionBackupService.save('update', { beanId: bean.id, input }, 'bean');
+          const backupId = submissionBackupService.save('update', { beanId: bean.id, input }, 'bean');
 
           const updateTask = (async () => {
             try {
               await updateBeanMutation.mutateAsync({ beanId: bean.id, input });
+              submissionBackupService.clear(backupId);
             } catch (error) {
-              void message.error(getUserFacingErrorMessage(error, '生豆同步失败，本地备份已保留，请检查后重试。'));
+              void message.error(getUserFacingErrorMessage(error, '生豆同步失败，本次修改未保存，请保留编辑内容并重试。'));
             }
           })();
 

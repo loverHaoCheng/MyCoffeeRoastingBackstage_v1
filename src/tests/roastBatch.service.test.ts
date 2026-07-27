@@ -81,7 +81,7 @@ describe('roastBatchService', () => {
     });
   });
 
-  it('deletes an attached roast curve before deleting its roast batch', async () => {
+  it('deletes a roast batch through the atomic transaction endpoint', async () => {
     vi.spyOn(PocketBaseRestClient.prototype, 'list').mockResolvedValue([
       {
         created_at: '2026-07-09T10:00:00.000Z',
@@ -101,8 +101,8 @@ describe('roastBatchService', () => {
         updated_at: '2026-07-09T10:00:00.000Z',
       },
     ]);
-    const deleteSpy = vi.spyOn(PocketBaseRestClient.prototype, 'delete').mockResolvedValue();
-    vi.spyOn(beanService, 'adjustRemainingWeight').mockResolvedValue({
+    const requestSpy = vi.spyOn(PocketBaseRestClient.prototype, 'request').mockResolvedValue({ id: 'batch-1' });
+    const adjustRemainingWeightSpy = vi.spyOn(beanService, 'adjustRemainingWeight').mockResolvedValue({
       code: 0,
       data: {} as Bean,
       message: 'ok',
@@ -110,12 +110,8 @@ describe('roastBatchService', () => {
 
     await roastBatchService.deleteBatch('batch-1');
 
-    expect(deleteSpy).toHaveBeenNthCalledWith(1, 'roast_curve_records', {
-      match: { roast_batch_id: 'batch-1' },
-    });
-    expect(deleteSpy).toHaveBeenNthCalledWith(2, 'roast_batches', {
-      match: { id: 'batch-1' },
-    });
+    expect(requestSpy).toHaveBeenCalledWith('/api/roast-batches/batch-1', { method: 'DELETE' });
+    expect(adjustRemainingWeightSpy).not.toHaveBeenCalled();
   });
 
   it('removes a stale local roast batch when PocketBase no longer has it', async () => {

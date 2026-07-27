@@ -121,7 +121,7 @@ export function UnifiedDataCard({
   const handleCardPointerMove = (event: PointerEvent<HTMLElement>) => {
     const tapStart = cardTapStartRef.current;
 
-    if (!tapStart || tapStart.pointerId !== event.pointerId) {
+    if (tapStart?.pointerId !== event.pointerId) {
       return;
     }
 

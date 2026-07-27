@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 import { useBeans } from '@/modules/bean/hooks';
 import { useRoastBatches } from '@/modules/roast/hooks';
+import { costTemplateSyncService } from '@/modules/settings/services/costTemplateSync.service';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 
 import { calculateFinanceOverview, resolveFinanceDateRange } from '../services';
@@ -19,6 +21,15 @@ export function useFinanceOverview(
   const { data: incomeRecords = [], isFetching: isIncomeFetching } = useFinanceIncomeRecords();
   const { data: roastBatches = [], isFetching: isRoastBatchesFetching } = useRoastBatches();
   const { costTemplateSettings } = useCostTemplateSettings();
+  const {
+    data: remoteCostTemplateSettings,
+    isFetching: isCostTemplateSettingsFetching,
+  } = useQuery({
+    queryKey: ['settings', 'cost-templates', 'finance'],
+    queryFn: () => costTemplateSyncService.syncFromRemote(),
+    staleTime: 60_000,
+  });
+  const templates = remoteCostTemplateSettings?.templates ?? costTemplateSettings.templates;
 
   const range = useMemo(() => resolveFinanceDateRange(preset, customRange), [customRange, preset]);
   const overview = useMemo(() => {
@@ -29,9 +40,9 @@ export function useFinanceOverview(
       incomeRecords,
       roastBatches,
       range,
-      templates: costTemplateSettings.templates,
+      templates,
     });
-  }, [beans, calculations, costTemplateSettings.templates, expenseRecords, incomeRecords, range, roastBatches]);
+  }, [beans, calculations, expenseRecords, incomeRecords, range, roastBatches, templates]);
 
   return {
     beans,
@@ -39,9 +50,15 @@ export function useFinanceOverview(
     expenseRecords,
     incomeRecords,
     roastBatches,
-    isFetching: isBeansFetching || isCalculationsFetching || isExpenseFetching || isIncomeFetching || isRoastBatchesFetching,
+    isFetching:
+      isBeansFetching ||
+      isCalculationsFetching ||
+      isExpenseFetching ||
+      isIncomeFetching ||
+      isRoastBatchesFetching ||
+      isCostTemplateSettingsFetching,
     overview,
     range,
-    templates: costTemplateSettings.templates,
+    templates,
   };
 }

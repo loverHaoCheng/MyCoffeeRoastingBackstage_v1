@@ -6,10 +6,20 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_ENV_FILE="${SCRIPT_DIR}/.deploy_test.local"
 
 if [[ -f "${LOCAL_ENV_FILE}" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "${LOCAL_ENV_FILE}"
-  set +a
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ -z "${line}" || "${line}" == \#* ]] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    case "${key}" in
+      APP_URL|EASYBAKE_APP_ENV|VITE_EASYBAKE_APP_ENV|REMOTE_TARGET|BFF_REMOTE_TARGET|BFF_SERVICE_NAME|BFF_LOCAL_PORT|FRONTEND_RELEASES_PATH|FRONTEND_CURRENT_LINK|FRONTEND_DEPLOY_LOCK_PATH|DEPLOY_ENVIRONMENT_NAME|DEPLOY_HTTP_USER|DEPLOY_HTTP_PASSWORD)
+        export "${key}=${value}"
+        ;;
+      *)
+        echo "Unsupported variable in ${LOCAL_ENV_FILE}: ${key}" >&2
+        exit 1
+        ;;
+    esac
+  done < "${LOCAL_ENV_FILE}"
 fi
 
 export APP_URL="${APP_URL:-https://test.easybake.top}"

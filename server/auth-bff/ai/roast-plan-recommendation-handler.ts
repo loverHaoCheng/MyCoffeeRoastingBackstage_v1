@@ -9,10 +9,10 @@ import { PocketBaseGatewayError } from '../types.js';
 import { isRecord, toTrimmedString } from '../utils.js';
 import { requestRoastPlanRecommendation } from './roast-plan-recommendation-client.js';
 import {
-  createSuccessfulRoastAiUsage,
   ensureRoastAiUsageAvailable,
-  logRoastAiUsageFailure,
   readRoastAiUsageContext,
+  releaseRoastAiUsageReservation,
+  reserveRoastAiUsage,
   type RoastAiUsageContext,
 } from './roast-usage-handler.js';
 import type { RoastPlanDraft } from './roast-training-recommendation-types.js';
@@ -240,7 +240,7 @@ const getRecordById = async (
     return null;
   }
 
-  const upstream = await proxyPocketBaseRequest(`/api/collections/${collectionName}/records/${recordId}`, {
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${encodeURIComponent(collectionName)}/records/${encodeURIComponent(recordId)}`, {
     headers: {
       Accept: 'application/json',
       Authorization: token,
@@ -412,6 +412,7 @@ export const handleRoastPlanRecommendation = async (
       authResponse.record.id,
       machine,
     );
+    const usage = await reserveRoastAiUsage(usageContext);
     const recommendation = await requestRoastPlanRecommendation({
       basePlanDraft,
       bean,
@@ -431,15 +432,13 @@ export const handleRoastPlanRecommendation = async (
       ...recommendation,
       modifiedPlanJson: lockPlanDraftToUserSelection(recommendation.modifiedPlanJson, basePlanDraft, adjustableControls),
     };
-    const usage = await createSuccessfulRoastAiUsage(usageContext);
-
     sendApiSuccess(response, {
       recommendation: lockedRecommendation,
       usage,
     });
   } catch (error) {
     if (usageContext) {
-      await logRoastAiUsageFailure(
+      await releaseRoastAiUsageReservation(
         usageContext,
         error instanceof Error ? error.message : 'AI 烘焙计划推荐失败。',
       );

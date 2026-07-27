@@ -1,0 +1,45 @@
+[
+  {
+    "id": "aul000000000001",
+    "name": "ai_usage_limits",
+    "type": "base",
+    "system": false,
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "indexes": ["CREATE UNIQUE INDEX idx_ai_usage_limits_owner_feature ON ai_usage_limits (owner, feature)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "aulowner00000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "aulfeature0000001", "name": "feature", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["bean_image_recognition", "roaster_model_recognition", "roast_analysis", "roast_training_recommendation", "roast_plan_recommendation"] },
+      { "id": "aullimit000000001", "name": "monthly_limit", "type": "number", "system": false, "required": true, "presentable": true, "hidden": false, "min": 0, "max": null, "onlyInt": true },
+      { "id": "aulenabled0000001", "name": "enabled", "type": "bool", "system": false, "required": true, "presentable": true, "hidden": false },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  },
+  {
+    "id": "aul000000000002",
+    "name": "ai_usage_logs",
+    "type": "base",
+    "system": false,
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "indexes": ["CREATE INDEX idx_ai_usage_logs_owner_feature_month_status ON ai_usage_logs (owner, feature, month, status)"],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "aulowner00000002", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "aullogfeature0001", "name": "feature", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["bean_image_recognition", "roaster_model_recognition", "roast_analysis", "roast_training_recommendation", "roast_plan_recommendation"] },
+      { "id": "aullogmonth00001", "name": "month", "type": "text", "system": false, "required": true, "presentable": true, "hidden": false, "min": 7, "max": 7, "pattern": "^[0-9]{4}-[0-9]{2}$", "autogeneratePattern": "" },
+      { "id": "aullogstatus0001", "name": "status", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["success", "failed"] },
+      { "id": "aullogerror00001", "name": "error_message", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 500, "pattern": "", "autogeneratePattern": "" },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  }
+]

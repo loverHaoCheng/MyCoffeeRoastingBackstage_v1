@@ -7,6 +7,8 @@ import { Readable } from 'node:stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { handleAuthGatewayRequest } from './pocketbase-auth-bff.js';
+import { clearAuthRateLimitForTests } from './auth-bff/auth-rate-limit.js';
+import { parseJsonBody } from './auth-bff/http.js';
 
 interface GatewayResponse {
   body: unknown;
@@ -99,9 +101,80 @@ const requestGateway = async (options: GatewayRequestOptions): Promise<GatewayRe
 
 describe('PocketBase auth BFF contract', () => {
   afterEach(() => {
+    clearAuthRateLimitForTests();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it('rejects JSON request bodies larger than the shared limit', async () => {
+    const request = Readable.from([Buffer.alloc(6 * 1024 * 1024 + 1)]) as IncomingMessage;
+
+    await expect(parseJsonBody(request)).rejects.toThrow('请求体超过允许的大小。');
+  });
+
+  it('maps oversized gateway request bodies to HTTP 413', async () => {
+    await expect(requestGateway({
+      body: 'x'.repeat(6 * 1024 * 1024 + 1),
+      method: 'POST',
+      path: '/api/auth/login',
+    })).resolves.toMatchObject({
+      body: { message: '请求体超过允许的大小。' },
+      status: 413,
+    });
+  });
+
+  it('limits repeated public authentication requests from one client address', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ message: 'invalid' }), { status: 400 })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    for (let requestNumber = 0; requestNumber < 8; requestNumber += 1) {
+      await expect(requestGateway({
+        body: JSON.stringify({ identity: 'test@example.com', password: 'incorrect' }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        path: '/api/auth/login',
+      })).resolves.toMatchObject({ status: 400 });
+    }
+
+    await expect(requestGateway({
+      body: JSON.stringify({ identity: 'test@example.com', password: 'incorrect' }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      path: '/api/auth/login',
+    })).resolves.toMatchObject({
+      body: { message: '请求过于频繁，请稍后再试。' },
+      status: 429,
+    });
+  });
+
+  it('uses Nginx-provided X-Real-IP instead of a client-controlled X-Forwarded-For value', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ message: 'invalid' }), { status: 400 })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    for (let requestNumber = 0; requestNumber < 8; requestNumber += 1) {
+      await requestGateway({
+        body: JSON.stringify({ identity: 'test@example.com', password: 'incorrect' }),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': `198.51.100.${String(requestNumber)}`,
+          'X-Real-IP': '203.0.113.9',
+        },
+        method: 'POST',
+        path: '/api/auth/login',
+      });
+    }
+
+    await expect(requestGateway({
+      body: JSON.stringify({ identity: 'test@example.com', password: 'incorrect' }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Forwarded-For': '198.51.100.99',
+        'X-Real-IP': '203.0.113.9',
+      },
+      method: 'POST',
+      path: '/api/auth/login',
+    })).resolves.toMatchObject({ status: 429 });
   });
 
   it('returns the health contract without touching PocketBase', async () => {
@@ -128,6 +201,15 @@ describe('PocketBase auth BFF contract', () => {
       status: 401,
     });
     await expect(requestGateway({ method: 'POST', path: '/api/realtime' })).resolves.toMatchObject({
+      body: { message: '未找到登录态，请重新登录。' },
+      status: 401,
+    });
+    await expect(requestGateway({
+      body: '{}',
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      path: '/api/roast-batches',
+    })).resolves.toMatchObject({
       body: { message: '未找到登录态，请重新登录。' },
       status: 401,
     });
@@ -262,7 +344,8 @@ describe('PocketBase auth BFF contract', () => {
     );
   });
 
-  it('deletes only expired unverified users from a loopback cleanup request', async () => {
+  it('deletes only expired unverified users when the internal jobs token matches', async () => {
+    vi.stubEnv('INTERNAL_JOBS_TOKEN', 'test-internal-token');
     vi.stubEnv('PB_SUPERUSER_EMAIL', 'admin@example.com');
     vi.stubEnv('PB_SUPERUSER_PASSWORD', 'admin-password');
     const expiredCreatedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
@@ -293,6 +376,7 @@ describe('PocketBase auth BFF contract', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(requestGateway({
+      headers: { 'X-Internal-Jobs-Token': 'test-internal-token' },
       method: 'POST',
       path: '/internal/jobs/cleanup-unverified-users',
     })).resolves.toMatchObject({
@@ -309,17 +393,40 @@ describe('PocketBase auth BFF contract', () => {
     );
   });
 
-  it('rejects cleanup requests that do not originate from the server loopback interface', async () => {
+  it('rejects cleanup requests without a matching internal jobs token', async () => {
+    vi.stubEnv('INTERNAL_JOBS_TOKEN', 'test-internal-token');
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(requestGateway({
       method: 'POST',
       path: '/internal/jobs/cleanup-unverified-users',
-      remoteAddress: '203.0.113.10',
     })).resolves.toMatchObject({
       body: { message: 'Forbidden' },
       status: 403,
+    });
+    await expect(requestGateway({
+      headers: { 'X-Internal-Jobs-Token': 'wrong-token' },
+      method: 'POST',
+      path: '/internal/jobs/cleanup-unverified-users',
+      remoteAddress: '127.0.0.1',
+    })).resolves.toMatchObject({
+      body: { message: 'Forbidden' },
+      status: 403,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('disables internal job endpoints entirely when no internal jobs token is configured', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(requestGateway({
+      method: 'POST',
+      path: '/internal/jobs/cleanup-unverified-users',
+    })).resolves.toMatchObject({
+      body: { message: 'Not Found' },
+      status: 404,
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });

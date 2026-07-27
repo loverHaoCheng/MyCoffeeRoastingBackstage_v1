@@ -143,13 +143,16 @@ export function RoastPlanFieldEditorDrawer({
     }
 
     onClose();
-    submissionBackupService.save('update', { input: parsed.data, planId: effectivePlan.id }, 'roastPlan');
+    const backupId = submissionBackupService.save('update', { input: parsed.data, planId: effectivePlan.id }, 'roastPlan');
 
-    const updateTask = updatePlanMutation.mutateAsync({ planId: effectivePlan.id, input: parsed.data }).catch(
-      (error: unknown) => {
-        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本地备份已保留，请检查后重试。'));
-      },
-    );
+    const updateTask = updatePlanMutation
+      .mutateAsync({ planId: effectivePlan.id, input: parsed.data })
+      .then(() => {
+        submissionBackupService.clear(backupId);
+      })
+      .catch((error: unknown) => {
+        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本次修改未保存，请保留编辑内容并重试。'));
+      });
 
     void updateTask;
   };

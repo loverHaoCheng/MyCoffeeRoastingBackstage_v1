@@ -12,11 +12,12 @@ import type { AiUsageState } from '../types.js';
 import { PocketBaseGatewayError } from '../types.js';
 import { toTrimmedString } from '../utils.js';
 import {
-  createAiUsageLog,
   formatShanghaiMonth,
   getRequiredSuperuserToken,
   logAiRecognitionFailure,
   readAiUsageState,
+  releaseAiUsageReservation,
+  reserveAiUsage,
 } from './usage-service.js';
 
 export type RoastAiFeature =
@@ -30,6 +31,7 @@ export interface RoastAiUsageContext {
   ownerId: string;
   state: AiUsageState;
   superuserToken: string;
+  reservationLogId?: string;
 }
 
 export const roastAiFeatures: readonly RoastAiFeature[] = [
@@ -94,22 +96,17 @@ export const ensureRoastAiUsageAvailable = (context: RoastAiUsageContext): boole
   return true;
 };
 
-export const createSuccessfulRoastAiUsage = async (context: RoastAiUsageContext): Promise<AiUsageState> => {
-  await createAiUsageLog(context.superuserToken, {
-    feature: context.feature,
-    month: context.month,
-    ownerId: context.ownerId,
-    status: 'success',
-  });
+export const reserveRoastAiUsage = async (context: RoastAiUsageContext): Promise<AiUsageState> => {
+  const reservation = await reserveAiUsage(
+    context.superuserToken,
+    context.ownerId,
+    context.feature,
+    context.month,
+  );
 
-  const usedThisMonth = context.state.usedThisMonth + 1;
-
-  return {
-    enabled: context.state.enabled,
-    monthlyLimit: context.state.monthlyLimit,
-    remainingUses: Math.max(context.state.monthlyLimit - usedThisMonth, 0),
-    usedThisMonth,
-  };
+  context.reservationLogId = reservation.logId;
+  context.state = reservation.state;
+  return reservation.state;
 };
 
 export const logRoastAiUsageFailure = async (
@@ -121,6 +118,20 @@ export const logRoastAiUsageFailure = async (
     feature: context.feature,
     month: context.month,
     ownerId: context.ownerId,
+  });
+};
+
+export const releaseRoastAiUsageReservation = async (
+  context: RoastAiUsageContext,
+  errorMessage: string,
+): Promise<void> => {
+  if (!context.reservationLogId) {
+    await logRoastAiUsageFailure(context, errorMessage);
+    return;
+  }
+
+  await releaseAiUsageReservation(context.superuserToken, context.reservationLogId, errorMessage).catch(() => {
+    // 保守保留无法释放的预占记录，避免并发请求突破额度上限。
   });
 };
 

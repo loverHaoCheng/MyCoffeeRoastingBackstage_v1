@@ -73,7 +73,15 @@ const getCalculationSyncSnapshot = (records: CostCalculationRecord[]): string =>
 };
 
 export const calculateCostMetrics = (input: CostCalculationFormInput): CostCalculationMetrics => {
-  const safeSaleUnitWeightGrams = input.saleUnitWeightGrams > 0 ? input.saleUnitWeightGrams : 1;
+  if (input.saleUnitWeightGrams <= 0) {
+    throw new AppError('单份熟豆重量必须大于 0。', { code: 'BUSINESS' });
+  }
+
+  if (input.dehydrationRate < 0 || input.dehydrationRate >= 100) {
+    throw new AppError('脱水率必须大于等于 0 且小于 100。', { code: 'BUSINESS' });
+  }
+
+  const safeSaleUnitWeightGrams = input.saleUnitWeightGrams;
   const roastedOutputWeightGrams = Number(
     (input.roastInputWeightGrams * (1 - input.dehydrationRate / 100)).toFixed(1),
   );
@@ -81,7 +89,11 @@ export const calculateCostMetrics = (input: CostCalculationFormInput): CostCalcu
   const totalBatchCost = Number(
     (greenBeanCost + input.packagingCost + input.energyCost + input.laborCost + input.otherCost).toFixed(2),
   );
-  const safeRoastedOutputWeightGrams = roastedOutputWeightGrams > 0 ? roastedOutputWeightGrams : 1;
+  if (roastedOutputWeightGrams <= 0) {
+    throw new AppError('烘焙后的熟豆重量必须大于 0。', { code: 'BUSINESS' });
+  }
+
+  const safeRoastedOutputWeightGrams = roastedOutputWeightGrams;
   const saleUnitCount = Number((safeRoastedOutputWeightGrams / safeSaleUnitWeightGrams).toFixed(2));
   const costPerSaleUnit = Number(((totalBatchCost / safeRoastedOutputWeightGrams) * safeSaleUnitWeightGrams).toFixed(2));
   const suggestedSalePrice = Number((costPerSaleUnit * (1 + input.targetProfitRate / 100)).toFixed(2));
@@ -185,7 +197,9 @@ const createRemoteFinanceRepository = (
   },
   async saveCalculation(input) {
     const metrics = calculateCostMetrics(input);
-    const resolvedSaleUnitPrice = metrics.suggestedSalePrice;
+    // 存储值必须与利润计算口径一致：优先用户实际输入价，未填时才用建议价，
+    // 否则历史记录会出现 profit ≠ price − cost 的自相矛盾。
+    const resolvedSaleUnitPrice = input.saleUnitPrice > 0 ? input.saleUnitPrice : metrics.suggestedSalePrice;
     const rows = await client.insert<RemoteCostCalculationRecord>(
       COST_CALCULATIONS_TABLE,
       {

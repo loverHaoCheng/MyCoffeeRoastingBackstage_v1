@@ -341,10 +341,6 @@
   font-size: 13px;
 }
 
-.planCreationDrawer :global(.ant-drawer-content) {
-  border-radius: 20px 20px 0 0;
-}
-
 .planCreationDrawer :global(.ant-drawer-header) {
   padding: 18px 24px 10px;
   border-bottom: 0;

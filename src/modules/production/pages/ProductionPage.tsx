@@ -185,7 +185,7 @@ export function ProductionPage() {
   };
 
   const handleCreate = async (input: RoastBatchCreateInput): Promise<RoastBatchRecord> => {
-    submissionBackupService.save('create', input, 'roastBatch');
+    const backupId = submissionBackupService.save('create', input, 'roastBatch');
     const optimisticBatch = roastBatchService.createOptimisticBatch(input);
 
     queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), (current = []) => {
@@ -200,6 +200,7 @@ export function ProductionPage() {
       const nextBatches = roastBatchService.finalizeOptimisticBatch(optimisticBatch.id, response.data);
 
       queryClient.setQueryData<RoastBatchRecord[]>(roastBatchQueryKeys.list(), nextBatches);
+      submissionBackupService.clear(backupId);
 
       return response.data;
     } catch (error: unknown) {
@@ -210,13 +211,14 @@ export function ProductionPage() {
   };
 
   const handleUpdate = (batchId: string, input: RoastBatchUpdateInput) => {
-    submissionBackupService.save('update', { batchId, input }, 'roastBatch');
+    const backupId = submissionBackupService.save('update', { batchId, input }, 'roastBatch');
 
     const updateTask = (async () => {
       try {
         await updateMutation.mutateAsync({ batchId, input });
+        submissionBackupService.clear(backupId);
       } catch (error: unknown) {
-        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，本地备份已保留，请检查后重试。'));
+        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，本次修改未保存，请保留编辑内容并重试。'));
       }
     })();
 

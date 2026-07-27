@@ -36,6 +36,7 @@ export function FinanceOverviewDetailDrawer({
   return (
     <AppDrawer
       className={styles.drawer}
+      data-placement={isWide ? 'right' : 'bottom'}
       destroyOnHidden
       height={isWide ? undefined : '72dvh'}
       onClose={onClose}

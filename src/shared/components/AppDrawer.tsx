@@ -166,6 +166,7 @@ export function AppDrawer({
         aria-label={typeof title === 'string' ? title : undefined}
         className={cn(styles.drawer, className)}
         contentStyle={drawerStyles?.content}
+        data-placement={placement}
         footerStyle={drawerStyles?.footer}
         forceMount
         headerStyle={drawerStyles?.header}

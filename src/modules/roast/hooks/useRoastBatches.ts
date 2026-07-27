@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { beanQueryKeys } from '@/modules/bean/hooks';
 import { roastBatchService } from '../services/roastBatch.service';
 import type { RoastBatchCreateInput, RoastBatchUpdateInput } from '../types/roastBatch';
 import type { RoastBatchRecord } from '../types/roastBatch';
@@ -48,6 +49,7 @@ export function useCreateRoastBatch() {
           ...current.filter((batch) => batch.id !== nextBatch.id),
         ]),
       );
+      void queryClient.invalidateQueries({ queryKey: beanQueryKeys.all });
     },
   });
 }
@@ -139,6 +141,7 @@ export function useDeleteRoastBatch() {
         roastBatchQueryKeys.list(),
         (current = []) => current.filter((batch) => batch.id !== batchId),
       );
+      void queryClient.invalidateQueries({ queryKey: beanQueryKeys.all });
     },
   });
 }

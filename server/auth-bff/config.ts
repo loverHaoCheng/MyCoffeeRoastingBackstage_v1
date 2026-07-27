@@ -14,9 +14,15 @@ export const DEFAULT_AI_USAGE_LIMIT = 10;
 
 export const DEFAULT_AI_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
 
+export const DEFAULT_POCKETBASE_REQUEST_TIMEOUT_MS = 15_000;
+
+export const DEFAULT_AI_REQUEST_TIMEOUT_MS = 90_000;
+
 export const EASYBAKE_APP_ENV_PRODUCTION = 'production';
 
 export const AI_FEATURE_BEAN_IMAGE_RECOGNITION = 'bean_image_recognition';
+
+export const AI_FEATURE_ROASTER_MODEL_RECOGNITION = 'roaster_model_recognition';
 
 export const AI_FEATURE_ROAST_ANALYSIS = 'roast_analysis';
 
@@ -135,3 +141,19 @@ export const aiRoastBaseUrl = normalizeBaseUrl(
 );
 
 export const aiRoastModel = (process.env.AI_ROAST_MODEL ?? '').trim();
+
+const parsePositiveInteger = (value: string | undefined, fallback: number): number => {
+  const candidate = Number.parseInt((value ?? '').trim(), 10);
+
+  return Number.isFinite(candidate) && candidate > 0 ? candidate : fallback;
+};
+
+export const pocketBaseRequestTimeoutMs = parsePositiveInteger(
+  process.env.PB_REQUEST_TIMEOUT_MS,
+  DEFAULT_POCKETBASE_REQUEST_TIMEOUT_MS,
+);
+
+export const aiRequestTimeoutMs = parsePositiveInteger(
+  process.env.AI_REQUEST_TIMEOUT_MS,
+  DEFAULT_AI_REQUEST_TIMEOUT_MS,
+);

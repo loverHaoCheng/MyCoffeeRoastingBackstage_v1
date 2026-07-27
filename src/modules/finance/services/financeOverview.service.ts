@@ -6,6 +6,7 @@ import {
   buildCostTemplateById,
   calculateEstimatedBeanProfit,
   calculateRoastBatchProfit,
+  resolveEffectiveSaleUnitPrice,
 } from './financeProfitCalculation.service';
 
 import type {
@@ -120,7 +121,7 @@ const buildRoastBatchRevenueRecords = (
       const bean = beanMap.get(batch.greenBeanId);
       const shippingCost = shippingCostByBatchId.get(batch.id) ?? 0;
       const metrics = calculateRoastBatchProfit(batch, bean, templatesById, shippingCost);
-      const saleUnitPrice = bean?.defaultSaleUnitPrice ?? 0;
+      const saleUnitPrice = resolveEffectiveSaleUnitPrice(bean, batch.finalSaleUnitPrice);
       const saleUnitCount = batch.soldUnitCount ?? 1;
       const amount = metrics?.revenue ?? 0;
       const roastedBeanName = batch.roastedBeanName?.trim();
@@ -131,6 +132,7 @@ const buildRoastBatchRevenueRecords = (
         date: roastDate,
         id: batch.id,
         notes: batch.notes ?? null,
+        nonBeanCost: metrics?.nonBeanCost ?? 0,
         saleUnitCount,
         saleUnitPrice,
         shippingCost,
@@ -312,7 +314,7 @@ export const calculateFinanceOverview = ({
     operatingProfit,
     realizedIncome,
     realizedBeanCost: toMoney(roastBatchRevenueRecords.reduce((total, record) => total + record.beanCost, 0)),
-    realizedProfit: toMoney(roastBatchRevenueRecords.reduce((total, record) => total + record.amount - record.beanCost - record.shippingCost, 0)),
+    realizedProfit: toMoney(roastBatchRevenueRecords.reduce((total, record) => total + record.amount - record.beanCost - record.nonBeanCost - record.shippingCost, 0)),
     totalExpenses,
   };
 };
@@ -411,7 +413,7 @@ export const buildFinanceOverviewDrilldown = ({
         title: '已实现收入明细',
       },
       realizedProfit: {
-        getAmount: (record: RoastBatchRevenueDetail) => record.amount - record.beanCost - record.shippingCost,
+        getAmount: (record: RoastBatchRevenueDetail) => record.amount - record.beanCost - record.nonBeanCost - record.shippingCost,
         title: '已实现利润明细',
       },
     } as const;
@@ -420,7 +422,7 @@ export const buildFinanceOverviewDrilldown = ({
       [
         ...roastBatchRevenueRecords.map((record) => ({
           amount: toMoney(config.getAmount(record)),
-          categoryLabel: `${formatRevenueUnitCount(record.saleUnitCount)} 份 × ¥${record.saleUnitPrice.toFixed(2)} · 已售出生豆成本 ¥${record.beanCost.toFixed(2)} · 邮费 ¥${record.shippingCost.toFixed(2)} · 利润 ¥${(record.amount - record.beanCost - record.shippingCost).toFixed(2)}`,
+          categoryLabel: `${formatRevenueUnitCount(record.saleUnitCount)} 份 × ¥${record.saleUnitPrice.toFixed(2)} · 销售收入 ¥${record.amount.toFixed(2)} · 生豆成本 ¥${record.beanCost.toFixed(2)} · 模板成本 ¥${record.nonBeanCost.toFixed(2)} · 邮费 ¥${record.shippingCost.toFixed(2)} · 利润 ¥${(record.amount - record.beanCost - record.nonBeanCost - record.shippingCost).toFixed(2)}`,
           date: record.date,
           deleteHint: '烘焙历史收入请前往烘焙历史中修改对应记录。',
           deletable: false,

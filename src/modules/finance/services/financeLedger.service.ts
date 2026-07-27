@@ -196,6 +196,13 @@ const isMissingRemoteResourceError = (error: unknown): boolean => {
   return error.status === 404 || payload?.code?.startsWith('PGRST') === true || message.includes('不存在');
 };
 
+// 收入集合是可选集合：远端集合缺失（404）或规则未配置完成（403）时按“尚未就绪”
+// 处理为空数据；网络抖动、超时、5xx 等临时错误必须向上抛出，
+// 禁止用空数组覆盖已有收入数据（否则财务总览会静默清零）。
+const isIncomeCollectionNotReadyError = (error: unknown): boolean => {
+  return isMissingRemoteResourceError(error) || (error instanceof AppError && error.status === 403);
+};
+
 const createRemoteLedgerRepository = (client: Pick<PocketBaseRestClient, 'delete' | 'insert' | 'list'>) => ({
   async listExpenseRecords(): Promise<ApiResponse<FinanceExpenseRecord[]>> {
     const rows = await client.list<RemoteFinanceExpenseRecord>(EXPENSE_COLLECTION, {
@@ -311,10 +318,17 @@ export const financeLedgerService = {
       } catch (error) {
         lastError = error;
 
-        logger.warn('finance income list unavailable', { error });
-        setCurrentIncomeRecords([]);
-        return ok([]);
+        if (!isIncomeCollectionNotReadyError(error)) {
+          break;
+        }
+
+        logger.warn('finance income list unavailable: collection not ready', { error });
       }
+    }
+
+    if (isIncomeCollectionNotReadyError(lastError)) {
+      setCurrentIncomeRecords([]);
+      return ok([]);
     }
 
     throw lastError;
@@ -470,7 +484,12 @@ export const financeLedgerService = {
         try {
           remoteIncomes = await repository.listIncomeRecords();
         } catch (error) {
-          logger.warn('finance income sync unavailable', { error });
+          // 仅集合缺失/权限未就绪时容忍为空；其他错误抛出，避免用空数组覆盖收入数据。
+          if (!isIncomeCollectionNotReadyError(error)) {
+            throw error;
+          }
+
+          logger.warn('finance income sync unavailable: collection not ready', { error });
           remoteIncomes = ok([]);
         }
 

@@ -3,7 +3,7 @@ import { PocketBaseGatewayError } from './types.js';
 import { isRecord } from './utils.js';
 
 export const escapeFilterValue = (value: string): string => {
-  return `'${value.replaceAll("'", "\\'")}'`;
+  return `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 };
 
 export const buildRecordListPath = (
@@ -85,7 +85,7 @@ export const deleteRecordById = async (
   collectionName: string,
   recordId: string,
 ): Promise<void> => {
-  const upstream = await proxyPocketBaseRequest(`/api/collections/${collectionName}/records/${recordId}`, {
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${encodeURIComponent(collectionName)}/records/${encodeURIComponent(recordId)}`, {
     headers: {
       Accept: 'application/json',
       Authorization: token,

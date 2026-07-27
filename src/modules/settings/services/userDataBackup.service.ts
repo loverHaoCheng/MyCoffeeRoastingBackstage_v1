@@ -5,6 +5,9 @@ import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
 
 const backupSchema = 'easybake.user-data-backup';
 const backupVersion = 1;
+const MAX_BACKUP_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_BACKUP_RECORDS_PER_COLLECTION = 10_000;
+const MAX_BACKUP_RECORDS_TOTAL = 50_000;
 
 const backupCollections = [
   'green_beans',
@@ -92,6 +95,27 @@ const getTrimmedStringField = (record: BackupRecord, fieldName: string): string 
   const value = record[fieldName];
 
   return typeof value === 'string' ? value.trim() : '';
+};
+
+const withCurrentPurchaseBatchVersion = (
+  collectionName: BackupCollectionName,
+  payload: BackupRecord,
+  currentRecord: BackupRecord,
+): BackupRecord => {
+  if (collectionName !== 'green_bean_purchase_batches') {
+    return payload;
+  }
+
+  const expectedUpdatedAt = getTrimmedStringField(currentRecord, 'updated_at');
+
+  if (!expectedUpdatedAt) {
+    throw new AppError('采购批次缺少版本信息，无法安全恢复备份。', { code: 'DATA' });
+  }
+
+  return {
+    ...payload,
+    __expected_updated_at: expectedUpdatedAt,
+  };
 };
 
 const getCurrentUserId = (): string => {
@@ -633,13 +657,23 @@ const importBackupRecord = async (
     }
 
     if (existingRecords.length > 0) {
+      const existingRecord = existingRecords[0];
+
+      if (!existingRecord) {
+        throw new AppError('未找到需要更新的备份记录。', { code: 'DATA' });
+      }
+
       registerImportedId(idMaps, collectionName, oldId, oldId);
 
       if (strategy === 'merge') {
         return 'skipped';
       }
 
-      const payload = omitRecordId(rewriteRecordReferences(collectionName, record, idMaps));
+      const payload = withCurrentPurchaseBatchVersion(
+        collectionName,
+        omitRecordId(rewriteRecordReferences(collectionName, record, idMaps)),
+        existingRecord,
+      );
 
       try {
         await client.update<BackupRecord>(collectionName, payload, {
@@ -772,14 +806,26 @@ const parseBackupFile = (payload: unknown): UserDataBackupFile => {
   }
 
   const collections: Partial<Record<BackupCollectionName, BackupRecord[]>> = {};
+  let totalRecords = 0;
 
   Object.entries(payload.collections).forEach(([collectionName, records]) => {
     if (!isBackupCollectionName(collectionName) || !Array.isArray(records)) {
       return;
     }
 
-    collections[collectionName] = records.filter(isRecord);
+    const validRecords = records.filter(isRecord);
+
+    if (validRecords.length > MAX_BACKUP_RECORDS_PER_COLLECTION) {
+      throw new AppError('备份文件单个数据集合超过允许的记录数量。', { code: 'DATA' });
+    }
+
+    totalRecords += validRecords.length;
+    collections[collectionName] = validRecords;
   });
+
+  if (totalRecords > MAX_BACKUP_RECORDS_TOTAL) {
+    throw new AppError('备份文件超过允许的总记录数量。', { code: 'DATA' });
+  }
 
   return {
     collections,
@@ -876,6 +922,10 @@ export const userDataBackupService = {
     };
   },
   async readBackupFile(file: File): Promise<UserDataBackupFile> {
+    if (file.size > MAX_BACKUP_FILE_BYTES) {
+      throw new AppError('备份文件超过 20MB，请拆分数据后重试。', { code: 'DATA' });
+    }
+
     const content = await file.text();
     let payload: unknown;
 

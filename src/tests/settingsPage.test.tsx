@@ -323,7 +323,14 @@ describe('SettingsPage', () => {
     renderWithQuery(<SettingsPage />);
 
     const heading = await screen.findByRole('heading', { name: 'AI 烘焙功能' });
-    fireEvent.click(heading.closest('section')!.querySelector('button')!);
+    const section = heading.closest('section');
+    const toggleButton = section?.querySelector('button');
+
+    if (!toggleButton) {
+      throw new Error('Expected the AI roasting section toggle button.');
+    }
+
+    fireEvent.click(toggleButton);
 
     expect(heading).toBeInTheDocument();
     expect(screen.getByText('AI 推荐烘焙计划')).toBeInTheDocument();

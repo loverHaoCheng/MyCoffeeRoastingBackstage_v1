@@ -14,6 +14,10 @@ DEPLOY_HTTP_PASSWORD="${DEPLOY_HTTP_PASSWORD:-}"
 REMOTE_SSH_TARGET="${REMOTE_SSH_TARGET:-${BFF_REMOTE_TARGET%%:*}}"
 BFF_REMOTE_PATH="${BFF_REMOTE_PATH:-${BFF_REMOTE_TARGET#*:}}"
 BFF_REMOTE_DIR="${BFF_REMOTE_DIR:-$(dirname "${BFF_REMOTE_PATH}")}"
+BFF_DEPLOY_ROOT="${BFF_DEPLOY_ROOT:-$(dirname "${BFF_REMOTE_DIR}")}"
+BFF_RELEASES_PATH="${BFF_RELEASES_PATH:-${BFF_DEPLOY_ROOT}/releases}"
+BFF_CURRENT_LINK="${BFF_CURRENT_LINK:-${BFF_DEPLOY_ROOT}/current}"
+BFF_RELEASES_TO_KEEP="${BFF_RELEASES_TO_KEEP:-5}"
 FRONTEND_REMOTE_SSH_TARGET="${FRONTEND_REMOTE_SSH_TARGET:-${REMOTE_TARGET%%:*}}"
 FRONTEND_REMOTE_PATH="${FRONTEND_REMOTE_PATH:-${REMOTE_TARGET#*:}}"
 FRONTEND_RELEASES_PATH="${FRONTEND_RELEASES_PATH:-/var/www/easybake-releases}"
@@ -24,11 +28,11 @@ VERSION_URL="${APP_URL%/}/version.json"
 HEALTH_URL="${APP_URL%/}/api/health"
 AUTH_LOGIN_URL="${APP_URL%/}/api/auth/login"
 FRONTEND_RELEASE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/easybake-frontend.XXXXXX")"
-BFF_STAGED_DIR="${BFF_REMOTE_DIR}.next"
-BFF_BACKUP_DIR="${BFF_REMOTE_DIR}.previous"
 DEPLOY_LOCK_OWNER="$(hostname)-$$-$(date -u +%Y%m%dT%H%M%SZ)"
 DEPLOY_LOCK_CREATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 DEPLOY_LOCK_ACQUIRED=false
+DEPLOY_LOCK_TTL_SECONDS="${DEPLOY_LOCK_TTL_SECONDS:-3600}"
+DEPLOY_FORCE_UNLOCK="${DEPLOY_FORCE_UNLOCK:-false}"
 
 export VITE_EASYBAKE_APP_ENV="${VITE_EASYBAKE_APP_ENV:-${EASYBAKE_APP_ENV}}"
 
@@ -51,7 +55,9 @@ fi
 
 public_curl() {
   if [[ -n "${DEPLOY_HTTP_USER}" ]]; then
-    curl --user "${DEPLOY_HTTP_USER}:${DEPLOY_HTTP_PASSWORD}" "$@"
+    curl --config - "$@" <<EOF
+user = "${DEPLOY_HTTP_USER}:${DEPLOY_HTTP_PASSWORD}"
+EOF
     return
   fi
 
@@ -73,13 +79,47 @@ validate_public_vite_env() {
   fi
 }
 
-verify_frontend_release_has_no_secrets() {
+# 值级扫描：从本机 .env* / .deploy*.local 中提取“敏感变量名”的实际值，
+# 确认这些值没有被打进任何发布产物（防止 .env 文件中的密钥绕过变量名检查）。
+verify_release_dir_has_no_env_secret_values() {
+  local scan_dir="$1"
+  local env_file
+  local line
+  local var_name
+  local var_value
+
+  for env_file in .env .env.* .deploy*.local; do
+    [[ -f "${env_file}" ]] || continue
+
+    while IFS= read -r line; do
+      [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+      [[ "${line}" == *"="* ]] || continue
+
+      var_name="${line%%=*}"
+      var_value="${line#*=}"
+      var_value="${var_value%\"}"
+      var_value="${var_value#\"}"
+      var_value="${var_value%\'}"
+      var_value="${var_value#\'}"
+
+      if [[ "${var_name}" =~ (SECRET|PASSWORD|TOKEN|PRIVATE|SUPERUSER|QINIU|KEY) ]] \
+        && [[ "${#var_value}" -ge 8 ]] \
+        && grep -R -a -F -q -- "${var_value}" "${scan_dir}"; then
+        echo "❌ Release dir ${scan_dir} contains the VALUE of sensitive variable: ${var_name} (from ${env_file})" >&2
+        exit 1
+      fi
+    done < "${env_file}"
+  done
+}
+
+verify_release_dir_has_no_secrets() {
+  local scan_dir="$1"
   local secret_artifact
   local sensitive_patterns
   local pattern
 
   secret_artifact="$(
-    find "${FRONTEND_RELEASE_DIR}" \
+    find "${scan_dir}" \
       \( -name '.env' \
       -o -name '.env.*' \
       -o -name '.deploy*.local' \
@@ -96,7 +136,7 @@ verify_frontend_release_has_no_secrets() {
   )"
 
   if [[ -n "${secret_artifact}" ]]; then
-    echo "❌ Frontend release contains a secret-like file: ${secret_artifact}" >&2
+    echo "❌ Release dir ${scan_dir} contains a secret-like file: ${secret_artifact}" >&2
     exit 1
   fi
 
@@ -110,17 +150,20 @@ verify_frontend_release_has_no_secrets() {
     ".deploy_test.local"
   )
 
+  # 使用 grep -a（而非 -I）以覆盖二进制与预压缩产物。
   for pattern in "${sensitive_patterns[@]}"; do
-    if grep -R -I -F -q -- "${pattern}" "${FRONTEND_RELEASE_DIR}"; then
-      echo "❌ Frontend release contains sensitive marker: ${pattern}" >&2
+    if grep -R -a -F -q -- "${pattern}" "${scan_dir}"; then
+      echo "❌ Release dir ${scan_dir} contains sensitive marker: ${pattern}" >&2
       exit 1
     fi
   done
 
-  if [[ -n "${DEPLOY_HTTP_PASSWORD}" ]] && grep -R -I -F -q -- "${DEPLOY_HTTP_PASSWORD}" "${FRONTEND_RELEASE_DIR}"; then
-    echo "❌ Frontend release contains the deploy Basic Auth password." >&2
+  if [[ -n "${DEPLOY_HTTP_PASSWORD}" ]] && grep -R -a -F -q -- "${DEPLOY_HTTP_PASSWORD}" "${scan_dir}"; then
+    echo "❌ Release dir ${scan_dir} contains the deploy Basic Auth password." >&2
     exit 1
   fi
+
+  verify_release_dir_has_no_env_secret_values "${scan_dir}"
 }
 
 cleanup() {
@@ -141,30 +184,47 @@ if ! [[ "${FRONTEND_RELEASES_TO_KEEP}" =~ ^[0-9]+$ ]] || (( FRONTEND_RELEASES_TO
   exit 1
 fi
 
+if ! [[ "${DEPLOY_LOCK_TTL_SECONDS}" =~ ^[0-9]+$ ]] || (( DEPLOY_LOCK_TTL_SECONDS < 60 )); then
+  echo "DEPLOY_LOCK_TTL_SECONDS must be an integer greater than or equal to 60." >&2
+  exit 1
+fi
+
 acquire_frontend_deploy_lock() {
   ssh "${FRONTEND_REMOTE_SSH_TARGET}" bash -s -- \
     "${FRONTEND_RELEASES_PATH}" \
     "${FRONTEND_DEPLOY_LOCK_PATH}" \
     "${DEPLOY_LOCK_OWNER}" \
-    "${DEPLOY_LOCK_CREATED_AT}" <<'REMOTE_SCRIPT'
+    "${DEPLOY_LOCK_CREATED_AT}" \
+    "${DEPLOY_LOCK_TTL_SECONDS}" \
+    "${DEPLOY_FORCE_UNLOCK}" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 releases_path="$1"
 lock_path="$2"
 lock_owner="$3"
 lock_created_at="$4"
+lock_ttl_seconds="$5"
+force_unlock="$6"
 
 mkdir -p "${releases_path}"
 
 if ! mkdir "${lock_path}" 2>/dev/null; then
-  echo "Another deployment is already running. Retry after it finishes." >&2
+  owner_file="${lock_path}/owner"
+  updated_at="$(sed -n 's/^updated_at=//p' "${owner_file}" 2>/dev/null | head -n 1)"
+  updated_epoch="$(date -u -d "${updated_at}" +%s 2>/dev/null || echo 0)"
+  now_epoch="$(date -u +%s)"
+  age_seconds=$((now_epoch - updated_epoch))
 
-  if [[ -f "${lock_path}/owner" ]]; then
-    echo "Current lock metadata:" >&2
-    cat "${lock_path}/owner" >&2
+  if (( updated_epoch > 0 && age_seconds > lock_ttl_seconds )) && [[ "${force_unlock}" == "true" ]]; then
+    rm -rf "${lock_path}"
+    mkdir "${lock_path}"
+    echo "Released stale deployment lock after ${age_seconds}s." >&2
+  else
+    echo "Another deployment is already running or the lock is stale." >&2
+    [[ -f "${owner_file}" ]] && cat "${owner_file}" >&2
+    echo "Set DEPLOY_FORCE_UNLOCK=true only after confirming the owner is no longer running." >&2
+    exit 1
   fi
-
-  exit 1
 fi
 
 printf 'owner=%s\ncreated_at=%s\nupdated_at=%s\nstage=%s\n' \
@@ -242,34 +302,39 @@ REMOTE_SCRIPT
 }
 
 deploy_bff_with_rollback() {
-  ssh "${REMOTE_SSH_TARGET}" "rm -rf '${BFF_STAGED_DIR}' && mkdir -p '${BFF_STAGED_DIR}'"
-  rsync -az --delete --checksum dist/server/ "${REMOTE_SSH_TARGET}:${BFF_STAGED_DIR}/"
+  local release_id="bff-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  local staged_dir="${BFF_RELEASES_PATH}/${release_id}.next"
+  local release_dir="${BFF_RELEASES_PATH}/${release_id}"
+
+  ssh "${REMOTE_SSH_TARGET}" "rm -rf '${staged_dir}' && mkdir -p '${BFF_RELEASES_PATH}' '${staged_dir}'"
+  rsync -az --delete --checksum dist/server/ "${REMOTE_SSH_TARGET}:${staged_dir}/"
+  ssh "${REMOTE_SSH_TARGET}" "chmod -R u=rwX,go=rX '${staged_dir}'"
 
   ssh "${REMOTE_SSH_TARGET}" bash -s -- \
-    "${BFF_REMOTE_DIR}" \
-    "${BFF_REMOTE_PATH}" \
-    "${BFF_STAGED_DIR}" \
-    "${BFF_BACKUP_DIR}" \
+    "${BFF_CURRENT_LINK}" \
+    "${release_dir}" \
+    "${staged_dir}" \
     "${BFF_SERVICE_NAME}" \
     "${BFF_LOCAL_PORT}" \
     "${EASYBAKE_APP_ENV}" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
-bff_dir="$1"
-bff_entry_path="$2"
+current_link="$1"
+release_dir="$2"
 staged_dir="$3"
-backup_dir="$4"
-service_name="$5"
-local_port="$6"
-app_env="$7"
+service_name="$4"
+local_port="$5"
+app_env="$6"
+previous_link="${current_link}.previous"
+next_link="${current_link}.next"
 
 rollback() {
-  rm -rf "${staged_dir}"
+  rm -rf "${staged_dir}" "${next_link}"
 
-  if [[ -d "${backup_dir}" ]]; then
-    rm -rf "${bff_dir}"
-    mv -f "${backup_dir}" "${bff_dir}"
-    sudo systemctl restart "${service_name}" || true
+  if [[ -L "${previous_link}" ]]; then
+    ln -sfn "$(readlink -f "${previous_link}")" "${next_link}"
+    mv -Tf "${next_link}" "${current_link}"
+    sudo systemctl restart "${service_name}"
   fi
 }
 
@@ -278,24 +343,26 @@ if [[ ! -f "${staged_dir}/pocketbase-auth-bff.js" ]]; then
   exit 1
 fi
 
-rm -rf "${backup_dir}"
+mv -f "${staged_dir}" "${release_dir}"
 
-if [[ -d "${bff_dir}" ]]; then
-  cp -a "${bff_dir}" "${backup_dir}"
-fi
-
-rm -rf "${bff_dir}"
-mv -f "${staged_dir}" "${bff_dir}"
-
-if [[ ! -f "${bff_entry_path}" ]]; then
-  echo "Deployed BFF entry file is missing: ${bff_entry_path}" >&2
+if [[ ! -f "${release_dir}/pocketbase-auth-bff.js" ]]; then
+  echo "Deployed BFF entry file is missing: ${release_dir}/pocketbase-auth-bff.js" >&2
   rollback
   exit 1
 fi
 
+if [[ -L "${current_link}" ]]; then
+  ln -sfn "$(readlink -f "${current_link}")" "${previous_link}"
+fi
+
+ln -sfn "${release_dir}" "${next_link}"
+mv -Tf "${next_link}" "${current_link}"
+
 sudo mkdir -p "/etc/systemd/system/${service_name}.service.d"
 printf '[Service]\nEnvironment=EASYBAKE_APP_ENV=%s\n' "${app_env}" \
   | sudo tee "/etc/systemd/system/${service_name}.service.d/20-easybake-app-env.conf" >/dev/null
+printf '[Service]\nExecStart=\nExecStart=/usr/bin/node %s/pocketbase-auth-bff.js\n' "${current_link}" \
+  | sudo tee "/etc/systemd/system/${service_name}.service.d/80-atomic-release.conf" >/dev/null
 sudo systemctl daemon-reload
 
 if ! sudo systemctl restart "${service_name}"; then
@@ -312,7 +379,33 @@ if [[ "${bff_auth_status}" != "400" ]]; then
   exit 1
 fi
 
-rm -rf "${backup_dir}"
+REMOTE_SCRIPT
+
+  ssh "${REMOTE_SSH_TARGET}" bash -s -- \
+    "${BFF_RELEASES_PATH}" \
+    "${BFF_CURRENT_LINK}" \
+    "${BFF_RELEASES_TO_KEEP}" <<'REMOTE_SCRIPT'
+set -euo pipefail
+
+releases_path="$1"
+current_link="$2"
+releases_to_keep="$3"
+previous_link="${current_link}.previous"
+current_target="$(readlink -f "${current_link}" || true)"
+previous_target="$(readlink -f "${previous_link}" || true)"
+kept=0
+
+while IFS= read -r release_path; do
+  resolved_path="$(readlink -f "${release_path}")"
+  if [[ "${resolved_path}" == "${current_target}" || "${resolved_path}" == "${previous_target}" ]]; then
+    continue
+  fi
+  if (( kept < releases_to_keep - 2 )); then
+    kept=$((kept + 1))
+    continue
+  fi
+  rm -rf -- "${release_path}"
+done < <(find "${releases_path}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
 REMOTE_SCRIPT
 }
 
@@ -323,6 +416,7 @@ publish_frontend_release() {
 
   ssh "${FRONTEND_REMOTE_SSH_TARGET}" "mkdir -p '${FRONTEND_RELEASES_PATH}' && chmod 755 '${FRONTEND_RELEASES_PATH}'"
   rsync -az --delete "${FRONTEND_RELEASE_DIR}/" "${FRONTEND_REMOTE_SSH_TARGET}:${staged_path}/"
+  ssh "${FRONTEND_REMOTE_SSH_TARGET}" "chmod -R u=rwX,go=rX '${staged_path}'"
 
   ssh "${FRONTEND_REMOTE_SSH_TARGET}" bash -s -- \
     "${FRONTEND_CURRENT_LINK}" \
@@ -454,12 +548,17 @@ echo "🔨 Building frontend..."
 validate_public_vite_env
 npm run build
 
-echo "📦 Staging frontend release..."
-cp -R dist/. "${FRONTEND_RELEASE_DIR}/"
-verify_frontend_release_has_no_secrets
-
 echo "🔨 Building BFF..."
 npm run auth:bff:build
+
+echo "📦 Staging frontend release..."
+cp -R dist/. "${FRONTEND_RELEASE_DIR}/"
+# 归一化产物权限：本地 600 权限文件（如协作工具写入）原样上线会导致 Nginx 403。
+chmod -R u=rwX,go=rX "${FRONTEND_RELEASE_DIR}"
+
+echo "🔍 Scanning release artifacts for secrets..."
+verify_release_dir_has_no_secrets "${FRONTEND_RELEASE_DIR}"
+verify_release_dir_has_no_secrets "dist/server"
 
 echo "🔒 Acquiring deployment lock..."
 acquire_frontend_deploy_lock

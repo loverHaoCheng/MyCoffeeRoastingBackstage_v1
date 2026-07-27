@@ -23,11 +23,11 @@ const REALTIME_SUBSCRIPTIONS = [
 ] as const;
 
 const TOPIC_SCOPE_MAP: Record<(typeof REALTIME_SUBSCRIPTIONS)[number], AppRouteKey[]> = {
-  'app_settings/*': ['bean', 'production', 'roast', 'settings'],
+  'app_settings/*': ['bean', 'finance', 'production', 'roast', 'settings'],
   'bean_sale_specs/*': ['bean'],
-  'green_beans/*': ['bean', 'production', 'roast'],
+  'green_beans/*': ['bean', 'finance', 'production', 'roast'],
   'green_bean_purchase_batches/*': ['bean'],
-  'roast_batches/*': ['bean', 'production', 'roast'],
+  'roast_batches/*': ['bean', 'finance', 'production', 'roast'],
   'roast_profiles/*': ['production', 'roast'],
 };
 

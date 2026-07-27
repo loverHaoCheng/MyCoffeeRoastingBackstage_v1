@@ -6,6 +6,7 @@ import type { FinanceExpenseRecord } from '../types';
 
 export interface FinanceProfitMetrics {
   beanCost: number;
+  nonBeanCost: number;
   plannedBatchCount: number;
   profit: number;
   revenue: number;
@@ -62,6 +63,17 @@ export const buildReservedShippingUnitCountByBatchId = (
   }, new Map<string, number>());
 };
 
+export const resolveEffectiveSaleUnitPrice = (
+  bean: Bean | undefined,
+  saleUnitPriceOverride?: number | null,
+): number => {
+  if (saleUnitPriceOverride != null && saleUnitPriceOverride > 0) {
+    return saleUnitPriceOverride;
+  }
+
+  return bean?.defaultSaleUnitPrice ?? 0;
+};
+
 export const calculateRoastSaleCapacity = (
   inputWeightGrams: number,
   template: CostTemplate,
@@ -82,20 +94,23 @@ const calculateProfitMetrics = (
   saleUnitCount: number,
   plannedBatchCount: number,
   shippingCost = 0,
+  saleUnitPriceOverride?: number | null,
 ): FinanceProfitMetrics | null => {
-  const saleUnitPrice = bean.defaultSaleUnitPrice ?? 0;
+  const saleUnitPrice = resolveEffectiveSaleUnitPrice(bean, saleUnitPriceOverride);
 
   if (saleUnitCount <= 0 || saleUnitPrice <= 0) {
     return null;
   }
 
-  const revenue = saleUnitCount * (saleUnitPrice - getNonBeanCostPerUnit(template));
+  const revenue = saleUnitCount * saleUnitPrice;
   const beanCost = saleUnitCount * getBeanCostPerUnit(bean, template);
+  const nonBeanCost = saleUnitCount * getNonBeanCostPerUnit(template);
 
   return {
     beanCost: toMoney(beanCost),
     plannedBatchCount,
-    profit: toMoney(revenue - beanCost - shippingCost),
+    nonBeanCost: toMoney(nonBeanCost),
+    profit: toMoney(revenue - beanCost - nonBeanCost - shippingCost),
     revenue: toMoney(revenue),
     saleUnitCount,
     shippingCost: toMoney(shippingCost),
@@ -136,12 +151,17 @@ export const calculateRoastBatchProfit = (
     return null;
   }
 
-  const capacity = calculateRoastSaleCapacity(batch.inputWeightGrams, template);
   const saleUnitCount = batch.soldUnitCount ?? 1;
 
-  if (saleUnitCount > capacity.maximumSoldUnitCount) {
-    return null;
-  }
-
-  return calculateProfitMetrics(bean, template, saleUnitCount, 1, shippingCost);
+  // 注意：不再因 saleUnitCount 超过模板理论容量而剔除整个批次。
+  // 成本模板事后被调整（脱水率/单份克重变化）会使历史批次“超容量”，
+  // 此时仍按实际售出份数计算收入与成本，避免财务总览静默漏算。
+  return calculateProfitMetrics(
+    bean,
+    template,
+    saleUnitCount,
+    1,
+    shippingCost,
+    batch.finalSaleUnitPrice,
+  );
 };

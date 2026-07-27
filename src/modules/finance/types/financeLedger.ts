@@ -110,6 +110,7 @@ export interface RoastBatchRevenueDetail {
   date: string;
   id: string;
   notes: null | string;
+  nonBeanCost: number;
   saleUnitCount: number;
   saleUnitPrice: number;
   shippingCost: number;

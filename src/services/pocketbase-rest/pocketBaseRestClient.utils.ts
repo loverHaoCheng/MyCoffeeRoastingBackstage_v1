@@ -24,7 +24,7 @@ export const buildCollectionUrl = (baseUrl: string, collectionName: string, path
 };
 
 const escapeFilterValue = (value: string): string => {
-  return `'${value.replaceAll("'", "\\'")}'`;
+  return `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 };
 
 export const buildFilterExpression = (

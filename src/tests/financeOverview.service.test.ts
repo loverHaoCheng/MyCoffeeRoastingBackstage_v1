@@ -71,7 +71,7 @@ describe('finance profit calculations', () => {
     });
 
     // 1000g / 200g = 5 batches; each batch produces floor(160g / 80g) = 2 units.
-    expect(overview.estimatedRevenue).toBe(700);
+    expect(overview.estimatedRevenue).toBe(800);
     expect(overview.estimatedBeanCost).toBe(240);
     expect(overview.estimatedProfit).toBe(460);
   });
@@ -86,10 +86,17 @@ describe('finance profit calculations', () => {
     expect(calculateRoastBatchProfit(createBatch('batch-1', 2), bean, templatesById)).toMatchObject({
       beanCost: 48,
       profit: 92,
-      revenue: 140,
+      revenue: 160,
       saleUnitCount: 2,
     });
-    expect(calculateRoastBatchProfit(createBatch('batch-1', 3), bean, templatesById)).toBeNull();
+    // 成本模板事后被调整可能使历史批次“超容量”；此时仍按实际售出份数计算，
+    // 不再返回 null 整锅剔除（否则财务总览会静默漏算已实现收入）。
+    expect(calculateRoastBatchProfit(createBatch('batch-1', 3), bean, templatesById)).toMatchObject({
+      beanCost: 72,
+      profit: 138,
+      revenue: 240,
+      saleUnitCount: 3,
+    });
   });
 
   it('allocates related paid shipping by the number of associated sale units', () => {
@@ -115,7 +122,7 @@ describe('finance profit calculations', () => {
       key: 'realizedIncome', roastBatches: [createBatch('batch-1', 2), createBatch('batch-2', 1)], range, templates: [template],
     });
 
-    expect(overview.realizedIncome).toBe(210);
+    expect(overview.realizedIncome).toBe(240);
     expect(overview.realizedBeanCost).toBe(72);
     expect(overview.realizedProfit).toBe(118);
     const recordById = new Map(drilldown.records.map((record) => [record.id, record]));

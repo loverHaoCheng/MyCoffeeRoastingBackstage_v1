@@ -174,4 +174,28 @@ describe('AppRealtimeSync', () => {
 
     expect(refreshQuickAppDataMock).toHaveBeenCalledWith(queryClient, 'roast');
   });
+
+  it('refreshes finance when roast batches or template settings change', async () => {
+    vi.useFakeTimers();
+    window.location.hash = '#/finance';
+
+    const { queryClient } = renderWithProviders(<AppRealtimeSync />);
+    const realtimeConnection = FakeEventSource.instances[0];
+
+    refreshQuickAppDataMock.mockClear();
+    realtimeConnection?.emit('roast_batches/*', '{"action":"update"}');
+    vi.advanceTimersByTime(400);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(refreshQuickAppDataMock).toHaveBeenCalledWith(queryClient, 'finance');
+
+    refreshQuickAppDataMock.mockClear();
+    realtimeConnection?.emit('app_settings/*', '{"action":"update"}');
+    vi.advanceTimersByTime(400);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(refreshQuickAppDataMock).toHaveBeenCalledWith(queryClient, 'finance');
+  });
 });

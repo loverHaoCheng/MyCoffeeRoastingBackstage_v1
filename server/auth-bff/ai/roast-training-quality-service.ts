@@ -232,7 +232,7 @@ export const updateRoastTrainingSampleQuality = async (
   sampleId: string,
   result: RoastTrainingQualityCheckResult,
 ): Promise<void> => {
-  const upstream = await proxyPocketBaseRequest(`/api/collections/${TRAINING_SAMPLES_COLLECTION}/records/${sampleId}`, {
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${encodeURIComponent(TRAINING_SAMPLES_COLLECTION)}/records/${encodeURIComponent(sampleId)}`, {
     body: JSON.stringify({
       quality_checked_at: result.checkedAt,
       quality_report: result.report,

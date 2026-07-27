@@ -28,10 +28,12 @@ export class PocketBaseRestClient {
   private readonly timeoutMs: number;
   private readonly autoManageOwner: boolean;
   private readonly autoManageTimestamps: boolean;
+  private readonly usesDefaultFetcher: boolean;
 
   constructor(options: PocketBaseRestClientOptions) {
     const raw = options.fetcher ?? fetch;
     this.fetcher = (...args: Parameters<Fetcher>) => raw(...args);
+    this.usesDefaultFetcher = options.fetcher == null;
     this.baseUrl = normalizePocketBaseBaseUrl(
       options.useAuthGateway === false ? options.projectUrl : resolvePocketBaseBaseUrl(),
     );
@@ -49,8 +51,14 @@ export class PocketBaseRestClient {
 
     const ownerId = this.autoManageOwner && collectionName !== 'users' ? resolveOwnerId() : undefined;
     const filter = buildFilterExpression(options.match, ownerId);
-    const requestedLimit = options.limit ?? DEFAULT_PAGE_SIZE;
-    const perPage = Math.min(requestedLimit, DEFAULT_PAGE_SIZE);
+    const requestedLimit = options.limit;
+
+    if (requestedLimit != null && requestedLimit <= 0) {
+      return [];
+    }
+
+    const perPage =
+      requestedLimit == null ? DEFAULT_PAGE_SIZE : Math.min(requestedLimit, DEFAULT_PAGE_SIZE);
     const collected: T[] = [];
     let page = 1;
 
@@ -118,7 +126,7 @@ export class PocketBaseRestClient {
         const items = toRecordArray<T>(payload);
         collected.push(...items);
 
-        if (requestedLimit <= 0 || collected.length >= requestedLimit) {
+        if (requestedLimit != null && collected.length >= requestedLimit) {
           return collected.slice(0, requestedLimit);
         }
 
@@ -269,6 +277,49 @@ export class PocketBaseRestClient {
           }
         }),
     );
+  }
+
+  async request<T>(path: string, init: RequestInit): Promise<T> {
+    if (!isConfigured(this.baseUrl)) {
+      throw new AppError('PocketBase 连接配置缺失。', { code: 'CONFIG' });
+    }
+
+    const controller = new AbortController();
+    const timeoutId = globalThis.setTimeout(() => {
+      controller.abort();
+    }, this.timeoutMs);
+
+    try {
+      const requestInit: RequestInit = {
+        ...init,
+        credentials: 'same-origin',
+        headers: mergeHeaders(getRequestHeaders(), init.headers),
+      };
+
+      if (this.usesDefaultFetcher && shouldAttachAbortSignal()) {
+        requestInit.signal = controller.signal;
+      }
+
+      const response = await this.fetcher(new URL(path, `${this.baseUrl}/`).toString(), requestInit);
+      const payload = await parseJsonResponse(response);
+
+      if (!response.ok) {
+        throw toAppError(response, payload);
+      }
+
+      return payload as T;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new AppError('PocketBase 请求超时。', { code: 'TIMEOUT', cause: error });
+      }
+      throw new AppError('无法连接到 PocketBase，请检查网络、地址或服务状态。', {
+        code: 'NETWORK',
+        cause: error,
+      });
+    } finally {
+      globalThis.clearTimeout(timeoutId);
+    }
   }
 
   private withOwner(payload: Record<string, unknown>): Record<string, unknown> {

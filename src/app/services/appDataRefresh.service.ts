@@ -185,6 +185,7 @@ const getSyncJobsForScope = (scope: AppRefreshScope): NamedSyncJob[] => {
   if (scope === 'finance') {
     return [
       { label: '生豆', promise: beanService.syncLocalAndRemote() },
+      { label: '烘焙记录', promise: roastBatchService.syncLocalAndRemote() },
       { label: '成本核算', promise: financeService.syncLocalAndRemote() },
       { label: '财务台账', promise: financeLedgerService.syncLocalAndRemote() },
     ];
@@ -219,6 +220,7 @@ const hydrateAppQueryCaches = (queryClient: QueryClient, scope: AppRefreshScope)
   }
 
   if (scope === 'all' || scope === 'finance') {
+    queryClient.setQueryData(roastBatchQueryKeys.list(), roastBatchService.getBootstrappedBatches());
     queryClient.setQueryData(financeQueryKeys.calculations(), financeService.getBootstrappedCalculations());
     queryClient.setQueryData(financeQueryKeys.expenses(), financeLedgerService.getBootstrappedExpenseRecords());
     queryClient.setQueryData(financeQueryKeys.incomes(), financeLedgerService.getBootstrappedIncomeRecords());

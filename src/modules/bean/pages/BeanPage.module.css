@@ -277,10 +277,6 @@
   color: rgb(142 142 147 / 0.66);
 }
 
-.creationDrawer :global(.ant-drawer-content) {
-  border-radius: 20px 20px 0 0;
-}
-
 .creationDrawer :global(.ant-drawer-header) {
   padding: 18px 24px 10px;
   border-bottom: 0;
@@ -289,14 +285,6 @@
 .creationDrawer :global(.ant-drawer-body) {
   padding: 0 24px 24px;
   overflow-x: hidden;
-}
-
-.detailDrawer :global(.ant-drawer-content) {
-  border-radius: 0;
-}
-
-.detailDrawer[data-placement="bottom"] :global(.ant-drawer-content) {
-  border-radius: 20px 20px 0 0;
 }
 
 .detailDrawer :global(.ant-drawer-header) {

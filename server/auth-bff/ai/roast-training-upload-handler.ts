@@ -10,10 +10,10 @@ import { isRecord, toTrimmedString } from '../utils.js';
 import { checkAndUpdateRoastTrainingSampleQuality, TRAINING_SAMPLES_COLLECTION } from './roast-training-quality-service.js';
 import { requestRoastTrainingRecommendation } from './roast-training-recommendation-client.js';
 import {
-  createSuccessfulRoastAiUsage,
   ensureRoastAiUsageAvailable,
-  logRoastAiUsageFailure,
   readRoastAiUsageContext,
+  releaseRoastAiUsageReservation,
+  reserveRoastAiUsage,
   type RoastAiUsageContext,
 } from './roast-usage-handler.js';
 import type {
@@ -138,7 +138,7 @@ const getRecordById = async (
     return null;
   }
 
-  const upstream = await proxyPocketBaseRequest(`/api/collections/${collectionName}/records/${recordId}`, {
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${encodeURIComponent(collectionName)}/records/${encodeURIComponent(recordId)}`, {
     headers: {
       Accept: 'application/json',
       Authorization: token,
@@ -241,7 +241,7 @@ const updatePocketBaseRecord = async (
   recordId: string,
   payload: Record<string, unknown>,
 ): Promise<Record<string, unknown>> => {
-  const upstream = await proxyPocketBaseRequest(`/api/collections/${collectionName}/records/${recordId}`, {
+  const upstream = await proxyPocketBaseRequest(`/api/collections/${encodeURIComponent(collectionName)}/records/${encodeURIComponent(recordId)}`, {
     body: JSON.stringify(payload),
     headers: {
       Accept: 'application/json',
@@ -557,6 +557,7 @@ export const handleRoastTrainingUpload = async (
 
     const snapshot = await buildTrainingSnapshot(authResponse.token, authResponse.record.id, roastBatch, roastCurve);
     const basePlanDraft = buildPlanDraftFromSnapshot(snapshot);
+    const usage = await reserveRoastAiUsage(usageContext);
     const recommendation = await requestRoastTrainingRecommendation({
       basePlanDraft,
       quality: null,
@@ -604,8 +605,6 @@ export const handleRoastTrainingUpload = async (
       sample_id: toTrimmedString(sample.id),
       status: 'uploaded',
     });
-    const usage = await createSuccessfulRoastAiUsage(usageContext);
-
     sendApiSuccess(response, {
       quality: qualityCheck,
       recommendation: toRecommendationView(recommendationRecord),
@@ -615,7 +614,7 @@ export const handleRoastTrainingUpload = async (
     });
   } catch (error) {
     if (usageContext) {
-      await logRoastAiUsageFailure(
+      await releaseRoastAiUsageReservation(
         usageContext,
         error instanceof Error ? error.message : '整体复盘与计划建议生成失败。',
       );

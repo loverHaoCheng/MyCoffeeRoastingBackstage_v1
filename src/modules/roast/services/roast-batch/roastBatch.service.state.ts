@@ -24,12 +24,28 @@ const normalizeStoredBatch = (batch: LegacyRoastBatchRecord): RoastBatchRecord =
 });
 
 export const loadLocalBatches = (): RoastBatchRecord[] => {
-  void STORAGE_KEY;
+  if (typeof window !== 'undefined' && localRoastBatches.length === 0) {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      const parsed: unknown = stored ? JSON.parse(stored) : [];
+
+      if (Array.isArray(parsed)) {
+        localRoastBatches = parsed.map((batch) => normalizeStoredBatch(batch as LegacyRoastBatchRecord));
+      }
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+
   return sortBatches(localRoastBatches.map(normalizeStoredBatch));
 };
 
 export const saveLocalBatches = (batches: RoastBatchRecord[]): void => {
   localRoastBatches = sortBatches(batches);
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(localRoastBatches));
+  }
 };
 
 export const createOptimisticLocalBatchId = (): string => {
@@ -68,4 +84,8 @@ export const restoreStoredBatch = (batch: RoastBatchRecord): void => {
 export const clearRoastBatchState = (): void => {
   pendingOptimisticCreateBatchIds.clear();
   localRoastBatches = [];
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(STORAGE_KEY);
+  }
 };

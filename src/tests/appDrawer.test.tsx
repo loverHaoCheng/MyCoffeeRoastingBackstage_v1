@@ -153,4 +153,14 @@ describe('AppDrawer', () => {
     expect(await screen.findByRole('button', { name: '拖动关闭抽屉' })).toBeInTheDocument();
     expect(container.querySelector('[data-swipe-dismissible="true"]')).not.toBeNull();
   });
+
+  it('identifies the drawer surface placement for shared placement styling', () => {
+    const { container } = render(
+      <AppDrawer getContainer={false} onClose={vi.fn()} open placement="bottom" title="底部抽屉">
+        抽屉内容
+      </AppDrawer>,
+    );
+
+    expect(container.querySelector('.ant-drawer-content')).toHaveAttribute('data-placement', 'bottom');
+  });
 });

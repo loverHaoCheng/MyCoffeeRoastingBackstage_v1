@@ -19,10 +19,8 @@ import {
   hasGreenBeanConnection,
   hasOverviewSalesModeField,
   isMissingRemoteResourceError,
-  isMissingRoastedBeanNameColumnError,
   mapUnknownRemoteRecord,
   ok,
-  omitRoastedBeanNamePayload,
   resolveNormalizedRoastLevel,
   resolveRoastedBeanName,
   rollbackInventoryAdjustments,
@@ -39,6 +37,7 @@ import {
 import { removeLocalCurveByBatchId } from '../roast-curve/roastCurve.service.state';
 
 export interface RoastBatchRepository {
+  readonly managesInventory?: boolean;
   createBatch(input: RoastBatchCreateInput): Promise<ApiResponse<RoastBatchRecord>>;
   deleteBatch(batchId: string): Promise<void>;
   getBatchById(batchId: string): Promise<null | RoastBatchRecord>;
@@ -108,37 +107,22 @@ class MockRoastBatchRepository implements RoastBatchRepository {
 }
 
 class RemoteRoastBatchRepository implements RoastBatchRepository {
+  readonly managesInventory = true;
+
   constructor(private readonly client: PocketBaseRestClient = getGreenBeanClient()) {}
 
   async createBatch(input: RoastBatchCreateInput) {
     const payload = toPocketBaseRoastBatchCreatePayload(input);
-    let rows: Record<string, unknown>[];
-
-    try {
-      rows = await this.client.insert('roast_batches', payload, { select: '*' });
-    } catch (error) {
-      if (!isMissingRoastedBeanNameColumnError(error)) {
-        throw error;
-      }
-
-      logger.warn('roast_batches missing roasted_bean_name column, retrying without it', {
-        greenBeanId: input.greenBeanId,
-      });
-      rows = await this.client.insert('roast_batches', omitRoastedBeanNamePayload(payload), { select: '*' });
-    }
-
-    const createdRow = rows[0];
-
-    if (!createdRow) {
-      throw new AppError('创建烘焙记录失败：未返回数据。', { code: 'DATA' });
-    }
-
+    const createdRow = await this.client.request<Record<string, unknown>>('/api/roast-batches', {
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
     return ok(mapUnknownRemoteRecord(createdRow));
   }
 
   async deleteBatch(batchId: string) {
-    await this.client.delete('roast_curve_records', { match: { roast_batch_id: batchId } });
-    await this.client.delete('roast_batches', { match: { id: batchId } });
+    await this.client.request(`/api/roast-batches/${encodeURIComponent(batchId)}`, { method: 'DELETE' });
   }
 
   async getBatchById(batchId: string) {
@@ -200,33 +184,14 @@ class RemoteRoastBatchRepository implements RoastBatchRepository {
 
   async updateBatch(batchId: string, input: RoastBatchUpdateInput) {
     const payload = toPocketBaseRoastBatchPayload(input);
-    let rows: Record<string, unknown>[];
-
-    try {
-      rows = await this.client.update('roast_batches', payload, {
-        match: { id: batchId },
-        select: '*',
-      });
-    } catch (error) {
-      if (!isMissingRoastedBeanNameColumnError(error)) {
-        throw error;
-      }
-
-      logger.warn('roast_batches missing roasted_bean_name column during update, retrying without it', {
-        batchId,
-      });
-      rows = await this.client.update('roast_batches', omitRoastedBeanNamePayload(payload), {
-        match: { id: batchId },
-        select: '*',
-      });
-    }
-
-    const updatedRow = rows[0];
-
-    if (!updatedRow) {
-      throw new AppError('更新失败：未找到记录。', { code: 'DATA' });
-    }
-
+    const updatedRow = await this.client.request<Record<string, unknown>>(
+      `/api/roast-batches/${encodeURIComponent(batchId)}`,
+      {
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      },
+    );
     return ok(mapUnknownRemoteRecord(updatedRow));
   }
 }
@@ -269,7 +234,7 @@ export const roastBatchCrud = {
     });
 
     try {
-      if (inventoryImpactWeight > 0) {
+      if (inventoryImpactWeight > 0 && !repository.managesInventory) {
         await beanService.adjustRemainingWeight(input.greenBeanId, inventoryImpactWeight);
       }
 
@@ -308,7 +273,7 @@ export const roastBatchCrud = {
 
       return createdResponse;
     } catch (error) {
-      if (inventoryImpactWeight > 0) {
+      if (inventoryImpactWeight > 0 && !repository.managesInventory) {
         try {
           await beanService.adjustRemainingWeight(input.greenBeanId, -inventoryImpactWeight);
         } catch (rollbackError) {
@@ -342,7 +307,7 @@ export const roastBatchCrud = {
     const currentImpactWeight = getInventoryImpactWeight(currentBatch);
     const rollbacks: (() => Promise<unknown>)[] = [];
 
-    if (currentImpactWeight > 0) {
+    if (currentImpactWeight > 0 && !repository.managesInventory) {
       await beanService.adjustRemainingWeight(currentBatch.greenBeanId, -currentImpactWeight);
       rollbacks.push(() => beanService.adjustRemainingWeight(currentBatch.greenBeanId, currentImpactWeight));
     }
@@ -372,6 +337,12 @@ export const roastBatchCrud = {
     const currentImpactWeight = getInventoryImpactWeight(currentBatch);
     const nextImpactWeight = getInventoryImpactWeight(nextBatch);
     const rollbacks: (() => Promise<unknown>)[] = [];
+
+    if (repository.managesInventory) {
+      const response = await repository.updateBatch(batchId, input);
+      saveBatchRecord(response.data);
+      return response;
+    }
 
     if (currentBatch.greenBeanId === nextBatch.greenBeanId) {
       const deltaWeight = nextImpactWeight - currentImpactWeight;

@@ -266,6 +266,7 @@ vi.mock('@/modules/roast/services/roastAnalysis.service', () => ({
 
 describe('ProductionPage (烘焙历史)', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     roastBatchesMock.current = [roastBatchesMock.defaultBatch];
     roastCurveDataMock.current = null;
     trainingUploadMutationStateMock.current = {

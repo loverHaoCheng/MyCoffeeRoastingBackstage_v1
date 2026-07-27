@@ -81,7 +81,7 @@ export const pocketBaseConnectionFormSchema = z.object({
 
 const costTemplateStorageItemSchema = z.object({
   createdAt: z.string().datetime(),
-  dehydrationRate: z.number(),
+  dehydrationRate: z.number().min(0).max(99.9),
   energyCost: z.number(),
   id: z.string(),
   laborCost: z.number(),
@@ -89,8 +89,8 @@ const costTemplateStorageItemSchema = z.object({
   notes: z.string(),
   otherCost: z.number(),
   packagingCost: z.number(),
-  roastInputWeightGrams: z.number().optional().default(200),
-  saleUnitWeightGrams: z.number(),
+  roastInputWeightGrams: z.number().positive().optional().default(200),
+  saleUnitWeightGrams: z.number().positive(),
   targetProfitRate: z.number(),
   updatedAt: z.string().datetime(),
 });

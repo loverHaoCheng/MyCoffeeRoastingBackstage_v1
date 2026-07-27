@@ -1,7 +1,7 @@
 import type { ServerResponse } from 'node:http';
 
-import { pocketBaseBaseUrl } from './config.js';
-import { parseJsonResponse, sendJson } from './http.js';
+import { pocketBaseBaseUrl, pocketBaseRequestTimeoutMs } from './config.js';
+import { fetchWithTimeout, parseJsonResponse, sendJson } from './http.js';
 import type { PocketBaseErrorPayload, PocketBaseListResponseItem, PocketBaseSessionResponse, PocketBaseUserRecord, SessionUser } from './types.js';
 import { isRecord, toTrimmedString } from './utils.js';
 
@@ -102,7 +102,7 @@ export const proxyPocketBaseRequest = async (
   path: string,
   init: RequestInit,
 ): Promise<{ payload: unknown; response: Response }> => {
-  const response = await fetch(buildPocketBaseUrl(path), init);
+  const response = await fetchWithTimeout(buildPocketBaseUrl(path), init, pocketBaseRequestTimeoutMs);
   const payload = await parseJsonResponse(response);
 
   return {

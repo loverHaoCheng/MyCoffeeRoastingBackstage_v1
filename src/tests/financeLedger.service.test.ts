@@ -211,7 +211,7 @@ describe('financeLedgerService', () => {
     });
   });
 
-  it('does not fail income reads when the optional income endpoint returns a server error', async () => {
+  it('fails income reads on transient server errors instead of silently returning empty data', async () => {
     pocketBaseConnectionSettingsService.save({
       greenBean: {
         projectUrl: 'http://81.70.224.75',
@@ -231,10 +231,9 @@ describe('financeLedgerService', () => {
       }),
     );
 
-    await expect(financeLedgerService.listIncomeRecords()).resolves.toMatchObject({
-      code: 0,
-      data: [],
-      message: 'ok',
+    // 临时性错误必须向上抛出：静默返回空数组会让财务总览的收入被清零。
+    await expect(financeLedgerService.listIncomeRecords()).rejects.toMatchObject({
+      status: 500,
     });
   });
 
@@ -287,7 +286,7 @@ describe('financeLedgerService', () => {
     expect(financeLedgerService.getBootstrappedIncomeRecords()).toEqual([]);
   });
 
-  it('keeps ledger sync successful when the optional income endpoint fails unexpectedly', async () => {
+  it('fails ledger sync when the income endpoint hits a transient server error', async () => {
     pocketBaseConnectionSettingsService.save({
       greenBean: {
         projectUrl: 'http://81.70.224.75',
@@ -328,11 +327,10 @@ describe('financeLedgerService', () => {
       return Promise.resolve([]);
     });
 
-    await expect(financeLedgerService.syncLocalAndRemote()).resolves.toEqual({
-      downloaded: 1,
-      uploaded: 0,
+    // 临时性错误不得被当作“集合缺失”容忍：否则同步会用空数组覆盖收入数据。
+    await expect(financeLedgerService.syncLocalAndRemote()).rejects.toMatchObject({
+      status: 500,
     });
-    expect(financeLedgerService.getBootstrappedIncomeRecords()).toEqual([]);
   });
 
   it('shows a setup error when saving income before the income collection exists', async () => {

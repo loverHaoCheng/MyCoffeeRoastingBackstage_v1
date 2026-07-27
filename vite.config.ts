@@ -35,11 +35,9 @@ const formatBuildVersionTimestamp = (value: Date): string => {
 const packageVersionDigits = (packageJson.version ?? '0.0.0').replace(/\D/g, '') || '000';
 const buildVersion = `${packageVersionDigits}${formatBuildVersionTimestamp(buildTimestamp)}`;
 
-const defaultDevApiProxyTarget = 'https://www.easybake.top';
-
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
-  const devApiProxyTarget = env.VITE_DEV_API_PROXY_TARGET.trim() || defaultDevApiProxyTarget;
+  const devApiProxyTarget = env.VITE_DEV_API_PROXY_TARGET.trim();
 
   return {
     base: './',
@@ -79,13 +77,13 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      proxy: {
+      proxy: devApiProxyTarget ? {
         '/api': {
           changeOrigin: true,
-          secure: false,
+          secure: true,
           target: devApiProxyTarget,
         },
-      },
+      } : undefined,
     },
     resolve: {
       alias: {
@@ -94,6 +92,8 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       environment: 'jsdom',
+      // 多个文件会临时修改 import.meta.env；串行运行避免全局环境状态串扰。
+      fileParallelism: false,
       globals: true,
       setupFiles: './src/tests/setup.ts',
       css: true,

@@ -1,4 +1,5 @@
 import SaveOutlined from '@ant-design/icons/SaveOutlined';
+import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
@@ -69,6 +70,7 @@ const formatOptionalCurrency = (value: number | null | undefined): string => {
 };
 
 export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchDrawerProps) {
+  const { message } = App.useApp();
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
   const [form, setForm] = useState<RoastBatchFormState>(() => createFormState(batch));
@@ -142,7 +144,13 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
   };
 
   const handleSaveEvaluation = () => {
-    onUpdate?.(batch.id, { evaluation: form.evaluation });
+    if (!onUpdate) {
+      return;
+    }
+
+    void Promise.resolve(onUpdate(batch.id, { evaluation: form.evaluation })).catch(() => {
+      void message.error('评价保存失败，请稍后重试。');
+    });
   };
 
   return (

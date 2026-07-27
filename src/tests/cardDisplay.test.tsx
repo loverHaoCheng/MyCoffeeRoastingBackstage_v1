@@ -227,9 +227,12 @@ describe('card display settings', () => {
     );
     const card = container.querySelector('[data-card-opens-detail="true"]');
 
-    expect(card).not.toBeNull();
-    fireEvent(card!, createPointerEvent('pointerdown', 24, 24));
-    fireEvent.click(card!);
+    if (!card) {
+      throw new Error('Expected a detail card.');
+    }
+
+    fireEvent(card, createPointerEvent('pointerdown', 24, 24));
+    fireEvent.click(card);
 
     expect(onView).toHaveBeenCalledTimes(1);
   });
@@ -241,10 +244,13 @@ describe('card display settings', () => {
     );
     const card = container.querySelector('[data-card-opens-detail="true"]');
 
-    expect(card).not.toBeNull();
-    fireEvent(card!, createPointerEvent('pointerdown', 24, 24));
-    fireEvent(card!, createPointerEvent('pointermove', 24, 48));
-    fireEvent.click(card!);
+    if (!card) {
+      throw new Error('Expected a detail card.');
+    }
+
+    fireEvent(card, createPointerEvent('pointerdown', 24, 24));
+    fireEvent(card, createPointerEvent('pointermove', 24, 48));
+    fireEvent.click(card);
 
     expect(onView).not.toHaveBeenCalled();
   });

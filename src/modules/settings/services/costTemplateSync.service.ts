@@ -1,7 +1,7 @@
 import { costTemplateSettingsStorageSchema } from '@/modules/settings/schemas';
 import { appSettingsSyncService, type AppSettingRecord } from '@/modules/settings/services/appSettingsSync.service';
 import { costTemplateSettingsService } from '@/modules/settings/services/costTemplateSettings.service';
-import { createDefaultCostTemplateSettings, type CostTemplateSettings } from '@/modules/settings/types';
+import type { CostTemplateSettings } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 
@@ -28,10 +28,6 @@ const parseRemoteSettings = (record: AppSettingRecord): CostTemplateSettings => 
   };
 };
 
-const normalizeRemoteResult = (remoteSettings: CostTemplateSettings | null): CostTemplateSettings => {
-  return remoteSettings ?? createDefaultCostTemplateSettings();
-};
-
 export const costTemplateSyncService = {
   async loadRemote(): Promise<CostTemplateSettings | null> {
     const record = await appSettingsSyncService.loadRecord(costTemplateSettingsKey);
@@ -42,7 +38,10 @@ export const costTemplateSyncService = {
     await appSettingsSyncService.saveRecord(costTemplateSettingsKey, settings);
   },
   async syncFromRemote(): Promise<CostTemplateSettings> {
-    const nextSettings = normalizeRemoteResult(await this.loadRemote());
+    const remoteSettings = await this.loadRemote();
+
+    // 远端尚未初始化时保留本地模板，避免离线新建的数据被默认值覆盖。
+    const nextSettings = remoteSettings ?? costTemplateSettingsService.load();
 
     return costTemplateSettingsService.save(nextSettings);
   },

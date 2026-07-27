@@ -1,34 +1,25 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { authCookieName, cookieMaxAgeSeconds } from './config.js';
+import { authCookieName, cookieMaxAgeSeconds, getEasyBakeAppEnv } from './config.js';
+
+const DEFAULT_MAX_JSON_BODY_BYTES = 6 * 1024 * 1024;
+
+export class RequestBodyTooLargeError extends Error {
+  constructor() {
+    super('请求体超过允许的大小。');
+    this.name = 'RequestBodyTooLargeError';
+  }
+}
+
+export class UpstreamTimeoutError extends Error {
+  constructor() {
+    super('上游服务响应超时。');
+    this.name = 'UpstreamTimeoutError';
+  }
+}
 
 export const parseJsonBody = async (request: IncomingMessage): Promise<unknown> => {
-  const chunks: Buffer[] = [];
-
-  for await (const chunkValue of request) {
-    const chunk: unknown = chunkValue;
-
-    if (typeof chunk === 'string') {
-      chunks.push(Buffer.from(chunk));
-      continue;
-    }
-
-    if (chunk instanceof Uint8Array) {
-      chunks.push(Buffer.from(chunk));
-    }
-  }
-
-  const rawBody = Buffer.concat(chunks).toString('utf8').trim();
-
-  if (!rawBody) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(rawBody) as unknown;
-  } catch {
-    throw new Error('请求体不是有效的 JSON。');
-  }
+  return parseLimitedJsonBody(request, { maxBytes: DEFAULT_MAX_JSON_BODY_BYTES });
 };
 
 export const parseJsonResponse = async (response: Response): Promise<unknown> => {
@@ -49,6 +40,7 @@ export const readRequestBuffer = async (
   request: IncomingMessage,
   options: {
     maxBytes: number;
+    errorMessage?: string;
   },
 ): Promise<Buffer> => {
   const chunks: Buffer[] = [];
@@ -65,7 +57,11 @@ export const readRequestBuffer = async (
     receivedBytes += chunk.byteLength;
 
     if (receivedBytes > options.maxBytes) {
-      throw new Error('图片数据过大，请压缩到 6MB 以内后重试。');
+      if (options.errorMessage) {
+        throw new Error(options.errorMessage);
+      }
+
+      throw new RequestBodyTooLargeError();
     }
 
     chunks.push(chunk);
@@ -115,7 +111,17 @@ export const sendApiError = (
 };
 
 export const hasSecureForwardedProto = (request: IncomingMessage): boolean => {
-  if (process.env.PB_AUTH_COOKIE_SECURE === 'true') {
+  const configuredValue = process.env.PB_AUTH_COOKIE_SECURE?.trim().toLowerCase();
+
+  if (configuredValue === 'true') {
+    return true;
+  }
+
+  if (configuredValue === 'false') {
+    return false;
+  }
+
+  if (getEasyBakeAppEnv() === 'production') {
     return true;
   }
 
@@ -126,6 +132,32 @@ export const hasSecureForwardedProto = (request: IncomingMessage): boolean => {
   }
 
   return typeof forwardedProto === 'string' && forwardedProto.trim().toLowerCase() === 'https';
+};
+
+export const fetchWithTimeout = async (
+  input: string | URL,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: init.signal ?? controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new UpstreamTimeoutError();
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
 
 export const serializeCookie = (

@@ -4,6 +4,7 @@ import { Controller, useForm } from 'react-hook-form';
 
 import { useBeans } from '@/modules/bean/hooks';
 import { useRoastAiUsage, useRoastPlanRecommendation, useRoastingMachines } from '@/modules/roast/hooks';
+import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
 import type { RoastPlanJsonInput, RoastPlanRecommendationInput } from '@/modules/roast/types';
 import { formatRoastAiUsageText, isRoastAiUsageAvailable } from '@/modules/roast/services/roastAiUsage.service';
 import { Select } from '@/components/ui/select';
@@ -120,7 +121,13 @@ export function RoastPlanAiRecommender({ onCancel, onRecommended }: RoastPlanAiR
     try {
       const recommendation = await recommendationMutation.mutateAsync(values);
 
-      onRecommended(recommendation.modifiedPlanJson);
+      const parsedRecommendation = roastPlanJsonSchema.safeParse(recommendation.modifiedPlanJson);
+
+      if (!parsedRecommendation.success) {
+        throw new Error('AI 返回的烘焙计划格式无效，请重新生成。');
+      }
+
+      onRecommended(parsedRecommendation.data);
       void message.success('AI 已生成烘焙计划草稿，请确认后创建。');
     } catch (error: unknown) {
       void message.error(getUserFacingErrorMessage(error, 'AI 推荐生成失败，请稍后重试。'));

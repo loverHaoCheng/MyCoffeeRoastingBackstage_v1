@@ -425,6 +425,32 @@ describe('createGreenBeanInventoryRepository', () => {
     const purchaseBatchUpdateCall = updateCalls.find((item) => item.tableName === 'green_bean_purchase_batches');
 
     expect(purchaseBatchUpdateCall?.payload).toHaveProperty('remaining_weight_grams', 0);
+    expect(purchaseBatchUpdateCall?.payload).toHaveProperty('__expected_updated_at', '2026-07-01T00:00:00.000Z');
+  });
+
+  it('deletes a bean through the transactional endpoint without client-side cascades when available', async () => {
+    const deleteCalls: { match: Record<string, unknown>; tableName: string }[] = [];
+    const requestCalls: string[] = [];
+    const client = {
+      delete: (tableName: string, options: { match: Record<string, unknown> }) => {
+        deleteCalls.push({ match: options.match, tableName });
+        return Promise.resolve();
+      },
+      insert: <T,>(): Promise<T[]> => Promise.resolve([] as T[]),
+      list: <T,>(): Promise<T[]> => Promise.resolve([] as T[]),
+      request: <T,>(path: string): Promise<T> => {
+        requestCalls.push(path);
+        return Promise.resolve({ id: 'bean-1' } as T);
+      },
+      update: <T,>(): Promise<T[]> => Promise.resolve([] as T[]),
+    } as unknown as PocketBaseRestClient;
+
+    const repository = createGreenBeanInventoryRepository(client);
+
+    await repository.deleteBean('bean-1', 'delete');
+
+    expect(requestCalls).toEqual(['/api/green-beans/bean-1?roastPlanDisposition=delete']);
+    expect(deleteCalls).toEqual([]);
   });
 
   it('removes roast batches before deleting the green bean record', async () => {
@@ -439,6 +465,9 @@ describe('createGreenBeanInventoryRepository', () => {
       },
       list: <T,>(): Promise<T[]> => {
         return Promise.resolve([] as T[]);
+      },
+      request: <T,>(): Promise<T> => {
+        return Promise.reject(new AppError('接口不存在', { code: 'HTTP', status: 404 }));
       },
       update: <T,>(): Promise<T[]> => {
         return Promise.resolve([] as T[]);
@@ -485,6 +514,9 @@ describe('createGreenBeanInventoryRepository', () => {
 
         return Promise.resolve([] as T[]);
       },
+      request: <T,>(): Promise<T> => {
+        return Promise.reject(new AppError('接口不存在', { code: 'HTTP', status: 404 }));
+      },
       update: <T,>(
         tableName: string,
         payload: Record<string, unknown>,
@@ -521,6 +553,9 @@ describe('createGreenBeanInventoryRepository', () => {
       delete: (): Promise<void> => Promise.resolve(),
       insert: <T,>(): Promise<T[]> => Promise.resolve([] as T[]),
       list: <T,>(): Promise<T[]> => Promise.resolve([] as T[]),
+      request: <T,>(): Promise<T> => {
+        return Promise.reject(new AppError('接口不存在', { code: 'HTTP', status: 404 }));
+      },
       update: (): never => {
         throw new Error('No linked roast plan should be updated.');
       },

@@ -134,6 +134,7 @@ describe('appDataRefresh.service', () => {
       ),
     });
     vi.spyOn(beanService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 1, uploaded: 0 });
+    const roastBatchSyncSpy = vi.spyOn(roastBatchService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 4, uploaded: 0 });
     vi.spyOn(financeService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 2, uploaded: 0 });
     vi.spyOn(financeLedgerService, 'syncLocalAndRemote').mockResolvedValue({ downloaded: 3, uploaded: 1 });
     vi.spyOn(costTemplateSyncService, 'syncFromRemoteSafely').mockResolvedValue({
@@ -147,7 +148,7 @@ describe('appDataRefresh.service', () => {
     const result = await refreshQuickAppData(queryClient);
 
     expect(result).toEqual({
-      downloaded: 6,
+      downloaded: 10,
       failed: 1,
       failedDetails: ['待同步操作同步失败'],
       success: 0,
@@ -156,5 +157,7 @@ describe('appDataRefresh.service', () => {
     expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.calculations(), financeService.getBootstrappedCalculations());
     expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.expenses(), financeLedgerService.getBootstrappedExpenseRecords());
     expect(setQueryData).toHaveBeenCalledWith(financeQueryKeys.incomes(), financeLedgerService.getBootstrappedIncomeRecords());
+    expect(roastBatchSyncSpy).toHaveBeenCalledTimes(1);
+    expect(setQueryData).toHaveBeenCalledWith(roastBatchQueryKeys.list(), roastBatchService.getBootstrappedBatches());
   });
 });
