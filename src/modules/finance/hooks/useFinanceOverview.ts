@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { useBeans } from '@/modules/bean/hooks';
+import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { useRoastBatches } from '@/modules/roast/hooks';
 import { costTemplateSyncService } from '@/modules/settings/services/costTemplateSync.service';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';

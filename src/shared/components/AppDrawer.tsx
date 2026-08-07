@@ -115,6 +115,7 @@ export function AppDrawer({
   }, [destroyOnHidden, open]);
 
   const resolvedShowSwipeHandle = showSwipeHandle ?? placement === 'bottom';
+  const shouldMountDrawer = open || shouldRenderChildren;
   const hasCustomTopPadding = drawerStyles?.body?.paddingTop != null;
 
   const wrapperStyle: CSSProperties = {
@@ -168,14 +169,14 @@ export function AppDrawer({
         contentStyle={drawerStyles?.content}
         data-placement={placement}
         footerStyle={drawerStyles?.footer}
-        forceMount
+        forceMount={shouldMountDrawer}
         headerStyle={drawerStyles?.header}
         maskStyle={drawerStyles?.mask}
         wrapperStyle={wrapperStyle}
         {...props}
       >
         <div className="ant-drawer-body" style={bodyStyle}>
-          {shouldRenderChildren ? (children ?? lastRenderedChildren ?? null) : null}
+          {shouldMountDrawer ? (children ?? lastRenderedChildren ?? null) : null}
         </div>
       </DrawerContent>
     </Drawer>

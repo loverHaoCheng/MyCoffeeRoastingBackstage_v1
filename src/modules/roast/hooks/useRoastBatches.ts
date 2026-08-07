@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { beanQueryKeys } from '@/modules/bean/hooks';
+import { beanQueryKeys } from '@/modules/bean/hooks/useBeans';
 import { roastBatchService } from '../services/roastBatch.service';
 import type { RoastBatchCreateInput, RoastBatchUpdateInput } from '../types/roastBatch';
 import type { RoastBatchRecord } from '../types/roastBatch';

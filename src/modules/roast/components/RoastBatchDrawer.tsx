@@ -2,9 +2,9 @@ import SaveOutlined from '@ant-design/icons/SaveOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import dayjs from 'dayjs';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { useBeans } from '@/modules/bean/hooks';
+import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { useRoastPlans } from '@/modules/roast/hooks';
 import { getRoastLevelSuggestion, normalizeRoastLevel } from '@/modules/roast/constants/roastLevel';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
@@ -74,6 +74,8 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
   const [form, setForm] = useState<RoastBatchFormState>(() => createFormState(batch));
+  const [evaluationRefreshKey, setEvaluationRefreshKey] = useState(0);
+  const trainingSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setForm(createFormState(batch));
@@ -143,14 +145,21 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
     evaluation: form.evaluation,
   };
 
-  const handleSaveEvaluation = () => {
+  const handleSaveEvaluation = async () => {
     if (!onUpdate) {
       return;
     }
 
-    void Promise.resolve(onUpdate(batch.id, { evaluation: form.evaluation })).catch(() => {
+    try {
+      await Promise.resolve(onUpdate(batch.id, { evaluation: form.evaluation }));
+      setEvaluationRefreshKey((current) => current + 1);
+      void message.success('评价与训练授权已保存，可继续生成整体复盘。');
+      window.requestAnimationFrame(() => {
+        trainingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } catch {
       void message.error('评价保存失败，请稍后重试。');
-    });
+    }
   };
 
   return (
@@ -243,18 +252,21 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
               setForm((current) => ({ ...current, evaluation }));
             }}
           />
-          <Button block className={styles.evaluationSaveAction} disabled={!onUpdate} onClick={handleSaveEvaluation} type="primary">
+          <Button block className={styles.evaluationSaveAction} disabled={!onUpdate} onClick={() => { void handleSaveEvaluation(); }} type="primary">
             保存评价
           </Button>
         </section>
 
-        <RoastTrainingUploadSection
-          batch={viewBatchWithEvaluation}
-          evaluation={form.evaluation}
-          onEvaluationChange={(evaluation) => {
-            setForm((current) => ({ ...current, evaluation }));
-          }}
-        />
+        <section ref={trainingSectionRef} className={styles.section}>
+          <RoastTrainingUploadSection
+            batch={viewBatchWithEvaluation}
+            evaluation={form.evaluation}
+            refreshKey={evaluationRefreshKey}
+            onEvaluationChange={(evaluation) => {
+              setForm((current) => ({ ...current, evaluation }));
+            }}
+          />
+        </section>
 
         <section className={styles.section}>
           <h4>备注</h4>

@@ -16,6 +16,7 @@ export interface RoastTrainingRecommendationAdjustment {
 }
 
 export interface RoastTrainingRecommendation {
+  adjustmentDirection?: string;
   adjustments: RoastTrainingRecommendationAdjustment[];
   confidence: number;
   modifiedPlanJson: RoastPlanJsonInput;
@@ -29,7 +30,7 @@ export interface RoastTrainingUploadStatus {
   disabledReason?: string;
   enabled: boolean;
   environment: string;
-  recommendation?: RoastTrainingRecommendation;
+  recommendations?: RoastTrainingRecommendation[];
   readiness?: {
     isUploadReady: boolean;
     items: RoastTrainingReadinessItem[];

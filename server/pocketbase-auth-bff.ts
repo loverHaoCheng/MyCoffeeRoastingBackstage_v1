@@ -3,6 +3,8 @@ import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { handleDeleteAccount } from './auth-bff/account-handler.js';
+import { handleAcknowledgeAnalysisTasks, handleCreateAnalysisTask, handleListAnalysisTasks } from './auth-bff/ai/analysis-task-handler.js';
+import { startAnalysisTaskWorker } from './auth-bff/ai/analysis-task-service.js';
 import { handleBeanImageRecognitionUsage } from './auth-bff/ai/handler.js';
 import { handleRoastAnalysis, handleRoastAnalysisStatus } from './auth-bff/ai/roast-analysis-handler.js';
 import { handleRoastAiUsage } from './auth-bff/ai/roast-usage-handler.js';
@@ -23,13 +25,16 @@ import { isAuthRateLimited } from './auth-bff/auth-rate-limit.js';
 
 const handleRequest = createGatewayRequestHandler({
   handleAccountDeletion: handleDeleteAccount,
+  handleAcknowledgeAnalysisTasks,
   handleBeanImageRecognition: handleBeanImageRecognitionUsage,
   handleBusinessCollection: handleBusinessCollectionRequest,
   handleRoastBatchTransaction: handleRoastBatchTransactionRequest,
   handleGreenBeanTransaction: handleGreenBeanTransactionRequest,
   handleConfirmPasswordReset,
   handleConfirmVerification,
+  handleCreateAnalysisTask,
   handleLogin,
+  handleListAnalysisTasks,
   handleLogout: (request, response) => {
     handleLogout(request, response);
     return Promise.resolve();
@@ -112,6 +117,7 @@ const startStandaloneServer = (): void => {
 
   server.listen(port, '127.0.0.1', () => {
     process.stdout.write(`PocketBase auth BFF is listening on http://127.0.0.1:${String(port)}\n`);
+    startAnalysisTaskWorker();
   });
 };
 

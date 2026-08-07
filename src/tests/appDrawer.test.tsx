@@ -138,9 +138,37 @@ describe('AppDrawer', () => {
       });
 
       expect(screen.queryByText('抽屉内容')).not.toBeInTheDocument();
+      expect(document.querySelector('.ant-drawer')).toBeNull();
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('does not mount a drawer that has never been opened', () => {
+    const { container } = render(
+      <AppDrawer getContainer={false} onClose={vi.fn()} open={false} title="关闭的抽屉">
+        不应挂载的内容
+      </AppDrawer>,
+    );
+
+    expect(container.querySelector('.ant-drawer')).toBeNull();
+    expect(screen.queryByText('不应挂载的内容')).not.toBeInTheDocument();
+  });
+
+  it('renders drawer content immediately when a closed drawer reopens', () => {
+    const { rerender } = render(
+      <AppDrawer getContainer={false} onClose={vi.fn()} open={false} title="测试抽屉">
+        抽屉内容
+      </AppDrawer>,
+    );
+
+    rerender(
+      <AppDrawer getContainer={false} onClose={vi.fn()} open title="测试抽屉">
+        抽屉内容
+      </AppDrawer>,
+    );
+
+    expect(screen.getByText('抽屉内容')).toBeInTheDocument();
   });
 
   it('renders a dedicated swipe handle button for bottom drawers', async () => {

@@ -45,6 +45,14 @@ const ARTISAN_EVENT_META: Record<
     timeKey: 'CHARGE_time',
     type: 'charge',
   },
+  turningPoint: {
+    btKey: 'TP_BT',
+    code: 2,
+    etKey: 'TP_ET',
+    label: '回温点',
+    timeKey: 'TP_time',
+    type: 'turningPoint',
+  },
   dryEnd: {
     btKey: 'DRY_BT',
     code: 3,

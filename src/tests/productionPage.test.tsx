@@ -12,9 +12,12 @@ import { RoastBatchCreator } from '@/modules/roast/components';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 import type { RoastCurveRecord } from '@/modules/roast/types/roastCurve';
 import type { RoastTrainingUploadStatus } from '@/modules/roast/types/roastTraining';
+import type { AiAnalysisTask, AiAnalysisTaskType } from '@/modules/roast/services/aiAnalysisTask.service';
 import { renderWithQuery } from '@/tests/renderWithProviders';
 
 const {
+  aiAnalysisTaskStateMock,
+  aiAnalysisTaskSubmitMock,
   createRoastPlanMutateAsyncMock,
   roastAnalysisAnalyzeMock,
   roastAnalysisGetStatusMock,
@@ -99,7 +102,21 @@ const {
     updatedAt: '2026-07-12T15:38:00.000Z',
   };
 
+  const aiAnalysisTaskState: Record<AiAnalysisTaskType, AiAnalysisTask | null> = {
+    curve_review: null,
+    overall_analysis: null,
+  };
+
   return {
+    aiAnalysisTaskStateMock: {
+      current: aiAnalysisTaskState,
+    },
+    aiAnalysisTaskSubmitMock: vi.fn().mockImplementation(({ roastBatchId, taskType }: { roastBatchId: string; taskType: AiAnalysisTaskType }) => ({
+      id: `${taskType}-task-1`,
+      roastBatchId,
+      status: 'queued' as const,
+      taskType,
+    })),
     createRoastPlanMutateAsyncMock: vi.fn().mockResolvedValue({
       id: 'created-plan-1',
     }),
@@ -174,6 +191,10 @@ vi.mock('@/modules/roast/hooks', () => ({
     mutateAsync: vi.fn(),
   }),
   useImportHiBeanRoastCurve: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
+  }),
+  useUpdateRoastCurveEventOverrides: () => ({
     isPending: false,
     mutateAsync: vi.fn(),
   }),
@@ -257,10 +278,34 @@ vi.mock('@/modules/roast/hooks/useRoastTrainingUpload', () => ({
   }),
 }));
 
+vi.mock('@/modules/roast/hooks/useAiAnalysisTask', () => ({
+  useAiAnalysisTask: (_roastBatchId: string, taskType: AiAnalysisTaskType) => ({
+    data: aiAnalysisTaskStateMock.current[taskType],
+    isFetching: false,
+    isLoading: false,
+  }),
+  useSubmitAiAnalysisTask: () => ({
+    error: null,
+    isPending: false,
+    mutateAsync: aiAnalysisTaskSubmitMock,
+  }),
+}));
+
 vi.mock('@/modules/roast/services/roastAnalysis.service', () => ({
   roastAnalysisService: {
     analyze: roastAnalysisAnalyzeMock,
     getStatus: roastAnalysisGetStatusMock,
+    getStatusDetail: () => ({
+      analysis: null,
+      model: '',
+      readiness: {
+        curvePointCount: roastCurveDataMock.current?.curveData.length ?? 0,
+        curveRecordId: roastCurveDataMock.current?.id ?? '',
+        hasCurve: Boolean(roastCurveDataMock.current),
+        totalTimeSeconds: roastCurveDataMock.current?.metrics.roastDuration ?? 0,
+      },
+      reviewed: false,
+    }),
   },
 }));
 
@@ -269,6 +314,11 @@ describe('ProductionPage (烘焙历史)', () => {
     window.localStorage.clear();
     roastBatchesMock.current = [roastBatchesMock.defaultBatch];
     roastCurveDataMock.current = null;
+    aiAnalysisTaskStateMock.current = {
+      curve_review: null,
+      overall_analysis: null,
+    };
+    aiAnalysisTaskSubmitMock.mockClear();
     trainingUploadMutationStateMock.current = {
       error: null,
       isPending: false,
@@ -361,7 +411,11 @@ describe('ProductionPage (烘焙历史)', () => {
     fireEvent.click(await screen.findByRole('button', { name: '确认生成' }));
 
     await waitFor(() => {
-      expect(trainingUploadMutateAsyncMock).toHaveBeenCalledWith('batch-1');
+      expect(aiAnalysisTaskSubmitMock).toHaveBeenCalledWith({
+        adjustmentDirection: '',
+        roastBatchId: 'batch-1',
+        taskType: 'overall_analysis',
+      });
     });
   });
 
@@ -386,8 +440,30 @@ describe('ProductionPage (烘焙历史)', () => {
     fireEvent.click(analyzeButton);
 
     await waitFor(() => {
-      expect(roastAnalysisAnalyzeMock).toHaveBeenCalledWith('batch-1');
+      expect(aiAnalysisTaskSubmitMock).toHaveBeenCalledWith({
+        roastBatchId: 'batch-1',
+        taskType: 'curve_review',
+      });
     });
+  });
+
+  it('keeps an active task disabled for the same roast record and task type', () => {
+    vi.stubEnv('VITE_EASYBAKE_APP_ENV', 'production');
+    roastCurveDataMock.current = roastCurveDataMock.defaultCurve;
+    aiAnalysisTaskStateMock.current.curve_review = {
+      id: 'curve-task-1',
+      roastBatchId: 'batch-1',
+      status: 'processing',
+      taskType: 'curve_review',
+    };
+
+    renderWithQuery(<ProductionPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '查看 测试熟豆' }));
+
+    expect(screen.getByRole('button', { name: /分析中，预计需要几分钟/ })).toBeDisabled();
+    expect(screen.getByText('任务已提交，可以关闭当前页面，完成后会自动提示。')).toBeInTheDocument();
+    expect(aiAnalysisTaskSubmitMock).not.toHaveBeenCalled();
   });
 
   it('keeps roast training upload disabled after the record has already uploaded', () => {
@@ -422,8 +498,7 @@ describe('ProductionPage (烘焙历史)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '全部编辑 测试熟豆' }));
 
-    expect(screen.queryByRole('button', { name: '生成整体复盘与计划建议' })).not.toBeInTheDocument();
-    expect(screen.getByText('这条记录已经生成过整体复盘与计划建议，不能重复生成。')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '生成整体复盘与计划建议' })).toBeDisabled();
   });
 
   it('shows the saved roast recommendation result instead of readiness cards', () => {
@@ -445,7 +520,7 @@ describe('ProductionPage (烘焙历史)', () => {
         alreadyUploaded: true,
         enabled: false,
         environment: 'staging',
-        recommendation: {
+        recommendations: [{
           adjustments: [
             {
               area: '发展期',
@@ -481,7 +556,7 @@ describe('ProductionPage (烘焙历史)', () => {
           overallReview: '整体复盘显示一爆后热量略重，需要压低尾段焦糖化。',
           recommendationId: 'recommendation-1',
           status: 'draft',
-        },
+        }],
         roastBatchId: 'batch-1',
         uploadId: 'upload-1',
       },

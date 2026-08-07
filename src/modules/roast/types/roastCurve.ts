@@ -29,6 +29,13 @@ export interface RoastCurveEvent {
   type: RoastCurveEventType;
 }
 
+export type RoastCurveEditableEventType = Extract<
+  RoastCurveEventType,
+  'charge' | 'turningPoint' | 'dryEnd' | 'firstCrackStart' | 'firstCrackEnd' | 'drop'
+>;
+
+export type RoastCurveEventOverrides = Partial<Record<RoastCurveEditableEventType, { sampleIndex: number }>>;
+
 export interface RoastCurvePhase {
   durationSeconds: number;
   label: string;
@@ -72,6 +79,7 @@ export interface RoastCurveRecord {
   curveData: RoastCurvePoint[];
   deviceInfo?: RoastCurveDeviceInfo;
   eventList: RoastCurveEvent[];
+  eventOverrides?: RoastCurveEventOverrides;
   importedAt: string;
   metrics: RoastCurveMetrics;
   originalFileName?: string;

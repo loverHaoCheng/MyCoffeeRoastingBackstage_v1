@@ -9,7 +9,8 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'reac
 import { useQueryClient } from '@tanstack/react-query';
 
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
-import { beanEditableDetailQueryKeys, beanQueryKeys } from '@/modules/bean/hooks';
+import { beanEditableDetailQueryKeys } from '@/modules/bean/hooks/useBeanEditableDetail';
+import { beanQueryKeys } from '@/modules/bean/hooks/useBeans';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { roastBatchQueryKeys, roastPlanQueryKeys } from '@/modules/roast/hooks';
 import { RoastingMachineManager } from '@/modules/roast/components';

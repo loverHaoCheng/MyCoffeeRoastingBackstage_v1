@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { checkForAvailableAppUpdate } from '@/app/services/appVersionCheck.service';
+import { checkForAvailableAppUpdate, reloadToLatestApp } from '@/app/services/appVersionCheck.service';
 import { appBuildVersionService } from '@/app/services/appBuildVersion.service';
 import { logger } from '@/shared/logger/logger';
 const versionCheckIntervalMs = 60_000;
@@ -78,8 +78,6 @@ export function useAppUpdateNotice() {
       setNotice(null);
     },
     notice,
-    refreshToUpdate: () => {
-      window.location.reload();
-    },
+    refreshToUpdate: reloadToLatestApp,
   };
 }

@@ -263,6 +263,18 @@ export const getModelContentText = (payload: unknown): string => {
     return '';
   }
 
+  if (Array.isArray(payload.content)) {
+    const joinedContent = payload.content
+      .map((part) => getContentPartText(part))
+      .filter((part) => part.length > 0)
+      .join('\n')
+      .trim();
+
+    if (joinedContent) {
+      return joinedContent;
+    }
+  }
+
   const directOutputText = getContentPartText(payload.output_text);
 
   if (directOutputText) {

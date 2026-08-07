@@ -1,11 +1,13 @@
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useInvalidateRoastAiUsage, useRoastAiUsage, useRoastCurve } from '@/modules/roast/hooks';
+import { useAiAnalysisTask, useSubmitAiAnalysisTask } from '@/modules/roast/hooks/useAiAnalysisTask';
 import { formatRoastAiUsageText, isRoastAiUsageAvailable } from '@/modules/roast/services/roastAiUsage.service';
-import { roastAnalysisService, type RoastAnalysisResult } from '@/modules/roast/services/roastAnalysis.service';
+import { isActiveAiAnalysisTask } from '@/modules/roast/services/aiAnalysisTask.service';
+import { roastAnalysisService } from '@/modules/roast/services/roastAnalysis.service';
 import { isRoastAiClientEnabled } from '@/modules/roast/services/roastTrainingUpload.service';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -72,11 +74,14 @@ function RoastAiAnalysisSectionContent({ batch }: RoastAiAnalysisSectionProps) {
   const curveQuery = useRoastCurve(batch.id);
   const usageQuery = useRoastAiUsage('roast_analysis');
   const invalidateRoastAiUsage = useInvalidateRoastAiUsage();
-  const [analysis, setAnalysis] = useState<RoastAnalysisResult | null>(null);
   const savedAnalysisQuery = useQuery({ queryKey: ['roast-analysis', batch.id], queryFn: () => roastAnalysisService.getStatusDetail(batch.id) });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { refetch: refetchSavedAnalysis } = savedAnalysisQuery;
+  const taskQuery = useAiAnalysisTask(batch.id, 'curve_review');
+  const submitTaskMutation = useSubmitAiAnalysisTask();
   const curve = curveQuery.data;
-  const displayedAnalysis = analysis ?? savedAnalysisQuery.data?.analysis ?? null;
+  const displayedAnalysis = savedAnalysisQuery.data?.analysis ?? null;
+  const isTaskActive = isActiveAiAnalysisTask(taskQuery.data);
+  const isLoadingCompletedTask = taskQuery.data?.status === 'completed' && !displayedAnalysis;
   const statusReadiness = savedAnalysisQuery.data?.readiness;
   const hasUploadedCurve = [
     statusReadiness?.hasCurve === true,
@@ -94,8 +99,19 @@ function RoastAiAnalysisSectionContent({ batch }: RoastAiAnalysisSectionProps) {
     effectiveTotalRoastTime &&
     effectiveTotalRoastTime > 0 &&
     !displayedAnalysis &&
+    !isTaskActive &&
+    !isLoadingCompletedTask &&
     canUseQuota,
   );
+
+  useEffect(() => {
+    if (taskQuery.data?.status !== 'completed') {
+      return;
+    }
+
+    void refetchSavedAnalysis();
+    invalidateRoastAiUsage('roast_analysis');
+  }, [invalidateRoastAiUsage, refetchSavedAnalysis, taskQuery.data?.status]);
 
   const handleAnalyze = async () => {
     if (!hasUploadedCurve || !effectiveTotalRoastTime || effectiveTotalRoastTime <= 0) {
@@ -103,15 +119,14 @@ function RoastAiAnalysisSectionContent({ batch }: RoastAiAnalysisSectionProps) {
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      const result = await roastAnalysisService.analyze(batch.id);
-      setAnalysis(result);
-      invalidateRoastAiUsage('roast_analysis');
+      await submitTaskMutation.mutateAsync({
+        roastBatchId: batch.id,
+        taskType: 'curve_review',
+      });
+      void message.info('任务已提交，预计需要几分钟。完成后会自动提示。');
     } catch (error: unknown) {
-      void message.error(getUserFacingErrorMessage(error, 'AI 曲线复盘失败，请稍后重试。'));
-    } finally {
-      setIsSubmitting(false);
+      void message.error(getUserFacingErrorMessage(error, 'AI 曲线复盘任务提交失败，请稍后重试。'));
     }
   };
 
@@ -122,17 +137,23 @@ function RoastAiAnalysisSectionContent({ batch }: RoastAiAnalysisSectionProps) {
       {!displayedAnalysis ? (
         <div className={styles.trainingActionRow}>
           <Button
-            disabled={!canAnalyze}
-            loading={isSubmitting || curveQuery.isLoading || savedAnalysisQuery.isLoading || usageQuery.isLoading}
+            disabled={!canAnalyze || isTaskActive || isLoadingCompletedTask}
+            loading={submitTaskMutation.isPending || curveQuery.isLoading || savedAnalysisQuery.isLoading || usageQuery.isLoading}
             onClick={() => void handleAnalyze()}
           >
-            生成 AI 曲线复盘
+            {isTaskActive
+              ? '分析中，预计需要几分钟'
+              : isLoadingCompletedTask
+                ? '正在载入复盘结果'
+                : '生成 AI 曲线复盘'}
           </Button>
           <span className={styles.trainingHint}>{usageText}</span>
         </div>
       ) : null}
+      {!displayedAnalysis && isTaskActive ? <p className={styles.trainingHint}>任务已提交，可以关闭当前页面，完成后会自动提示。</p> : null}
+      {isLoadingCompletedTask ? <p className={styles.trainingHint}>分析已经完成，正在载入复盘结果。</p> : null}
       {!displayedAnalysis && !canAnalyze && !canUseQuota ? <p className={styles.trainingHint}>本月 AI 曲线复盘额度不足或暂不可用。</p> : null}
-      {!displayedAnalysis && !canAnalyze && canUseQuota ? <p className={styles.trainingHint}>需要先导入包含有效采样点和总时长的曲线数据。</p> : null}
+      {!displayedAnalysis && !canAnalyze && !isTaskActive && !isLoadingCompletedTask && canUseQuota ? <p className={styles.trainingHint}>需要先导入包含有效采样点和总时长的曲线数据。</p> : null}
       {displayedAnalysis ? (
         <div className={styles.trainingGrid}>
           <article className={styles.trainingItem}>

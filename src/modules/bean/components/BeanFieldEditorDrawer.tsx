@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { type FieldPath } from 'react-hook-form';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { beanEditableDetailQueryKeys } from '@/modules/bean/hooks';
+import { beanEditableDetailQueryKeys } from '@/modules/bean/hooks/useBeanEditableDetail';
 import { useUpdateBean } from '@/modules/bean/hooks/useBeans';
 import { beanService } from '@/modules/bean/services';
 import { greenBeanCreateFormSchema } from '@/modules/bean/schemas';

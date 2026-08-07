@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 
-import type { RoastCurveRecord } from '@/modules/roast/types/roastCurve';
+import type { RoastCurveEditableEventType, RoastCurveRecord } from '@/modules/roast/types/roastCurve';
 
 import styles from './RoastCurveDataSummary.module.css';
 
 interface RoastCurveDataSummaryProps {
   curve: RoastCurveRecord;
+  onEditEvent?: (type: RoastCurveEditableEventType) => void;
 }
 
 interface DataItem {
@@ -81,7 +82,18 @@ const renderItems = (items: DataItem[]) => (
   </dl>
 );
 
-export function RoastCurveDataSummary({ curve }: RoastCurveDataSummaryProps) {
+const toEditableEventType = (label: string): RoastCurveEditableEventType | undefined => ({
+  '一爆': 'firstCrackStart',
+  '一爆开始': 'firstCrackStart',
+  '一爆结束': 'firstCrackEnd',
+  '下豆': 'drop',
+  '入豆': 'charge',
+  '回温': 'turningPoint',
+  '回温点': 'turningPoint',
+  '转黄': 'dryEnd',
+} as Record<string, RoastCurveEditableEventType>)[label];
+
+export function RoastCurveDataSummary({ curve, onEditEvent }: RoastCurveDataSummaryProps) {
   const unit = curve.temperatureUnit;
   const metrics = curve.metrics;
   const summaryItems: DataItem[] = [
@@ -122,24 +134,42 @@ export function RoastCurveDataSummary({ curve }: RoastCurveDataSummaryProps) {
       <section className={styles.summaryBlock}>
         <h5>关键数据</h5>
         <div className={styles.metricGrid}>
-          {summaryItems.map((item) => (
-            <span key={item.label}>
-              <b>{item.label}</b>
-              {item.value}
-            </span>
-          ))}
+          {summaryItems.map((item) => {
+            const eventType = toEditableEventType(item.label);
+
+            return eventType && onEditEvent ? (
+              <button key={item.label} className={styles.editableCard} type="button" onClick={() => { onEditEvent(eventType); }}>
+                <b>{item.label}</b>
+                {item.value}
+              </button>
+            ) : (
+              <span key={item.label}>
+                <b>{item.label}</b>
+                {item.value}
+              </span>
+            );
+          })}
         </div>
       </section>
 
       <section className={styles.summaryBlock}>
         <h5>事件</h5>
         <div className={styles.eventList}>
-          {curve.eventList.map((event) => (
-            <span key={`${event.code.toString()}-${event.timeSeconds.toString()}`}>
-              <b>{event.label}</b>
-              {formatTime(event.timeSeconds)} / {formatNumber(event.temperature, event.temperatureUnit)}
-            </span>
-          ))}
+          {curve.eventList.map((event) => {
+            const editableType = toEditableEventType(event.label);
+
+            return editableType && onEditEvent ? (
+              <button key={`${event.code.toString()}-${event.timeSeconds.toString()}`} className={styles.editableCard} type="button" onClick={() => { onEditEvent(editableType); }}>
+                <b>{event.label}</b>
+                {formatTime(event.timeSeconds)} / {formatNumber(event.temperature, event.temperatureUnit)}
+              </button>
+            ) : (
+              <span key={`${event.code.toString()}-${event.timeSeconds.toString()}`}>
+                <b>{event.label}</b>
+                {formatTime(event.timeSeconds)} / {formatNumber(event.temperature, event.temperatureUnit)}
+              </span>
+            );
+          })}
         </div>
       </section>
 

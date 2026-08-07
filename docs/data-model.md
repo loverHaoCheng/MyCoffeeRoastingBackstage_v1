@@ -13,6 +13,7 @@
 - `FinanceExpenseRecord`: 经营费用台账记录，覆盖房租、水电、工资、营销、物流、折旧等支出。
 - `AiUsageLimit`: 用户级 AI 功能月度额度配置。
 - `AiUsageLog`: AI 功能成功/失败调用日志，成功记录参与月度额度统计。
+- `AiAnalysisTask`: AI 曲线复盘或整体复盘的持久化异步任务，保存提交快照、状态、结果关联和通知确认时间。
 
 所有持久化实体统一包含 `id`、`createdAt`、`updatedAt`。
 
@@ -21,7 +22,7 @@
 烘焙曲线采用主记录和曲线记录拆分：
 
 - `roast_batches`：保存烘焙日期、生豆、入豆量、出豆量、烘焙程度、发展比、一爆时间、总烘焙时间、本次销售最终定价、已售份数等摘要字段。
-- `roast_curve_records`：保存标准化曲线点、事件、阶段、设备快照、生豆快照和导入指标。
+- `roast_curve_records`：保存标准化曲线点、事件、阶段、设备快照、生豆快照、导入指标和关键点编辑覆盖层；覆盖层仅引用原始采样点，不截断原始数据。
 - `roast_curve_records.roast_batch_id` 与 `roast_batches.id` 一对一；重新导入时覆盖当前曲线，不创建历史版本。
 - AI 优化上下文应使用“烘焙计划 + 烘焙记录摘要 + 标准化曲线 + 人工备注”，不要直接依赖 HiBean 或 Artisan 原始字段名。
 
@@ -37,6 +38,7 @@ AI 功能额度当前采用服务端辅助口径：
 
 - `ai_usage_limits`：由 PocketBase Dashboard 维护用户额度，`feature` 用于区分具体 AI 功能。
 - `ai_usage_logs`：由 BFF 写入调用结果，按 `owner + feature + month + status = success` 统计当月已用次数。
+- `ai_analysis_tasks`：由 BFF 创建、worker 更新的异步 AI 分析任务。`owner + roast_batch_id + task_type` 的活动任务只能有一条；任务完成后由前端确认 `notified_at`，因此关闭网页或退出 PWA 不会丢失结果通知。
 - 失败记录只用于排查，不参与月度额度扣减。
 - 未配置用户额度时默认 `10 次/月`；当前 `bean_image_recognition`、`roast_analysis`、`roast_training_recommendation`、`roast_plan_recommendation` 均独立计次。
 

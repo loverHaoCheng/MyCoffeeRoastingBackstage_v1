@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
-import { beanEditableDetailQueryKeys, beanQueryKeys } from '@/modules/bean/hooks';
+import { beanEditableDetailQueryKeys } from '@/modules/bean/hooks/useBeanEditableDetail';
+import { beanQueryKeys } from '@/modules/bean/hooks/useBeans';
 import { beanService } from '@/modules/bean/services/bean.service';
 import { financeQueryKeys } from '@/modules/finance/hooks';
 import { financeLedgerService, financeService } from '@/modules/finance/services';

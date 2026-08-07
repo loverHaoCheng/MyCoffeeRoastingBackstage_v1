@@ -28,14 +28,14 @@ AI_REQUEST_TIMEOUT_MS=90000
 QINIU_QWEN_API_KEY=你的七牛云 API Key
 QINIU_QWEN_BASE_URL=https://api.qnaigc.com/v1
 QINIU_QWEN_MODEL=qwen/qwen3.6-27b
-AI_ROAST_PROVIDER=openai
-AI_ROAST_BASE_URL=https://api.openai.com/v1
+AI_ROAST_PROVIDER=anthropic
+AI_ROAST_BASE_URL=https://weilai.chat/v1
 AI_ROAST_API_KEY=烘焙 AI（曲线复盘/计划建议）使用的 API Key，例如 OpenAI 的 sk- 开头密钥
-AI_ROAST_MODEL=烘焙 AI 使用的模型 ID，例如 gpt-5.5
+AI_ROAST_MODEL=gpt-5.6-terra
 INTERNAL_JOBS_TOKEN=用 openssl rand -hex 32 生成的内部任务令牌
 ```
 
-> 注意：`AI_ROAST_API_KEY` 与 `AI_ROAST_MODEL` 缺失时，烘焙 AI 曲线复盘与计划建议接口会返回“服务器未配置烘焙 AI API Key/模型”。这组 `AI_ROAST_*` 变量与图像识别的 `QINIU_QWEN_*` 相互独立，需要分别配置。`AI_ROAST_PROVIDER=openai` 时 BFF 会按 OpenAI 新版接口规范发送请求（`max_completion_tokens`、默认温度）；使用七牛云等 OpenAI 兼容网关时省略 `AI_ROAST_PROVIDER` 与 `AI_ROAST_BASE_URL` 即可沿用默认值。
+> 注意：`AI_ROAST_API_KEY` 与 `AI_ROAST_MODEL` 缺失时，烘焙 AI 曲线复盘与计划建议接口会返回“服务器未配置烘焙 AI API Key/模型”。这组 `AI_ROAST_*` 变量与图像识别的 `QINIU_QWEN_*` 相互独立，需要分别配置。`AI_ROAST_PROVIDER=anthropic` 时 BFF 按 Anthropic Messages API 发送到 `/messages`，使用 `x-api-key` 和 `anthropic-version` 请求头；`AI_ROAST_PROVIDER=openai` 时使用 OpenAI 新版接口规范；七牛云等 OpenAI 兼容网关继续使用 Chat Completions 协议。
 
 ### 内部任务端点鉴权（INTERNAL_JOBS_TOKEN）
 
@@ -265,6 +265,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `device_info` | json | 设备快照 |
 | `bean_snapshot` | json | 导出文件中的生豆快照 |
 | `metrics` | json | 解析出的总时长、一爆、发展比、下豆温等指标 |
+| `event_overrides` | json | 手动编辑节点对应的原始采样点索引；不覆盖完整曲线和导入事件 |
 | `original_file_name` | text | 导入文件名 |
 | `imported_at` | text | 导入时间 |
 | `created_at` | text | 兼容前端时间戳 |
@@ -280,6 +281,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 - 测试端与正式端必须使用同一套 `roast_curve_records` collection 结构。
 - 新写入的 `curve_data`、`event_list`、`phase_list`、`metrics` JSON 必须使用应用标准 camelCase 字段，例如 `timeSeconds`、`beanTemperature`、`rateOfRise`、`roastDuration`。
 - 读取历史备份或旧数据时可兼容 `time_seconds`、`bean_temperature`、`rate_of_rise`、`roast_duration` 等旧字段，但这些兼容字段不得作为新写入格式。
+- `event_overrides` 只保存入豆、回温点、转黄、一爆开始、一爆结束和下豆所选的 `sampleIndex`；展示与 AI 以它重建有效曲线，原始 `curve_data`、`event_list`、`metrics` 与 `phase_list` 始终保留完整导入值。
 
 ### `roast_training_samples`
 
@@ -471,12 +473,36 @@ deleteRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
 
 - `owner,feature,month,status`
 
+### `ai_analysis_tasks`
+
+用途：保存 `curve_review`（AI 曲线复盘）和 `overall_analysis`（整体复盘与计划建议）任务。前端只负责提交，BFF worker 负责在后台执行并把结果写入既有 AI 结果集合；任务完成后前端确认 `notified_at`，关闭网页、刷新页面或退出 PWA 都不会中断任务。
+
+直接导入 [pocketbase-ai-analysis-tasks.import.json](pocketbase-ai-analysis-tasks.import.json)。测试端和正式端必须导入同一份文件，字段、索引和规则不得单独漂移。
+
+关键字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | relation(users) | 任务归属用户，必填 |
+| `roast_batch_id` | text | 烘焙记录 ID |
+| `task_type` | select | `curve_review` / `overall_analysis` |
+| `status` | select | `queued` / `processing` / `completed` / `failed` |
+| `active_key` | text | 活动任务去重键；完成或失败后由 BFF 改写 |
+| `input_payload` | json | 服务端校验后的输入快照 |
+| `result_payload` | json | worker 执行结果，供审计和恢复使用 |
+| `error_message` | text | 失败原因，最多 500 字符 |
+| `started_at` / `completed_at` / `notified_at` | text | 任务生命周期和提示确认时间 |
+
+权限规则必须保持为 Dashboard 的“锁定”（`null`），不能填写空字符串 `""`：普通用户只能通过 BFF 查询自己的任务，创建、更新、删除全部由 BFF superuser 完成。唯一索引为 `owner, roast_batch_id, task_type, active_key`；worker 索引为 `status, created`，通知查询索引为 `owner, status, notified_at`。
+
+BFF 启动后会立即扫描未完成任务，之后每 5 秒扫描一次。当前每个环境只运行一个 BFF 实例；若未来扩容为多实例，需要在 PocketBase 增加原子领取/租约字段后再扩容 worker，避免重复调用模型。
+
 ## 推荐实施顺序
 
 1. 先建 `users` auth collection。
 2. 再建 `green_beans`、`green_bean_purchase_batches`、`bean_sale_specs`、`app_settings`。
 3. 接着建 `roast_profiles`、`roast_batches`、`roast_records`。
-4. 最后建 `cost_calculations`、`finance_expense_records`、`coffee_beans`、`ai_usage_limits` 和 `ai_usage_logs`。
+4. 最后建 `cost_calculations`、`finance_expense_records`、`coffee_beans`、`ai_usage_limits`、`ai_usage_logs` 和 `ai_analysis_tasks`。
 
 ## 推荐初始化方式
 

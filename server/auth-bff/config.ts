@@ -132,7 +132,7 @@ export const aiRoastProvider =
   (process.env.AI_ROAST_PROVIDER ?? AI_ROAST_DEFAULT_PROVIDER).trim().toLowerCase() || AI_ROAST_DEFAULT_PROVIDER;
 
 export const isSupportedAiRoastProvider = (): boolean => {
-  return ['openai', 'openai-compatible', 'openai_compatible', 'qiniu'].includes(aiRoastProvider);
+  return ['anthropic', 'openai', 'openai-compatible', 'openai_compatible', 'qiniu'].includes(aiRoastProvider);
 };
 
 export const aiRoastBaseUrl = normalizeBaseUrl(

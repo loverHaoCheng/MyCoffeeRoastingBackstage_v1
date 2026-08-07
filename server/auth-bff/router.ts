@@ -9,11 +9,14 @@ type BusinessCollectionHandler = (
 
 interface GatewayRouteHandlers {
   handleAccountDeletion: RequestHandler;
+  handleAcknowledgeAnalysisTasks: RequestHandler;
   handleBeanImageRecognition: RequestHandler;
   handleBusinessCollection: BusinessCollectionHandler;
   handleConfirmPasswordReset: RequestHandler;
   handleConfirmVerification: RequestHandler;
+  handleCreateAnalysisTask: RequestHandler;
   handleLogin: RequestHandler;
+  handleListAnalysisTasks: (request: IncomingMessage, response: ServerResponse, requestUrl: URL) => Promise<void>;
   handleLogout: RequestHandler;
   handlePasswordReset: RequestHandler;
   handleProfileUpdate: RequestHandler;
@@ -83,6 +86,26 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
     if (path === '/api/ai/bean-image-recognition') {
       if (ensureMethod(request, response, ['GET', 'POST'], handlers)) {
         await handlers.handleBeanImageRecognition(request, response);
+      }
+      return;
+    }
+
+    if (path === '/api/ai/analysis-tasks') {
+      if (!ensureMethod(request, response, ['GET', 'POST'], handlers)) {
+        return;
+      }
+
+      if (request.method === 'GET') {
+        await handlers.handleListAnalysisTasks(request, response, requestUrl);
+      } else {
+        await handlers.handleCreateAnalysisTask(request, response);
+      }
+      return;
+    }
+
+    if (path === '/api/ai/analysis-tasks/acknowledge') {
+      if (ensureMethod(request, response, ['POST'], handlers)) {
+        await handlers.handleAcknowledgeAnalysisTasks(request, response);
       }
       return;
     }

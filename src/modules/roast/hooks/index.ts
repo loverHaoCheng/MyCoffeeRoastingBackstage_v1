@@ -17,6 +17,7 @@ export {
   roastCurveQueryKeys,
   useImportHiBeanRoastCurve,
   useRoastCurve,
+  useUpdateRoastCurveEventOverrides,
 } from './useRoastCurves';
 export { roastAiUsageQueryKeys, useInvalidateRoastAiUsage, useRoastAiUsage } from './useRoastAiUsage';
 export { useRoastPlanRecommendation } from './useRoastPlanRecommendation';

@@ -128,6 +128,46 @@ interface RoastAiUsage {
 }
 ```
 
+## 烘焙 AI 异步分析任务
+
+曲线复盘和整体复盘均通过持久化任务执行，前端提交后不需要保持页面、抽屉或 PWA 进程打开。BFF 将任务写入 PocketBase，独立 worker 继续执行模型调用并保存结果；前端下次启动时读取尚未确认的完成任务并显示一次性提示。
+
+接口：
+
+```text
+POST /api/ai/analysis-tasks
+GET /api/ai/analysis-tasks?roastBatchId=...&taskType=...
+GET /api/ai/analysis-tasks?unnotified=true
+POST /api/ai/analysis-tasks/acknowledge
+```
+
+提交请求：
+
+```ts
+interface CreateAiAnalysisTaskRequest {
+  roastBatchId: string;
+  taskType: 'curve_review' | 'overall_analysis';
+}
+```
+
+提交成功返回 HTTP `202`，响应中的 `data.task` 至少包含：
+
+```ts
+interface AiAnalysisTask {
+  id: string;
+  roastBatchId: string;
+  taskType: 'curve_review' | 'overall_analysis';
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  startedAt?: string;
+  completedAt?: string;
+  errorMessage?: string;
+}
+```
+
+同一用户、同一烘焙记录、同一任务类型在 `queued/processing` 状态时会复用已有任务，禁止二次提交；不同烘焙记录可以并行提交。`completed/failed` 任务会释放活动键，失败任务可以重新提交。当前阶段只使用站内一次性提示，不启用系统推送通知。
+
+确认请求为 `{ taskIds: string[] }`。确认接口只接受当前登录用户自己的任务 ID，BFF 使用服务端权限写入 `notified_at`。
+
 ## 烘焙计划 JSON
 
 前端 JSON 快速创建功能会先在本地校验字段，再转换为标准 `RoastPlan`。后续接入 Go 后端时，可将校验后的计划通过 REST 接口提交。

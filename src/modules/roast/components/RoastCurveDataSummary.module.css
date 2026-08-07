@@ -41,6 +41,36 @@
   overflow-wrap: anywhere;
 }
 
+.editableCard {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-bg-soft);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.editableCard:hover,
+.editableCard:focus-visible {
+  border-color: var(--app-text-secondary);
+  outline: none;
+}
+
+.editableCard b {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .metricGrid b,
 .eventList b {
   color: var(--app-text-secondary);

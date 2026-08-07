@@ -92,6 +92,10 @@ vi.mock('@/modules/roast/hooks', () => ({
     isPending: false,
     mutateAsync: vi.fn(),
   }),
+  useUpdateRoastCurveEventOverrides: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
+  }),
 }));
 
 describe('RoastCurvePanel', () => {
@@ -104,8 +108,8 @@ describe('RoastCurvePanel', () => {
     expect(screen.getByText('舒缓')).toBeInTheDocument();
     expect(screen.getByText('关键数据')).toBeInTheDocument();
     expect(screen.getByText('记录信息')).toBeInTheDocument();
-    expect(screen.getByLabelText('曲线数据摘要')).toHaveTextContent('54.0%');
-    expect(screen.getByLabelText('曲线数据摘要')).toHaveTextContent('-0:29 / 233.6C');
+    expect(screen.getByLabelText('曲线数据摘要')).toHaveTextContent('14.4%');
+    expect(screen.getByLabelText('曲线数据摘要')).toHaveTextContent('0:00 / 235.3C');
 
     fireEvent.click(screen.getByText('舒缓'));
 

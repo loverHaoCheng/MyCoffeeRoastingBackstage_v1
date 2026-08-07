@@ -91,6 +91,82 @@ const metricFieldAliases: Record<string, string[]> = {
   turningPointTime: ['turningPointTime', 'turning_point_time'],
 };
 
+const editableEventTypes = ['charge', 'turningPoint', 'dryEnd', 'firstCrackStart', 'firstCrackEnd', 'drop'] as const;
+
+const getNearestCurvePointIndex = (points: Record<string, unknown>[], timeSeconds: number): number => points.reduce((nearestIndex, point, index) => {
+  const pointTime = getFirstNumber(point, curveFieldAliases.timeSeconds) ?? 0;
+  const nearestTime = getFirstNumber(points[nearestIndex], curveFieldAliases.timeSeconds) ?? 0;
+  return Math.abs(pointTime - timeSeconds) < Math.abs(nearestTime - timeSeconds) ? index : nearestIndex;
+}, 0);
+
+const getEffectiveCurveData = (curve: Record<string, unknown>): { metrics: Record<string, unknown>; points: Record<string, unknown>[] } => {
+  const points = getArray(curve.curve_data);
+  const events = getArray(curve.event_list);
+  const overrides = isRecord(curve.event_overrides) ? curve.event_overrides : {};
+  const selectedIndexes = new Map<string, number>();
+
+  editableEventTypes.forEach((type) => {
+    const override = overrides[type];
+    const overrideIndex = isRecord(override) ? toFiniteNumber(override.sampleIndex) : null;
+    const event = events.find((item) => toTrimmedString(item.type) === type);
+    const eventTime = event ? getFirstNumber(event, curveFieldAliases.timeSeconds) : null;
+    const index = overrideIndex != null && Number.isInteger(overrideIndex) && points[overrideIndex]
+      ? overrideIndex
+      : eventTime != null && points.length > 0
+        ? getNearestCurvePointIndex(points, eventTime)
+        : null;
+    if (index != null) selectedIndexes.set(type, index);
+  });
+
+  const chargeIndex = selectedIndexes.get('charge') ?? 0;
+  const dropIndex = selectedIndexes.get('drop') ?? points.length - 1;
+  const startIndex = Math.min(chargeIndex, dropIndex);
+  const endIndex = Math.max(chargeIndex, dropIndex);
+  const chargeTime = getFirstNumber(points[startIndex] ?? {}, curveFieldAliases.timeSeconds) ?? 0;
+  const effectivePoints = points.slice(startIndex, endIndex + 1).map((point) => ({
+    ...point,
+    timeSeconds: (getFirstNumber(point, curveFieldAliases.timeSeconds) ?? chargeTime) - chargeTime,
+  }));
+  const getEventPoint = (type: string): Record<string, unknown> | undefined => {
+    const index = selectedIndexes.get(type);
+    return index == null ? undefined : points[index];
+  };
+  const eventTime = (type: string): number | null => {
+    const point = getEventPoint(type);
+    const time = point ? getFirstNumber(point, curveFieldAliases.timeSeconds) : null;
+    return time == null ? null : time - chargeTime;
+  };
+  const eventTemperature = (type: string): number | null => getFirstNumber(getEventPoint(type) ?? {}, curveFieldAliases.beanTemperature);
+  const firstCrackTime = eventTime('firstCrackStart');
+  const dropTime = eventTime('drop');
+  const developmentTime = firstCrackTime != null && dropTime != null ? Math.max(0, dropTime - firstCrackTime) : null;
+  const metrics: Record<string, unknown> = {
+    ...(isRecord(curve.metrics) ? curve.metrics : {}),
+  };
+  const assignMetric = (key: string, value: number | null) => {
+    if (value != null) metrics[key] = value;
+  };
+
+  assignMetric('chargeTime', eventTime('charge'));
+  assignMetric('chargeTemperature', eventTemperature('charge'));
+  assignMetric('turningPointTime', eventTime('turningPoint'));
+  assignMetric('turningPointTemperature', eventTemperature('turningPoint'));
+  assignMetric('dryEndTime', eventTime('dryEnd'));
+  assignMetric('dryEndTemperature', eventTemperature('dryEnd'));
+  assignMetric('firstCrackTime', firstCrackTime);
+  assignMetric('firstCrackTemperature', eventTemperature('firstCrackStart'));
+  assignMetric('dropTime', dropTime);
+  assignMetric('roastDuration', dropTime);
+  assignMetric('dropTemperature', eventTemperature('drop'));
+  assignMetric('developmentTime', developmentTime);
+  assignMetric('developmentRatio', developmentTime != null && dropTime != null && dropTime > 0 ? (developmentTime / dropTime) * 100 : null);
+
+  return {
+    metrics,
+    points: effectivePoints,
+  };
+};
+
 const average = (values: number[]): null | number => {
   if (values.length === 0) {
     return null;
@@ -266,7 +342,7 @@ const getRoastDuration = (
   const fromMetrics = getFirstNumber(metrics, metricFieldAliases.roastDuration) ?? getFirstNumber(metrics, metricFieldAliases.dropTime);
   const fromLastPoint = points.length > 0 ? getFirstNumber(points[points.length - 1] ?? {}, curveFieldAliases.timeSeconds) : null;
 
-  return [fromBatch, fromMetrics, fromLastPoint].find((value): value is number => value != null && value > 0) ?? 0;
+  return [fromMetrics, fromLastPoint, fromBatch].find((value): value is number => value != null && value > 0) ?? 0;
 };
 
 const buildRoastAnalysisRequestFromPocketBase = async (
@@ -299,8 +375,9 @@ const buildRoastAnalysisRequestFromPocketBase = async (
     throw new RoastAnalysisReadinessError(422, '请先为这条烘焙记录导入曲线数据。');
   }
 
-  const points = getArray(curve.curve_data);
-  const metrics = isRecord(curve.metrics) ? curve.metrics : {};
+  const effectiveCurve = getEffectiveCurveData(curve);
+  const points = effectiveCurve.points;
+  const metrics = effectiveCurve.metrics;
 
   if (points.length === 0) {
     throw new RoastAnalysisReadinessError(422, '曲线中没有有效采样点，请重新导入曲线文件。');
@@ -360,9 +437,9 @@ const buildRoastAnalysisRequestFromPocketBase = async (
       steps: planSteps,
     },
     roast: {
-      developmentRatio: toFiniteNumber(batch.development_ratio) ?? getFirstNumber(metrics, metricFieldAliases.developmentRatio),
+      developmentRatio: getFirstNumber(metrics, metricFieldAliases.developmentRatio) ?? toFiniteNumber(batch.development_ratio),
       dropTemperatureC: getFirstNumber(metrics, metricFieldAliases.dropTemperature),
-      firstCrackTimeSeconds: toFiniteNumber(batch.first_crack_time) ?? getFirstNumber(metrics, metricFieldAliases.firstCrackTime),
+      firstCrackTimeSeconds: getFirstNumber(metrics, metricFieldAliases.firstCrackTime) ?? toFiniteNumber(batch.first_crack_time),
       target: toTrimmedString(batch.roast_level) || '未填写目标',
       totalTimeSeconds,
     },
@@ -385,7 +462,7 @@ const buildRoastAnalysisRequestFromPocketBase = async (
   };
 };
 
-const resolveRoastAnalysisInput = async (
+export const resolveRoastAnalysisInput = async (
   token: string,
   payload: unknown,
 ): Promise<RoastAnalysisRequest> => {
@@ -412,8 +489,9 @@ const readRoastAnalysisCurveReadiness = async (
 ): Promise<Record<string, number | string | boolean>> => {
   const batch = await getRecordById(token, ROAST_BATCHES_COLLECTION, roastBatchId);
   const curve = await getCurveByBatchId(token, roastBatchId);
-  const points = curve ? getArray(curve.curve_data) : [];
-  const metrics = curve && isRecord(curve.metrics) ? curve.metrics : {};
+  const effectiveCurve = curve ? getEffectiveCurveData(curve) : { metrics: {}, points: [] };
+  const points = effectiveCurve.points;
+  const metrics = effectiveCurve.metrics;
   const totalTimeSeconds = batch && curve ? getRoastDuration(batch, curve, metrics, points) : 0;
   const curveRecordId = curve ? toTrimmedString(curve.id) : '';
 
@@ -423,6 +501,79 @@ const readRoastAnalysisCurveReadiness = async (
     hasCurve: curveRecordId.length > 0 && points.length > 0 && totalTimeSeconds > 0,
     totalTimeSeconds,
   };
+};
+
+export interface RoastAnalysisExecutionResult {
+  alreadyReviewed: boolean;
+  analysis: unknown;
+  model: string;
+  reviewId?: string;
+  usage?: unknown;
+}
+
+export const runRoastAnalysis = async (
+  token: string,
+  ownerId: string,
+  input: RoastAnalysisRequest,
+): Promise<RoastAnalysisExecutionResult> => {
+  let usageContext: RoastAiUsageContext | null = null;
+
+  try {
+    const existingPayload = await listPocketBaseRecords(token, AI_ROAST_REVIEWS_COLLECTION, {
+      fields: '*',
+      filter: `owner = ${escapeFilterValue(ownerId)} && roast_batch_id = ${escapeFilterValue(input.roastBatchId)}`,
+      perPage: 1,
+    });
+    const existing = getFirstListItem(existingPayload);
+
+    if (existing && isRecord(existing.analysis_result)) {
+      return {
+        alreadyReviewed: true,
+        analysis: existing.analysis_result,
+        model: getGenerationModel(existing),
+        reviewId: toTrimmedString(existing.id),
+      };
+    }
+
+    usageContext = await readRoastAiUsageContext(ownerId, AI_FEATURE_ROAST_ANALYSIS);
+    ensureRoastAiUsageAvailable(usageContext);
+
+    const usage = await reserveRoastAiUsage(usageContext);
+    const analysis = await requestRoastAnalysis(input);
+
+    const created = await proxyPocketBaseRequest(`/api/collections/${AI_ROAST_REVIEWS_COLLECTION}/records`, {
+      body: JSON.stringify({
+        analysis_result: analysis,
+        curve_record_id: input.curveRecordId,
+        generation_meta: { generatedAt: new Date().toISOString(), model: process.env.AI_ROAST_MODEL?.trim() ?? '' },
+        input_snapshot: input,
+        machine_id: input.machineId,
+        owner: ownerId,
+        roast_batch_id: input.roastBatchId,
+      }),
+      headers: { Accept: 'application/json', Authorization: token, 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+
+    if (!created.response.ok) {
+      throw new PocketBaseGatewayError(created.response.status, created.payload);
+    }
+
+    return {
+      alreadyReviewed: false,
+      analysis,
+      model: process.env.AI_ROAST_MODEL?.trim() ?? '',
+      reviewId: isRecord(created.payload) ? toTrimmedString(created.payload.id) : undefined,
+      usage,
+    };
+  } catch (error) {
+    if (usageContext) {
+      const message = error instanceof Error ? error.message : '烘焙 AI 分析失败。';
+      await releaseRoastAiUsageReservation(usageContext, message);
+    }
+
+    throw error;
+  }
 };
 
 export const handleRoastAnalysis = async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
@@ -454,63 +605,9 @@ export const handleRoastAnalysis = async (request: IncomingMessage, response: Se
     return;
   }
 
-  let usageContext: RoastAiUsageContext | null = null;
-
   try {
-    const existingPayload = await listPocketBaseRecords(session.token, AI_ROAST_REVIEWS_COLLECTION, {
-      fields: '*',
-      filter: `owner = ${escapeFilterValue(session.record.id)} && roast_batch_id = ${escapeFilterValue(input.roastBatchId)}`,
-      perPage: 1,
-    });
-    const existing = getFirstListItem(existingPayload);
-
-    if (existing && isRecord(existing.analysis_result)) {
-      sendApiSuccess(response, {
-        alreadyReviewed: true,
-        analysis: existing.analysis_result,
-        model: getGenerationModel(existing),
-        reviewId: toTrimmedString(existing.id),
-      });
-      return;
-    }
-
-    usageContext = await readRoastAiUsageContext(session.record.id, AI_FEATURE_ROAST_ANALYSIS);
-    ensureRoastAiUsageAvailable(usageContext);
-
-    const usage = await reserveRoastAiUsage(usageContext);
-    const analysis = await requestRoastAnalysis(input);
-
-    const created = await proxyPocketBaseRequest(`/api/collections/${AI_ROAST_REVIEWS_COLLECTION}/records`, {
-      body: JSON.stringify({
-        analysis_result: analysis,
-        curve_record_id: input.curveRecordId,
-        generation_meta: { generatedAt: new Date().toISOString(), model: process.env.AI_ROAST_MODEL?.trim() ?? '' },
-        input_snapshot: input,
-        machine_id: input.machineId,
-        owner: session.record.id,
-        roast_batch_id: input.roastBatchId,
-      }),
-      headers: { Accept: 'application/json', Authorization: session.token, 'Content-Type': 'application/json' },
-      method: 'POST',
-    });
-
-    if (!created.response.ok) {
-      throw new PocketBaseGatewayError(created.response.status, created.payload);
-    }
-
-    sendApiSuccess(response, {
-      alreadyReviewed: false,
-      analysis,
-      model: process.env.AI_ROAST_MODEL?.trim() ?? '',
-      reviewId: isRecord(created.payload) ? toTrimmedString(created.payload.id) : undefined,
-      usage,
-    });
+    sendApiSuccess(response, await runRoastAnalysis(session.token, session.record.id, input));
   } catch (error) {
-    if (usageContext) {
-      const message = error instanceof Error ? error.message : '烘焙 AI 分析失败。';
-      await releaseRoastAiUsageReservation(usageContext, message);
-    }
-
     if (error instanceof PocketBaseGatewayError) {
       sendApiError(response, error.status, normalizeErrorPayload(error.payload).message ?? 'AI 复盘保存失败。');
       return;

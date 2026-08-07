@@ -11,4 +11,11 @@ describe('PWA manifest', () => {
       '<link rel="manifest" href="./site.webmanifest" crossorigin="use-credentials" />',
     );
   });
+
+  it('contains an entry-level loading shell before the React app mounts', () => {
+    const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8');
+
+    expect(html).toContain('id="app-boot-shell"');
+    expect(html).toContain('正在打开 EasyBake...');
+  });
 });

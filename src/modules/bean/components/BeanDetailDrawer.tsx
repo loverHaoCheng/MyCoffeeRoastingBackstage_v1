@@ -3,7 +3,8 @@ import Button from "antd/es/button";
 import Result from "antd/es/result";
 import Spin from "antd/es/spin";
 
-import { useBeanEditableDetail, useUpdateBean } from '@/modules/bean/hooks';
+import { useBeanEditableDetail } from '@/modules/bean/hooks/useBeanEditableDetail';
+import { useUpdateBean } from '@/modules/bean/hooks/useBeans';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ReadonlyFieldSectionList } from '@/shared/components/ReadonlyFieldSectionList';

@@ -72,6 +72,55 @@ describe('parseArtisanRoastCurveJson', () => {
     expect(record.beanSnapshot?.greenBeanWeightGrams).toBe(200);
   });
 
+  it('reproduces the Artisan turning point only when it is exported in computed fields', () => {
+    const jsonText = JSON.stringify({
+      computed: {
+        CHARGE_BT: 198.8,
+        DROP_BT: 231.4,
+        DROP_time: 12,
+        FCs_BT: 206,
+        FCs_time: 10,
+        TP_BT: 100.3,
+        TP_idx: 2,
+        TP_time: 4,
+        totaltime: 12,
+      },
+      mode: 'C',
+      temp1: [-1, -1, -1, -1, -1, -1, -1],
+      temp2: [198.8, 140, 100.3, 130, 170, 206, 231.4],
+      timeindex: [0, 0, 5, 0, 0, 0, 6, 0],
+      timex: [0, 2, 4, 6, 8, 10, 12],
+    });
+
+    const record = parseArtisanRoastCurveJson(jsonText, 'batch-1');
+
+    expect(record.eventList).toContainEqual({
+      code: 2,
+      label: '回温点',
+      temperature: 100.3,
+      temperatureUnit: 'C',
+      timeSeconds: 4,
+      type: 'turningPoint',
+    });
+    expect(record.metrics.turningPointTime).toBe(4);
+    expect(record.metrics.turningPointTemperature).toBe(100.3);
+  });
+
+  it('does not infer a turning point when Artisan does not export TP_time', () => {
+    const jsonText = JSON.stringify({
+      computed: { CHARGE_BT: 198.8, DROP_BT: 231.4, DROP_time: 6, totaltime: 6 },
+      temp1: [-1, -1, -1, -1],
+      temp2: [198.8, 100.3, 170, 231.4],
+      timeindex: [0, 0, 0, 0, 0, 0, 3, 0],
+      timex: [0, 2, 4, 6],
+    });
+
+    const record = parseArtisanRoastCurveJson(jsonText, 'batch-1');
+
+    expect(record.eventList.some((event) => event.type === 'turningPoint')).toBe(false);
+    expect(record.metrics.turningPointTime).toBeUndefined();
+  });
+
   it('auto-detects Artisan JSON through the shared import entry', () => {
     const jsonText = JSON.stringify({
       computed: { CHARGE_ET: 190 },

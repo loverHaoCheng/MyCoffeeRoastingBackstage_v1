@@ -298,6 +298,16 @@ const requestJson = async (
   }
 };
 
+const AUTH_SESSION_TIMEOUT_MS = 8_000;
+
+const createAuthSessionTimeoutSignal = (): AbortSignal | undefined => {
+  if (typeof AbortSignal === 'undefined' || typeof AbortSignal.timeout !== 'function') {
+    return undefined;
+  }
+
+  return AbortSignal.timeout(AUTH_SESSION_TIMEOUT_MS);
+};
+
 const postJson = async (path: string, body: Record<string, unknown>): Promise<unknown> => {
   return requestJson(buildAuthGatewayUrl(path), {
     body: JSON.stringify(body),
@@ -364,6 +374,7 @@ export const pocketBaseAuthService = {
         Accept: 'application/json',
       },
       method: 'GET',
+      signal: createAuthSessionTimeoutSignal(),
     })) as PocketBaseAuthResponse;
 
     if (!response.record) {

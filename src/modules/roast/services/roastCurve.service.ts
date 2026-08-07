@@ -21,6 +21,7 @@ import { parseRoastCurveJson } from './roastCurveImport.service';
 import type {
   RoastCurveImportInput,
   RoastCurveImportResult,
+  RoastCurveEventOverrides,
   RoastCurveRecord,
 } from '../types/roastCurve';
 
@@ -116,6 +117,33 @@ export const roastCurveService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       throw new AppError('导入曲线 JSON 失败。', { code: 'NETWORK', cause: error });
+    }
+  },
+  async updateEventOverrides(
+    roastBatchId: string,
+    eventOverrides: RoastCurveEventOverrides | undefined,
+  ): Promise<ApiResponse<RoastCurveRecord>> {
+    try {
+      const repository = resolveRoastCurveRepository();
+      const current = await repository.getByBatchId(roastBatchId);
+
+      if (!current) {
+        throw new AppError('未找到可编辑的曲线记录。', { code: 'DATA' });
+      }
+
+      const input = Object.fromEntries(
+        Object.entries(current).filter(([key]) => key !== 'id'),
+      ) as Omit<RoastCurveRecord, 'id'>;
+      const record = await repository.upsert({
+        ...input,
+        eventOverrides,
+        updatedAt: new Date().toISOString(),
+      });
+
+      return ok(record);
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('保存曲线关键点失败。', { code: 'NETWORK', cause: error });
     }
   },
 };

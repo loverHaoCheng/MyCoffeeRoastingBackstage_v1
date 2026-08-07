@@ -643,6 +643,15 @@ describe('PocketBase auth BFF contract', () => {
         return Promise.resolve(new Response(JSON.stringify({ id: 'upload-1' }), { status: 200 }));
       }
 
+      if (url.endsWith('/api/easybake/ai-usage/reserve')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          logId: 'usage-log-1',
+          monthlyLimit: 10,
+          remainingUses: 9,
+          usedThisMonth: 1,
+        }), { status: 200 }));
+      }
+
       if (url.endsWith('/api/collections/ai_usage_logs/records')) {
         expect(init?.method).toBe('POST');
         expect(JSON.parse(typeof init?.body === 'string' ? init.body : '{}')).toMatchObject({
@@ -845,6 +854,15 @@ describe('PocketBase auth BFF contract', () => {
         return Promise.resolve(new Response(JSON.stringify({ id: 'review-1' }), { status: 200 }));
       }
 
+      if (url.endsWith('/api/easybake/ai-usage/reserve')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          logId: 'usage-log-1',
+          monthlyLimit: 10,
+          remainingUses: 9,
+          usedThisMonth: 1,
+        }), { status: 200 }));
+      }
+
       if (url.endsWith('/api/collections/ai_usage_logs/records')) {
         expect(init?.method).toBe('POST');
         expect(JSON.parse(typeof init?.body === 'string' ? init.body : '{}')).toMatchObject({
@@ -997,6 +1015,15 @@ describe('PocketBase auth BFF contract', () => {
               },
             },
           ],
+        }), { status: 200 }));
+      }
+
+      if (url.endsWith('/api/easybake/ai-usage/reserve')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          logId: 'usage-log-1',
+          monthlyLimit: 10,
+          remainingUses: 9,
+          usedThisMonth: 1,
         }), { status: 200 }));
       }
 

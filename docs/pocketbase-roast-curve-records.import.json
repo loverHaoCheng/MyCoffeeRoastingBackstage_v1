@@ -177,6 +177,17 @@
         "type": "json"
       },
       {
+        "help": "已编辑关键点对应的原始采样点索引，不改写完整导入曲线。",
+        "hidden": false,
+        "id": "json1000000017",
+        "maxSize": 1048576,
+        "name": "event_overrides",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "json"
+      },
+      {
         "autogeneratePattern": "",
         "help": "",
         "hidden": false,

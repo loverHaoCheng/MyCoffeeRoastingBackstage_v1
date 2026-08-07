@@ -1,9 +1,12 @@
 import DownloadOutlined from '@ant-design/icons/DownloadOutlined';
 import ReloadOutlined from '@ant-design/icons/ReloadOutlined';
 import App from 'antd/es/app';
+import { useMemo } from 'react';
 
-import { useImportHiBeanRoastCurve, useRoastCurve, useUpdateRoastBatch } from '@/modules/roast/hooks';
+import { useImportHiBeanRoastCurve, useRoastCurve, useUpdateRoastBatch, useUpdateRoastCurveEventOverrides } from '@/modules/roast/hooks';
+import type { RoastCurveEventOverrides } from '@/modules/roast/types/roastCurve';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
+import { resolveEffectiveRoastCurve } from '@/modules/roast/utils/roastCurveEffective';
 import { toRoastBatchCurveSummaryInput } from '@/modules/roast/utils/roastCurveSummary';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 
@@ -18,8 +21,10 @@ export function RoastCurvePanel({ batch }: RoastCurvePanelProps) {
   const curveQuery = useRoastCurve(batch.id);
   const importCurveMutation = useImportHiBeanRoastCurve();
   const updateBatchMutation = useUpdateRoastBatch();
-  const curve = curveQuery.data ?? null;
-  const isBusy = importCurveMutation.isPending || updateBatchMutation.isPending;
+  const updateEventOverridesMutation = useUpdateRoastCurveEventOverrides();
+  const sourceCurve = curveQuery.data ?? null;
+  const curve = useMemo(() => sourceCurve ? resolveEffectiveRoastCurve(sourceCurve) : null, [sourceCurve]);
+  const isBusy = importCurveMutation.isPending || updateBatchMutation.isPending || updateEventOverridesMutation.isPending;
 
   const importFile = async (file: File) => {
     const jsonText = await file.text();
@@ -61,16 +66,36 @@ export function RoastCurvePanel({ batch }: RoastCurvePanelProps) {
     void runImport();
   };
 
+  const saveEventOverrides = (eventOverrides: RoastCurveEventOverrides | undefined) => {
+    const runSave = async () => {
+      try {
+        const savedCurve = await updateEventOverridesMutation.mutateAsync({ eventOverrides, roastBatchId: batch.id });
+        const effectiveCurve = resolveEffectiveRoastCurve(savedCurve);
+        await updateBatchMutation.mutateAsync({
+          batchId: batch.id,
+          input: toRoastBatchCurveSummaryInput(effectiveCurve.metrics),
+        });
+        void message.success('关键点已更新，并已同步曲线摘要。');
+      } catch (error: unknown) {
+        void message.error(getUserFacingErrorMessage(error, '保存关键点失败，请稍后重试。'));
+      }
+    };
+
+    void runSave();
+  };
+
   return (
     <RoastCurveAttachmentPanel
       actionIcon={curve ? <ReloadOutlined /> : <DownloadOutlined />}
       actionLabel={curve ? '覆盖导入' : '导入 JSON'}
       curve={curve}
+      editableSourceCurve={sourceCurve}
       emptyText="导入 HiBean 或 Artisan JSON 后会在这里展示温度、RoR 与关键事件。"
       isBusy={isBusy}
       isLoading={curveQuery.isFetching}
       sourceText={curve ? `来源：${curve.source === 'artisan' ? 'Artisan' : 'HiBean'} · ${curve.originalFileName ?? '未记录文件名'}` : '暂无曲线'}
       onFileSelected={handleFile}
+      onSaveEventOverrides={saveEventOverrides}
     />
   );
 }

@@ -141,15 +141,12 @@ verify_release_dir_has_no_secrets() {
   fi
 
   sensitive_patterns=(
-    "DEPLOY_HTTP_PASSWORD"
-    "PB_SUPERUSER_EMAIL"
-    "PB_SUPERUSER_PASSWORD"
-    "QINIU_QWEN_API_KEY"
     "BEGIN PRIVATE KEY"
     "BEGIN RSA PRIVATE KEY"
     ".deploy_test.local"
   )
 
+  # 环境变量名可以安全存在于服务端代码中；实际值由下方的 env value scan 检查。
   # 使用 grep -a（而非 -I）以覆盖二进制与预压缩产物。
   for pattern in "${sensitive_patterns[@]}"; do
     if grep -R -a -F -q -- "${pattern}" "${scan_dir}"; then
@@ -404,7 +401,7 @@ while IFS= read -r release_path; do
     kept=$((kept + 1))
     continue
   fi
-  rm -rf -- "${release_path}"
+  sudo rm -rf -- "${release_path}"
 done < <(find "${releases_path}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
 REMOTE_SCRIPT
 }
@@ -508,7 +505,7 @@ while IFS= read -r release_path; do
     continue
   fi
 
-  rm -rf -- "${release_path}"
+  sudo rm -rf -- "${release_path}"
   echo "Removed expired frontend release: ${release_path}"
 done < <(find "${releases_path}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
 REMOTE_SCRIPT
@@ -553,6 +550,9 @@ npm run auth:bff:build
 
 echo "📦 Staging frontend release..."
 cp -R dist/. "${FRONTEND_RELEASE_DIR}/"
+# `npm run build` 先执行 server TypeScript project reference，BFF 会落在 dist/server。
+# BFF 由独立发布链路 rsync 到服务端，不能进入公开前端 release。
+rm -rf "${FRONTEND_RELEASE_DIR}/server"
 # 归一化产物权限：本地 600 权限文件（如协作工具写入）原样上线会导致 Nginx 403。
 chmod -R u=rwX,go=rX "${FRONTEND_RELEASE_DIR}"
 

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { roastCurveService } from '../services/roastCurve.service';
-import type { RoastCurveImportInput, RoastCurveRecord } from '../types/roastCurve';
+import type { RoastCurveEventOverrides, RoastCurveImportInput, RoastCurveRecord } from '../types/roastCurve';
 
 export const roastCurveQueryKeys = {
   all: ['roast-curves'] as const,
@@ -42,6 +42,20 @@ export function useImportHiBeanRoastCurve() {
         roastCurveQueryKeys.detail(result.record.roastBatchId),
         result.record,
       );
+    },
+  });
+}
+
+export function useUpdateRoastCurveEventOverrides() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { eventOverrides?: RoastCurveEventOverrides; roastBatchId: string }) => {
+      const response = await roastCurveService.updateEventOverrides(input.roastBatchId, input.eventOverrides);
+      return response.data;
+    },
+    onSuccess: (record) => {
+      queryClient.setQueryData<RoastCurveRecord>(roastCurveQueryKeys.detail(record.roastBatchId), record);
     },
   });
 }

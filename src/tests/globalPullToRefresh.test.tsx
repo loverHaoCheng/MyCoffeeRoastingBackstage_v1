@@ -15,12 +15,17 @@ const { checkForAvailableAppUpdateMock } = vi.hoisted(() => ({
   checkForAvailableAppUpdateMock: vi.fn(),
 }));
 
+const { reloadToLatestAppMock } = vi.hoisted(() => ({
+  reloadToLatestAppMock: vi.fn(),
+}));
+
 vi.mock('@/app/services/appDataRefresh.service', () => ({
   refreshQuickAppData: refreshQuickAppDataMock,
 }));
 
 vi.mock('@/app/services/appVersionCheck.service', () => ({
   checkForAvailableAppUpdate: checkForAvailableAppUpdateMock,
+  reloadToLatestApp: reloadToLatestAppMock,
 }));
 
 const renderWithProviders = (ui: ReactNode) => {
@@ -52,6 +57,7 @@ describe('GlobalPullToRefresh', () => {
     });
     checkForAvailableAppUpdateMock.mockReset();
     checkForAvailableAppUpdateMock.mockResolvedValue(false);
+    reloadToLatestAppMock.mockReset();
 
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,
@@ -165,14 +171,11 @@ describe('GlobalPullToRefresh', () => {
     const scrollContainerRef = createRef<HTMLDivElement>();
     const scrollContainer = document.createElement('div');
     scrollContainerRef.current = scrollContainer;
-    const reloadSpy = vi.fn();
-
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: {
         href: window.location.href,
         protocol: window.location.protocol,
-        reload: reloadSpy,
       },
     });
     checkForAvailableAppUpdateMock.mockResolvedValue(true);
@@ -200,7 +203,7 @@ describe('GlobalPullToRefresh', () => {
     });
 
     await waitFor(() => {
-      expect(reloadSpy).toHaveBeenCalledTimes(1);
+      expect(reloadToLatestAppMock).toHaveBeenCalledTimes(1);
     });
   });
 

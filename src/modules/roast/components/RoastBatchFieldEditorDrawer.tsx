@@ -6,7 +6,7 @@ import InputNumber from '@/shared/components/ui/input-number';
 import Spin from "antd/es/spin";
 import { useEffect, useMemo, useState } from 'react';
 
-import { useBeans } from '@/modules/bean/hooks';
+import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { calculateRoastSaleCapacity, resolveBeanCostTemplate } from '@/modules/finance/services/financeProfitCalculation.service';
 import { ROAST_LEVEL_OPTIONS, normalizeRoastLevel } from '@/modules/roast/constants/roastLevel';
 import { useRoastPlans } from '@/modules/roast/hooks';

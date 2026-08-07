@@ -5,7 +5,7 @@ import InputNumber from '@/shared/components/ui/input-number';
 import Spin from "antd/es/spin";
 import { useEffect, useMemo, useState } from 'react';
 
-import { useBeans } from '@/modules/bean/hooks';
+import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
 import { roastPlanToJsonInput } from '@/modules/roast/services/roastPlanJson.service';
 import { useUpdateRoastPlan } from '@/modules/roast/hooks/useRoastPlans';

@@ -1,6 +1,6 @@
 import Grid from 'antd/es/grid';
 import Layout from 'antd/es/layout';
-import { type CSSProperties, type ReactNode, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type ReactNode, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 
 import { GlobalPullToRefresh } from '@/app/components/GlobalPullToRefresh';
@@ -15,7 +15,7 @@ import { FloatingActionDock } from './components/FloatingActionDock';
 import { MobileAppHeader } from './components/MobileAppHeader';
 import { MobileBottomNavigation } from './components/MobileBottomNavigation';
 import { MobileSettingsOverlay } from './components/MobileSettingsOverlay';
-import { RouteTransitionStage, type RouteTransitionDirection } from './components/RouteTransitionStage';
+import { RouteTransitionStage } from './components/RouteTransitionStage';
 import { SettingsAuthBar } from './components/SettingsAuthBar';
 import { useMobileKeyboardViewportFocus } from './hooks/useMobileKeyboardViewportFocus';
 import { useMobileSwipeNavigation } from './hooks/useMobileSwipeNavigation';
@@ -25,7 +25,6 @@ import styles from './MainLayoutShell.module.css';
 
 const { Content } = Layout;
 const { useBreakpoint } = Grid;
-const MOBILE_ROUTE_TRANSITION_MS = 300;
 const FLOATING_ACTION_VISIBILITY_TRANSITION_MS = 220;
 const MOBILE_SETTINGS_PANEL_TRANSITION_MS = 260;
 const MOBILE_SETTINGS_FALLBACK_PATH = '/production';
@@ -41,12 +40,9 @@ export function MainLayout() {
   const outlet = useOutlet();
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const mobileSettingsPanelScrollRef = useRef<HTMLDivElement | null>(null);
-  const currentOutletRef = useRef(outlet);
   const floatingActionCleanupTimerRef = useRef<number | null>(null);
   const floatingActionRegistrationIdRef = useRef(0);
-  const routeTransitionTimerRef = useRef<number | null>(null);
   const mobileSettingsPanelTimerRef = useRef<number | null>(null);
-  const previousPathnameRef = useRef(location.pathname);
   const lastNonSettingsPathRef = useRef(
     location.pathname === '/settings' ? MOBILE_SETTINGS_FALLBACK_PATH : location.pathname,
   );
@@ -55,14 +51,9 @@ export function MainLayout() {
     () => appNavigationItems.filter((item) => item.showInBottomNav !== false),
     [],
   );
-  const [currentOutlet, setCurrentOutlet] = useState(outlet);
-  const [previousOutlet, setPreviousOutlet] = useState<ReactNode | null>(null);
   const [floatingActionConfig, setFloatingActionConfig] = useState<null | (ViewportFloatingActionButtonProps & { id: number })>(null);
   const [renderedFloatingActionConfig, setRenderedFloatingActionConfig] = useState<null | ViewportFloatingActionButtonProps>(null);
   const [isFloatingActionVisible, setIsFloatingActionVisible] = useState(false);
-  const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
-  const [routeTransitionDirection, setRouteTransitionDirection] =
-    useState<RouteTransitionDirection>('forward');
   const [isMobileSettingsPanelMounted, setIsMobileSettingsPanelMounted] = useState(false);
   const [isMobileSettingsPanelVisible, setIsMobileSettingsPanelVisible] = useState(false);
 
@@ -71,26 +62,15 @@ export function MainLayout() {
       appNavigationItems.find((item) => location.pathname.startsWith(item.path))?.key ?? 'bean'
     );
   }, [location.pathname]);
-  const previousSelectedKeyRef = useRef<AppRouteKey>(selectedKey);
   const activeBottomNavIndex = useMemo(() => {
     const activeIndex = bottomNavItems.findIndex((item) => item.key === selectedKey);
 
     return activeIndex >= 0 ? activeIndex : 0;
   }, [bottomNavItems, selectedKey]);
 
-  const getPathIndex = useCallback((pathname: string): number => {
-    const matchedIndex = bottomNavItems.findIndex((item) => pathname.startsWith(item.path));
-
-    return matchedIndex >= 0 ? matchedIndex : 0;
-  }, [bottomNavItems]);
-
   useEffect(() => {
     loadAppDisplaySettings();
   }, [loadAppDisplaySettings]);
-
-  useEffect(() => {
-    previousSelectedKeyRef.current = selectedKey;
-  }, [selectedKey]);
 
   useEffect(() => {
     const scrollViewport = scrollViewportRef.current;
@@ -108,17 +88,9 @@ export function MainLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    currentOutletRef.current = currentOutlet;
-  }, [currentOutlet]);
-
-  useEffect(() => {
     return () => {
       if (floatingActionCleanupTimerRef.current != null) {
         window.clearTimeout(floatingActionCleanupTimerRef.current);
-      }
-
-      if (routeTransitionTimerRef.current != null) {
-        window.clearTimeout(routeTransitionTimerRef.current);
       }
 
       if (mobileSettingsPanelTimerRef.current != null) {
@@ -195,42 +167,6 @@ export function MainLayout() {
     }, FLOATING_ACTION_VISIBILITY_TRANSITION_MS);
   }, [floatingActionConfig]);
 
-  useLayoutEffect(() => {
-    const nextPathname = location.pathname;
-    const previousPathname = previousPathnameRef.current;
-
-    if (routeTransitionTimerRef.current != null) {
-      window.clearTimeout(routeTransitionTimerRef.current);
-      routeTransitionTimerRef.current = null;
-    }
-
-    if (isWide || previousPathname === nextPathname) {
-      if (currentOutletRef.current !== outlet) {
-        currentOutletRef.current = outlet;
-        setCurrentOutlet(outlet);
-      }
-      setPreviousOutlet(null);
-      setIsRouteTransitioning(false);
-      previousPathnameRef.current = nextPathname;
-      return;
-    }
-
-    setRouteTransitionDirection(
-      getPathIndex(nextPathname) >= getPathIndex(previousPathname) ? 'forward' : 'backward',
-    );
-    setPreviousOutlet(currentOutletRef.current);
-    currentOutletRef.current = outlet;
-    setCurrentOutlet(outlet);
-    setIsRouteTransitioning(true);
-    previousPathnameRef.current = nextPathname;
-
-    routeTransitionTimerRef.current = window.setTimeout(() => {
-      setPreviousOutlet(null);
-      setIsRouteTransitioning(false);
-      routeTransitionTimerRef.current = null;
-    }, MOBILE_ROUTE_TRANSITION_MS);
-  }, [getPathIndex, isWide, location.pathname, outlet]);
-
   const navigateByKey = useCallback((key: AppRouteKey) => {
     if (!isWide && key === 'settings') {
       openMobileSettingsPanel();
@@ -286,11 +222,6 @@ export function MainLayout() {
     enabled: true,
     register: registerFloatingAction,
   }), [registerFloatingAction]);
-  const disabledFloatingActionRegistration = useMemo(() => ({
-    enabled: false,
-    register: registerFloatingAction,
-  }), [registerFloatingAction]);
-
   const scrollToTop = () => {
     const scrollViewport = scrollViewportRef.current;
 
@@ -394,17 +325,11 @@ export function MainLayout() {
               >
                 <Content className={styles.content}>
                   <RouteTransitionStage
-                    currentOutlet={currentOutlet}
-                    disabledFloatingActionRegistration={disabledFloatingActionRegistration}
                     enabledFloatingActionRegistration={enabledFloatingActionRegistration}
                     isMobileSettingsRoute={isMobileSettingsRoute}
-                    isRouteTransitioning={isRouteTransitioning}
-                    isWide={isWide}
+                    outlet={outlet}
                     pathname={location.pathname}
-                    previousOutlet={previousOutlet}
-                    previousSelectedKey={previousSelectedKeyRef.current}
                     renderRoutePanelContent={renderRoutePanelContent}
-                    routeTransitionDirection={routeTransitionDirection}
                     selectedKey={selectedKey}
                   />
                 </Content>

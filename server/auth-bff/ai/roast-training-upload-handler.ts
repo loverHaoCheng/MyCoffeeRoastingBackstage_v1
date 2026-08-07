@@ -46,13 +46,14 @@ interface TrainingUploadStatus {
   disabledReason?: string;
   enabled: boolean;
   environment: string;
-  recommendation?: TrainingRecommendationView;
+  recommendations?: TrainingRecommendationView[];
   readiness?: TrainingReadiness;
   roastBatchId: string;
   uploadId?: string;
 }
 
 interface TrainingRecommendationView {
+  adjustmentDirection?: string;
   adjustments: RoastTrainingRecommendationResult['adjustments'];
   confidence: number;
   modifiedPlanJson: RoastPlanDraft;
@@ -170,12 +171,12 @@ const getCurveByBatchId = async (
   return getFirstListItem(payload);
 };
 
-const getTrainingRecommendationByBatchId = async (
+const getTrainingRecommendationsByBatchId = async (
   token: string,
   ownerId: string,
   roastBatchId: string,
   machineId: string,
-): Promise<Record<string, unknown> | null> => {
+): Promise<Record<string, unknown>[]> => {
   const filters = [`owner = ${escapeFilterValue(ownerId)}`];
 
   if (machineId) {
@@ -189,10 +190,10 @@ const getTrainingRecommendationByBatchId = async (
   });
   const items = isRecord(payload) && Array.isArray(payload.items) ? payload.items.filter(isRecord) : [];
 
-  return items.find((item) => {
+  return items.filter((item) => {
     const context = isRecord(item.request_context) ? item.request_context : null;
     return toTrimmedString(context?.roastBatchId) === roastBatchId;
-  }) ?? null;
+  });
 };
 
 const getExistingUpload = async (
@@ -310,6 +311,7 @@ const toRecommendationView = (record: Record<string, unknown> | null): TrainingR
     : 0;
 
   return {
+    adjustmentDirection: toTrimmedString(context.adjustmentDirection) || undefined,
     adjustments,
     confidence,
     modifiedPlanJson: record.plan_draft as unknown as RoastPlanDraft,
@@ -319,7 +321,7 @@ const toRecommendationView = (record: Record<string, unknown> | null): TrainingR
   };
 };
 
-const buildStatus = async (
+export const buildStatus = async (
   token: string,
   ownerId: string,
   roastBatchId: string,
@@ -341,19 +343,15 @@ const buildStatus = async (
   const curve = await getCurveByBatchId(token, roastBatchId);
   const roastPlan = await getRecordById(token, ROAST_PLANS_COLLECTION, toTrimmedString(batch.roast_plan_id));
   const machineId = roastPlan ? toTrimmedString(roastPlan.roaster_machine_id) : '';
-  const recommendation = await getTrainingRecommendationByBatchId(token, ownerId, roastBatchId, machineId);
+  const recommendations = await getTrainingRecommendationsByBatchId(token, ownerId, roastBatchId, machineId);
   const readiness = buildReadiness(batch, curve);
 
   return {
     alreadyUploaded: Boolean(existingUpload),
-    disabledReason: existingUpload
-      ? '这条烘焙记录已经上传过训练数据。'
-      : readiness.isUploadReady
-        ? undefined
-        : `当前仍缺少：${readiness.missingLabels.join('、')}。`,
-    enabled: !existingUpload && readiness.isUploadReady,
+    disabledReason: readiness.isUploadReady ? undefined : `当前仍缺少：${readiness.missingLabels.join('、')}。`,
+    enabled: readiness.isUploadReady,
     environment: getEasyBakeAppEnv(),
-    recommendation: toRecommendationView(recommendation),
+    recommendations: recommendations.map(toRecommendationView).filter((item): item is TrainingRecommendationView => item != null),
     readiness,
     roastBatchId,
     uploadId: toTrimmedString(existingUpload?.id) || undefined,
@@ -505,6 +503,124 @@ export const handleRoastTrainingUploadStatus = async (
   }
 };
 
+export const runRoastTrainingUpload = async (
+  token: string,
+  ownerId: string,
+  roastBatchId: string,
+  options: { adjustmentDirection?: string; createTrainingSample?: boolean } = {},
+): Promise<{
+  quality: unknown;
+  recommendation?: TrainingRecommendationView;
+  sampleId: string;
+  uploadId: string;
+  usage: unknown;
+}> => {
+  let usageContext: RoastAiUsageContext | null = null;
+
+  try {
+    const existingUpload = await getExistingUpload(token, ownerId, roastBatchId);
+
+    if (existingUpload && options.createTrainingSample !== false) {
+      throw new PocketBaseGatewayError(409, {
+        data: { uploadId: toTrimmedString(existingUpload.id) },
+        message: '这条烘焙记录已经上传过训练数据，不能重复上传。',
+      });
+    }
+
+    const roastBatch = await getRecordById(token, ROAST_BATCHES_COLLECTION, roastBatchId);
+
+    if (!roastBatch) {
+      throw new PocketBaseGatewayError(404, { message: '未找到这条烘焙记录。' });
+    }
+
+    const roastCurve = await getCurveByBatchId(token, roastBatchId);
+    const readiness = buildReadiness(roastBatch, roastCurve);
+
+    if (!readiness.isUploadReady || !roastCurve) {
+      throw new PocketBaseGatewayError(422, {
+        data: { readiness },
+        message: `当前仍缺少：${readiness.missingLabels.join('、')}。`,
+      });
+    }
+
+    usageContext = await readRoastAiUsageContext(ownerId, AI_FEATURE_ROAST_TRAINING_RECOMMENDATION);
+    ensureRoastAiUsageAvailable(usageContext);
+
+    const snapshot = await buildTrainingSnapshot(token, ownerId, roastBatch, roastCurve);
+    const basePlanDraft = buildPlanDraftFromSnapshot(snapshot);
+    const usage = await reserveRoastAiUsage(usageContext);
+    const recommendation = await requestRoastTrainingRecommendation({
+      basePlanDraft,
+      quality: null,
+      snapshot,
+    });
+    const roasterModel =
+      isRecord(snapshot.roasterMachine) && hasText(snapshot.roasterMachine.display_name)
+        ? toTrimmedString(snapshot.roasterMachine.display_name)
+        : '未关联烘焙机';
+    const samplePayload = {
+      owner: ownerId,
+      quality_status: 'pending',
+      roast_batch_id: roastBatchId,
+      roaster_model: roasterModel,
+      snapshot,
+    };
+    const shouldCreateTrainingSample = options.createTrainingSample !== false && !existingUpload;
+    const sample = shouldCreateTrainingSample
+      ? await createPocketBaseRecord(token, TRAINING_SAMPLES_COLLECTION, samplePayload)
+      : null;
+    const qualityCheck = sample
+      ? await checkAndUpdateRoastTrainingSampleQuality(token, { ...samplePayload, id: toTrimmedString(sample.id) })
+      : null;
+    const recommendationRecord = await createPocketBaseRecord(token, TRAINING_RECOMMENDATIONS_COLLECTION, {
+      generation_meta: {
+        generatedAt: new Date().toISOString(),
+        model: process.env.AI_ROAST_MODEL?.trim() ?? '',
+        roastCurveId: toTrimmedString(roastCurve.id),
+      },
+      machine_id: recommendation.modifiedPlanJson.roasterMachineId ?? '',
+      owner: ownerId,
+      plan_draft: recommendation.modifiedPlanJson,
+      request_context: {
+        adjustments: recommendation.adjustments,
+        confidence: recommendation.confidence,
+        overallReview: recommendation.overallReview,
+        adjustmentDirection: options.adjustmentDirection ?? '',
+        quality: qualityCheck,
+        roastBatchId,
+        sampleId: toTrimmedString(sample?.id),
+        sourcePlanId: toTrimmedString(roastBatch.roast_plan_id),
+      },
+      status: 'draft',
+    });
+    const upload = sample
+      ? await createPocketBaseRecord(token, TRAINING_UPLOADS_COLLECTION, {
+          owner: ownerId,
+          roast_batch_id: roastBatchId,
+          sample_id: toTrimmedString(sample.id),
+          status: 'uploaded',
+        })
+      : existingUpload;
+
+    return {
+      quality: qualityCheck,
+      recommendation: toRecommendationView(recommendationRecord),
+      sampleId: toTrimmedString(sample?.id),
+      uploadId: toTrimmedString(upload?.id),
+      usage,
+    };
+  } catch (error) {
+    if (usageContext) {
+      await releaseRoastAiUsageReservation(
+        usageContext,
+        error instanceof Error ? error.message : '整体复盘与计划建议生成失败。',
+      );
+    }
+
+    throw error;
+  }
+};
+
 export const handleRoastTrainingUpload = async (
   request: IncomingMessage,
   response: ServerResponse,
@@ -523,103 +639,9 @@ export const handleRoastTrainingUpload = async (
     return;
   }
 
-  let usageContext: RoastAiUsageContext | null = null;
-
   try {
-    const existingUpload = await getExistingUpload(authResponse.token, authResponse.record.id, roastBatchId);
-
-    if (existingUpload) {
-      sendApiError(response, 409, '这条烘焙记录已经上传过训练数据，不能重复上传。', {
-        uploadId: toTrimmedString(existingUpload.id),
-      });
-      return;
-    }
-
-    const roastBatch = await getRecordById(authResponse.token, ROAST_BATCHES_COLLECTION, roastBatchId);
-
-    if (!roastBatch) {
-      sendApiError(response, 404, '未找到这条烘焙记录。');
-      return;
-    }
-
-    const roastCurve = await getCurveByBatchId(authResponse.token, roastBatchId);
-    const readiness = buildReadiness(roastBatch, roastCurve);
-
-    if (!readiness.isUploadReady || !roastCurve) {
-      sendApiError(response, 422, `当前仍缺少：${readiness.missingLabels.join('、')}。`, {
-        readiness,
-      });
-      return;
-    }
-
-    usageContext = await readRoastAiUsageContext(authResponse.record.id, AI_FEATURE_ROAST_TRAINING_RECOMMENDATION);
-    ensureRoastAiUsageAvailable(usageContext);
-
-    const snapshot = await buildTrainingSnapshot(authResponse.token, authResponse.record.id, roastBatch, roastCurve);
-    const basePlanDraft = buildPlanDraftFromSnapshot(snapshot);
-    const usage = await reserveRoastAiUsage(usageContext);
-    const recommendation = await requestRoastTrainingRecommendation({
-      basePlanDraft,
-      quality: null,
-      snapshot,
-    });
-    const roasterModel =
-      isRecord(snapshot.roasterMachine) && hasText(snapshot.roasterMachine.display_name)
-        ? toTrimmedString(snapshot.roasterMachine.display_name)
-        : '未关联烘焙机';
-    const samplePayload = {
-      owner: authResponse.record.id,
-      quality_status: 'pending',
-      roast_batch_id: roastBatchId,
-      roaster_model: roasterModel,
-      snapshot,
-    };
-    const sample = await createPocketBaseRecord(authResponse.token, TRAINING_SAMPLES_COLLECTION, samplePayload);
-    const qualityCheck = await checkAndUpdateRoastTrainingSampleQuality(authResponse.token, {
-      ...samplePayload,
-      id: toTrimmedString(sample.id),
-    });
-    const recommendationRecord = await createPocketBaseRecord(authResponse.token, TRAINING_RECOMMENDATIONS_COLLECTION, {
-      generation_meta: {
-        generatedAt: new Date().toISOString(),
-        model: process.env.AI_ROAST_MODEL?.trim() ?? '',
-        roastCurveId: toTrimmedString(roastCurve.id),
-      },
-      machine_id: recommendation.modifiedPlanJson.roasterMachineId ?? '',
-      owner: authResponse.record.id,
-      plan_draft: recommendation.modifiedPlanJson,
-      request_context: {
-        adjustments: recommendation.adjustments,
-        confidence: recommendation.confidence,
-        overallReview: recommendation.overallReview,
-        quality: qualityCheck,
-        roastBatchId,
-        sampleId: toTrimmedString(sample.id),
-        sourcePlanId: toTrimmedString(roastBatch.roast_plan_id),
-      },
-      status: 'draft',
-    });
-    const upload = await createPocketBaseRecord(authResponse.token, TRAINING_UPLOADS_COLLECTION, {
-      owner: authResponse.record.id,
-      roast_batch_id: roastBatchId,
-      sample_id: toTrimmedString(sample.id),
-      status: 'uploaded',
-    });
-    sendApiSuccess(response, {
-      quality: qualityCheck,
-      recommendation: toRecommendationView(recommendationRecord),
-      sampleId: toTrimmedString(sample.id),
-      uploadId: toTrimmedString(upload.id),
-      usage,
-    });
+    sendApiSuccess(response, await runRoastTrainingUpload(authResponse.token, authResponse.record.id, roastBatchId));
   } catch (error) {
-    if (usageContext) {
-      await releaseRoastAiUsageReservation(
-        usageContext,
-        error instanceof Error ? error.message : '整体复盘与计划建议生成失败。',
-      );
-    }
-
     handlePocketBaseError(response, error, '训练上传失败。');
   }
 };

@@ -2,7 +2,7 @@ import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import { Controller, useForm } from 'react-hook-form';
 
-import { useBeans } from '@/modules/bean/hooks';
+import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { useRoastAiUsage, useRoastPlanRecommendation, useRoastingMachines } from '@/modules/roast/hooks';
 import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
 import type { RoastPlanJsonInput, RoastPlanRecommendationInput } from '@/modules/roast/types';

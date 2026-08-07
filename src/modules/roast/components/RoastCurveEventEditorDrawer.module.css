@@ -1,0 +1,54 @@
+.content {
+  display: grid;
+  gap: 16px;
+  padding: 4px 4px 8px;
+}
+
+.field,
+.preview {
+  display: grid;
+  gap: 8px;
+}
+
+.field > span {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.preview {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.preview span {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+}
+
+.preview b {
+  color: var(--app-text);
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 520px) {
+  .preview {
+    grid-template-columns: 1fr;
+  }
+
+  .actions > button {
+    flex: 1 1 auto;
+  }
+}

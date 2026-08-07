@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { getOptionalSuperuserToken } from './ai/usage-service.js';
+import { AI_ANALYSIS_TASKS_COLLECTION } from './ai/analysis-task-service.js';
 import { sendUnverifiedResponse, toAccountDeletionResult } from './auth-common.js';
 import { AI_USAGE_LIMITS_COLLECTION, AI_USAGE_LOGS_COLLECTION, authCollection } from './config.js';
 import { clearAuthCookie, getAuthCookieValue, sendJson } from './http.js';
@@ -86,6 +87,9 @@ export const handleDeleteAccount = async (
     const optionalSuperuserToken = await getOptionalSuperuserToken();
 
     if (optionalSuperuserToken) {
+      await deleteRecordsByOwner(optionalSuperuserToken, AI_ANALYSIS_TASKS_COLLECTION, authResponse.record.id, {
+        optional: true,
+      });
       await deleteRecordsByOwner(optionalSuperuserToken, AI_USAGE_LOGS_COLLECTION, authResponse.record.id, {
         optional: true,
       });

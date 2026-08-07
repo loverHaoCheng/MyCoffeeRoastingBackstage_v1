@@ -56,3 +56,13 @@ export const checkForAvailableAppUpdate = async (): Promise<boolean> => {
     return false;
   }
 };
+
+export const reloadToLatestApp = (): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set('app-update', String(Date.now()));
+  window.location.replace(nextUrl.toString());
+};

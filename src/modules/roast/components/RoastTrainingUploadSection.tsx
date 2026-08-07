@@ -1,14 +1,26 @@
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import Checkbox from 'antd/es/checkbox';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import TextArea from 'antd/es/input/TextArea';
+
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 import { useCreateRoastPlan, useRoastAiUsage, useRoastCurve } from '@/modules/roast/hooks';
+import { useAiAnalysisTask, useSubmitAiAnalysisTask } from '@/modules/roast/hooks/useAiAnalysisTask';
 import {
   useConfirmRoastTrainingRecommendation,
-  useRoastTrainingUpload,
   useRoastTrainingUploadStatus,
 } from '@/modules/roast/hooks/useRoastTrainingUpload';
+import { isActiveAiAnalysisTask } from '@/modules/roast/services/aiAnalysisTask.service';
 import { formatRoastAiUsageText, isRoastAiUsageAvailable } from '@/modules/roast/services/roastAiUsage.service';
 import { isRoastTrainingUploadClientEnabled } from '@/modules/roast/services/roastTrainingUpload.service';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
@@ -25,6 +37,7 @@ interface RoastTrainingUploadSectionProps {
   batch: RoastBatchRecord;
   evaluation?: RoastBatchRecord['evaluation'];
   onEvaluationChange?: (evaluation: RoastBatchRecord['evaluation']) => void;
+  refreshKey?: number;
 }
 
 const priorityLabels: Record<RoastTrainingRecommendation['adjustments'][number]['priority'], string> = {
@@ -49,13 +62,17 @@ const getAdjustmentExpectedResult = (adjustment: RoastTrainingRecommendation['ad
     : '预计让下一炉更接近目标风味，实际结果需结合下一炉曲线与杯测验证。';
 };
 
-function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChange }: RoastTrainingUploadSectionProps) {
+function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChange, refreshKey }: RoastTrainingUploadSectionProps) {
   const { message, modal } = App.useApp();
   const [editingRecommendation, setEditingRecommendation] = useState<RoastTrainingRecommendation | null>(null);
+  const [adjustmentDirection, setAdjustmentDirection] = useState('');
+  const [recommendationIndex, setRecommendationIndex] = useState(0);
   const roastCurveQuery = useRoastCurve(batch.id);
   const usageQuery = useRoastAiUsage('roast_training_recommendation');
   const trainingUploadStatusQuery = useRoastTrainingUploadStatus(batch.id);
-  const trainingUploadMutation = useRoastTrainingUpload();
+  const { refetch: refetchTrainingUploadStatus } = trainingUploadStatusQuery;
+  const taskQuery = useAiAnalysisTask(batch.id, 'overall_analysis');
+  const submitTaskMutation = useSubmitAiAnalysisTask();
   const createPlanMutation = useCreateRoastPlan();
   const confirmRecommendationMutation = useConfirmRoastTrainingRecommendation(batch.id);
   const isTrainingUploadClientEnabled = isRoastTrainingUploadClientEnabled();
@@ -68,8 +85,11 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
   };
   const trainingReadiness = getRoastTrainingReadiness(effectiveBatch, Boolean(roastCurveQuery.data));
   const serverUploadStatus = trainingUploadStatusQuery.data;
-  const recommendation = serverUploadStatus?.recommendation ?? trainingUploadMutation.data?.recommendation;
+  const recommendations = serverUploadStatus?.recommendations ?? [];
+  const recommendation = recommendations[recommendationIndex] ?? recommendations[0];
   const hasRecommendation = recommendation != null;
+  const isTaskActive = isActiveAiAnalysisTask(taskQuery.data);
+  const isLoadingCompletedTask = taskQuery.data?.status === 'completed' && !hasRecommendation;
   const usageErrorText = usageQuery.error instanceof Error ? usageQuery.error.message : '';
   const usageText = formatRoastAiUsageText(usageQuery.data, {
     error: usageErrorText,
@@ -79,8 +99,7 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
   const trainingUploadError =
     trainingUploadStatusQuery.error instanceof Error ? trainingUploadStatusQuery.error.message : '';
   const trainingUploadSubmitError =
-    trainingUploadMutation.error instanceof Error ? trainingUploadMutation.error.message : '';
-  const isAlreadyUploaded = serverUploadStatus?.alreadyUploaded === true;
+    submitTaskMutation.error instanceof Error ? submitTaskMutation.error.message : '';
   const missingReadyLabels = trainingReadiness.missingLabels;
   const isTrainingDataReady = trainingReadiness.missingLabels.length === 0;
   const isTrainingFormReady = isTrainingDataReady;
@@ -92,17 +111,25 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
     isTrainingUploadClientEnabled &&
     isTrainingFormReady &&
     canUseQuota &&
+    !isTaskActive &&
+    !isLoadingCompletedTask &&
     (serverUploadStatus?.enabled === true || canFallbackToServerValidation);
-  const trainingUploadButtonLabel = '生成整体复盘与计划建议';
+  const trainingUploadButtonLabel = isTaskActive
+    ? '分析中，预计需要几分钟'
+    : isLoadingCompletedTask
+      ? '正在载入分析结果'
+      : '生成整体复盘与计划建议';
   const trainingHintText = trainingUploadSubmitError
       ? trainingUploadSubmitError
       : trainingUploadError && canFallbackToServerValidation
         ? '状态查询暂未刷新，可直接点击上传，服务端会做最终校验。'
         : trainingUploadError
           ? trainingUploadError
-        : hasRecommendation || isAlreadyUploaded
-          ? '这条记录已经生成过整体复盘与计划建议，不能重复生成。'
-          : !canUseQuota
+        : isTaskActive
+          ? '任务已提交，可以关闭当前页面，完成后会自动提示。'
+        : isLoadingCompletedTask
+          ? '分析已经完成，正在载入结果。'
+        : !canUseQuota
             ? '本月整体复盘与计划建议额度不足或暂不可用。'
           : !isTrainingFormReady
             ? `当前仍缺少：${missingReadyLabels.join('、')}。`
@@ -113,10 +140,24 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
     ? `${readinessSubject}已满足整体复盘与计划建议生成条件。`
     : `当前仍缺少：${missingReadyLabels.join('、')}。`;
 
+  useEffect(() => {
+    if (taskQuery.data?.status !== 'completed') {
+      return;
+    }
+
+    void refetchTrainingUploadStatus();
+  }, [refetchTrainingUploadStatus, taskQuery.data?.status]);
+
+  useEffect(() => {
+    if (refreshKey != null && refreshKey > 0) {
+      void refetchTrainingUploadStatus();
+    }
+  }, [refreshKey, refetchTrainingUploadStatus]);
+
   const handleTrainingUpload = () => {
     modal.confirm({
       cancelText: '取消',
-      content: '本次会读取当前烘焙记录、生豆、烘焙计划、曲线、评价表单和烘焙机参数，分析导致杯测结果的可能原因、曲线特征和优化策略，并生成一份可编辑的新计划草稿。同一条烘焙记录不能重复生成。',
+      content: '本次会保存当前评价和下次调整方向的快照，生成一份新的整体复盘与可编辑计划草稿；每次成功生成都会计入月度额度。',
       okButtonProps: {
         danger: true,
       },
@@ -124,8 +165,12 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
       title: '确认生成整体复盘',
       onOk: async () => {
         try {
-          await trainingUploadMutation.mutateAsync(batch.id);
-          void message.success('整体复盘与计划建议已生成。');
+          await submitTaskMutation.mutateAsync({
+            adjustmentDirection,
+            roastBatchId: batch.id,
+            taskType: 'overall_analysis',
+          });
+          void message.info('任务已提交，预计需要几分钟。完成后会自动提示。');
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : '整体复盘生成失败，请稍后重试。';
           void message.error(errorMessage);
@@ -161,6 +206,40 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
         {recommendation ? (
           <>
             <h4>AI 整体复盘与计划建议</h4>
+            {recommendations.length > 1 ? (
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      disabled={recommendationIndex <= 0}
+                      onClick={() => { setRecommendationIndex((current) => current - 1); }}
+                    />
+                  </PaginationItem>
+                  {recommendations.map((_item, index) => {
+                    const shouldShow = recommendations.length <= 5 || index === 0 || index === recommendations.length - 1 || Math.abs(index - recommendationIndex) <= 1;
+
+                    if (!shouldShow) {
+                      return index === 1 || index === recommendations.length - 2 ? <PaginationItem key={`ellipsis-${String(index)}`}><PaginationEllipsis /></PaginationItem> : null;
+                    }
+
+                    return (
+                      <PaginationItem key={String(index)}>
+                        <PaginationLink isActive={index === recommendationIndex} onClick={() => { setRecommendationIndex(index); }}>
+                          {String(index + 1)}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      disabled={recommendationIndex >= recommendations.length - 1}
+                      onClick={() => { setRecommendationIndex((current) => current + 1); }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            ) : null}
+            {recommendation.adjustmentDirection ? <p className={styles.trainingHint}>本次调整方向：{recommendation.adjustmentDirection}</p> : null}
             <article className={styles.reviewCard}>
               <div className={styles.reviewCardHeader}>
                 <strong>整体详细复盘</strong>
@@ -245,7 +324,13 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
           </>
         )}
         <div className={styles.trainingActionRow}>
-          {!hasRecommendation && !isAlreadyUploaded ? (
+          {(
+            <div className={styles.consentCard}>
+              <strong>下次调整方向</strong>
+              <TextArea maxLength={1000} placeholder="例如：希望提前收火，重点改善尾段焦苦。" rows={3} value={adjustmentDirection} onChange={(event) => { setAdjustmentDirection(event.target.value); }} />
+            </div>
+          )}
+          {recommendations.length === 0 ? (
             <div className={styles.consentCard}>
               <strong>训练授权</strong>
               {onEvaluationChange ? (
@@ -266,17 +351,17 @@ function RoastTrainingUploadSectionContent({ batch, evaluation, onEvaluationChan
               <p>默认关闭。未授权仍可生成本人的复盘与计划建议，但不会用于同型号公共模型训练。</p>
             </div>
           ) : null}
-          {!hasRecommendation && !isAlreadyUploaded ? (
+          {(
             <Button
-              disabled={!isTrainingUploadEnabled || trainingUploadMutation.isPending}
-              loading={trainingUploadStatusQuery.isFetching || trainingUploadMutation.isPending || usageQuery.isLoading}
+              disabled={!isTrainingUploadEnabled || submitTaskMutation.isPending}
+              loading={trainingUploadStatusQuery.isFetching || submitTaskMutation.isPending || usageQuery.isLoading}
               onClick={handleTrainingUpload}
               type="default"
             >
               {trainingUploadButtonLabel}
             </Button>
-          ) : null}
-          {!hasRecommendation && !isAlreadyUploaded ? <span className={styles.trainingHint}>{usageText}</span> : null}
+          )}
+          <span className={styles.trainingHint}>{usageText}</span>
           {recommendation && recommendation.status !== 'confirmed' ? (
             <Button
               loading={createPlanMutation.isPending || confirmRecommendationMutation.isPending}

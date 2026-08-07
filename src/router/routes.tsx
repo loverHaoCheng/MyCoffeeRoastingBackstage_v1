@@ -7,18 +7,24 @@ import { Navigate, useLocation, createHashRouter, type RouteObject } from 'react
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
 const MainLayout = lazy(() => import('@/layouts/MainLayout').then((module) => ({ default: module.MainLayout })));
+const loadAuthModule = () => import('@/modules/auth');
+
+// Start fetching the shared auth chunk while the router is being initialized.
+// The chunk remains separate, but auth navigation does not pay the full request latency.
+void loadAuthModule();
+
 const ForgotPasswordPage = lazy(() =>
-  import('@/modules/auth').then((module) => ({ default: module.ForgotPasswordPage })),
+  loadAuthModule().then((module) => ({ default: module.ForgotPasswordPage })),
 );
-const LoginPage = lazy(() => import('@/modules/auth').then((module) => ({ default: module.LoginPage })));
+const LoginPage = lazy(() => loadAuthModule().then((module) => ({ default: module.LoginPage })));
 const RegisterPage = lazy(() =>
-  import('@/modules/auth').then((module) => ({ default: module.RegisterPage })),
+  loadAuthModule().then((module) => ({ default: module.RegisterPage })),
 );
 const ResetPasswordPage = lazy(() =>
-  import('@/modules/auth').then((module) => ({ default: module.ResetPasswordPage })),
+  loadAuthModule().then((module) => ({ default: module.ResetPasswordPage })),
 );
 const VerifyEmailPage = lazy(() =>
-  import('@/modules/auth').then((module) => ({ default: module.VerifyEmailPage })),
+  loadAuthModule().then((module) => ({ default: module.VerifyEmailPage })),
 );
 const LegalPage = lazy(() => import('@/modules/legal').then((module) => ({ default: module.LegalPage })));
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));

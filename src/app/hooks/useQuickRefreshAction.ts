@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import App from 'antd/es/app';
 import { useRef, useState } from 'react';
 
-import { checkForAvailableAppUpdate } from '@/app/services/appVersionCheck.service';
+import { checkForAvailableAppUpdate, reloadToLatestApp } from '@/app/services/appVersionCheck.service';
 import type { AppDataRefreshResult } from '@/app/services/appDataRefresh.service';
 import { refreshQuickAppData } from '@/app/services/appDataRefresh.service';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -55,7 +55,7 @@ export function useQuickRefreshAction() {
       const shouldRefreshPageForUpdate = options.checkAppUpdate === true && (await checkForAvailableAppUpdate());
 
       if (shouldRefreshPageForUpdate && typeof window !== 'undefined') {
-        window.location.reload();
+        reloadToLatestApp();
         return result;
       }
 

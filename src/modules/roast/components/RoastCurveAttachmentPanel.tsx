@@ -6,21 +6,24 @@ import Button from 'antd/es/button';
 import Segmented from 'antd/es/segmented';
 import Spin from 'antd/es/spin';
 
-import type { RoastCurveRecord } from '@/modules/roast/types/roastCurve';
+import type { RoastCurveEditableEventType, RoastCurveRecord } from '@/modules/roast/types/roastCurve';
 
 import { RoastCurveChart, type RoastCurveRorMode } from './RoastCurveChart';
 import { RoastCurveDataSummary } from './RoastCurveDataSummary';
+import { RoastCurveEventEditorDrawer } from './RoastCurveEventEditorDrawer';
 import styles from './RoastCurvePanel.module.css';
 
 interface RoastCurveAttachmentPanelProps {
   actionIcon: ReactNode;
   actionLabel: string;
   curve: RoastCurveRecord | null;
+  editableSourceCurve?: RoastCurveRecord | null;
   disabled?: boolean;
   emptyText: string;
   isBusy?: boolean;
   isLoading?: boolean;
   onFileSelected: (file: File) => void;
+  onSaveEventOverrides?: (eventOverrides: RoastCurveRecord['eventOverrides']) => void;
   onRemoveCurve?: () => void;
   removeLabel?: string;
   sourceText: string;
@@ -36,17 +39,20 @@ export function RoastCurveAttachmentPanel({
   actionIcon,
   actionLabel,
   curve,
+  editableSourceCurve,
   disabled = false,
   emptyText,
   isBusy = false,
   isLoading = false,
   onFileSelected,
+  onSaveEventOverrides,
   onRemoveCurve,
   removeLabel = '移除曲线 JSON',
   sourceText,
 }: RoastCurveAttachmentPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [rorMode, setRorMode] = useState<RoastCurveRorMode>('balanced');
+  const [editingEventType, setEditingEventType] = useState<RoastCurveEditableEventType | null>(null);
   const isActionDisabled = disabled || isBusy;
 
   return (
@@ -120,11 +126,22 @@ export function RoastCurveAttachmentPanel({
             rorMode={rorMode}
             temperatureUnit={curve.temperatureUnit}
           />
-          <RoastCurveDataSummary curve={curve} />
+          <RoastCurveDataSummary curve={curve} onEditEvent={onSaveEventOverrides ? (type) => { setEditingEventType(type); } : undefined} />
         </div>
       ) : (
         <p className={styles.emptyText}>{emptyText}</p>
       )}
+      <RoastCurveEventEditorDrawer
+        curve={editableSourceCurve ?? curve}
+        eventType={editingEventType}
+        isSaving={isBusy}
+        open={editingEventType != null}
+        onClose={() => { setEditingEventType(null); }}
+        onSave={(eventOverrides) => {
+          onSaveEventOverrides?.(eventOverrides);
+          setEditingEventType(null);
+        }}
+      />
     </div>
   );
 }

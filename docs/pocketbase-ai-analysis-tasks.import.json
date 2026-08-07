@@ -1,0 +1,35 @@
+[
+  {
+    "id": "aat000000000001",
+    "name": "ai_analysis_tasks",
+    "type": "base",
+    "system": false,
+    "listRule": "owner = @request.auth.id",
+    "viewRule": "owner = @request.auth.id",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_ai_analysis_tasks_active ON ai_analysis_tasks (owner, roast_batch_id, task_type, active_key)",
+      "CREATE INDEX idx_ai_analysis_tasks_worker ON ai_analysis_tasks (status, created)",
+      "CREATE INDEX idx_ai_analysis_tasks_notifications ON ai_analysis_tasks (owner, status, notified_at)"
+    ],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "aatowner0000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "aatbatch0000001", "name": "roast_batch_id", "type": "text", "system": false, "required": true, "presentable": true, "hidden": false, "min": 1, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "aattype00000001", "name": "task_type", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["curve_review", "overall_analysis"] },
+      { "id": "aatstatus000001", "name": "status", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["queued", "processing", "completed", "failed"] },
+      { "id": "aatactive000001", "name": "active_key", "type": "text", "system": false, "required": true, "presentable": false, "hidden": false, "min": 1, "max": 40, "pattern": "", "autogeneratePattern": "" },
+      { "id": "aatinput0000001", "name": "input_payload", "type": "json", "system": false, "required": true, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "aatresult000001", "name": "result_payload", "type": "json", "system": false, "required": false, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "aatresultid0001", "name": "result_record_id", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "aaterror0000001", "name": "error_message", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 500, "pattern": "", "autogeneratePattern": "" },
+      { "id": "aatstarted00001", "name": "started_at", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 40, "pattern": "", "autogeneratePattern": "" },
+      { "id": "aatcomplete00001", "name": "completed_at", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 40, "pattern": "", "autogeneratePattern": "" },
+      { "id": "aatnotify0000001", "name": "notified_at", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 40, "pattern": "", "autogeneratePattern": "" },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  }
+]

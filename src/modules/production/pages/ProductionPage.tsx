@@ -6,7 +6,7 @@ import Spin from "antd/es/spin";
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { useBeans } from '@/modules/bean/hooks';
+import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { buildCostTemplateById, calculateRoastSaleCapacity, resolveBeanCostTemplate } from '@/modules/finance/services/financeProfitCalculation.service';
 import {
   RoastBatchCard,

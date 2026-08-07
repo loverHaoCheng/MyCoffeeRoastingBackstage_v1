@@ -78,4 +78,43 @@ describe('roast AI provider compatibility', () => {
       model: 'gpt-4.1-mini',
     });
   });
+
+  it('uses the Anthropic messages protocol for WeiLai relay providers', async () => {
+    vi.stubEnv('AI_ROAST_API_KEY', 'test-anthropic-key');
+    vi.stubEnv('AI_ROAST_BASE_URL', 'https://weilai.chat/v1');
+    vi.stubEnv('AI_ROAST_MODEL', 'gpt-5.6-terra');
+    vi.stubEnv('AI_ROAST_PROVIDER', 'anthropic');
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      content: [{
+        text: JSON.stringify({
+          confidence: 80,
+          issues: [],
+          nextRoastAdjustments: ['保持当前发展节奏并继续观察。'],
+          primaryAdjustment: {
+            action: '保持当前策略。',
+            area: 'development',
+            direction: 'maintain',
+            rationale: '当前曲线整体稳定。',
+          },
+          summary: '当前曲线整体稳定。',
+        }),
+        type: 'text',
+      }],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { requestRoastAnalysis } = await import('./roast-analysis-client.js');
+
+    await expect(requestRoastAnalysis(roastAnalysisInput)).resolves.toMatchObject({ confidence: 80 });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://weilai.chat/v1/messages');
+    const requestInit = fetchMock.mock.calls[0]?.[1] as unknown as RequestInit | undefined;
+    const requestHeaders = requestInit?.headers as Record<string, string> | undefined;
+    expect(requestInit?.method).toBe('POST');
+    expect(requestHeaders?.['anthropic-version']).toBe('2023-06-01');
+    expect(requestHeaders?.['x-api-key']).toBe('test-anthropic-key');
+    const requestBody = JSON.parse(requestInit?.body as string) as Record<string, unknown>;
+    expect(requestBody.max_tokens).toBe(1800);
+    expect(requestBody.model).toBe('gpt-5.6-terra');
+    expect(requestBody.system).toEqual(expect.stringContaining('咖啡烘焙曲线分析助手'));
+  });
 });

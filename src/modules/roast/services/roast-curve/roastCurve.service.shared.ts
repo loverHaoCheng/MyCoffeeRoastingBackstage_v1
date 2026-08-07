@@ -1,5 +1,6 @@
 import type {
   RoastCurveEvent,
+  RoastCurveEventOverrides,
   RoastCurveMetrics,
   RoastCurvePhase,
   RoastCurvePoint,
@@ -103,6 +104,25 @@ const normalizeCurveEvent = (value: unknown): RoastCurveEvent | null => {
   };
 };
 
+const normalizeEventOverrides = (value: unknown): RoastCurveEventOverrides | undefined => {
+  if (typeof value !== 'object' || value == null || Array.isArray(value)) return undefined;
+
+  const source = value as Record<string, unknown>;
+  const overrides: RoastCurveEventOverrides = {};
+  const allowedTypes = ['charge', 'turningPoint', 'dryEnd', 'firstCrackStart', 'firstCrackEnd', 'drop'] as const;
+
+  allowedTypes.forEach((type) => {
+    const item = source[type];
+    if (typeof item !== 'object' || item == null || Array.isArray(item)) return;
+    const sampleIndex = getOptionalNumberField((item as Record<string, unknown>).sampleIndex);
+    if (sampleIndex != null && Number.isInteger(sampleIndex) && sampleIndex >= 0) {
+      overrides[type] = { sampleIndex };
+    }
+  });
+
+  return Object.keys(overrides).length > 0 ? overrides : undefined;
+};
+
 const normalizeCurvePhase = (value: unknown): RoastCurvePhase | null => {
   if (typeof value !== 'object' || value == null || Array.isArray(value)) {
     return null;
@@ -152,6 +172,7 @@ export const toPocketBaseRoastCurvePayload = (record: Omit<RoastCurveRecord, 'id
   curve_data: record.curveData,
   device_info: record.deviceInfo ?? null,
   event_list: record.eventList,
+  event_overrides: record.eventOverrides ?? null,
   imported_at: record.importedAt,
   metrics: record.metrics,
   original_file_name: record.originalFileName ?? null,
@@ -168,6 +189,7 @@ export const mapRemoteRoastCurveRecord = (record: Record<string, unknown>): Roas
   curveData: getArrayField(record.curve_data).map(normalizeCurvePoint).filter((point): point is RoastCurvePoint => point != null),
   deviceInfo: getOptionalObject(record.device_info),
   eventList: getArrayField(record.event_list).map(normalizeCurveEvent).filter((event): event is RoastCurveEvent => event != null),
+  eventOverrides: normalizeEventOverrides(record.event_overrides),
   id: getStringField(record.id),
   importedAt: getStringField(record.imported_at, getStringField(record.created_at)),
   metrics: normalizeMetrics(record.metrics),

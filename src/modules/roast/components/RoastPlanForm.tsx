@@ -11,7 +11,7 @@ import InputNumber from '@/shared/components/ui/input-number';
 import { useEffect } from 'react';
 import { Controller, type FieldPath, useFieldArray, useForm, useWatch } from 'react-hook-form';
 
-import { useBeans } from '@/modules/bean/hooks';
+import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { useRoastingMachines } from '@/modules/roast/hooks';
 import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
 import { getRoasterControlCapabilities } from '@/modules/roast/utils/roasterControlCapabilities';

@@ -3,7 +3,7 @@ import DownloadOutlined from '@ant-design/icons/DownloadOutlined';
 import App from 'antd/es/app';
 import { useMemo, useState } from 'react';
 
-import { useBeans } from '@/modules/bean/hooks';
+import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { useImportHiBeanRoastCurve, useRoastPlans, useUpdateRoastBatch } from '@/modules/roast/hooks';
 import { parseRoastCurveJson } from '@/modules/roast/services/roastCurve.service';
 import type { RoastBatchCreateInput } from '@/modules/roast/types/roastBatch';

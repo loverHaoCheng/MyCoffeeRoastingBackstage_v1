@@ -15,7 +15,7 @@ import {
   BeanInventoryCard,
 } from '@/modules/bean/components';
 import { createDefaultBeanFormValues } from '@/modules/bean/constants';
-import { beanQueryKeys, useBeans, useDeleteBean } from '@/modules/bean/hooks';
+import { beanQueryKeys, useBeans, useDeleteBean } from '@/modules/bean/hooks/useBeans';
 import { beanService, type RoastPlanDisposition } from '@/modules/bean/services';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { AppDrawer } from '@/shared/components/AppDrawer';

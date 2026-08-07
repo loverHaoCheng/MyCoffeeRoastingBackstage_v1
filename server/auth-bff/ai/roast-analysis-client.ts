@@ -1,7 +1,11 @@
 import { aiRequestTimeoutMs, aiRoastBaseUrl, aiRoastModel, aiRoastProvider, isSupportedAiRoastProvider } from '../config.js';
 import { fetchWithTimeout, parseJsonResponse } from '../http.js';
 import { extractJsonFromModelText, getModelContentText } from './qiniu-client.js';
-import { buildRoastModelRequestBody } from './roast-model-request.js';
+import {
+  buildRoastModelRequestBody,
+  getRoastModelRequestHeaders,
+  getRoastModelRequestPath,
+} from './roast-model-request.js';
 import type { RoastAnalysisRequest, RoastAnalysisResult } from './roast-analysis-types.js';
 import { normalizeRoastAnalysisResult } from './roast-analysis-types.js';
 
@@ -40,12 +44,9 @@ const requestModelContent = async (
 ): Promise<string> => {
   const apiKey = (process.env.AI_ROAST_API_KEY ?? '').trim();
 
-  const upstream = await fetchWithTimeout(buildRoastApiUrl('/chat/completions'), {
+  const upstream = await fetchWithTimeout(buildRoastApiUrl(getRoastModelRequestPath()), {
     body: JSON.stringify(buildRoastModelRequestBody(messages, getResolvedRoastModel(), 1800, 0.1)),
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers: getRoastModelRequestHeaders(apiKey),
     method: 'POST',
   }, aiRequestTimeoutMs);
   const payload = await parseJsonResponse(upstream);
