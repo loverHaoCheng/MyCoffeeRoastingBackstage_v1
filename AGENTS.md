@@ -1,10 +1,10 @@
 # **React 企业级项目工程规范**
 
-Version: 1.0
+Version: 1.2
 
 >
 
-Last Updated: 2026-06-26
+Last Updated: 2026-08-10
 
 >
 

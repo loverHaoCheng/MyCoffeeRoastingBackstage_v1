@@ -1,7 +1,7 @@
 import { httpClient } from '@/services/httpClient';
 
 export type AiAnalysisTaskStatus = 'completed' | 'failed' | 'processing' | 'queued';
-export type AiAnalysisTaskType = 'curve_review' | 'overall_analysis';
+export type AiAnalysisTaskType = 'curve_review';
 
 export interface AiAnalysisTask {
   completedAt?: string;

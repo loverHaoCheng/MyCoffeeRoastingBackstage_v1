@@ -15,7 +15,6 @@ import {
   toAiAnalysisTaskView,
 } from './analysis-task-service.js';
 import { resolveRoastAnalysisInput } from './roast-analysis-handler.js';
-import { buildStatus } from './roast-training-upload-handler.js';
 import { getRequiredSuperuserToken } from './usage-service.js';
 
 const handleTaskError = (response: ServerResponse, error: unknown): void => {
@@ -41,7 +40,6 @@ export const handleCreateAnalysisTask = async (
   const payload = await parseJsonBody(request);
   const roastBatchId = isRecord(payload) ? toTrimmedString(payload.roastBatchId) : '';
   const taskType = isRecord(payload) ? payload.taskType : null;
-  const adjustmentDirection = isRecord(payload) ? toTrimmedString(payload.adjustmentDirection).slice(0, 1000) : '';
 
   if (!roastBatchId || !isTaskType(taskType)) {
     sendApiError(response, 400, '缺少有效的烘焙记录 ID 或分析任务类型。');
@@ -67,22 +65,7 @@ export const handleCreateAnalysisTask = async (
       }
     }
 
-    let inputPayload: unknown;
-
-    if (taskType === 'curve_review') {
-      inputPayload = await resolveRoastAnalysisInput(session.token, { roastBatchId });
-    } else {
-      const status = await buildStatus(session.token, session.record.id, roastBatchId);
-
-      if (!status.enabled) {
-        sendApiError(response, 422, status.disabledReason ?? '当前记录尚未满足整体复盘条件。', {
-          readiness: status.readiness,
-        });
-        return;
-      }
-
-      inputPayload = { adjustmentDirection, roastBatchId };
-    }
+    const inputPayload = await resolveRoastAnalysisInput(session.token, { roastBatchId });
     const task = await createOrGetAnalysisTask(superuserToken, {
       inputPayload,
       ownerId: session.record.id,

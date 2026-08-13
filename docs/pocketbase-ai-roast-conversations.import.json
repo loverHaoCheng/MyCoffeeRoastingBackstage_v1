@@ -1,0 +1,54 @@
+[
+  {
+    "id": "arc000000000001",
+    "name": "ai_roast_conversations",
+    "type": "base",
+    "system": false,
+    "listRule": "owner = @request.auth.id",
+    "viewRule": "owner = @request.auth.id",
+    "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+    "updateRule": "owner = @request.auth.id",
+    "deleteRule": "owner = @request.auth.id",
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_ai_roast_conversations_general ON ai_roast_conversations (owner, conversation_scope) WHERE conversation_scope = 'general'",
+      "CREATE UNIQUE INDEX idx_ai_roast_conversations_batch ON ai_roast_conversations (owner, roast_batch_id) WHERE conversation_scope = 'roast_batch'",
+      "CREATE UNIQUE INDEX idx_ai_roast_conversations_bean_plan ON ai_roast_conversations (owner, green_bean_id) WHERE conversation_scope = 'bean_plan'",
+      "CREATE INDEX idx_ai_roast_conversations_owner_updated ON ai_roast_conversations (owner, updated)"
+    ],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "arcowner00000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "arcscope00000001", "name": "conversation_scope", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["general", "roast_batch", "bean_plan"] },
+      { "id": "arcbatch00000001", "name": "roast_batch_id", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arcbean000000001", "name": "green_bean_id", "type": "text", "system": false, "required": false, "presentable": false, "hidden": false, "min": 0, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "arctitle00000001", "name": "title", "type": "text", "system": false, "required": true, "presentable": true, "hidden": false, "min": 1, "max": 120, "pattern": "", "autogeneratePattern": "" },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  },
+  {
+    "id": "arm000000000002",
+    "name": "ai_roast_messages",
+    "type": "base",
+    "system": false,
+    "listRule": "owner = @request.auth.id",
+    "viewRule": "owner = @request.auth.id",
+    "createRule": "@request.auth.id != \"\" && owner = @request.auth.id",
+    "updateRule": "owner = @request.auth.id",
+    "deleteRule": "owner = @request.auth.id",
+    "indexes": [
+      "CREATE INDEX idx_ai_roast_messages_conversation_created ON ai_roast_messages (conversation_id, created)"
+    ],
+    "fields": [
+      { "id": "text3208210256", "name": "id", "type": "text", "system": true, "required": true, "primaryKey": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" },
+      { "id": "armowner00000001", "name": "owner", "type": "relation", "system": false, "required": true, "presentable": false, "hidden": false, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 },
+      { "id": "armconversation001", "name": "conversation_id", "type": "text", "system": false, "required": true, "presentable": false, "hidden": false, "min": 15, "max": 15, "pattern": "", "autogeneratePattern": "" },
+      { "id": "armrole000000001", "name": "role", "type": "select", "system": false, "required": true, "presentable": true, "hidden": false, "maxSelect": 1, "values": ["user", "assistant"] },
+      { "id": "armcontent0000001", "name": "content", "type": "text", "system": false, "required": true, "presentable": false, "hidden": false, "min": 1, "max": 20000, "pattern": "", "autogeneratePattern": "" },
+      { "id": "armplan000000001", "name": "plan_draft", "type": "json", "system": false, "required": false, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "armmeta000000001", "name": "generation_meta", "type": "json", "system": false, "required": false, "presentable": false, "hidden": false, "maxSize": 1048576 },
+      { "id": "autodate2341372968", "name": "created", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": false },
+      { "id": "autodate1130519967", "name": "updated", "type": "autodate", "system": false, "presentable": false, "hidden": false, "onCreate": true, "onUpdate": true }
+    ]
+  }
+]

@@ -59,6 +59,7 @@
   --app-emphasis-text-muted: #4b5563;
   --app-viewport-height: 100vh;
   --app-visual-viewport-height: 100vh;
+  --app-visual-viewport-offset-top: 0px;
   --app-shell-bottom-nav-content-height: 64px;
   --app-safe-top: env(safe-area-inset-top, 0px);
   --app-safe-right: env(safe-area-inset-right, 0px);

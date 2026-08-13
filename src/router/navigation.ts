@@ -2,6 +2,7 @@ export type AppRouteKey =
   | 'bean'
   | 'finance'
   | 'roast'
+  | 'roastAssistant'
   | 'production'
   | 'settings';
 
@@ -10,6 +11,7 @@ export interface AppNavigationItem {
   label: string;
   shortLabel: string;
   path: string;
+  group?: 'roast';
   showInBottomNav?: boolean;
 }
 
@@ -24,13 +26,21 @@ export const appNavigationItems: AppNavigationItem[] = [
     key: 'roast',
     label: '烘焙计划',
     shortLabel: '烘焙计划',
-    path: '/roasts',
+    path: '/roasts/plan',
+    group: 'roast',
   },
   {
     key: 'production',
     label: '烘焙历史',
     shortLabel: '烘焙',
-    path: '/production',
+    path: '/roasts/history',
+    group: 'roast',
+  },
+  {
+    key: 'roastAssistant',
+    label: 'AI 分析',
+    shortLabel: 'AI 分析',
+    path: '/roast-assistant',
   },
   {
     key: 'finance',

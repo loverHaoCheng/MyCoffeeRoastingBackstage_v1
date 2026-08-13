@@ -10,6 +10,15 @@ import (
 )
 
 const defaultAiUsageLimit = 10
+const defaultRoastAiUsageLimit = 20
+
+func getDefaultAiUsageLimit(feature string) int {
+	if feature == "roast_analysis" || feature == "roast_general_question" || feature == "roast_plan_recommendation" {
+		return defaultRoastAiUsageLimit
+	}
+
+	return defaultAiUsageLimit
+}
 
 type aiUsageReservationInput struct {
 	Feature string `json:"feature"`
@@ -33,7 +42,7 @@ func reserveAiUsage(e *core.RequestEvent) error {
 
 	result := map[string]any{}
 	err := e.App.RunInTransaction(func(txApp core.App) error {
-		limit := defaultAiUsageLimit
+		limit := getDefaultAiUsageLimit(input.Feature)
 		enabled := true
 		limitRecord, err := txApp.FindFirstRecordByFilter(
 			"ai_usage_limits",

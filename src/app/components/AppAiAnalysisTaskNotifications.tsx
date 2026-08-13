@@ -3,23 +3,19 @@ import App from 'antd/es/app';
 import { useEffect, useRef } from 'react';
 
 import { aiAnalysisTaskQueryKeys } from '@/modules/roast/hooks/useAiAnalysisTask';
-import { roastTrainingUploadQueryKeys } from '@/modules/roast/hooks/useRoastTrainingUpload';
 import {
   aiAnalysisTaskService,
   normalizeAiAnalysisTaskErrorMessage,
 } from '@/modules/roast/services/aiAnalysisTask.service';
 import { roastAnalysisService } from '@/modules/roast/services/roastAnalysis.service';
-import { roastTrainingUploadService } from '@/modules/roast/services/roastTrainingUpload.service';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
 const completionMessages = {
   curve_review: 'AI 曲线复盘已完成。',
-  overall_analysis: '整体复盘与计划建议已完成。',
 } as const;
 
 const failureMessages = {
   curve_review: 'AI 曲线复盘生成失败，请重新提交。',
-  overall_analysis: '整体复盘与计划建议生成失败，请重新提交。',
 } as const;
 
 const waitForNextPaint = async (): Promise<void> => {
@@ -66,35 +62,18 @@ export function AppAiAnalysisTaskNotifications() {
       for (const task of nextTasks) {
         try {
           if (task.status === 'completed') {
-            if (task.taskType === 'curve_review') {
-              const result = await queryClient.fetchQuery({
-                queryFn: () => roastAnalysisService.getStatusDetail(task.roastBatchId),
-                queryKey: ['roast-analysis', task.roastBatchId],
-                retry: 2,
-                staleTime: 0,
-              });
-
-              if (!result.analysis) {
-                throw new Error('AI 曲线复盘结果尚未同步到前端。');
-              }
-            } else {
-              const result = await queryClient.fetchQuery({
-                queryFn: async () => (await roastTrainingUploadService.getStatus(task.roastBatchId)).data,
-                queryKey: roastTrainingUploadQueryKeys.status(task.roastBatchId),
-                retry: 2,
-                staleTime: 0,
-              });
-
-              if (!result.recommendations?.length) {
-                throw new Error('整体复盘与计划建议结果尚未同步到前端。');
-              }
-            }
-          } else if (task.taskType === 'curve_review') {
-            await queryClient.invalidateQueries({ queryKey: ['roast-analysis', task.roastBatchId] });
-          } else {
-            await queryClient.invalidateQueries({
-              queryKey: roastTrainingUploadQueryKeys.status(task.roastBatchId),
+            const result = await queryClient.fetchQuery({
+              queryFn: () => roastAnalysisService.getStatusDetail(task.roastBatchId),
+              queryKey: ['roast-analysis', task.roastBatchId],
+              retry: 2,
+              staleTime: 0,
             });
+
+            if (!result.analysis) {
+              throw new Error('AI 曲线复盘结果尚未同步到前端。');
+            }
+          } else {
+            await queryClient.invalidateQueries({ queryKey: ['roast-analysis', task.roastBatchId] });
           }
 
           await queryClient.invalidateQueries({

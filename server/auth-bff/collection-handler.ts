@@ -4,6 +4,7 @@ import { getAuthenticatedToken } from './auth-common.js';
 import { BUSINESS_COLLECTIONS } from './config.js';
 import { parseJsonBody, sendJson, sendMethodNotAllowed } from './http.js';
 import { proxyPocketBaseRequest, sendUpstreamError } from './pocketbase-client.js';
+import { validateRoastCurveEventOverrideOrder } from './roast-curve-event-validation.js';
 import { isRecord, toTrimmedString } from './utils.js';
 
 const inventoryUpdateLocks = new Map<string, Promise<void>>();
@@ -121,6 +122,28 @@ export const handleBusinessCollectionRequest = async (
       sendJson(response, upstream.response.status, upstream.payload);
     });
     return true;
+  }
+
+  if (method === 'PATCH' && collectionName === 'roast_curve_records' && match[2] && isRecord(body) && 'event_overrides' in body) {
+    const current = await proxyPocketBaseRequest(
+      `/api/collections/roast_curve_records/records/${encodeURIComponent(match[2])}`,
+      {
+        headers: { Accept: 'application/json', Authorization: token },
+        method: 'GET',
+      },
+    );
+
+    if (!current.response.ok || !isRecord(current.payload)) {
+      sendUpstreamError(response, current.response.status, current.payload);
+      return true;
+    }
+
+    const validationError = validateRoastCurveEventOverrideOrder({ ...current.payload, ...body });
+
+    if (validationError) {
+      sendJson(response, 422, { message: validationError });
+      return true;
+    }
   }
 
   const upstream = await proxyPocketBaseRequest(`${requestUrl.pathname}${requestUrl.search}`, {

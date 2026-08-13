@@ -9,7 +9,6 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import {
   RoastPlanDetail,
-  RoastPlanAiRecommender,
   RoastPlanFieldEditorDrawer,
   RoastPlanList,
   RoastPlanManualCreator,
@@ -22,15 +21,14 @@ import {
   useDeleteRoastPlan,
   useRoastBatches,
   useRoastPlans,
-  useRoastAiUsage,
   useRoastingMachines,
   useUpdateRoastPlan,
 } from '@/modules/roast/hooks';
 import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlanStatus';
-import { formatRoastAiUsageText, isRoastAiUsageAvailable, parseRoastPlanJsonDraft } from '@/modules/roast/services';
+import { parseRoastPlanJsonDraft } from '@/modules/roast/services';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
-import { isRoastAiClientEnabled } from '@/modules/roast/services/roastTrainingUpload.service';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { MobileRoastSubNavigation } from '@/layouts/components/MobileRoastSubNavigation';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
@@ -42,7 +40,7 @@ import type { RoastPlanJsonInput } from '@/modules/roast/types';
 import styles from './RoastPage.module.css';
 
 type DetailMode = 'view' | 'edit';
-type CreationMode = 'ai' | 'json' | 'manual';
+type CreationMode = 'json' | 'manual';
 type RoastPlanSortKey = 'nameAsc' | 'updatedAsc' | 'updatedDesc' | 'weightAsc' | 'weightDesc';
 type RoastPlanFilterKey = 'bean' | 'level' | 'purpose';
 
@@ -121,11 +119,9 @@ export function RoastPage() {
 
   const { data: plans = [], isFetching } = useRoastPlans();
   const { data: roastingMachines = [] } = useRoastingMachines();
-  const roastPlanRecommendationUsageQuery = useRoastAiUsage('roast_plan_recommendation');
   const updateMutation = useUpdateRoastPlan();
   const deleteMutation = useDeleteRoastPlan();
-  const isRoastAiEnabled = isRoastAiClientEnabled();
-  const createActionSheetHeight = isRoastAiEnabled ? 232 : 176;
+  const createActionSheetHeight = 176;
 
   const isWide = screens.md ?? false;
 
@@ -153,13 +149,6 @@ export function RoastPage() {
   }, [effectivePlans, filterValues, keyword, sortKey]);
 
   const selectedPlan = effectivePlans.find((p) => p.id === selectedPlanId) ?? null;
-  const roastPlanRecommendationUsageError =
-    roastPlanRecommendationUsageQuery.error instanceof Error ? roastPlanRecommendationUsageQuery.error.message : '';
-  const roastPlanRecommendationUsageText = formatRoastAiUsageText(roastPlanRecommendationUsageQuery.data, {
-    error: roastPlanRecommendationUsageError,
-    isLoading: roastPlanRecommendationUsageQuery.isLoading,
-  });
-  const canUseRoastPlanRecommendation = isRoastAiEnabled && isRoastAiUsageAvailable(roastPlanRecommendationUsageQuery.data);
 
   const resetCreationDraft = () => {
     const latestBeanPlan = sortPlansByUpdatedAt(plans).find((plan) => {
@@ -313,13 +302,6 @@ export function RoastPage() {
     setCreationDrawerOpen(true);
   };
 
-  const handleAiRecommended = (input: RoastPlanJsonInput) => {
-    submissionBackupService.save('create', { input, source: 'ai-recommendation' }, 'roastPlan');
-    setCreationInitialValues(input);
-    setCreationMode('manual');
-    setCreationDrawerOpen(true);
-  };
-
   const closeCreationDrawer = () => {
     setCreationDrawerOpen(false);
     setCreationMode('manual');
@@ -345,26 +327,30 @@ export function RoastPage() {
         value={keyword}
       />
 
-      <MultiFilterSortBar
-        expanded={isFilterPanelExpanded}
-        filters={filterDefinitions}
-        onChange={(key, values) => {
-          setFilterValues((current) => ({ ...current, [key]: values }));
-        }}
-        onClear={() => {
-          setFilterValues({ bean: [], level: [], purpose: [] });
-        }}
-        onSortChange={(value) => {
-          setSortKey(value as RoastPlanSortKey);
-        }}
-        sortOptions={[
-          { label: '最近更新', value: 'updatedDesc' }, { label: '最早更新', value: 'updatedAsc' },
-          { label: '名称 A-Z', value: 'nameAsc' }, { label: '批次重量由大到小', value: 'weightDesc' },
-          { label: '批次重量由小到大', value: 'weightAsc' },
-        ]}
-        sortValue={sortKey}
-        values={filterValues}
-      />
+      <MobileRoastSubNavigation />
+
+      {isFilterPanelExpanded ? (
+        <MultiFilterSortBar
+          expanded={isFilterPanelExpanded}
+          filters={filterDefinitions}
+          onChange={(key, values) => {
+            setFilterValues((current) => ({ ...current, [key]: values }));
+          }}
+          onClear={() => {
+            setFilterValues({ bean: [], level: [], purpose: [] });
+          }}
+          onSortChange={(value) => {
+            setSortKey(value as RoastPlanSortKey);
+          }}
+          sortOptions={[
+            { label: '最近更新', value: 'updatedDesc' }, { label: '最早更新', value: 'updatedAsc' },
+            { label: '名称 A-Z', value: 'nameAsc' }, { label: '批次重量由大到小', value: 'weightDesc' },
+            { label: '批次重量由小到大', value: 'weightAsc' },
+          ]}
+          sortValue={sortKey}
+          values={filterValues}
+        />
+      ) : null}
 
       {/* 计划列表 */}
       <section className={styles.list} aria-label="烘焙计划卡片区域">
@@ -416,20 +402,6 @@ export function RoastPage() {
             <Button block className={styles.actionSheetButton} onClick={() => { handleOpenCreationMode('json'); }}>
               JSON 导入
             </Button>
-            {isRoastAiEnabled ? (
-              <Button
-                block
-                className={styles.actionSheetButton}
-                disabled={!canUseRoastPlanRecommendation}
-                loading={roastPlanRecommendationUsageQuery.isLoading}
-                onClick={() => { handleOpenCreationMode('ai'); }}
-              >
-                <span className={styles.actionSheetButtonContent}>
-                  <span className={styles.actionSheetButtonTitle}>AI 推荐</span>
-                  <span className={styles.actionSheetButtonMeta}>{roastPlanRecommendationUsageText}</span>
-                </span>
-              </Button>
-            ) : null}
           </div>
           <div aria-hidden="true" className={styles.actionSheetSpacer} />
           <div className={styles.actionSheetCancelGroup}>
@@ -457,9 +429,7 @@ export function RoastPage() {
         title={
           creationMode === 'manual'
             ? '新增烘焙计划'
-            : creationMode === 'json'
-              ? 'JSON 导入'
-              : 'AI 推荐'
+            : 'JSON 导入'
         }
       >
         {creationMode === 'manual' ? (
@@ -474,12 +444,6 @@ export function RoastPage() {
             onCancel={closeCreationDrawer}
             onImport={handleFillFormFromJson}
             resetSignal={creationResetSignal}
-          />
-        ) : null}
-        {creationMode === 'ai' && isRoastAiEnabled ? (
-          <RoastPlanAiRecommender
-            onCancel={closeCreationDrawer}
-            onRecommended={handleAiRecommended}
           />
         ) : null}
       </AppDrawer>

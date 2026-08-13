@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react';
 
 import type { AppRouteKey } from '@/router/navigation';
-import { FloatingActionRegistrationContext, type ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
+import {
+  FloatingActionRegistrationContext,
+  HeaderActionRegistrationContext,
+  type ViewportFloatingActionButtonProps,
+} from '@/shared/components/ViewportFloatingActionButton.context';
 
 import styles from './RouteTransitionStage.module.css';
 
@@ -10,8 +14,14 @@ interface FloatingActionRegistrationValue {
   register: (config: ViewportFloatingActionButtonProps) => () => void;
 }
 
+interface HeaderActionRegistrationValue {
+  enabled: boolean;
+  register: (configs: ViewportFloatingActionButtonProps[]) => () => void;
+}
+
 interface RouteTransitionStageProps {
   enabledFloatingActionRegistration: FloatingActionRegistrationValue;
+  enabledHeaderActionRegistration: HeaderActionRegistrationValue;
   isMobileSettingsRoute: boolean;
   outlet: ReactNode;
   pathname: string;
@@ -21,6 +31,7 @@ interface RouteTransitionStageProps {
 
 export function RouteTransitionStage({
   enabledFloatingActionRegistration,
+  enabledHeaderActionRegistration,
   isMobileSettingsRoute,
   outlet,
   pathname,
@@ -29,11 +40,13 @@ export function RouteTransitionStage({
 }: RouteTransitionStageProps) {
   return (
     <div className={styles.routeScene}>
-      <FloatingActionRegistrationContext.Provider value={enabledFloatingActionRegistration}>
-        <div className={styles.routePanel} data-role="current" key={pathname}>
-          {isMobileSettingsRoute ? null : renderRoutePanelContent(selectedKey, outlet)}
-        </div>
-      </FloatingActionRegistrationContext.Provider>
+      <HeaderActionRegistrationContext.Provider value={enabledHeaderActionRegistration}>
+        <FloatingActionRegistrationContext.Provider value={enabledFloatingActionRegistration}>
+          <div className={styles.routePanel} data-role="current" key={pathname}>
+            {isMobileSettingsRoute ? null : renderRoutePanelContent(selectedKey, outlet)}
+          </div>
+        </FloatingActionRegistrationContext.Provider>
+      </HeaderActionRegistrationContext.Provider>
     </div>
   );
 }

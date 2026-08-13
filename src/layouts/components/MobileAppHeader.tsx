@@ -7,14 +7,14 @@ import type { ViewportFloatingActionButtonProps } from '@/shared/components/View
 import styles from './MobileAppHeader.module.css';
 
 interface MobileAppHeaderProps {
-  actionConfig: null | ViewportFloatingActionButtonProps;
+  actionConfigs: ViewportFloatingActionButtonProps[];
   isSettingsOpen: boolean;
   onBrandClick: () => void;
   onLeftButtonClick: () => void;
 }
 
 export function MobileAppHeader({
-  actionConfig,
+  actionConfigs,
   isSettingsOpen,
   onBrandClick,
   onLeftButtonClick,
@@ -32,15 +32,20 @@ export function MobileAppHeader({
       <button className={styles.mobileBrand} onClick={onBrandClick} type="button">
         EasyBake
       </button>
-      {actionConfig ? (
-        <Button
-          aria-label={actionConfig.ariaLabel}
-          className={styles.mobileHeaderAction}
-          icon={actionConfig.icon}
-          onClick={actionConfig.onClick}
-          shape="circle"
-          type="text"
-        />
+      {actionConfigs.length > 0 ? (
+        <div className={styles.mobileHeaderActions}>
+          {actionConfigs.map((actionConfig) => (
+            <Button
+              aria-label={actionConfig.ariaLabel}
+              className={styles.mobileHeaderAction}
+              icon={actionConfig.icon}
+              key={actionConfig.ariaLabel}
+              onClick={actionConfig.onClick}
+              shape="circle"
+              type="text"
+            />
+          ))}
+        </div>
       ) : (
         <span aria-hidden="true" className={styles.mobileHeaderSpacer} />
       )}

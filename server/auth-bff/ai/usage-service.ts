@@ -1,4 +1,14 @@
-import { AI_FEATURE_BEAN_IMAGE_RECOGNITION, AI_USAGE_LIMITS_COLLECTION, AI_USAGE_LOGS_COLLECTION, DEFAULT_AI_USAGE_LIMIT, superuserCollection } from '../config.js';
+import {
+  AI_FEATURE_BEAN_IMAGE_RECOGNITION,
+  AI_FEATURE_ROAST_ANALYSIS,
+  AI_FEATURE_ROAST_GENERAL_QUESTION,
+  AI_FEATURE_ROAST_PLAN_RECOMMENDATION,
+  AI_USAGE_LIMITS_COLLECTION,
+  AI_USAGE_LOGS_COLLECTION,
+  DEFAULT_AI_USAGE_LIMIT,
+  DEFAULT_ROAST_AI_USAGE_LIMIT,
+  superuserCollection,
+} from '../config.js';
 import { normalizeAuthResponse, proxyPocketBaseRequest } from '../pocketbase-client.js';
 import { escapeFilterValue, getFirstListItem, listPocketBaseRecords, listRecordIdsByFilter } from '../record-utils.js';
 import { AiUsageLimitRecord, AiUsageState, PocketBaseGatewayError } from '../types.js';
@@ -77,6 +87,14 @@ export const normalizeMonthlyLimit = (value: unknown): number => {
     : DEFAULT_AI_USAGE_LIMIT;
 };
 
+const getDefaultAiUsageLimit = (feature: string): number => {
+  return feature === AI_FEATURE_ROAST_ANALYSIS
+    || feature === AI_FEATURE_ROAST_GENERAL_QUESTION
+    || feature === AI_FEATURE_ROAST_PLAN_RECOMMENDATION
+    ? DEFAULT_ROAST_AI_USAGE_LIMIT
+    : DEFAULT_AI_USAGE_LIMIT;
+};
+
 export const getAiUsageLimit = async (
   superuserToken: string,
   ownerId: string,
@@ -92,7 +110,7 @@ export const getAiUsageLimit = async (
   if (!record) {
     return {
       enabled: true,
-      monthlyLimit: DEFAULT_AI_USAGE_LIMIT,
+      monthlyLimit: getDefaultAiUsageLimit(feature),
     };
   }
 

@@ -152,6 +152,13 @@
     height: 0;
   }
 
+  .scrollViewport[data-assistant-route='true'] {
+    overflow: hidden;
+    background: var(--app-bg-elevated);
+    box-shadow: none;
+    overscroll-behavior-y: none;
+  }
+
   .shell[data-standalone-pwa='true'] .content {
     padding-bottom: var(--shell-content-bottom-space);
   }

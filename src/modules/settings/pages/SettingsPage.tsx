@@ -385,19 +385,19 @@ export function SettingsPage() {
             <AccordionContent className={accordionStyles.content}>
               <div className={styles.aiCapabilityList}>
                 <article className={styles.aiCapabilityItem}>
-                  <strong>AI 推荐烘焙计划</strong>
-                  <p>开炉前使用。新建计划时选择 AI 推荐，填写生豆、烘焙机、预期烘焙度和希望呈现的风味，即可获得一份适合当前机器的起始计划。结果会先进入可编辑页面，确认后才会创建计划。</p>
+                  <strong>计划模式</strong>
+                  <p>选择生豆后，与 AI 讨论烘焙目标与期望风味，生成起始烘焙计划。适合开炉前规划新豆或尝试新烘法。AI 返回的计划草稿需在确认页核对后创建。</p>
                 </article>
                 <article className={styles.aiCapabilityItem}>
-                  <strong>AI 曲线复盘</strong>
-                  <p>一炉烘焙完成并导入曲线后使用。它会结合原计划和实际曲线，指出影响风味的关键表现，预测杯中结果，并提示杯测时应重点关注什么以及下一炉的调整方向。</p>
+                  <strong>复盘模式</strong>
+                  <p>选择已完成的烘焙记录，AI 结合原计划、实际曲线和杯测评价（如有）分析关键表现，指出影响风味的因素，并生成优化计划供下一炉使用。适合迭代改进现有烘焙方案。</p>
                 </article>
                 <article className={styles.aiCapabilityItem}>
-                  <strong>整体复盘与计划建议</strong>
-                  <p>完成曲线导入和杯测评价后使用。它会综合计划、曲线和评价，分析结果可能的成因，并生成一份可继续编辑的优化计划，供下一炉确认使用。</p>
+                  <strong>常识性提问</strong>
+                  <p>不关联生豆或烘焙记录，直接提问咖啡和烘焙的常识性问题，如技术原理、风味判断、设备操作等。适合学习烘焙知识或快速解答疑问。</p>
                 </article>
               </div>
-              <p className={accordionStyles.contentCopy}>三项功能均按月提供可用次数。AI 提供的是辅助判断，建议结合实际豆况、设备状态和杯测结果作最终决定。</p>
+              <p className={accordionStyles.contentCopy}>计划和复盘各自按月提供可用次数，常识性提问单独计次。AI 提供的是辅助判断，建议结合实际豆况、设备状态和杯测结果作最终决定。</p>
             </AccordionContent>
           </AccordionItem>
 

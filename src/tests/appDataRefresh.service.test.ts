@@ -26,13 +26,13 @@ describe('appDataRefresh.service', () => {
   });
 
   it('maps the current hash route to the matching refresh scope', () => {
-    window.location.hash = '#/production';
+    window.location.hash = '#/roasts/history';
 
     expect(resolveCurrentAppRefreshScope()).toBe('production');
   });
 
   it('only refreshes the active roast page queries during quick refresh', async () => {
-    window.location.hash = '#/roasts';
+    window.location.hash = '#/roasts/plan';
     vi.useFakeTimers();
 
     const setQueryData = vi.fn();

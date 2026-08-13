@@ -1,0 +1,33 @@
+.navigation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 320px);
+  min-height: 48px;
+  margin: -8px auto;
+  padding: 0;
+  background: transparent;
+}
+
+.navigation button {
+  position: relative;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: var(--app-text-secondary);
+  color: #6e6e73;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.navigation button[aria-current='page'] { color: #1d1d1f; }
+
+.navigation button[aria-current='page']::after {
+  position: absolute;
+  right: 30%;
+  bottom: 0;
+  left: 30%;
+  height: 2px;
+  border-radius: 999px;
+  background: #1d1d1f;
+  content: '';
+}

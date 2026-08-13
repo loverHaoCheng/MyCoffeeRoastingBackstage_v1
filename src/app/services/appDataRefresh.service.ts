@@ -51,12 +51,12 @@ const getCurrentPathname = (): string => {
 };
 
 const getScopeFromPathname = (pathname: string): AppRefreshScope => {
-  if (pathname.startsWith('/roasts')) {
-    return 'roast';
+  if (pathname.startsWith('/roasts/history') || pathname.startsWith('/production')) {
+    return 'production';
   }
 
-  if (pathname.startsWith('/production')) {
-    return 'production';
+  if (pathname.startsWith('/roasts')) {
+    return 'roast';
   }
 
   if (pathname.startsWith('/finance')) {

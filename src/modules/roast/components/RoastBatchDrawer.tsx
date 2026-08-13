@@ -2,7 +2,7 @@ import SaveOutlined from '@ant-design/icons/SaveOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import dayjs from 'dayjs';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { useRoastPlans } from '@/modules/roast/hooks';
@@ -17,9 +17,7 @@ import {
   type RoastBatchFormSubmitValue,
 } from './RoastBatchForm';
 import { RoastCurvePanel } from './RoastCurvePanel';
-import { RoastAiAnalysisSection } from './RoastAiAnalysisSection';
 import { RoastEvaluationEditor } from './RoastEvaluationEditor';
-import { RoastTrainingUploadSection } from './RoastTrainingUploadSection';
 import styles from './RoastBatchDrawer.module.css';
 
 type DrawerMode = 'view' | 'edit';
@@ -74,8 +72,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
   const [form, setForm] = useState<RoastBatchFormState>(() => createFormState(batch));
-  const [evaluationRefreshKey, setEvaluationRefreshKey] = useState(0);
-  const trainingSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setForm(createFormState(batch));
@@ -95,21 +91,9 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
       void onUpdate(batch.id, updateInput);
     };
 
-    const currentBatchForTraining = {
-      ...batch,
-      evaluation: form.evaluation,
-      greenBeanId: form.greenBeanId,
-      greenBeanName: form.greenBeanName,
-      roastLevel: form.roastLevel,
-      roastPlanId: form.roastPlanId === '' ? undefined : form.roastPlanId,
-      roastPlanName: form.roastPlanName === '' ? undefined : form.roastPlanName,
-      totalRoastTime: form.totalRoastTime,
-    };
-
     return (
       <div className={styles.drawer}>
         <RoastBatchForm
-          analysisSection={<div className={styles.analysisSection}><RoastAiAnalysisSection batch={batch} /></div>}
           beans={beans}
           curveSection={<RoastCurvePanel batch={batch} />}
           onCancel={onClose}
@@ -119,18 +103,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
           resetKey={batch.id}
           submitIcon={<SaveOutlined />}
           submitLabel="保存烘焙记录"
-          trainingSection={(
-            <RoastTrainingUploadSection
-              batch={currentBatchForTraining}
-              evaluation={form.evaluation}
-              onEvaluationChange={(evaluation) => {
-                setForm((current) => ({
-                  ...current,
-                  evaluation,
-                }));
-              }}
-            />
-          )}
           value={form}
         />
       </div>
@@ -140,11 +112,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
   const lossRate = batch.inputWeightGrams > 0
     ? (((batch.inputWeightGrams - batch.outputWeightGrams) / batch.inputWeightGrams) * 100).toFixed(1)
     : '-';
-  const viewBatchWithEvaluation = {
-    ...batch,
-    evaluation: form.evaluation,
-  };
-
   const handleSaveEvaluation = async () => {
     if (!onUpdate) {
       return;
@@ -152,11 +119,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
 
     try {
       await Promise.resolve(onUpdate(batch.id, { evaluation: form.evaluation }));
-      setEvaluationRefreshKey((current) => current + 1);
-      void message.success('评价与训练授权已保存，可继续生成整体复盘。');
-      window.requestAnimationFrame(() => {
-        trainingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      void message.success('评价已保存。');
     } catch {
       void message.error('评价保存失败，请稍后重试。');
     }
@@ -242,7 +205,14 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
             </div>
           ) : null}
         </section>
-        <RoastAiAnalysisSection batch={batch} />
+        <section className={styles.section}>
+          <div className={styles.aiConversationAction}>
+            <Button block onClick={() => { window.location.hash = `/roast-assistant?${new URLSearchParams({ roastBatchId: batch.id }).toString()}`; }}>
+              继续讨论这一炉
+            </Button>
+            <p>已生成的曲线复盘和整体建议会自动带入对话。</p>
+          </div>
+        </section>
 
         <section className={styles.section}>
           <h4>评价表单</h4>
@@ -257,16 +227,6 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
           </Button>
         </section>
 
-        <section ref={trainingSectionRef} className={styles.section}>
-          <RoastTrainingUploadSection
-            batch={viewBatchWithEvaluation}
-            evaluation={form.evaluation}
-            refreshKey={evaluationRefreshKey}
-            onEvaluationChange={(evaluation) => {
-              setForm((current) => ({ ...current, evaluation }));
-            }}
-          />
-        </section>
 
         <section className={styles.section}>
           <h4>备注</h4>

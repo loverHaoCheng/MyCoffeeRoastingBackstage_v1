@@ -12,6 +12,8 @@ export const DEFAULT_SUPERUSER_COLLECTION = '_superusers';
 
 export const DEFAULT_AI_USAGE_LIMIT = 10;
 
+export const DEFAULT_ROAST_AI_USAGE_LIMIT = 20;
+
 export const DEFAULT_AI_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
 
 export const DEFAULT_POCKETBASE_REQUEST_TIMEOUT_MS = 15_000;
@@ -26,9 +28,9 @@ export const AI_FEATURE_ROASTER_MODEL_RECOGNITION = 'roaster_model_recognition';
 
 export const AI_FEATURE_ROAST_ANALYSIS = 'roast_analysis';
 
-export const AI_FEATURE_ROAST_TRAINING_RECOMMENDATION = 'roast_training_recommendation';
-
 export const AI_FEATURE_ROAST_PLAN_RECOMMENDATION = 'roast_plan_recommendation';
+
+export const AI_FEATURE_ROAST_GENERAL_QUESTION = 'roast_general_question';
 
 export const AI_USAGE_LIMITS_COLLECTION = 'ai_usage_limits';
 

@@ -71,7 +71,7 @@ describe('HttpClient', () => {
       },
     });
 
-    await client.get<null>('/ai/roast-training-upload?roastBatchId=batch-1');
+    await client.get<null>('/ai/roast-analysis?roastBatchId=batch-1');
 
     expect(capturedCredentials).toBe('same-origin');
   });

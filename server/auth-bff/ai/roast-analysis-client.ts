@@ -1,6 +1,7 @@
 import { aiRequestTimeoutMs, aiRoastBaseUrl, aiRoastModel, aiRoastProvider, isSupportedAiRoastProvider } from '../config.js';
 import { fetchWithTimeout, parseJsonResponse } from '../http.js';
 import { extractJsonFromModelText, getModelContentText } from './qiniu-client.js';
+import { getSafeUpstreamErrorMessage, logger } from '../logger.js';
 import {
   buildRoastModelRequestBody,
   getRoastModelRequestHeaders,
@@ -52,6 +53,12 @@ const requestModelContent = async (
   const payload = await parseJsonResponse(upstream);
 
   if (!upstream.ok) {
+    logger.error('roast_analysis_ai_request_failed', {
+      model: getResolvedRoastModel(),
+      provider: aiRoastProvider,
+      status: upstream.status,
+      upstreamMessage: getSafeUpstreamErrorMessage(payload),
+    });
     throw new Error(`烘焙 AI 请求失败（${String(upstream.status)}）。`);
   }
 

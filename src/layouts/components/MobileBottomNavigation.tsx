@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { useMemo } from 'react';
 
 import type { AppNavigationItem, AppRouteKey } from '@/router/navigation';
 
@@ -20,6 +21,17 @@ export function MobileBottomNavigation({
   onNavigate,
   selectedKey,
 }: MobileBottomNavigationProps) {
+  const visibleItems = useMemo(
+    () => items.filter((item) => item.group == null || item.key === 'roast' || item.key === 'roastAssistant'),
+    [items],
+  );
+  const activeItemIndex = visibleItems.findIndex((item) => {
+    return item.key === 'roast'
+      ? selectedKey === 'roast' || selectedKey === 'production'
+      : item.key === selectedKey;
+  });
+  const isRoastActive = selectedKey === 'roast' || selectedKey === 'production';
+
   return (
     <nav
       aria-label="主导航"
@@ -27,9 +39,9 @@ export function MobileBottomNavigation({
       data-dimmed={isDimmed}
       style={
         {
-          '--bottom-nav-active-index': activeIndex,
-          '--bottom-nav-columns': items.length,
-          gridTemplateColumns: 'repeat(' + String(items.length) + ', minmax(0, 1fr))',
+          '--bottom-nav-active-index': activeItemIndex >= 0 ? activeItemIndex : activeIndex,
+          '--bottom-nav-columns': visibleItems.length,
+          gridTemplateColumns: 'repeat(' + String(visibleItems.length) + ', minmax(0, 1fr))',
         } as CSSProperties
       }
     >
@@ -37,19 +49,19 @@ export function MobileBottomNavigation({
         <div className={styles.bottomNavSurface}>
           <div className={styles.bottomNavInner}>
             <span aria-hidden="true" className={styles.bottomNavActivePill} />
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <button
-                aria-current={selectedKey === item.key ? 'page' : undefined}
+                aria-current={item.key === 'roast' ? (isRoastActive ? 'page' : undefined) : (selectedKey === item.key ? 'page' : undefined)}
                 className={styles.bottomNavItem}
-                data-active={selectedKey === item.key}
+                data-active={item.key === 'roast' ? isRoastActive : selectedKey === item.key}
                 key={item.key}
                 onClick={() => {
                   onNavigate(item.key);
                 }}
                 type="button"
               >
-                <span className={styles.bottomNavIcon}>{getNavigationIcon(item.key, selectedKey === item.key)}</span>
-                <span className={styles.bottomNavLabel}>{item.shortLabel}</span>
+                <span className={styles.bottomNavIcon}>{getNavigationIcon(item.key, item.key === 'roast' ? isRoastActive : selectedKey === item.key)}</span>
+                <span className={styles.bottomNavLabel}>{item.key === 'roast' ? '烘焙' : item.shortLabel}</span>
               </button>
             ))}
           </div>

@@ -5,12 +5,11 @@ import { isRecord, toTrimmedString } from '../utils.js';
 import { getRequiredSuperuserToken } from './usage-service.js';
 import { parseRoastAnalysisPayload } from './roast-analysis-types.js';
 import { runRoastAnalysis } from './roast-analysis-handler.js';
-import { runRoastTrainingUpload } from './roast-training-upload-handler.js';
 
 export const AI_ANALYSIS_TASKS_COLLECTION = 'ai_analysis_tasks';
 
 export type AiAnalysisTaskStatus = 'completed' | 'failed' | 'processing' | 'queued';
-export type AiAnalysisTaskType = 'curve_review' | 'overall_analysis';
+export type AiAnalysisTaskType = 'curve_review';
 
 export interface AiAnalysisTaskView {
   completedAt?: string;
@@ -60,9 +59,7 @@ export const normalizeAnalysisTaskErrorMessage = (error: unknown, fallbackMessag
   return rawMessage.trim() || fallbackMessage;
 };
 
-export const isTaskType = (value: unknown): value is AiAnalysisTaskType => {
-  return value === 'curve_review' || value === 'overall_analysis';
-};
+export const isTaskType = (value: unknown): value is AiAnalysisTaskType => value === 'curve_review';
 
 const getListItems = (payload: unknown): AiAnalysisTaskRecord[] => {
   if (!isRecord(payload) || !Array.isArray(payload.items)) {
@@ -246,7 +243,7 @@ export const acknowledgeAnalysisTasks = async (
 let workerPromise: Promise<void> | null = null;
 let workerInterval: NodeJS.Timeout | null = null;
 
-const processTaskRecord = async (token: string, task: AiAnalysisTaskRecord): Promise<void> => {
+export const processTaskRecord = async (token: string, task: AiAnalysisTaskRecord): Promise<void> => {
   const taskId = toTrimmedString(task.id);
   const ownerId = toTrimmedString(task.owner);
   const roastBatchId = toTrimmedString(task.roast_batch_id);
@@ -263,37 +260,21 @@ const processTaskRecord = async (token: string, task: AiAnalysisTaskRecord): Pro
   });
 
   try {
-    let result: unknown;
-    let resultRecordId = '';
-
-    if (taskType === 'curve_review') {
-      const analysisResult = await runRoastAnalysis(
-        token,
-        ownerId,
-        parseRoastAnalysisPayload(task.input_payload),
-      );
-      result = analysisResult;
-      resultRecordId = toTrimmedString(analysisResult.reviewId);
-    } else {
-      const inputPayload = isRecord(task.input_payload) ? task.input_payload : {};
-      const trainingResult = await runRoastTrainingUpload(token, ownerId, roastBatchId, {
-        adjustmentDirection: toTrimmedString(inputPayload.adjustmentDirection).slice(0, 1000),
-        createTrainingSample: false,
-      });
-      result = trainingResult;
-      resultRecordId = toTrimmedString(trainingResult.uploadId);
-    }
+    const analysisResult = await runRoastAnalysis(
+      token,
+      ownerId,
+      parseRoastAnalysisPayload(task.input_payload),
+    );
 
     await updateTaskRecord(token, taskId, {
       active_key: `done-${taskId}`,
       completed_at: new Date().toISOString(),
-      result_payload: result,
-      result_record_id: resultRecordId,
+      result_payload: analysisResult,
+      result_record_id: toTrimmedString(analysisResult.reviewId),
       status: 'completed',
     });
   } catch (error) {
-    const fallbackMessage = taskType === 'curve_review' ? 'AI 曲线复盘失败。' : '整体复盘与计划建议生成失败。';
-    const errorMessage = normalizeAnalysisTaskErrorMessage(error, fallbackMessage);
+    const errorMessage = normalizeAnalysisTaskErrorMessage(error, 'AI 曲线复盘失败。');
 
     await updateTaskRecord(token, taskId, {
       active_key: `failed-${taskId}`,

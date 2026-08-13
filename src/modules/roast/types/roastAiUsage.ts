@@ -1,7 +1,7 @@
 export type RoastAiFeature =
   | 'roast_analysis'
-  | 'roast_plan_recommendation'
-  | 'roast_training_recommendation';
+  | 'roast_general_question'
+  | 'roast_plan_recommendation';
 
 export interface RoastAiUsage {
   enabled: boolean;

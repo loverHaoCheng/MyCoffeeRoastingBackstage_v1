@@ -40,7 +40,7 @@ AI 功能额度当前采用服务端辅助口径：
 - `ai_usage_logs`：由 BFF 写入调用结果，按 `owner + feature + month + status = success` 统计当月已用次数。
 - `ai_analysis_tasks`：由 BFF 创建、worker 更新的异步 AI 分析任务。`owner + roast_batch_id + task_type` 的活动任务只能有一条；任务完成后由前端确认 `notified_at`，因此关闭网页或退出 PWA 不会丢失结果通知。
 - 失败记录只用于排查，不参与月度额度扣减。
-- 未配置用户额度时默认 `10 次/月`；当前 `bean_image_recognition`、`roast_analysis`、`roast_training_recommendation`、`roast_plan_recommendation` 均独立计次。
+- 未配置用户额度时，`roast_analysis`、`roast_general_question`、`roast_plan_recommendation` 默认各 `20 次/月`，其余 AI 功能默认 `10 次/月`；三者均独立计次。历史 `roast_training_recommendation` 日志保留用于审计，不再由应用写入。
 
 ## 生豆未来拆表
 

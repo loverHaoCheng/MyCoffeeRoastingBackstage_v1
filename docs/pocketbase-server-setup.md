@@ -412,19 +412,19 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 
 ### `ai_usage_limits`
 
-用途：控制每个用户每月可使用的 AI 功能次数，当前由 PocketBase Dashboard 直接维护。未配置用户记录时，BFF 对各功能默认按 `10 次/月` 放行。
+用途：控制每个用户每月可使用的 AI 功能次数，当前由 PocketBase Dashboard 直接维护。未配置用户记录时，`roast_analysis`、`roast_general_question` 与 `roast_plan_recommendation` 默认按 `20 次/月` 放行，其他 AI 功能默认按 `10 次/月` 放行。
 
 可直接导入 [pocketbase-ai-usage-collections.import.json](pocketbase-ai-usage-collections.import.json) 创建 `ai_usage_limits` 与 `ai_usage_logs`；导入后不要将任一规则改为空字符串。
 
-`feature` 必须是 select，且测试端与正式端均须包含：`bean_image_recognition`、`roaster_model_recognition`、`roast_analysis`、`roast_training_recommendation`、`roast_plan_recommendation`。
+`feature` 必须是 select，且测试端与正式端均须包含：`bean_image_recognition`、`roaster_model_recognition`、`roast_analysis`、`roast_plan_recommendation`。已发布环境可保留 `roast_training_recommendation` 选项与历史日志，但新功能不再写入该功能码。
 
 字段建议：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `owner` | relation(users) | 归属用户，单选，必填 |
-| `feature` | select | 功能码选项：`bean_image_recognition`、`roast_analysis`、`roast_training_recommendation`、`roast_plan_recommendation` |
-| `monthly_limit` | number | 月度成功调用次数上限，默认建议 10，允许 0 |
+| `feature` | select | 功能码选项：`bean_image_recognition`、`roast_analysis`、`roast_plan_recommendation`；已发布环境可额外保留历史 `roast_training_recommendation` |
+| `monthly_limit` | number | 月度成功调用次数上限；曲线复盘、常识性提问与计划建议建议 20，其他 AI 功能建议 10，允许 0 |
 | `enabled` | bool | 是否启用该用户的功能 |
 | `created_at` | date | 创建时间 |
 | `updated_at` | date | 更新时间 |
@@ -449,7 +449,7 @@ deleteRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
 2. 为指定用户创建或编辑一条记录，`owner` 选择该用户，`feature` 填对应功能码。
 3. `monthly_limit` 即该用户该功能的月度上限；填写 `0` 表示本月额度为 0。
 4. `enabled = false` 表示关闭该用户该功能。
-5. 若某个用户没有对应 `owner + feature` 记录，BFF 默认按 `10 次/月` 处理。
+5. 若某个用户没有对应 `owner + feature` 记录，`roast_analysis`、`roast_general_question` 与 `roast_plan_recommendation` 默认按 `20 次/月` 处理，其他 AI 功能默认按 `10 次/月` 处理；删除既有记录后也会立即恢复该默认值。
 
 ### `ai_usage_logs`
 
@@ -460,7 +460,7 @@ deleteRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `owner` | relation(users) | 归属用户，单选，必填 |
-| `feature` | select | 功能码选项：`bean_image_recognition`、`roast_analysis`、`roast_training_recommendation`、`roast_plan_recommendation` |
+| `feature` | select | 功能码选项：`bean_image_recognition`、`roast_analysis`、`roast_plan_recommendation`；已发布环境可额外保留历史 `roast_training_recommendation` |
 | `month` | text | 月份，格式如 `2026-07` |
 | `status` | select | `success / failed`，单选 |
 | `error_message` | text | 失败原因，成功时为空 |
@@ -475,7 +475,7 @@ deleteRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
 
 ### `ai_analysis_tasks`
 
-用途：保存 `curve_review`（AI 曲线复盘）和 `overall_analysis`（整体复盘与计划建议）任务。前端只负责提交，BFF worker 负责在后台执行并把结果写入既有 AI 结果集合；任务完成后前端确认 `notified_at`，关闭网页、刷新页面或退出 PWA 都不会中断任务。
+用途：保存 `curve_review`（AI 曲线复盘）任务。前端只负责提交，BFF worker 负责在后台执行并把结果写入既有 AI 结果集合；任务完成后前端确认 `notified_at`，关闭网页、刷新页面或退出 PWA 都不会中断任务。已发布环境可保留历史 `overall_analysis` 记录，但 worker 不会再处理该类型。
 
 直接导入 [pocketbase-ai-analysis-tasks.import.json](pocketbase-ai-analysis-tasks.import.json)。测试端和正式端必须导入同一份文件，字段、索引和规则不得单独漂移。
 
@@ -485,7 +485,7 @@ deleteRule: null（Dashboard 保持“锁定”，严禁填写空字符串 ""）
 | --- | --- | --- |
 | `owner` | relation(users) | 任务归属用户，必填 |
 | `roast_batch_id` | text | 烘焙记录 ID |
-| `task_type` | select | `curve_review` / `overall_analysis` |
+| `task_type` | select | `curve_review`；已发布环境可保留历史 `overall_analysis` |
 | `status` | select | `queued` / `processing` / `completed` / `failed` |
 | `active_key` | text | 活动任务去重键；完成或失败后由 BFF 改写 |
 | `input_payload` | json | 服务端校验后的输入快照 |

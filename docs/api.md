@@ -103,15 +103,15 @@ interface BeanImageRecognitionResponse {
 
 ```text
 GET /api/ai/roast-usage?feature=roast_analysis
-GET /api/ai/roast-usage?feature=roast_training_recommendation
+GET /api/ai/roast-usage?feature=roast_general_question
 GET /api/ai/roast-usage?feature=roast_plan_recommendation
 ```
 
 说明：
 
 - 测试端和正式端均开放该接口；由 `ai_usage_limits` 控制用户是否可用及每月额度。
-- 三个功能分别独立计次，未配置 `ai_usage_limits` 时默认各 `10 次/月`。
-- 成功调用 `POST /api/ai/roast-analysis`、`POST /api/ai/roast-training-upload`、`POST /api/ai/roast-plan-recommendation` 后，BFF 写入 `ai_usage_logs.status = success` 并扣减对应 feature 的额度。
+- 曲线复盘、咖啡常识性提问与 AI 助手计划对话分别使用 `roast_analysis`、`roast_general_question`、`roast_plan_recommendation` 额度；未配置或删除对应 `ai_usage_limits` 记录时，默认各 `20 次/月`。
+- 旧的训练上传、整体复盘与独立计划推荐路由已删除；历史额度日志保留，只用于审计。
 - 已存在保存结果时只返回旧结果，不重复调用模型，也不扣减额度。
 - 进入生成阶段后的模型或保存失败会尽量写入 `failed` 日志用于排查，不参与额度扣减。
 - `POST /api/ai/roast-analysis` 推荐只提交 `{ roastBatchId }`；BFF 会从 PocketBase 读取对应烘焙记录、烘焙计划、实体烘豆机和曲线后再生成复盘，避免前端缓存缺失导致误判。
@@ -130,7 +130,7 @@ interface RoastAiUsage {
 
 ## 烘焙 AI 异步分析任务
 
-曲线复盘和整体复盘均通过持久化任务执行，前端提交后不需要保持页面、抽屉或 PWA 进程打开。BFF 将任务写入 PocketBase，独立 worker 继续执行模型调用并保存结果；前端下次启动时读取尚未确认的完成任务并显示一次性提示。
+曲线复盘通过持久化任务执行，前端提交后不需要保持页面、抽屉或 PWA 进程打开。BFF 将任务写入 PocketBase，独立 worker 继续执行模型调用并保存结果；前端下次启动时读取尚未确认的完成任务并显示一次性提示。
 
 接口：
 
@@ -146,7 +146,7 @@ POST /api/ai/analysis-tasks/acknowledge
 ```ts
 interface CreateAiAnalysisTaskRequest {
   roastBatchId: string;
-  taskType: 'curve_review' | 'overall_analysis';
+  taskType: 'curve_review';
 }
 ```
 
@@ -156,7 +156,7 @@ interface CreateAiAnalysisTaskRequest {
 interface AiAnalysisTask {
   id: string;
   roastBatchId: string;
-  taskType: 'curve_review' | 'overall_analysis';
+  taskType: 'curve_review';
   status: 'queued' | 'processing' | 'completed' | 'failed';
   startedAt?: string;
   completedAt?: string;

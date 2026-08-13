@@ -6,6 +6,8 @@ import FundFilled from '@ant-design/icons/FundFilled';
 import FundOutlined from '@ant-design/icons/FundOutlined';
 import HddFilled from '@ant-design/icons/HddFilled';
 import HddOutlined from '@ant-design/icons/HddOutlined';
+import OpenAIFilled from '@ant-design/icons/OpenAIFilled';
+import OpenAIOutlined from '@ant-design/icons/OpenAIOutlined';
 import SettingOutlined from '@ant-design/icons/SettingOutlined';
 import type { ReactNode } from 'react';
 
@@ -15,6 +17,7 @@ const outlinedIconByRoute: Record<AppRouteKey, ReactNode> = {
   bean: <HddOutlined />,
   finance: <AccountBookOutlined />,
   roast: <FundOutlined />,
+  roastAssistant: <OpenAIOutlined />,
   production: <FireOutlined />,
   settings: <SettingOutlined />,
 };
@@ -23,6 +26,7 @@ const filledIconByRoute: Partial<Record<AppRouteKey, ReactNode>> = {
   bean: <HddFilled />,
   finance: <AccountBookFilled />,
   roast: <FundFilled />,
+  roastAssistant: <OpenAIFilled />,
   production: <FireFilled />,
 };
 

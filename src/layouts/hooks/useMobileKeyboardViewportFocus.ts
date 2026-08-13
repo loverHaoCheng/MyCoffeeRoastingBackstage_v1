@@ -19,6 +19,10 @@ const SCROLL_TOLERANCE_PX = 6;
 const KEYBOARD_VISIBLE_THRESHOLD_PX = 120;
 const KEYBOARD_SETTLE_DELAY_MS = 180;
 const MOBILE_EDITING_ATTRIBUTE = 'data-app-mobile-editing';
+const VISUAL_VIEWPORT_HEIGHT_VARIABLE = '--app-visual-viewport-height';
+const VISUAL_VIEWPORT_OFFSET_TOP_VARIABLE = '--app-visual-viewport-offset-top';
+const LAYOUT_VIEWPORT_HEIGHT_VARIABLE = '--app-layout-viewport-height';
+const SKIP_RECENTER_ATTRIBUTE = 'data-skip-mobile-keyboard-recenter';
 
 interface RecenterScrollMetrics {
   currentScrollTop: number;
@@ -66,6 +70,11 @@ const resolveEditableTarget = (eventTarget: EventTarget | null): HTMLElement | n
   }
 
   return null;
+};
+
+const shouldSkipViewportRecenter = (eventTarget: EventTarget | null): boolean => {
+  return eventTarget instanceof HTMLElement
+    && eventTarget.closest(`[${SKIP_RECENTER_ATTRIBUTE}="true"]`) != null;
 };
 
 const isScrollableElement = (element: HTMLElement): boolean => {
@@ -162,6 +171,39 @@ const syncMobileEditingAttribute = (hidden: boolean) => {
   document.documentElement.removeAttribute(MOBILE_EDITING_ATTRIBUTE);
 };
 
+const syncVisualViewportMetrics = () => {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return;
+  }
+
+  const visualViewport = window.visualViewport;
+  const viewportHeight = visualViewport?.height ?? window.innerHeight;
+  const viewportOffsetTop = visualViewport?.offsetTop ?? 0;
+
+  document.documentElement.style.setProperty(
+    VISUAL_VIEWPORT_HEIGHT_VARIABLE,
+    `${String(Math.round(viewportHeight))}px`,
+  );
+  document.documentElement.style.setProperty(
+    VISUAL_VIEWPORT_OFFSET_TOP_VARIABLE,
+    `${String(Math.round(viewportOffsetTop))}px`,
+  );
+  document.documentElement.style.setProperty(
+    LAYOUT_VIEWPORT_HEIGHT_VARIABLE,
+    `${String(Math.round(window.innerHeight))}px`,
+  );
+};
+
+const resetVisualViewportMetrics = () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.documentElement.style.removeProperty(VISUAL_VIEWPORT_HEIGHT_VARIABLE);
+  document.documentElement.style.removeProperty(VISUAL_VIEWPORT_OFFSET_TOP_VARIABLE);
+  document.documentElement.style.removeProperty(LAYOUT_VIEWPORT_HEIGHT_VARIABLE);
+};
+
 export const resolveRecenteredScrollTop = ({
   currentScrollTop,
   maxScrollTop,
@@ -177,6 +219,27 @@ export const resolveRecenteredScrollTop = ({
   const visibleCenter = (visibleTop + visibleBottom) / 2;
   const targetCenter = (targetTop + targetBottom) / 2;
   const delta = targetCenter - visibleCenter;
+
+  if (Math.abs(delta) <= SCROLL_TOLERANCE_PX) {
+    return null;
+  }
+
+  const nextScrollTop = clamp(currentScrollTop + delta, 0, maxScrollTop);
+
+  if (Math.abs(nextScrollTop - currentScrollTop) <= 1) {
+    return null;
+  }
+
+  return nextScrollTop;
+};
+
+export const resolveKeyboardAlignedScrollTop = ({
+  currentScrollTop,
+  maxScrollTop,
+  targetBottom,
+  visibleBottom,
+}: RecenterScrollMetrics): number | null => {
+  const delta = targetBottom - visibleBottom;
 
   if (Math.abs(delta) <= SCROLL_TOLERANCE_PX) {
     return null;
@@ -212,14 +275,17 @@ const syncFocusedFieldIntoViewport = (
     Math.min(containerRect.bottom, visualViewportBottom) - VIEWPORT_EDGE_PADDING_PX,
   );
   const targetRect = resolveViewportAnchor(target).getBoundingClientRect();
-  const nextScrollTop = resolveRecenteredScrollTop({
+  const scrollMetrics = {
     currentScrollTop: container.scrollTop,
     maxScrollTop: Math.max(0, container.scrollHeight - container.clientHeight),
     targetBottom: targetRect.bottom,
     targetTop: targetRect.top,
     visibleBottom,
     visibleTop,
-  });
+  };
+  const nextScrollTop = container.classList.contains('ant-drawer-body') && isKeyboardVisible()
+    ? resolveKeyboardAlignedScrollTop(scrollMetrics)
+    : resolveRecenteredScrollTop(scrollMetrics);
 
   if (nextScrollTop == null) {
     return;
@@ -246,10 +312,12 @@ export function useMobileKeyboardViewportFocus({
       activeTargetRef.current = null;
       lastFocusedTargetRef.current = null;
       syncMobileEditingAttribute(false);
+      resetVisualViewportMetrics();
       return undefined;
     }
 
     keyboardVisibleRef.current = isKeyboardVisible();
+    syncVisualViewportMetrics();
 
     const clearPendingSync = () => {
       if (animationFrameRef.current != null) {
@@ -310,6 +378,14 @@ export function useMobileKeyboardViewportFocus({
     };
 
     const handleFocusIn = (event: FocusEvent) => {
+      if (shouldSkipViewportRecenter(event.target)) {
+        activeTargetRef.current = null;
+        lastFocusedTargetRef.current = null;
+        clearPendingSync();
+        syncActionBarVisibility();
+        return;
+      }
+
       const nextTarget = resolveEditableTarget(event.target);
 
       if (!nextTarget) {
@@ -339,6 +415,7 @@ export function useMobileKeyboardViewportFocus({
     };
 
     const handleViewportChange = () => {
+      syncVisualViewportMetrics();
       const keyboardOpen = isKeyboardVisible();
       keyboardVisibleRef.current = keyboardOpen;
 
@@ -368,6 +445,7 @@ export function useMobileKeyboardViewportFocus({
     return () => {
       clearPendingSync();
       syncMobileEditingAttribute(false);
+      resetVisualViewportMetrics();
       document.removeEventListener('focusin', handleFocusIn);
       document.removeEventListener('focusout', handleFocusOut);
       window.removeEventListener('resize', handleViewportChange);

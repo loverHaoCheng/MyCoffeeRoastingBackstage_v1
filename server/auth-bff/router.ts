@@ -22,21 +22,14 @@ interface GatewayRouteHandlers {
   handleProfileUpdate: RequestHandler;
   handleRealtime: RequestHandler;
   handleRegister: RequestHandler;
-  handleRoastTrainingQualityCheck: RequestHandler;
   handleRoastAnalysis: RequestHandler;
   handleRoastAnalysisStatus: (request: IncomingMessage, response: ServerResponse, requestUrl: URL) => Promise<void>;
+  handleGetRoastConversation: (request: IncomingMessage, response: ServerResponse, requestUrl: URL) => Promise<void>;
+  handleSendRoastConversationMessage: RequestHandler;
   handleRoastAiUsage: (request: IncomingMessage, response: ServerResponse, requestUrl: URL) => Promise<void>;
-  handleRoastPlanRecommendation: RequestHandler;
   handleRoasterModelRecognition: RequestHandler;
   handleRoastBatchTransaction: BusinessCollectionHandler;
   handleGreenBeanTransaction: BusinessCollectionHandler;
-  handleRoastTrainingRecommendationConfirm: RequestHandler;
-  handleRoastTrainingUpload: RequestHandler;
-  handleRoastTrainingUploadStatus: (
-    request: IncomingMessage,
-    response: ServerResponse,
-    requestUrl: URL,
-  ) => Promise<void>;
   handleSession: RequestHandler;
   handleUnverifiedUserCleanup: RequestHandler;
   handleVerificationRequest: RequestHandler;
@@ -76,13 +69,6 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
       return;
     }
 
-    if (path === '/internal/jobs/check-roast-training-samples') {
-      if (ensureMethod(request, response, ['POST'], handlers)) {
-        await handlers.handleRoastTrainingQualityCheck(request, response);
-      }
-      return;
-    }
-
     if (path === '/api/ai/bean-image-recognition') {
       if (ensureMethod(request, response, ['GET', 'POST'], handlers)) {
         await handlers.handleBeanImageRecognition(request, response);
@@ -118,6 +104,20 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
       return;
     }
 
+    if (path === '/api/ai/roast-conversations') {
+      if (ensureMethod(request, response, ['GET'], handlers)) {
+        await handlers.handleGetRoastConversation(request, response, requestUrl);
+      }
+      return;
+    }
+
+    if (path === '/api/ai/roast-conversations/messages') {
+      if (ensureMethod(request, response, ['POST'], handlers)) {
+        await handlers.handleSendRoastConversationMessage(request, response);
+      }
+      return;
+    }
+
     if (path === '/api/ai/roast-usage') {
       if (ensureMethod(request, response, ['GET'], handlers)) {
         await handlers.handleRoastAiUsage(request, response, requestUrl);
@@ -127,34 +127,6 @@ export const createGatewayRequestHandler = (handlers: GatewayRouteHandlers): Req
 
     if (path === '/api/ai/roaster-model-recognition') {
       if (ensureMethod(request, response, ['POST'], handlers)) await handlers.handleRoasterModelRecognition(request, response);
-      return;
-    }
-
-    if (path === '/api/ai/roast-plan-recommendation') {
-      if (ensureMethod(request, response, ['POST'], handlers)) {
-        await handlers.handleRoastPlanRecommendation(request, response);
-      }
-      return;
-    }
-
-    if (path === '/api/ai/roast-training-upload') {
-      if (!ensureMethod(request, response, ['GET', 'POST'], handlers)) {
-        return;
-      }
-
-      if (request.method === 'GET') {
-        await handlers.handleRoastTrainingUploadStatus(request, response, requestUrl);
-        return;
-      }
-
-      await handlers.handleRoastTrainingUpload(request, response);
-      return;
-    }
-
-    if (path === '/api/ai/roast-training-upload/confirm') {
-      if (ensureMethod(request, response, ['POST'], handlers)) {
-        await handlers.handleRoastTrainingRecommendationConfirm(request, response);
-      }
       return;
     }
 

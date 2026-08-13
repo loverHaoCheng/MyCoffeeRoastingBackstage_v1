@@ -1,8 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import {
-  isRoastAiClientEnabled,
-} from '../services/roastTrainingUpload.service';
 import { roastAiUsageService } from '../services/roastAiUsage.service';
 import type { RoastAiFeature } from '../types/roastAiUsage';
 
@@ -13,7 +10,7 @@ export const roastAiUsageQueryKeys = {
 
 export function useRoastAiUsage(feature: RoastAiFeature) {
   return useQuery({
-    enabled: isRoastAiClientEnabled(),
+    enabled: true,
     queryFn: () => roastAiUsageService.getUsage(feature),
     queryKey: roastAiUsageQueryKeys.feature(feature),
     retry: false,

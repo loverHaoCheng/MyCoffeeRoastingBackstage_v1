@@ -46,6 +46,24 @@
   -webkit-overflow-scrolling: touch;
 }
 
+@media (max-width: 767px) {
+  :global(:root[data-app-mobile-editing='true']) :global(.ant-drawer[data-app-drawer='true'][data-placement='bottom'] .ant-drawer-content-wrapper) {
+    bottom: max(0px, calc(var(--app-layout-viewport-height) - var(--app-visual-viewport-offset-top) - var(--app-visual-viewport-height)));
+    max-height: var(--app-visual-viewport-height);
+  }
+
+  :global(:root[data-app-mobile-editing='true']) :global(.ant-drawer[data-app-drawer='true'][data-placement='left'] .ant-drawer-content-wrapper),
+  :global(:root[data-app-mobile-editing='true']) :global(.ant-drawer[data-app-drawer='true'][data-placement='right'] .ant-drawer-content-wrapper) {
+    top: var(--app-visual-viewport-offset-top);
+    height: var(--app-visual-viewport-height);
+  }
+
+  :global(:root[data-app-mobile-editing='true']) :global(.ant-drawer[data-app-drawer='true'][data-placement='top'] .ant-drawer-content-wrapper) {
+    top: var(--app-visual-viewport-offset-top);
+    max-height: var(--app-visual-viewport-height);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .drawer :global(.ant-drawer-content-wrapper),
   .drawer :global(.ant-drawer-mask) {

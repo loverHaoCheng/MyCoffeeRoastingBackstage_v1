@@ -3,8 +3,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { refreshAuthenticatedSession } from '../auth-common.js';
 import {
   AI_FEATURE_ROAST_ANALYSIS,
+  AI_FEATURE_ROAST_GENERAL_QUESTION,
   AI_FEATURE_ROAST_PLAN_RECOMMENDATION,
-  AI_FEATURE_ROAST_TRAINING_RECOMMENDATION,
 } from '../config.js';
 import { sendApiError, sendApiSuccess } from '../http.js';
 import { normalizeErrorPayload } from '../pocketbase-client.js';
@@ -22,8 +22,8 @@ import {
 
 export type RoastAiFeature =
   | typeof AI_FEATURE_ROAST_ANALYSIS
-  | typeof AI_FEATURE_ROAST_PLAN_RECOMMENDATION
-  | typeof AI_FEATURE_ROAST_TRAINING_RECOMMENDATION;
+  | typeof AI_FEATURE_ROAST_GENERAL_QUESTION
+  | typeof AI_FEATURE_ROAST_PLAN_RECOMMENDATION;
 
 export interface RoastAiUsageContext {
   feature: RoastAiFeature;
@@ -36,8 +36,8 @@ export interface RoastAiUsageContext {
 
 export const roastAiFeatures: readonly RoastAiFeature[] = [
   AI_FEATURE_ROAST_ANALYSIS,
+  AI_FEATURE_ROAST_GENERAL_QUESTION,
   AI_FEATURE_ROAST_PLAN_RECOMMENDATION,
-  AI_FEATURE_ROAST_TRAINING_RECOMMENDATION,
 ];
 
 export const isRoastAiFeature = (value: string): value is RoastAiFeature => {
@@ -48,10 +48,10 @@ const getFeatureLabel = (feature: RoastAiFeature): string => {
   switch (feature) {
     case AI_FEATURE_ROAST_ANALYSIS:
       return 'AI 曲线复盘';
+    case AI_FEATURE_ROAST_GENERAL_QUESTION:
+      return '咖啡常识性提问';
     case AI_FEATURE_ROAST_PLAN_RECOMMENDATION:
       return 'AI 推荐烘焙计划';
-    case AI_FEATURE_ROAST_TRAINING_RECOMMENDATION:
-      return '整体复盘与计划建议';
   }
 };
 

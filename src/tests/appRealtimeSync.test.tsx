@@ -161,7 +161,7 @@ describe('AppRealtimeSync', () => {
 
   it('refreshes the current scope when a subscribed topic changes', async () => {
     vi.useFakeTimers();
-    window.location.hash = '#/roasts';
+    window.location.hash = '#/roasts/plan';
 
     const { queryClient } = renderWithProviders(<AppRealtimeSync />);
     const realtimeConnection = FakeEventSource.instances[0];

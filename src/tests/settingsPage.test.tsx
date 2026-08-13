@@ -333,7 +333,7 @@ describe('SettingsPage', () => {
     fireEvent.click(toggleButton);
 
     expect(heading).toBeInTheDocument();
-    expect(screen.getByText('AI 推荐烘焙计划')).toBeInTheDocument();
+    expect(screen.getByText('AI 助手计划建议')).toBeInTheDocument();
     expect(screen.getByText('AI 曲线复盘')).toBeInTheDocument();
     expect(screen.getByText('整体复盘与计划建议')).toBeInTheDocument();
     expect(screen.getByText(/AI 提供的是辅助判断/)).toBeInTheDocument();

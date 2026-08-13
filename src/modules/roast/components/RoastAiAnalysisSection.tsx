@@ -8,7 +8,6 @@ import { useAiAnalysisTask, useSubmitAiAnalysisTask } from '@/modules/roast/hook
 import { formatRoastAiUsageText, isRoastAiUsageAvailable } from '@/modules/roast/services/roastAiUsage.service';
 import { isActiveAiAnalysisTask } from '@/modules/roast/services/aiAnalysisTask.service';
 import { roastAnalysisService } from '@/modules/roast/services/roastAnalysis.service';
-import { isRoastAiClientEnabled } from '@/modules/roast/services/roastTrainingUpload.service';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 
@@ -188,9 +187,5 @@ function RoastAiAnalysisSectionContent({ batch }: RoastAiAnalysisSectionProps) {
 }
 
 export function RoastAiAnalysisSection(props: RoastAiAnalysisSectionProps) {
-  if (!isRoastAiClientEnabled()) {
-    return null;
-  }
-
   return <RoastAiAnalysisSectionContent {...props} />;
 }

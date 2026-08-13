@@ -27,7 +27,7 @@ const { Content } = Layout;
 const { useBreakpoint } = Grid;
 const FLOATING_ACTION_VISIBILITY_TRANSITION_MS = 220;
 const MOBILE_SETTINGS_PANEL_TRANSITION_MS = 260;
-const MOBILE_SETTINGS_FALLBACK_PATH = '/production';
+const MOBILE_SETTINGS_FALLBACK_PATH = '/roasts/history';
 
 export function MainLayout() {
   const { isRefreshing: isQuickRefreshing, refresh } = useQuickRefreshAction();
@@ -42,6 +42,7 @@ export function MainLayout() {
   const mobileSettingsPanelScrollRef = useRef<HTMLDivElement | null>(null);
   const floatingActionCleanupTimerRef = useRef<number | null>(null);
   const floatingActionRegistrationIdRef = useRef(0);
+  const headerActionRegistrationIdRef = useRef(0);
   const mobileSettingsPanelTimerRef = useRef<number | null>(null);
   const lastNonSettingsPathRef = useRef(
     location.pathname === '/settings' ? MOBILE_SETTINGS_FALLBACK_PATH : location.pathname,
@@ -52,6 +53,7 @@ export function MainLayout() {
     [],
   );
   const [floatingActionConfig, setFloatingActionConfig] = useState<null | (ViewportFloatingActionButtonProps & { id: number })>(null);
+  const [headerActionConfigs, setHeaderActionConfigs] = useState<ViewportFloatingActionButtonProps[]>([]);
   const [renderedFloatingActionConfig, setRenderedFloatingActionConfig] = useState<null | ViewportFloatingActionButtonProps>(null);
   const [isFloatingActionVisible, setIsFloatingActionVisible] = useState(false);
   const [isMobileSettingsPanelMounted, setIsMobileSettingsPanelMounted] = useState(false);
@@ -218,10 +220,25 @@ export function MainLayout() {
       });
     };
   }, []);
+  const registerHeaderActions = useCallback((configs: ViewportFloatingActionButtonProps[]) => {
+    const registrationId = headerActionRegistrationIdRef.current + 1;
+    headerActionRegistrationIdRef.current = registrationId;
+    setHeaderActionConfigs(configs);
+
+    return () => {
+      if (headerActionRegistrationIdRef.current === registrationId) {
+        setHeaderActionConfigs([]);
+      }
+    };
+  }, []);
   const enabledFloatingActionRegistration = useMemo(() => ({
     enabled: true,
     register: registerFloatingAction,
   }), [registerFloatingAction]);
+  const enabledHeaderActionRegistration = useMemo(() => ({
+    enabled: true,
+    register: registerHeaderActions,
+  }), [registerHeaderActions]);
   const scrollToTop = () => {
     const scrollViewport = scrollViewportRef.current;
 
@@ -245,8 +262,11 @@ export function MainLayout() {
   const shouldShowFloatingActions = isWide && (isFloatingActionVisible || shouldShowWebRefreshAction);
   const isMobileSettingsRoute = !isWide && location.pathname === '/settings';
   const isMobileSettingsOpen = !isWide && isMobileSettingsPanelMounted;
-  const mobileHeaderActionConfig =
-    !isWide && !isMobileSettingsOpen ? renderedFloatingActionConfig : null;
+  const mobileHeaderActionConfigs = !isWide && !isMobileSettingsOpen
+    ? headerActionConfigs.length > 0
+      ? headerActionConfigs
+      : renderedFloatingActionConfig ? [renderedFloatingActionConfig] : []
+    : [];
   const handleMobileHeaderLeftButtonClick = () => {
     if (isMobileSettingsOpen) {
       if (isMobileSettingsRoute) {
@@ -293,13 +313,12 @@ export function MainLayout() {
       <Layout className={styles.shell} data-mobile={!isWide} data-standalone-pwa={isStandalonePwa}>
         {!isWide ? (
           <MobileAppHeader
-            actionConfig={mobileHeaderActionConfig}
+            actionConfigs={mobileHeaderActionConfigs}
             isSettingsOpen={isMobileSettingsOpen}
             onBrandClick={scrollToTop}
             onLeftButtonClick={handleMobileHeaderLeftButtonClick}
           />
         ) : null}
-
         {isWide ? (
           <DesktopNavigation
             collapsed={sidebarCollapsed}
@@ -313,8 +332,8 @@ export function MainLayout() {
 
         <Layout className={styles.main}>
           <div className={styles.viewportFrame} data-scaled="false">
-            <div className={styles.scrollViewport} data-app-scroll-viewport="true" ref={scrollViewportRef}>
-              <GlobalPullToRefresh />
+            <div className={styles.scrollViewport} data-app-scroll-viewport="true" data-assistant-route={selectedKey === 'roastAssistant'} ref={scrollViewportRef}>
+              {selectedKey === 'roastAssistant' ? null : <GlobalPullToRefresh />}
               <div
                 className={styles.scaleViewport}
                 style={
@@ -326,6 +345,7 @@ export function MainLayout() {
                 <Content className={styles.content}>
                   <RouteTransitionStage
                     enabledFloatingActionRegistration={enabledFloatingActionRegistration}
+                    enabledHeaderActionRegistration={enabledHeaderActionRegistration}
                     isMobileSettingsRoute={isMobileSettingsRoute}
                     outlet={outlet}
                     pathname={location.pathname}

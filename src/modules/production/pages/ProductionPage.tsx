@@ -24,6 +24,7 @@ import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { MobileRoastSubNavigation } from '@/layouts/components/MobileRoastSubNavigation';
 import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
@@ -260,26 +261,30 @@ export function ProductionPage() {
         value={keyword}
       />
 
-      <MultiFilterSortBar
-        expanded={isFilterPanelExpanded}
-        filters={filterDefinitions}
-        onChange={(key, values) => {
-          setFilterValues((current) => ({ ...current, [key]: values }));
-        }}
-        onClear={() => {
-          setFilterValues({ bean: [], level: [], saleProgress: [], salesMode: [] });
-        }}
-        onSortChange={(value) => {
-          setSortKey(value as RoastBatchSortKey);
-        }}
-        sortOptions={[
-          { label: '最新烘焙', value: 'roastDateDesc' }, { label: '最早烘焙', value: 'roastDateAsc' },
-          { label: '入豆量由多到少', value: 'inputDesc' }, { label: '入豆量由少到多', value: 'inputAsc' },
-          { label: '出豆量由多到少', value: 'outputDesc' }, { label: '出豆量由少到多', value: 'outputAsc' },
-        ]}
-        sortValue={sortKey}
-        values={filterValues}
-      />
+      <MobileRoastSubNavigation />
+
+      {isFilterPanelExpanded ? (
+        <MultiFilterSortBar
+          expanded={isFilterPanelExpanded}
+          filters={filterDefinitions}
+          onChange={(key, values) => {
+            setFilterValues((current) => ({ ...current, [key]: values }));
+          }}
+          onClear={() => {
+            setFilterValues({ bean: [], level: [], saleProgress: [], salesMode: [] });
+          }}
+          onSortChange={(value) => {
+            setSortKey(value as RoastBatchSortKey);
+          }}
+          sortOptions={[
+            { label: '最新烘焙', value: 'roastDateDesc' }, { label: '最早烘焙', value: 'roastDateAsc' },
+            { label: '入豆量由多到少', value: 'inputDesc' }, { label: '入豆量由少到多', value: 'inputAsc' },
+            { label: '出豆量由多到少', value: 'outputDesc' }, { label: '出豆量由少到多', value: 'outputAsc' },
+          ]}
+          sortValue={sortKey}
+          values={filterValues}
+        />
+      ) : null}
 
       {/* 列表 */}
       <section className={styles.list} aria-label="烘焙历史列表">

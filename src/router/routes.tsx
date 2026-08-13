@@ -2,7 +2,7 @@
 
 import Spin from 'antd/es/spin';
 import { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, useLocation, createHashRouter, type RouteObject } from 'react-router-dom';
+import { Navigate, Outlet, useLocation, createHashRouter, type RouteObject } from 'react-router-dom';
 
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 
@@ -30,6 +30,9 @@ const LegalPage = lazy(() => import('@/modules/legal').then((module) => ({ defau
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));
 const RoastPage = lazy(() =>
   import('@/modules/roast').then((module) => ({ default: module.RoastPage })),
+);
+const RoastAssistantPage = lazy(() =>
+  import('@/modules/roast').then((module) => ({ default: module.RoastAssistantPage })),
 );
 const ProductionPage = lazy(() =>
   import('@/modules/production').then((module) => ({ default: module.ProductionPage })),
@@ -111,11 +114,29 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'roasts',
-        element: withPageFallback(<RoastPage />),
+        element: <Outlet />,
+        children: [
+          {
+            index: true,
+            element: <Navigate replace to="plan" />,
+          },
+          {
+            path: 'plan',
+            element: withPageFallback(<RoastPage />),
+          },
+          {
+            path: 'history',
+            element: withPageFallback(<ProductionPage />),
+          },
+        ],
+      },
+      {
+        path: 'roast-assistant',
+        element: withPageFallback(<RoastAssistantPage />),
       },
       {
         path: 'production',
-        element: withPageFallback(<ProductionPage />),
+        element: <Navigate replace to="/roasts/history" />,
       },
       {
         path: 'finance',

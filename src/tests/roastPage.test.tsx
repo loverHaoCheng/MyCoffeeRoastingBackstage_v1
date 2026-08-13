@@ -419,41 +419,11 @@ describe('RoastPage', () => {
 
     expect(screen.getByRole('button', { name: '手动创建' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'JSON 导入' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /AI 推荐/ })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /AI 推荐 本月剩余 10 \/ 10/ })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'AI 推荐' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /AI 推荐/ })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '手动创建' }));
 
     expect(screen.getByRole('heading', { name: '基础信息' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '创建烘焙计划' })).toBeInTheDocument();
-  });
-
-  it('opens AI recommendation and fills the editable creation form after generation', async () => {
-    renderWithQuery(
-      <FloatingActionTestHost>
-        <RoastPage />
-      </FloatingActionTestHost>,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: '新增烘焙计划' }));
-    fireEvent.click(screen.getByRole('button', { name: /AI 推荐/ }));
-
-    expect(screen.getByRole('heading', { name: 'AI 推荐条件' })).toBeInTheDocument();
-    expect(screen.getByLabelText('AI 推荐生豆')).toBeInTheDocument();
-    expect(screen.getByLabelText('AI 推荐烘豆机')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText('例如 希望提高花香和柑橘酸质，降低尖酸，保留干净甜感。'), {
-      target: {
-        value: '希望提高花香和柑橘酸质，降低尖酸，保留干净甜感。',
-      },
-    });
-
-    await performUiUpdate(() => {
-      fireEvent.click(screen.getByRole('button', { name: '生成 AI 推荐计划' }));
-    });
-
-    expect(screen.getByDisplayValue('AI 推荐测试计划')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '创建烘焙计划' })).toBeInTheDocument();
   });
 

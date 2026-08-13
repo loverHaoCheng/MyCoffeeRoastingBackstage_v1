@@ -283,6 +283,7 @@ export function DrawerContent({
     <div
       aria-hidden={!open}
       className={cn('ant-drawer fixed inset-0 z-[140]', !open && 'pointer-events-none')}
+      data-app-drawer="true"
       data-open={open ? 'true' : 'false'}
       data-placement={placement}
       data-state={open ? 'open' : 'closed'}

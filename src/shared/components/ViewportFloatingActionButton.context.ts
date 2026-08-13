@@ -12,5 +12,13 @@ interface FloatingActionRegistrationContextValue {
   register: (config: ViewportFloatingActionButtonProps) => () => void;
 }
 
+interface HeaderActionRegistrationContextValue {
+  enabled: boolean;
+  register: (configs: ViewportFloatingActionButtonProps[]) => () => void;
+}
+
 export const FloatingActionRegistrationContext =
   createContext<FloatingActionRegistrationContextValue | null>(null);
+
+export const HeaderActionRegistrationContext =
+  createContext<HeaderActionRegistrationContextValue | null>(null);

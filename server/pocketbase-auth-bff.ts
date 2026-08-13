@@ -7,11 +7,9 @@ import { handleAcknowledgeAnalysisTasks, handleCreateAnalysisTask, handleListAna
 import { startAnalysisTaskWorker } from './auth-bff/ai/analysis-task-service.js';
 import { handleBeanImageRecognitionUsage } from './auth-bff/ai/handler.js';
 import { handleRoastAnalysis, handleRoastAnalysisStatus } from './auth-bff/ai/roast-analysis-handler.js';
+import { handleGetRoastConversation, handleSendRoastConversationMessage } from './auth-bff/ai/roast-conversation-handler.js';
 import { handleRoastAiUsage } from './auth-bff/ai/roast-usage-handler.js';
-import { handleRoastPlanRecommendation } from './auth-bff/ai/roast-plan-recommendation-handler.js';
 import { handleRoasterModelRecognition } from './auth-bff/ai/roaster-model-recognition-handler.js';
-import { handleRoastTrainingQualityCheck } from './auth-bff/ai/roast-training-quality-handler.js';
-import { handleRoastTrainingRecommendationConfirm, handleRoastTrainingUpload, handleRoastTrainingUploadStatus } from './auth-bff/ai/roast-training-upload-handler.js';
 import { handleConfirmPasswordReset, handleConfirmVerification, handleLogin, handleLogout, handleRegister, handleRequestPasswordReset, handleRequestVerification, handleSession, handleUpdateProfile } from './auth-bff/auth-handlers.js';
 import { handleBusinessCollectionRequest } from './auth-bff/collection-handler.js';
 import { handleGreenBeanTransactionRequest } from './auth-bff/green-bean-transaction-handler.js';
@@ -46,12 +44,9 @@ const handleRequest = createGatewayRequestHandler({
   handleRoastAnalysis,
   handleRoastAiUsage,
   handleRoastAnalysisStatus,
-  handleRoastPlanRecommendation,
+  handleGetRoastConversation,
+  handleSendRoastConversationMessage,
   handleRoasterModelRecognition,
-  handleRoastTrainingQualityCheck,
-  handleRoastTrainingRecommendationConfirm,
-  handleRoastTrainingUpload,
-  handleRoastTrainingUploadStatus,
   handleSession,
   handleUnverifiedUserCleanup,
   handleVerificationRequest: handleRequestVerification,

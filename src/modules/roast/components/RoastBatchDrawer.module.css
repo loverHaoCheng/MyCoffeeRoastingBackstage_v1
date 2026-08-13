@@ -82,6 +82,19 @@
   width: 100%;
 }
 
+.aiConversationAction {
+  display: grid;
+  gap: 8px;
+}
+
+.aiConversationAction p {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .notes {
   margin: 0;
   font-size: 14px;

@@ -2,9 +2,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { createElement, useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resolveRecenteredScrollTop, useMobileKeyboardViewportFocus } from '@/layouts/hooks/useMobileKeyboardViewportFocus';
+import {
+  resolveKeyboardAlignedScrollTop,
+  resolveRecenteredScrollTop,
+  useMobileKeyboardViewportFocus,
+} from '@/layouts/hooks/useMobileKeyboardViewportFocus';
 
 const MOBILE_EDITING_ATTRIBUTE = 'data-app-mobile-editing';
+const VISUAL_VIEWPORT_HEIGHT_VARIABLE = '--app-visual-viewport-height';
+const VISUAL_VIEWPORT_OFFSET_TOP_VARIABLE = '--app-visual-viewport-offset-top';
+const LAYOUT_VIEWPORT_HEIGHT_VARIABLE = '--app-layout-viewport-height';
 
 const createDomRect = (top: number, height: number) => {
   return {
@@ -20,7 +27,7 @@ const createDomRect = (top: number, height: number) => {
   } as DOMRect;
 };
 
-function KeyboardFocusFixture() {
+function KeyboardFocusFixture({ skipRecenter = false }: { skipRecenter?: boolean }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useMobileKeyboardViewportFocus({
@@ -32,10 +39,14 @@ function KeyboardFocusFixture() {
     'div',
     { 'data-app-scroll-viewport': 'true', ref: containerRef },
     createElement(
-      'label',
-      { 'data-field-path': 'notes' },
-      createElement('span', null, '备注'),
-      createElement('input', { 'aria-label': '备注' }),
+      'div',
+      skipRecenter ? { 'data-skip-mobile-keyboard-recenter': 'true' } : undefined,
+      createElement(
+        'label',
+        { 'data-field-path': 'notes' },
+        createElement('span', null, '备注'),
+        createElement('input', { 'aria-label': '备注' }),
+      ),
     ),
     createElement('footer', { 'data-drawer-action-bar': 'true' }),
   );
@@ -66,6 +77,9 @@ describe('resolveRecenteredScrollTop', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     document.documentElement.removeAttribute(MOBILE_EDITING_ATTRIBUTE);
+    document.documentElement.style.removeProperty(VISUAL_VIEWPORT_HEIGHT_VARIABLE);
+    document.documentElement.style.removeProperty(VISUAL_VIEWPORT_OFFSET_TOP_VARIABLE);
+    document.documentElement.style.removeProperty(LAYOUT_VIEWPORT_HEIGHT_VARIABLE);
   });
 
   it('returns a larger scrollTop when the focused field is below the visible center', () => {
@@ -120,6 +134,19 @@ describe('resolveRecenteredScrollTop', () => {
     ).toBeNull();
   });
 
+  it('aligns a focused drawer field with the keyboard edge', () => {
+    expect(
+      resolveKeyboardAlignedScrollTop({
+        currentScrollTop: 120,
+        maxScrollTop: 800,
+        targetBottom: 430,
+        targetTop: 390,
+        visibleBottom: 520,
+        visibleTop: 20,
+      }),
+    ).toBe(30);
+  });
+
   it('hides action bars while editing and recenters the last focused field after keyboard closes', () => {
     const visualViewportMock = {
       addEventListener: vi.fn(),
@@ -136,6 +163,10 @@ describe('resolveRecenteredScrollTop', () => {
     });
 
     render(createElement(KeyboardFocusFixture));
+
+    expect(document.documentElement.style.getPropertyValue(VISUAL_VIEWPORT_HEIGHT_VARIABLE)).toBe('420px');
+    expect(document.documentElement.style.getPropertyValue(VISUAL_VIEWPORT_OFFSET_TOP_VARIABLE)).toBe('0px');
+    expect(document.documentElement.style.getPropertyValue(LAYOUT_VIEWPORT_HEIGHT_VARIABLE)).toBe('800px');
 
     const container = screen.getByRole('textbox', { name: '备注' }).closest('[data-app-scroll-viewport="true"]');
     const field = screen.getByRole('textbox', { name: '备注' }).closest('[data-field-path="notes"]');
@@ -187,10 +218,36 @@ describe('resolveRecenteredScrollTop', () => {
     vi.runAllTimers();
 
     visualViewportMock.height = 800;
+    visualViewportMock.offsetTop = 168;
     window.dispatchEvent(new Event('resize'));
     vi.runAllTimers();
 
     expect(document.documentElement).not.toHaveAttribute(MOBILE_EDITING_ATTRIBUTE);
+    expect(document.documentElement.style.getPropertyValue(VISUAL_VIEWPORT_HEIGHT_VARIABLE)).toBe('800px');
+    expect(document.documentElement.style.getPropertyValue(VISUAL_VIEWPORT_OFFSET_TOP_VARIABLE)).toBe('168px');
     expect(scrollToMock.mock.calls.length).toBeGreaterThan(initialCallCount);
+  });
+
+  it('does not recenter inputs that are already anchored to the visual viewport', () => {
+    render(createElement(KeyboardFocusFixture, { skipRecenter: true }));
+
+    const container = screen.getByRole('textbox', { name: '备注' }).closest('[data-app-scroll-viewport="true"]');
+    const input = screen.getByRole('textbox', { name: '备注' });
+
+    if (!container) {
+      throw new Error('keyboard focus test fixture is incomplete');
+    }
+
+    const scrollToMock = vi.fn();
+    Object.defineProperty(container, 'scrollTo', {
+      configurable: true,
+      value: scrollToMock,
+    });
+
+    input.focus();
+    fireEvent.focusIn(input);
+    vi.runAllTimers();
+
+    expect(scrollToMock).not.toHaveBeenCalled();
   });
 });
