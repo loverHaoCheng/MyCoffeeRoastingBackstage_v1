@@ -371,36 +371,44 @@ export function createGreenBeanInventoryRepository(
       supplier_name: normalizeText(input.supplierName),
     };
 
-    const latestBatchRows = await client.list<RemotePurchaseBatchRecord>('green_bean_purchase_batches', {
-      match: { green_bean_id: beanId },
-    });
-
-    const latestBatch = getLatestPurchaseBatchRecord(latestBatchRows);
-
-    if (!latestBatch) {
-      await client.insert('green_bean_purchase_batches', {
-        green_bean_id: beanId,
-        purchased_total_price: payload.purchased_total_price,
-        purchased_weight_grams: payload.purchased_weight_grams,
-        received_at: payload.purchase_date,
-        remaining_weight_grams: payload.remaining_weight_grams,
-        supplier_name: payload.supplier_name ?? null,
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const latestBatchRows = await client.list<RemotePurchaseBatchRecord>('green_bean_purchase_batches', {
+        match: { green_bean_id: beanId },
       });
-      return;
-    }
+      const latestBatch = getLatestPurchaseBatchRecord(latestBatchRows);
 
-      await client.update(
-        'green_bean_purchase_batches',
-        {
-          __expected_updated_at: latestBatch.updated_at ?? '',
-          ...payload,
+      if (!latestBatch) {
+        await client.insert('green_bean_purchase_batches', {
+          green_bean_id: beanId,
+          purchased_total_price: payload.purchased_total_price,
+          purchased_weight_grams: payload.purchased_weight_grams,
+          received_at: payload.purchase_date,
           remaining_weight_grams: payload.remaining_weight_grams,
-      },
-      {
-        match: { id: latestBatch.id },
-        select: '*',
-      },
-    );
+          supplier_name: payload.supplier_name ?? null,
+        });
+        return;
+      }
+
+      try {
+        await client.update(
+          'green_bean_purchase_batches',
+          {
+            __expected_updated_at: latestBatch.updated_at ?? '',
+            ...payload,
+            remaining_weight_grams: payload.remaining_weight_grams,
+          },
+          {
+            match: { id: latestBatch.id },
+            select: '*',
+          },
+        );
+        return;
+      } catch (error) {
+        if (!(error instanceof AppError) || error.status !== 409 || attempt === 2) {
+          throw error;
+        }
+      }
+    }
   };
 
   return {

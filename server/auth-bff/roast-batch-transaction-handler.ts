@@ -6,6 +6,18 @@ import { proxyPocketBaseRequest, sendUpstreamError } from './pocketbase-client.j
 
 const ROAST_BATCH_TRANSACTION_PATH = /^\/api\/roast-batches(?:\/([^/]+))?$/;
 
+const stripServerManagedFields = (body: unknown): unknown => {
+  if (typeof body !== 'object' || body == null || Array.isArray(body)) return body;
+  const payload = { ...(body as Record<string, unknown>) };
+  delete payload.id;
+  delete payload.owner;
+  delete payload.created_at;
+  delete payload.updated_at;
+  delete payload.update_at;
+  delete payload.__expected_updated_at;
+  return payload;
+};
+
 export const handleRoastBatchTransactionRequest = async (
   request: IncomingMessage,
   response: ServerResponse,
@@ -27,7 +39,7 @@ export const handleRoastBatchTransactionRequest = async (
   const token = getAuthenticatedToken(request, response);
   if (!token) return true;
 
-  const body = method === 'DELETE' ? undefined : JSON.stringify(await parseJsonBody(request));
+  const body = method === 'DELETE' ? undefined : JSON.stringify(stripServerManagedFields(await parseJsonBody(request)));
   const upstreamPath = batchId
     ? `/api/easybake/roast-batches/${encodeURIComponent(batchId)}`
     : '/api/easybake/roast-batches/commit';

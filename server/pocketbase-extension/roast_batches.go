@@ -33,6 +33,9 @@ func commitRoastBatch(e *core.RequestEvent) error {
 	if err != nil {
 		return err
 	}
+	if err := validateRoastBatchPayloadFields(payload); err != nil {
+		return e.BadRequestError(err.Error(), nil)
+	}
 
 	var created *core.Record
 	err = e.App.RunInTransaction(func(txApp core.App) error {
@@ -73,6 +76,10 @@ func updateRoastBatch(e *core.RequestEvent) error {
 	payload, err := bindPayload(e)
 	if err != nil {
 		return err
+	}
+	delete(payload, "__expected_updated_at")
+	if err := validateRoastBatchPayloadFields(payload); err != nil {
+		return e.BadRequestError(err.Error(), nil)
 	}
 
 	var updated *core.Record
@@ -174,8 +181,9 @@ func bindPayload(e *core.RequestEvent) (map[string]any, error) {
 	if err := e.BindBody(&payload); err != nil {
 		return nil, e.BadRequestError("请求数据格式无效。", err)
 	}
-	if err := validateRoastBatchPayloadFields(payload); err != nil {
-		return nil, e.BadRequestError(err.Error(), nil)
+	// 这些字段由 PocketBase/服务端维护，不能由编辑抽屉客户端提交。
+	for _, field := range []string{"id", "owner", "created_at", "updated_at", "update_at"} {
+		delete(payload, field)
 	}
 	return payload, nil
 }

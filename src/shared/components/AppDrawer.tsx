@@ -118,7 +118,7 @@ export function AppDrawer({
     };
   }, [destroyOnHidden, open]);
 
-  const resolvedShowSwipeHandle = showSwipeHandle ?? placement === 'bottom';
+  const resolvedShowSwipeHandle = showSwipeHandle ?? false;
   const shouldMountDrawer = open || shouldRenderChildren;
   const hasCustomTopPadding = drawerStyles?.body?.paddingTop != null;
 

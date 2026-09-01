@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, queryAllByRole, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -80,7 +80,7 @@ describe('AppDrawer', () => {
     });
   });
 
-  it('keeps bottom drawers on safe-area padding by default and allows action sheets to override it', async () => {
+  it('does not reserve swipe-handle space by default and allows explicit opt-in', async () => {
     render(
       <>
         <AppDrawer getContainer={false} onClose={vi.fn()} open placement="bottom" title="默认底部抽屉">
@@ -102,11 +102,11 @@ describe('AppDrawer', () => {
 
     await waitFor(() => {
       const drawerBodies = Array.from(document.querySelectorAll('.ant-drawer-body'));
-      const swipeHandles = screen.getAllByRole('button', { name: '拖动关闭抽屉' });
+      const swipeHandles = queryAllByRole(document.body, 'button', { name: '拖动关闭抽屉' });
 
       expect(drawerBodies).toHaveLength(2);
-      expect(swipeHandles).toHaveLength(1);
-      expect((drawerBodies[0] as HTMLElement).style.paddingTop).toBe('22px');
+      expect(swipeHandles).toHaveLength(0);
+      expect((drawerBodies[0] as HTMLElement).style.paddingTop).toBe('');
       expect((drawerBodies[0] as HTMLElement).style.paddingBottom).toContain('safe-area-inset-bottom');
       expect((drawerBodies[1] as HTMLElement).style.paddingBottom).toBe('0px');
       expect((drawerBodies[1] as HTMLElement).style.paddingTop).toBe('');
@@ -171,9 +171,9 @@ describe('AppDrawer', () => {
     expect(screen.getByText('抽屉内容')).toBeInTheDocument();
   });
 
-  it('renders a dedicated swipe handle button for bottom drawers', async () => {
+  it('renders a dedicated swipe handle button when explicitly enabled', async () => {
     const { container } = render(
-      <AppDrawer getContainer={false} onClose={vi.fn()} open placement="bottom" title="可滑动抽屉">
+      <AppDrawer getContainer={false} onClose={vi.fn()} open placement="bottom" showSwipeHandle title="可滑动抽屉">
         抽屉内容
       </AppDrawer>,
     );
