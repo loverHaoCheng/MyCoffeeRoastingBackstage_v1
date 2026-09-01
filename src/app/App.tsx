@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 
 import { AppRealtimeSync } from '@/app/components/AppRealtimeSync';
+import { AppStartupSync } from '@/app/components/AppStartupSync';
 import { AppAiAnalysisTaskNotifications } from '@/app/components/AppAiAnalysisTaskNotifications';
 import { AppAuthBootstrap } from '@/app/components/AppAuthBootstrap';
 import { AppEnvironmentGuidance } from '@/app/components/AppEnvironmentGuidance';
@@ -24,6 +25,7 @@ export function App() {
       <AppEnvironmentGuidance />
       <AppUpdateBanner />
       <AppRealtimeSync />
+      <AppStartupSync />
       <RouterProvider router={router} />
     </AppProviders>
   );

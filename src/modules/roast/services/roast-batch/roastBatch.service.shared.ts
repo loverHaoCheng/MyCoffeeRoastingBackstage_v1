@@ -52,7 +52,12 @@ export const isMissingRoastedBeanNameColumnError = (error: unknown): boolean => 
 };
 
 export const hasOverviewSalesModeField = (record: Record<string, unknown>): boolean => {
-  return Object.prototype.hasOwnProperty.call(record, 'sales_mode');
+  return [
+    'sales_mode',
+    'sale_unit_price_snapshot',
+    'bean_cost_per_sale_unit_snapshot',
+    'non_bean_cost_per_sale_unit_snapshot',
+  ].every((fieldName) => Object.prototype.hasOwnProperty.call(record, fieldName));
 };
 
 export const getLocalBatchAt = (batches: RoastBatchRecord[], index: number): RoastBatchRecord => {
@@ -168,10 +173,20 @@ export const toPocketBaseRoastBatchPayload = (
   if (input.inputWeightGrams !== undefined) payload.input_weight_grams = input.inputWeightGrams;
   if (input.outputWeightGrams !== undefined) payload.output_weight_grams = input.outputWeightGrams;
   if (input.roastLevel !== undefined) payload.roast_level = normalizeRoastLevel(input.roastLevel);
+  if (input.roastLevelSource !== undefined) payload.roast_level_source = input.roastLevelSource;
+  if (input.beanAgtronColor !== undefined) payload.bean_agtron_color = input.beanAgtronColor ?? null;
+  if (input.groundAgtronColor !== undefined) payload.ground_agtron_color = input.groundAgtronColor ?? null;
   if (input.developmentRatio !== undefined) payload.development_ratio = input.developmentRatio;
   if (input.firstCrackTime !== undefined) payload.first_crack_time = input.firstCrackTime;
   if (input.totalRoastTime !== undefined) payload.total_roast_time = input.totalRoastTime;
   if (input.finalSaleUnitPrice !== undefined) payload.final_sale_unit_price = input.finalSaleUnitPrice ?? null;
+  if (input.saleUnitPriceSnapshot !== undefined) payload.sale_unit_price_snapshot = input.saleUnitPriceSnapshot ?? null;
+  if (input.beanCostPerSaleUnitSnapshot !== undefined) {
+    payload.bean_cost_per_sale_unit_snapshot = input.beanCostPerSaleUnitSnapshot ?? null;
+  }
+  if (input.nonBeanCostPerSaleUnitSnapshot !== undefined) {
+    payload.non_bean_cost_per_sale_unit_snapshot = input.nonBeanCostPerSaleUnitSnapshot ?? null;
+  }
   if (input.soldUnitCount !== undefined) payload.sold_unit_count = input.soldUnitCount;
   if (input.notes !== undefined) payload.notes = toNullableStringValue(input.notes);
   if (input.evaluation !== undefined) payload.evaluation = input.evaluation;
@@ -273,10 +288,16 @@ export const mapRemoteRoastBatchRecord = (record: Record<string, unknown>): Roas
     getNumberField(record.input_weight_grams),
     getNumberField(record.output_weight_grams),
   ),
+  roastLevelSource: getOptionalStringField(record.roast_level_source) as RoastBatchRecord['roastLevelSource'],
+  beanAgtronColor: getOptionalNumberField(record.bean_agtron_color),
+  groundAgtronColor: getOptionalNumberField(record.ground_agtron_color),
   developmentRatio: getOptionalNumberField(record.development_ratio),
   firstCrackTime: getOptionalNumberField(record.first_crack_time),
   totalRoastTime: getOptionalNumberField(record.total_roast_time),
   finalSaleUnitPrice: getOptionalNumberField(record.final_sale_unit_price),
+  saleUnitPriceSnapshot: getOptionalNumberField(record.sale_unit_price_snapshot),
+  beanCostPerSaleUnitSnapshot: getOptionalNumberField(record.bean_cost_per_sale_unit_snapshot),
+  nonBeanCostPerSaleUnitSnapshot: getOptionalNumberField(record.non_bean_cost_per_sale_unit_snapshot),
   soldUnitCount: getOptionalNumberField(record.sold_unit_count) ?? 1,
   notes: getOptionalStringField(record.notes),
   evaluation: getRoastBatchEvaluation(record.evaluation),

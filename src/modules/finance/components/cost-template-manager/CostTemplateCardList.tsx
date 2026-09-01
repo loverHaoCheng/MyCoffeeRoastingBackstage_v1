@@ -60,7 +60,7 @@ export function CostTemplateCardList({
                       {isDefault ? <Tag>默认模板</Tag> : null}
                     </div>
                     <span className={styles.templateMeta}>
-                      生豆 {template.roastInputWeightGrams}g · 单份 {template.saleUnitWeightGrams}g · 利润率 {template.targetProfitRate}%
+                      生豆 {template.roastInputWeightGrams}g · 单份 {template.saleUnitWeightGrams}g · 毛利率 {template.targetProfitRate}%
                     </span>
                   </div>
                   <div className={styles.templateStats}>

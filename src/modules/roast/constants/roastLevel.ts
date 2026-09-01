@@ -10,6 +10,15 @@ export const ROAST_LEVEL_OPTIONS = [
 
 export type RoastLevel = (typeof ROAST_LEVEL_OPTIONS)[number];
 
+export const ROAST_LEVEL_SOURCE_OPTIONS = [
+  { label: '咖啡豆表色值', value: 'beanAgtron' },
+  { label: '咖啡粉色值', value: 'groundAgtron' },
+  { label: '脱水率', value: 'dehydrationRate' },
+  { label: '自填', value: 'manual' },
+] as const;
+
+export type RoastLevelSource = (typeof ROAST_LEVEL_SOURCE_OPTIONS)[number]['value'];
+
 const roastLevelAliasMap: Record<string, RoastLevel> = {
   '极浅': '极浅烘焙',
   '极浅焙': '极浅烘焙',
@@ -74,6 +83,19 @@ export const resolveRoastLevelFromDehydrationRate = (dehydrationRate: number): R
   }
 
   return '极深烘焙';
+};
+
+export const resolveRoastLevelFromAgtron = (agtronValue: number): RoastLevel | null => {
+  if (!Number.isFinite(agtronValue) || agtronValue < 0 || agtronValue > 100) {
+    return null;
+  }
+
+  if (agtronValue >= 90) return '极浅烘焙';
+  if (agtronValue >= 80) return '浅度烘焙';
+  if (agtronValue >= 70) return '中浅烘焙';
+  if (agtronValue >= 60) return '中度烘焙';
+  if (agtronValue >= 50) return '中深烘焙';
+  return '深度烘焙';
 };
 
 export const getRoastLevelSuggestion = (inputWeightGrams: number, outputWeightGrams: number): RoastLevel => {

@@ -15,7 +15,8 @@ var roastBatchFields = []string{
 	"roast_plan_id", "roast_plan_name", "input_weight_grams", "output_weight_grams",
 	"roast_level", "development_ratio", "first_crack_time", "total_roast_time",
 	"notes", "image_urls", "status", "sales_mode", "final_sale_unit_price",
-	"evaluation", "sold_unit_count",
+	"evaluation", "sold_unit_count", "roast_level_source", "bean_agtron_color", "ground_agtron_color", "sale_unit_price_snapshot",
+	"bean_cost_per_sale_unit_snapshot", "non_bean_cost_per_sale_unit_snapshot",
 }
 
 func registerRoastBatchRoutes(se *core.ServeEvent) {
@@ -173,7 +174,23 @@ func bindPayload(e *core.RequestEvent) (map[string]any, error) {
 	if err := e.BindBody(&payload); err != nil {
 		return nil, e.BadRequestError("请求数据格式无效。", err)
 	}
+	if err := validateRoastBatchPayloadFields(payload); err != nil {
+		return nil, e.BadRequestError(err.Error(), nil)
+	}
 	return payload, nil
+}
+
+func validateRoastBatchPayloadFields(payload map[string]any) error {
+	allowed := make(map[string]struct{}, len(roastBatchFields))
+	for _, field := range roastBatchFields {
+		allowed[field] = struct{}{}
+	}
+	for field := range payload {
+		if _, ok := allowed[field]; !ok {
+			return errors.New("烘焙记录包含未支持的字段: " + field)
+		}
+	}
+	return nil
 }
 
 func applyPayload(record *core.Record, payload map[string]any) {

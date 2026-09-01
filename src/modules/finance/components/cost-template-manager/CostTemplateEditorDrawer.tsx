@@ -1,5 +1,7 @@
 import PlusOutlined from '@ant-design/icons/PlusOutlined';
 import SaveOutlined from '@ant-design/icons/SaveOutlined';
+import CloseOutlined from '@ant-design/icons/CloseOutlined';
+import CheckOutlined from '@ant-design/icons/CheckOutlined';
 import Button from 'antd/es/button';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
@@ -40,6 +42,12 @@ export function CostTemplateEditorDrawer({
       open={isOpen}
       placement="bottom"
       title={isCreatingTemplate ? '新建模板' : '编辑模板'}
+      headerActions={
+        <>
+          <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={onClose} shape="circle" />
+          <Button aria-label={isCreatingTemplate ? '创建模板' : '保存模板'} className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={onSave} shape="circle" />
+        </>
+      }
     >
       <section className={styles.templateForm}>
         <section className={styles.templateSection}>
@@ -113,7 +121,7 @@ export function CostTemplateEditorDrawer({
             </div>
 
             <div className={styles.templateField} data-field-path="targetProfitRate">
-              <label htmlFor="template-target-profit-rate">目标利润率</label>
+              <label htmlFor="template-target-profit-rate">毛利率</label>
               <InputNumber
                 id="template-target-profit-rate"
                 min={0}
@@ -126,7 +134,7 @@ export function CostTemplateEditorDrawer({
                 value={templateDraft.targetProfitRate}
               />
               <span className={styles.helpText}>
-                {templateErrors.targetProfitRate ?? '利润率 =（售价 - 单份总成本）÷ 售价 × 100%'}
+                {templateErrors.targetProfitRate ?? '毛利率 =（售价 - 单份总成本）÷ 售价 × 100%'}
               </span>
             </div>
           </div>
@@ -135,7 +143,7 @@ export function CostTemplateEditorDrawer({
         <section className={styles.templateSection}>
           <header className={styles.templateSectionHeader}>
             <h3>成本参数</h3>
-            <p>以下费用按单锅计入，用于计算建议售价与利润率。</p>
+            <p>以下费用按单锅计入，用于计算建议售价与毛利率。</p>
           </header>
 
           <div className={styles.templateFieldGrid}>
@@ -205,7 +213,7 @@ export function CostTemplateEditorDrawer({
           </div>
 
           <div className={styles.templateLinkedHint}>
-            建议先固定单锅重量、出售规格和目标利润率，再补录包装、能耗与人工成本，这样后续生豆创建时回填结果会更稳定。
+            建议先固定单锅重量、出售规格和毛利率，再补录包装、能耗与人工成本，这样后续生豆创建时回填结果会更稳定。
           </div>
         </section>
 

@@ -35,14 +35,17 @@ const createFormState = (batch: RoastBatchRecord | null): RoastBatchFormState =>
   evaluation: batch?.evaluation ?? createDefaultRoastBatchEvaluation(),
   developmentRatio: batch?.developmentRatio,
   firstCrackTime: batch?.firstCrackTime,
-  finalSaleUnitPrice: batch?.finalSaleUnitPrice ?? undefined,
+  beanAgtronColor: batch?.beanAgtronColor,
+  finalSaleUnitPrice: batch?.finalSaleUnitPrice ?? batch?.saleUnitPriceSnapshot ?? undefined,
   greenBeanId: batch?.greenBeanId ?? '',
   greenBeanName: batch?.greenBeanName ?? '',
   inputWeightGrams: batch?.inputWeightGrams ?? 0,
   notes: batch?.notes ?? '',
   outputWeightGrams: batch?.outputWeightGrams ?? 0,
+  groundAgtronColor: batch?.groundAgtronColor,
   roastDate: batch?.roastDate ?? '',
   roastLevel: batch ? normalizeRoastLevel(batch.roastLevel) : getRoastLevelSuggestion(0, 0),
+  roastLevelSource: batch?.roastLevelSource ?? 'dehydrationRate',
   roastPlanId: batch?.roastPlanId ?? '',
   roastPlanName: batch?.roastPlanName ?? '',
   roastedBeanName: batch?.roastedBeanName ?? '',
@@ -67,6 +70,19 @@ const formatOptionalCurrency = (value: number | null | undefined): string => {
   return value != null && Number.isFinite(value) ? `¥${value.toFixed(2)}` : '-';
 };
 
+const formatOptionalAgtron = (value: number | undefined): string => {
+  return value != null && Number.isFinite(value) ? value.toFixed(1) : '-';
+};
+
+const formatRoastLevelSource = (value: RoastBatchRecord['roastLevelSource']): string => {
+  switch (value) {
+    case 'beanAgtron': return '咖啡豆表色值';
+    case 'groundAgtron': return '咖啡粉色值';
+    case 'manual': return '自填';
+    default: return '脱水率';
+  }
+};
+
 export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchDrawerProps) {
   const { message } = App.useApp();
   const { data: beans = [] } = useBeans();
@@ -85,6 +101,14 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
 
       const updateInput: RoastBatchUpdateInput = {
         ...submitValue,
+        beanCostPerSaleUnitSnapshot:
+          batch.beanCostPerSaleUnitSnapshot ?? submitValue.beanCostPerSaleUnitSnapshot,
+        nonBeanCostPerSaleUnitSnapshot:
+          batch.nonBeanCostPerSaleUnitSnapshot ?? submitValue.nonBeanCostPerSaleUnitSnapshot,
+        saleUnitPriceSnapshot:
+          (submitValue.finalSaleUnitPrice ?? 0) === (batch.finalSaleUnitPrice ?? 0)
+            ? batch.saleUnitPriceSnapshot ?? submitValue.saleUnitPriceSnapshot
+            : submitValue.saleUnitPriceSnapshot,
       };
 
       onClose();
@@ -99,6 +123,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
           onCancel={onClose}
           onChange={setForm}
           onSubmit={handleSubmit}
+          actionBarAtTop
           plans={plans}
           resetKey={batch.id}
           submitIcon={<SaveOutlined />}
@@ -137,6 +162,7 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 items: [
                   { key: 'roastDate', label: '烘焙日期', value: formatRoastDate(batch.roastDate) },
                   { key: 'roastLevel', label: '烘焙程度', value: normalizeRoastLevel(batch.roastLevel) },
+                  { key: 'roastLevelSource', label: '烘焙程度根据', value: formatRoastLevelSource(batch.roastLevelSource) },
                 ],
               },
             ]}
@@ -183,6 +209,8 @@ export function RoastBatchDrawer({ batch, mode, onClose, onUpdate }: RoastBatchD
                 items: [
                   { key: 'inputWeightGrams', label: '入豆量', value: `${String(batch.inputWeightGrams)} g` },
                   { key: 'outputWeightGrams', label: '出豆量', value: `${String(batch.outputWeightGrams)} g` },
+                  { key: 'beanAgtronColor', label: '咖啡豆表色值', value: formatOptionalAgtron(batch.beanAgtronColor) },
+                  { key: 'groundAgtronColor', label: '咖啡粉色值', value: formatOptionalAgtron(batch.groundAgtronColor) },
                   { key: 'lossRate', label: '失水率', value: `${lossRate}%` },
                   { key: 'developmentRatio', label: '发展比', value: `${String(batch.developmentRatio ?? '-')}%` },
                   { key: 'firstCrackTime', label: '一爆时间', value: `${String(batch.firstCrackTime ?? '-')} s` },

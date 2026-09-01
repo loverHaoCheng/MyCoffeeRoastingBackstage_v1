@@ -190,24 +190,34 @@ export function BeanForm({
 
   const templatePreview = useMemo(() => {
     if (!selectedTemplate) {
-      return null;
+      return { errorMessage: null, values: null };
     }
 
-    return calculateTemplateDrivenSaleDefaults(selectedTemplate, {
-      defaultRoastInputGrams: currentRoastInputGrams > 0 ? currentRoastInputGrams : selectedTemplate.roastInputWeightGrams,
-      purchasedTotalPrice: currentPurchasedTotalPrice,
-      purchasedWeightGrams: currentPurchasedWeightGrams,
-    });
+    try {
+      return {
+        errorMessage: null,
+        values: calculateTemplateDrivenSaleDefaults(selectedTemplate, {
+          defaultRoastInputGrams: currentRoastInputGrams > 0 ? currentRoastInputGrams : selectedTemplate.roastInputWeightGrams,
+          purchasedTotalPrice: currentPurchasedTotalPrice,
+          purchasedWeightGrams: currentPurchasedWeightGrams,
+        }),
+      };
+    } catch (error) {
+      return {
+        errorMessage: error instanceof Error ? error.message : '无法生成模板建议售价，请调整模板参数。',
+        values: null,
+      };
+    }
   }, [currentPurchasedTotalPrice, currentPurchasedWeightGrams, currentRoastInputGrams, selectedTemplate]);
 
   useEffect(() => {
-    if (!autoApplyDefaultCostTemplate || !enableCostTemplateSelection || !selectedTemplate || !templatePreview) {
+    if (!autoApplyDefaultCostTemplate || !enableCostTemplateSelection || !selectedTemplate || !templatePreview.values) {
       return;
     }
 
     const shouldDirty = templateSyncShouldDirtyRef.current;
-    const nextWeight = templatePreview.defaultSaleUnitWeightGrams;
-    const nextPrice = templatePreview.defaultSaleUnitPrice;
+    const nextWeight = templatePreview.values.defaultSaleUnitWeightGrams;
+    const nextPrice = templatePreview.values.defaultSaleUnitPrice;
     const lastAutoDefaults = lastAutoSaleDefaultsRef.current;
 
     if (
@@ -238,6 +248,17 @@ export function BeanForm({
 
   const submitForm = async (values: GreenBeanFormInput) => {
     clearErrors();
+
+    if (templatePreview.errorMessage) {
+      setError('costTemplateId', {
+        message: templatePreview.errorMessage,
+        type: 'manual',
+      });
+      window.requestAnimationFrame(() => {
+        scrollToField('costTemplateId');
+      });
+      return;
+    }
 
     const result = greenBeanCreateFormSchema.safeParse(values);
 
@@ -321,21 +342,24 @@ export function BeanForm({
                 showSearch={false}
                 value={selectedTemplate?.id ?? undefined}
               />
-              <span className={styles.helpText}>
-                {selectedTemplate
+              <span className={joinClassNames(styles.helpText, errors.costTemplateId ? styles.helpTextError : undefined)}>
+                {errors.costTemplateId?.message ??
+                  (selectedTemplate
                   ? '会带入默认单次烘焙量，并根据当前采购重量与总价实时给出参考售价'
                   : autoApplyDefaultCostTemplate
                     ? '请先在设置中建立成本模板后再录入生豆'
-                    : '必须选择成本模板，用于计算库存预估和销售利润'}
+                    : '必须选择成本模板，用于计算库存预估和销售利润')}
               </span>
               <div className={joinClassNames(styles.linkedHint, styles.inlineHint)}>
                 {selectedTemplate ? (
-                  <>
-                    模板“{selectedTemplate.name}”当前参考值：
-                    单次烘焙量 {String(currentRoastInputGrams)}g，
-                    建议单份出售重量 {String(selectedTemplate.saleUnitWeightGrams)}g，
-                    建议定价 ¥{templatePreview?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}。
-                  </>
+                  templatePreview.errorMessage ?? (
+                    <>
+                      模板“{selectedTemplate.name}”当前参考值：
+                      单次烘焙量 {String(currentRoastInputGrams)}g，
+                      建议单份出售重量 {String(selectedTemplate.saleUnitWeightGrams)}g，
+                      建议定价 ¥{templatePreview.values?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}。
+                    </>
+                  )
                 ) : (
                   '选择成本模板后，会先生成最终单份出售重量、最终定价与默认单次烘焙量的参考值。'
                 )}
@@ -491,7 +515,8 @@ export function BeanForm({
             <span className={joinClassNames(styles.helpText, errors.defaultSaleUnitPrice ? styles.helpTextError : undefined)}>
               {selectedTemplate
                 ? errors.defaultSaleUnitPrice?.message ??
-                  `请手动填写；当前模板建议 ¥${templatePreview?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}`
+                  (templatePreview.errorMessage ??
+                    `请手动填写；当前模板建议 ¥${templatePreview.values?.defaultSaleUnitPrice.toFixed(2) ?? '0.00'}`)
                 : getErrorMessage(errors.defaultSaleUnitPrice?.message, '可手动填写最终零售价')}
             </span>
           </label>

@@ -103,7 +103,56 @@
   color: var(--app-text);
 }
 
+.form[data-action-bar-at-top='true'] {
+  position: relative;
+  padding-top: 0;
+}
+
+.form[data-action-bar-at-top='true'] > :global(footer[data-drawer-action-bar='true']) {
+  position: absolute;
+  top: -76px;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  display: none;
+}
+
+.form[data-action-bar-at-top='true'] > :global(footer[data-drawer-action-bar='true']) > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+}
+
+.form[data-action-bar-at-top='true'] > :global(footer[data-drawer-action-bar='true']) :global(.ant-btn) {
+  pointer-events: auto;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+.headerCancelButton {
+  background: var(--app-bg-soft) !important;
+  color: var(--app-text) !important;
+}
+
+.headerSubmitButton,
+.headerSubmitButton:hover,
+.headerSubmitButton:focus {
+  background: var(--app-text) !important;
+  color: var(--app-bg-elevated) !important;
+}
+
 @media (max-width: 767px) {
+  .form[data-action-bar-at-top='true'] > :global(footer[data-drawer-action-bar='true']) {
+    top: -76px;
+  }
+
   .fieldGrid {
     display: grid;
     grid-template-columns: 1fr;

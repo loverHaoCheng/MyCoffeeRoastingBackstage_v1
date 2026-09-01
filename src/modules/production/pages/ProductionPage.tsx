@@ -1,5 +1,8 @@
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import CloseOutlined from '@ant-design/icons/CloseOutlined';
+import CheckOutlined from '@ant-design/icons/CheckOutlined';
 import App from 'antd/es/app';
+import Button from 'antd/es/button';
 import Empty from "antd/es/empty";
 import Grid from "antd/es/grid";
 import Spin from "antd/es/spin";
@@ -24,7 +27,6 @@ import { roastBatchQueryKeys } from '@/modules/roast/hooks/useRoastBatches';
 import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { AppDrawer } from '@/shared/components/AppDrawer';
-import { MobileRoastSubNavigation } from '@/layouts/components/MobileRoastSubNavigation';
 import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
@@ -261,7 +263,6 @@ export function ProductionPage() {
         value={keyword}
       />
 
-      <MobileRoastSubNavigation />
 
       {isFilterPanelExpanded ? (
         <MultiFilterSortBar
@@ -331,6 +332,7 @@ export function ProductionPage() {
         open={creationDrawerOpen}
         placement="bottom"
         title="新增烘焙记录"
+        headerActions={<><Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={() => { setCreationDrawerOpen(false); }} shape="circle" /><Button aria-label="保存烘焙记录" className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { document.querySelector<HTMLButtonElement>('[data-app-drawer="true"][data-state="open"] [data-drawer-action-bar="true"] button[aria-label="保存烘焙记录"]')?.click(); }} shape="circle" /></>}
       >
         <RoastBatchCreator
           onCancel={() => {
@@ -351,6 +353,12 @@ export function ProductionPage() {
         open={selectedBatch != null && (detailMode === 'view' || (detailMode === 'edit' && selectedBatchFieldPath == null))}
         placement={isWide ? 'right' : 'bottom'}
         title={detailMode === 'edit' ? '编辑烘焙记录' : '烘焙记录详情'}
+        headerActions={detailMode === 'edit' ? (
+          <>
+            <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={closeDetail} shape="circle" />
+            <Button aria-label="保存烘焙记录" className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { document.querySelector<HTMLFormElement>('[data-app-drawer="true"][data-state="open"] form')?.requestSubmit(); }} shape="circle" />
+          </>
+        ) : null}
         width={720}
       >
         {selectedBatch && (detailMode === 'view' || (detailMode === 'edit' && selectedBatchFieldPath == null)) ? (

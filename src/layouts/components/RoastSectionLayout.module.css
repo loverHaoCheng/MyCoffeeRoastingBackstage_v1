@@ -1,0 +1,9 @@
+.layout {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.layout > :global(main) {
+  flex: 1 1 auto;
+}

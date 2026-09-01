@@ -3,8 +3,44 @@
 }
 
 .drawer[data-placement='bottom'] {
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  background: var(--app-bg-elevated);
+  box-shadow: 0 -12px 36px rgb(0 0 0 / 12%);
+  overflow: hidden;
+}
+
+.header {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 72px;
+  padding: 28px 24px 12px;
+  border: 0;
+  background: var(--app-bg-elevated);
+}
+
+.headerActions {
+  position: absolute;
+  inset: 0 18px auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76px;
+  pointer-events: none;
+}
+
+.headerActions > * {
+  pointer-events: auto;
+}
+
+.title {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-align: center;
 }
 
 .drawer :global(.ant-drawer-content-wrapper) {
@@ -44,9 +80,44 @@
   overscroll-behavior-y: contain;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
+  scroll-padding-top: 16px;
+  scroll-padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.drawer[data-placement='bottom'] :global(.ant-drawer-body) {
+  padding-right: 24px;
+  padding-left: 24px;
+}
+
+.drawer :global(.ant-drawer-mask) {
+  background: rgb(15 23 42 / 38%);
+  backdrop-filter: blur(2px);
 }
 
 @media (max-width: 767px) {
+  .drawer[data-placement='bottom'] {
+    border-top-left-radius: 32px;
+    border-top-right-radius: 32px;
+  }
+
+  .header {
+    min-height: 76px;
+    padding: 30px 22px 14px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .drawer[data-placement='bottom'] :global(.ant-drawer-body) {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+
+  .drawer[data-placement='bottom'] :global(.ant-drawer-content-wrapper) {
+    max-height: min(92dvh, 760px);
+  }
+
   :global(:root[data-app-mobile-editing='true']) :global(.ant-drawer[data-app-drawer='true'][data-placement='bottom'] .ant-drawer-content-wrapper) {
     bottom: max(0px, calc(var(--app-layout-viewport-height) - var(--app-visual-viewport-offset-top) - var(--app-visual-viewport-height)));
     max-height: var(--app-visual-viewport-height);

@@ -2,6 +2,30 @@
   min-height: 100%;
 }
 
+.headerCancelButton:global(.ant-btn),
+.headerSubmitButton:global(.ant-btn) {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 50% !important;
+  box-shadow: none !important;
+}
+
+.headerCancelButton {
+  background: var(--app-bg-soft) !important;
+  color: var(--app-text) !important;
+}
+
+.headerSubmitButton,
+.headerSubmitButton:hover,
+.headerSubmitButton:focus {
+  background: var(--app-text) !important;
+  color: var(--app-bg-elevated) !important;
+}
+
 .body {
   padding: 16px 0 0;
   display: grid;

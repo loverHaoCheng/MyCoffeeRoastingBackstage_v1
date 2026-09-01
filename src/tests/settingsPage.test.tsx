@@ -333,10 +333,21 @@ describe('SettingsPage', () => {
     fireEvent.click(toggleButton);
 
     expect(heading).toBeInTheDocument();
-    expect(screen.getByText('AI 助手计划建议')).toBeInTheDocument();
-    expect(screen.getByText('AI 曲线复盘')).toBeInTheDocument();
-    expect(screen.getByText('整体复盘与计划建议')).toBeInTheDocument();
+    expect(screen.getByText('计划模式')).toBeInTheDocument();
+    expect(screen.getByText('复盘模式')).toBeInTheDocument();
+    expect(screen.getByText('常识性提问')).toBeInTheDocument();
     expect(screen.getByText(/AI 提供的是辅助判断/)).toBeInTheDocument();
+  });
+
+  it('explains the finance calculation rules below the AI roasting guide', async () => {
+    renderWithQuery(<SettingsPage />);
+
+    const heading = await screen.findByRole('heading', { name: '财务计算规则' });
+    fireEvent.click(heading.closest('button') ?? heading);
+
+    expect(await screen.findByText('成本模板与建议售价')).toBeInTheDocument();
+    expect(screen.getByText('当前库存预估')).toBeInTheDocument();
+    expect(screen.getByText('经营概览')).toBeInTheDocument();
   });
 
   it('renders account backup actions in the settings footer', async () => {

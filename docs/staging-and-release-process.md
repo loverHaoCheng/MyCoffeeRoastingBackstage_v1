@@ -193,7 +193,7 @@ npm run build
 ./deploy_test.sh
 ```
 
-脚本复用正式发布的构建、发布锁、BFF 回滚、前端原子切换、版本清理和 HTTPS 验收机制，但目标固定为测试 BFF `3002`、测试前端入口 `/var/www/easybake-staging` 和测试版本目录 `/var/www/easybake-staging-releases`。测试站当前不再默认使用 Basic Auth，便于验证登录态、PWA 和 AI 训练上传接口。
+脚本复用正式发布的构建、发布锁、BFF 回滚、PocketBase 扩展候选二进制回滚、前端原子切换、版本清理和 HTTPS 验收机制。它固定使用测试 BFF `3002`、测试 PocketBase `8091`、`pocketbase-staging.service`、测试前端入口 `/var/www/easybake-staging` 和测试版本目录 `/var/www/easybake-staging-releases`。PocketBase 健康接口的构建版本必须与本次发布一致，否则发布会自动回退。测试站当前不再默认使用 Basic Auth，便于验证登录态、PWA 和 AI 训练上传接口。
 
 5. 打开测试地址：
 
@@ -213,6 +213,7 @@ https://test.easybake.top
 - 生豆库存批次创建后库存统计正常。
 - 烘焙计划创建、编辑、删除正常。
 - 烘焙记录创建、编辑、删除正常。
+- 烘焙历史的咖啡豆表色值、咖啡粉色值和烘焙程度判断依据保存后刷新仍保持，且 PocketBase `roast_batches` 字段值一致。
 - 销售去向下的本次最终定价保存后不消失。
 - 本次最终定价会计入财务已实现收入。
 - HiBean JSON 可以导入、覆盖导入和展示曲线。

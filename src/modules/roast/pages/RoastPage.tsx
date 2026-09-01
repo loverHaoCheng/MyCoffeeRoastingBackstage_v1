@@ -1,4 +1,6 @@
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import CloseOutlined from '@ant-design/icons/CloseOutlined';
+import CheckOutlined from '@ant-design/icons/CheckOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import Empty from "antd/es/empty";
@@ -28,7 +30,6 @@ import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlan
 import { parseRoastPlanJsonDraft } from '@/modules/roast/services';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { AppDrawer } from '@/shared/components/AppDrawer';
-import { MobileRoastSubNavigation } from '@/layouts/components/MobileRoastSubNavigation';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
@@ -327,7 +328,6 @@ export function RoastPage() {
         value={keyword}
       />
 
-      <MobileRoastSubNavigation />
 
       {isFilterPanelExpanded ? (
         <MultiFilterSortBar
@@ -431,6 +431,12 @@ export function RoastPage() {
             ? '新增烘焙计划'
             : 'JSON 导入'
         }
+        headerActions={
+          <>
+            <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={closeCreationDrawer} shape="circle" />
+            <Button aria-label={creationMode === 'manual' ? '创建烘焙计划' : '回填到表单'} className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { document.querySelector<HTMLFormElement>('[data-app-drawer="true"][data-state="open"] form')?.requestSubmit(); }} shape="circle" />
+          </>
+        }
       >
         {creationMode === 'manual' ? (
           <RoastPlanManualCreator
@@ -461,6 +467,12 @@ export function RoastPage() {
         }
         placement={isWide ? 'right' : 'bottom'}
         title={getDetailDrawerTitle(detailMode)}
+        headerActions={detailMode === 'edit' ? (
+          <>
+            <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={closeDetail} shape="circle" />
+            <Button aria-label="保存计划" className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { document.querySelector<HTMLFormElement>('[data-app-drawer="true"][data-state="open"] form')?.requestSubmit(); }} shape="circle" />
+          </>
+        ) : null}
         width={720}
       >
         {selectedPlan &&

@@ -24,6 +24,7 @@ import { useAppBuildVersion } from '@/app/hooks/useAppBuildVersion';
 import { LegalFooter } from '@/modules/legal/components';
 import { RoastedBeanConnectionCard } from '@/modules/settings/components/RoastedBeanConnectionCard';
 import { AppearanceSettingsSection } from '@/modules/settings/components/AppearanceSettingsSection';
+import { FinanceCalculationRulesSection } from '@/modules/settings/components/FinanceCalculationRulesSection';
 import {
   Accordion,
   AccordionContent,
@@ -383,16 +384,16 @@ export function SettingsPage() {
             </AccordionTrigger>
 
             <AccordionContent className={accordionStyles.content}>
-              <div className={styles.aiCapabilityList}>
-                <article className={styles.aiCapabilityItem}>
+              <div className={styles.informationList}>
+                <article className={styles.informationItem}>
                   <strong>计划模式</strong>
                   <p>选择生豆后，与 AI 讨论烘焙目标与期望风味，生成起始烘焙计划。适合开炉前规划新豆或尝试新烘法。AI 返回的计划草稿需在确认页核对后创建。</p>
                 </article>
-                <article className={styles.aiCapabilityItem}>
+                <article className={styles.informationItem}>
                   <strong>复盘模式</strong>
                   <p>选择已完成的烘焙记录，AI 结合原计划、实际曲线和杯测评价（如有）分析关键表现，指出影响风味的因素，并生成优化计划供下一炉使用。适合迭代改进现有烘焙方案。</p>
                 </article>
-                <article className={styles.aiCapabilityItem}>
+                <article className={styles.informationItem}>
                   <strong>常识性提问</strong>
                   <p>不关联生豆或烘焙记录，直接提问咖啡和烘焙的常识性问题，如技术原理、风味判断、设备操作等。适合学习烘焙知识或快速解答疑问。</p>
                 </article>
@@ -400,6 +401,8 @@ export function SettingsPage() {
               <p className={accordionStyles.contentCopy}>计划和复盘各自按月提供可用次数，常识性提问单独计次。AI 提供的是辅助判断，建议结合实际豆况、设备状态和杯测结果作最终决定。</p>
             </AccordionContent>
           </AccordionItem>
+
+          <FinanceCalculationRulesSection />
 
         </Accordion>
 

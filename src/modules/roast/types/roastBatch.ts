@@ -1,5 +1,6 @@
 /** 烘焙记录领域类型 */
 export type RoastBatchSalesMode = 'sale' | 'selfUse';
+export type RoastLevelSource = 'beanAgtron' | 'groundAgtron' | 'dehydrationRate' | 'manual';
 
 export interface RoastBatchEvaluation {
   allowTraining: boolean;
@@ -30,6 +31,12 @@ export interface RoastBatchRecord {
   outputWeightGrams: number;
   /** 烘焙程度 */
   roastLevel: string;
+  /** 烘焙程度判断依据 */
+  roastLevelSource?: RoastLevelSource;
+  /** 咖啡豆表色 Agtron 数值 */
+  beanAgtronColor?: number;
+  /** 咖啡粉色 Agtron 数值 */
+  groundAgtronColor?: number;
   /** 发展比（%） */
   developmentRatio?: number;
   /** 一爆时间（秒） */
@@ -38,6 +45,12 @@ export interface RoastBatchRecord {
   totalRoastTime?: number;
   /** 本次销售单份最终定价，仅影响本次烘焙记录收入 */
   finalSaleUnitPrice?: number | null;
+  /** 销售发生时的有效单份售价快照 */
+  saleUnitPriceSnapshot?: number | null;
+  /** 销售发生时的单份生豆成本快照 */
+  beanCostPerSaleUnitSnapshot?: number | null;
+  /** 销售发生时的单份包装、能耗及其他成本快照，不含人工费 */
+  nonBeanCostPerSaleUnitSnapshot?: number | null;
   /** 已售成品份数，历史记录缺失时按 1 份兼容 */
   soldUnitCount?: number;
   /** 备注 */
@@ -65,10 +78,16 @@ export interface RoastBatchCreateInput {
   inputWeightGrams: number;
   outputWeightGrams: number;
   roastLevel: string;
+  roastLevelSource?: RoastLevelSource;
+  beanAgtronColor?: number;
+  groundAgtronColor?: number;
   developmentRatio?: number;
   firstCrackTime?: number;
   totalRoastTime?: number;
   finalSaleUnitPrice?: number | null;
+  saleUnitPriceSnapshot?: number | null;
+  beanCostPerSaleUnitSnapshot?: number | null;
+  nonBeanCostPerSaleUnitSnapshot?: number | null;
   soldUnitCount?: number;
   notes?: string;
   evaluation?: RoastBatchEvaluation;
@@ -88,10 +107,16 @@ export interface RoastBatchUpdateInput {
   inputWeightGrams?: number;
   outputWeightGrams?: number;
   roastLevel?: string;
+  roastLevelSource?: RoastLevelSource;
+  beanAgtronColor?: number;
+  groundAgtronColor?: number;
   developmentRatio?: number;
   firstCrackTime?: number;
   totalRoastTime?: number;
   finalSaleUnitPrice?: number | null;
+  saleUnitPriceSnapshot?: number | null;
+  beanCostPerSaleUnitSnapshot?: number | null;
+  nonBeanCostPerSaleUnitSnapshot?: number | null;
   soldUnitCount?: number;
   notes?: string;
   evaluation?: RoastBatchEvaluation;

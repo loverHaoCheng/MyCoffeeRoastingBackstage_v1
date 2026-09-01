@@ -94,9 +94,18 @@ export const calculateCostMetrics = (input: CostCalculationFormInput): CostCalcu
   }
 
   const safeRoastedOutputWeightGrams = roastedOutputWeightGrams;
-  const saleUnitCount = Number((safeRoastedOutputWeightGrams / safeSaleUnitWeightGrams).toFixed(2));
-  const costPerSaleUnit = Number(((totalBatchCost / safeRoastedOutputWeightGrams) * safeSaleUnitWeightGrams).toFixed(2));
-  const suggestedSalePrice = Number((costPerSaleUnit * (1 + input.targetProfitRate / 100)).toFixed(2));
+  const saleUnitCount = Math.floor(safeRoastedOutputWeightGrams / safeSaleUnitWeightGrams);
+
+  if (saleUnitCount <= 0) {
+    throw new AppError('无法形成完整销售份数，请调整模板参数。', { code: 'BUSINESS' });
+  }
+
+  if (input.targetProfitRate >= 100) {
+    throw new AppError('毛利率必须小于 100%。', { code: 'BUSINESS' });
+  }
+
+  const costPerSaleUnit = Number((totalBatchCost / saleUnitCount).toFixed(2));
+  const suggestedSalePrice = Number((costPerSaleUnit / (1 - input.targetProfitRate / 100)).toFixed(2));
   const effectiveSaleUnitPrice = input.saleUnitPrice > 0 ? input.saleUnitPrice : suggestedSalePrice;
   const profitPerSaleUnit = Number((effectiveSaleUnitPrice - costPerSaleUnit).toFixed(2));
   const profitRate =

@@ -1,4 +1,6 @@
 import DownOutlined from "@ant-design/icons/DownOutlined";
+import CloseOutlined from '@ant-design/icons/CloseOutlined';
+import CheckOutlined from '@ant-design/icons/CheckOutlined';
 import App from 'antd/es/app';
 import Button from "antd/es/button";
 import Empty from "antd/es/empty";
@@ -444,6 +446,12 @@ export function BeanPage() {
         }
         placement={isWide ? 'right' : 'bottom'}
         title={detailMode === 'edit' ? '编辑生豆' : '查看生豆详情'}
+        headerActions={detailMode === 'edit' ? (
+          <>
+            <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={() => { setSelectedBeanId(null); setSelectedBeanFieldPath(undefined); setDetailMode(null); }} shape="circle" />
+            <Button aria-label="保存生豆" className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { document.querySelector<HTMLFormElement>('[data-app-drawer="true"][data-state="open"] form')?.requestSubmit(); }} shape="circle" />
+          </>
+        ) : null}
         width={720}
       >
         {selectedBean && (detailMode === 'view' || (detailMode === 'edit' && selectedBeanFieldPath == null)) ? (

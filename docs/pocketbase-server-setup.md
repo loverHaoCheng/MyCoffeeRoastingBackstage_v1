@@ -51,7 +51,7 @@ INTERNAL_JOBS_TOKEN=用 openssl rand -hex 32 生成的内部任务令牌
 - 前端已经会自动补 `created_at` 和 `updated_at` 字段。
 - 当前代码把 `roast_plan_overview` 视为 `roast_profiles` 的兼容别名。
 - 当前代码把 `roast_batch_overview` 视为 `roast_batches` 的兼容别名。
-- 若继续保留 `roast_batch_overview` 视图，请确保它至少暴露 `sales_mode` 字段；否则前端会自动回退到 `roast_batches` 读取真实去向数据。
+- 若继续保留 `roast_batch_overview` 视图，请确保它暴露 `sales_mode` 与三个销售快照字段；否则前端会自动回退到 `roast_batches` 读取真实去向及冻结的销售成本数据。
 
 ## 认证集合
 
@@ -228,10 +228,16 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `input_weight_grams` | number | 入豆量 |
 | `output_weight_grams` | number | 出豆量 |
 | `roast_level` | text | 烘焙程度 |
+| `roast_level_source` | text | 烘焙程度判断依据：`beanAgtron`、`groundAgtron`、`dehydrationRate`、`manual` |
+| `bean_agtron_color` | number | 咖啡豆表色 Agtron 数值，0-100 |
+| `ground_agtron_color` | number | 咖啡粉色 Agtron 数值，0-100 |
 | `development_ratio` | number | 发展比 |
 | `first_crack_time` | number | 一爆时间 |
 | `total_roast_time` | number | 总烘焙时间 |
 | `final_sale_unit_price` | number | 本次销售单份最终定价，仅影响本次烘焙记录收入 |
+| `sale_unit_price_snapshot` | number | 销售发生时的有效单份售价快照；历史销售回填后不再受默认售价变更影响 |
+| `bean_cost_per_sale_unit_snapshot` | number | 销售发生时的单份生豆成本快照 |
+| `non_bean_cost_per_sale_unit_snapshot` | number | 销售发生时的单份包装、能耗及其他成本快照；不含人工费 |
 | `sold_unit_count` | number | 已售成品份数，非必填、最小值 `0`、仅整数；空值按 `1` 份兼容历史记录 |
 | `evaluation` | json | 评价表单，包含评分、风味、缺陷、调整建议与训练授权 |
 | `notes` | text | 备注 |
@@ -354,7 +360,7 @@ deleteRule: @request.auth.id != "" && owner = @request.auth.id
 | `other_cost` | number | 其他费用 |
 | `sale_unit_weight_grams` | number | 单份重量 |
 | `sale_unit_price` | number | 单份售价 |
-| `target_profit_rate` | number | 目标利润率 |
+| `target_profit_rate` | number | 毛利率 |
 | `cost_per_roasted_kg` | number | 每千克熟豆成本 |
 | `cost_per_sale_unit` | number | 单份成本 |
 | `profit_per_sale_unit` | number | 单份利润 |
@@ -530,6 +536,6 @@ BFF 启动后会立即扫描未完成任务，之后每 5 秒扫描一次。当�
 
 烘焙记录与采购批次库存必须使用 `server/pocketbase-extension` 构建的自定义 PocketBase 二进制。该扩展提供烘焙记录事务端点和采购批次版本更新端点，BFF 负责认证与白名单代理。
 
-发布顺序：先构建候选二进制并在独立数据副本上验证，再通过 systemd 覆盖文件指向候选二进制、重启单个服务并请求 `/api/easybake/health`。测试端验证通过后再按同一版本切换正式端；保留旧二进制和旧发布目录用于回滚。
+发布顺序：`./deploy_test.sh` 或 `./deploy.sh` 会同步 `server/pocketbase-extension`，在目标服务器构建带版本标识的候选二进制，通过高优先级 systemd 覆盖切换并重启单个服务，再请求 `/api/easybake/health` 校验版本。版本不一致或服务不健康会自动移除新覆盖并恢复上一版本。测试端验证通过后再按同一流程切换正式端；保留旧二进制和旧覆盖文件用于回滚。烘焙事务接口对未知字段直接返回错误，禁止静默丢弃业务数据。
 
 BFF 的敏感配置使用 `/etc/easybake/*.env`，权限必须为 `root:root 0600`。服务单元使用 `EnvironmentFile=` 引用，禁止继续在 systemd 单元或 drop-in 中保存 API 密钥和管理员密码。

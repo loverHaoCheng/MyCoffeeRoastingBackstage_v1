@@ -14,13 +14,25 @@ describe('roastBatch PocketBase payload mapping', () => {
       outputWeightGrams: 172,
       roastDate: '2026-07-07T10:00:00.000Z',
       roastLevel: '中焙',
+      roastLevelSource: 'beanAgtron',
+      beanAgtronColor: 82.5,
+      groundAgtronColor: 76,
       finalSaleUnitPrice: 68.5,
+      saleUnitPriceSnapshot: 68.5,
+      beanCostPerSaleUnitSnapshot: 24,
+      nonBeanCostPerSaleUnitSnapshot: 10,
     });
 
     expect(payload.green_bean_id).toBe('bean-1');
     expect(payload.green_bean_name).toBe('耶加雪菲 G1');
     expect(payload.final_sale_unit_price).toBe(68.5);
+    expect(payload.sale_unit_price_snapshot).toBe(68.5);
+    expect(payload.bean_cost_per_sale_unit_snapshot).toBe(24);
+    expect(payload.non_bean_cost_per_sale_unit_snapshot).toBe(10);
     expect(payload.status).toBe('completed');
+    expect(payload.roast_level_source).toBe('beanAgtron');
+    expect(payload.bean_agtron_color).toBe(82.5);
+    expect(payload.ground_agtron_color).toBe(76);
   });
 
   it('maps optional display names to PocketBase field names', () => {

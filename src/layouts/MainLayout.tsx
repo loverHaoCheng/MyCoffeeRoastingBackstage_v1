@@ -7,6 +7,7 @@ import { GlobalPullToRefresh } from '@/app/components/GlobalPullToRefresh';
 import { useQuickRefreshAction } from '@/app/hooks/useQuickRefreshAction';
 import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { appNavigationItems, type AppRouteKey } from '@/router/navigation';
+import { preloadRoute } from '@/router/routePreload';
 import type { ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -184,6 +185,9 @@ export function MainLayout() {
     if (!target) {
       return;
     }
+
+    // Begin fetching the route chunk before navigation commits the new outlet.
+    void preloadRoute(key).catch(() => undefined);
 
     startTransition(() => {
       void navigate(target.path);

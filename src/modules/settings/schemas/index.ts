@@ -111,7 +111,7 @@ export const costTemplateFormSchema = z.object({
   packagingCost: z.number().nonnegative('包装费用不能为负数'),
   roastInputWeightGrams: z.number().int().positive('生豆重量必须大于 0'),
   saleUnitWeightGrams: z.number().int().positive('单份熟豆重量必须大于 0'),
-  targetProfitRate: z.number().min(0, '目标利润率不能小于 0').max(1000, '目标利润率过高'),
+  targetProfitRate: z.number().min(0, '毛利率不能小于 0').max(99.9, '毛利率必须小于 100%'),
 });
 
 const cardDisplaySettingsStorageSchema = z.object({

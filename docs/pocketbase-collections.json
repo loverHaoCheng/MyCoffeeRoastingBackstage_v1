@@ -893,6 +893,36 @@
         },
         {
           "system": false,
+          "id": "fld_roast_level_source",
+          "name": "roast_level_source",
+          "type": "text",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_bean_agtron_color",
+          "name": "bean_agtron_color",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": { "min": 0, "max": 100 }
+        },
+        {
+          "system": false,
+          "id": "fld_ground_agtron_color",
+          "name": "ground_agtron_color",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": { "min": 0, "max": 100 }
+        },
+        {
+          "system": false,
           "id": "fld_first_crack_time",
           "name": "first_crack_time",
           "type": "number",
@@ -915,6 +945,36 @@
           "system": false,
           "id": "fld_final_sale_unit_price",
           "name": "final_sale_unit_price",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_sale_unit_price_snapshot",
+          "name": "sale_unit_price_snapshot",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_bean_cost_sale_unit_snapshot",
+          "name": "bean_cost_per_sale_unit_snapshot",
+          "type": "number",
+          "required": false,
+          "presentable": false,
+          "unique": false,
+          "options": {}
+        },
+        {
+          "system": false,
+          "id": "fld_non_bean_cost_sale_unit_snapshot",
+          "name": "non_bean_cost_per_sale_unit_snapshot",
           "type": "number",
           "required": false,
           "presentable": false,

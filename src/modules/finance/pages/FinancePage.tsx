@@ -1,4 +1,6 @@
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import CloseOutlined from '@ant-design/icons/CloseOutlined';
+import CheckOutlined from '@ant-design/icons/CheckOutlined';
 import App from 'antd/es/app';
 import Button from "antd/es/button";
 import Grid from "antd/es/grid";
@@ -47,7 +49,18 @@ export function FinancePage() {
   const [isIncomeDrawerOpen, setIsIncomeDrawerOpen] = useState(false);
   const [activeDrilldownKey, setActiveDrilldownKey] = useState<FinanceOverviewDrilldownKey | null>(null);
   const [templateCreateRequestKey, setTemplateCreateRequestKey] = useState(0);
-  const { beans, calculations, expenseRecords, incomeRecords, isFetching, overview, range, roastBatches, templates } = useFinanceOverview(
+  const {
+    beans,
+    calculations,
+    defaultTemplateId,
+    expenseRecords,
+    incomeRecords,
+    isFetching,
+    overview,
+    range,
+    roastBatches,
+    templates,
+  } = useFinanceOverview(
     preset,
     null,
   );
@@ -88,6 +101,7 @@ export function FinancePage() {
     return buildFinanceOverviewDrilldown({
       beans,
       calculations,
+      defaultTemplateId,
       expenseRecords,
       incomeRecords,
       key: activeDrilldownKey,
@@ -95,7 +109,7 @@ export function FinancePage() {
       range,
       templates,
     });
-  }, [activeDrilldownKey, beans, calculations, expenseRecords, incomeRecords, range, roastBatches, templates]);
+  }, [activeDrilldownKey, beans, calculations, defaultTemplateId, expenseRecords, incomeRecords, range, roastBatches, templates]);
 
   const handleOpenCreateFlow = () => {
     setIsActionSheetOpen(true);
@@ -280,6 +294,7 @@ export function FinancePage() {
         open={isExpenseDrawerOpen}
         placement="bottom"
         title="新增支出"
+        headerActions={<><Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={() => { setIsExpenseDrawerOpen(false); }} shape="circle" /><Button aria-label="保存支出记录" className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { document.querySelector<HTMLFormElement>('[data-app-drawer="true"][data-state="open"] form')?.requestSubmit(); }} shape="circle" /></>}
       >
         <FinanceExpenseForm
           beans={beans}
@@ -306,6 +321,7 @@ export function FinancePage() {
         open={isIncomeDrawerOpen}
         placement="bottom"
         title="补录收入"
+        headerActions={<><Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={() => { setIsIncomeDrawerOpen(false); }} shape="circle" /><Button aria-label="保存收入记录" className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { document.querySelector<HTMLFormElement>('[data-app-drawer="true"][data-state="open"] form')?.requestSubmit(); }} shape="circle" /></>}
       >
         <FinanceIncomeForm
           embedded

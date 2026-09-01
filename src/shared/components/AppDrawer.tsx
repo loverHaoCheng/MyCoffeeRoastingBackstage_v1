@@ -3,6 +3,8 @@ import { useEffect, useState, type CSSProperties, type HTMLAttributes, type Reac
 import {
   Drawer,
   DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
 } from '@/shared/components/ui/drawer';
 import { cn } from '@/shared/utils/cn';
 
@@ -52,6 +54,7 @@ interface AppDrawerStyles {
 
 interface AppDrawerProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'title'> {
   children?: ReactNode;
+  headerActions?: ReactNode;
   closable?: boolean;
   destroyOnHidden?: boolean;
   getContainer?: false | HTMLElement | null | (() => HTMLElement | null);
@@ -71,6 +74,7 @@ export function AppDrawer({
   closable = true,
   destroyOnHidden = true,
   getContainer,
+  headerActions,
   height,
   onClose,
   open,
@@ -175,6 +179,12 @@ export function AppDrawer({
         wrapperStyle={wrapperStyle}
         {...props}
       >
+              {title != null ? (
+                <DrawerHeader className={styles.header}>
+                  <DrawerTitle className={styles.title}>{title}</DrawerTitle>
+                  <div className={styles.headerActions} data-drawer-header-actions="true">{headerActions}</div>
+                </DrawerHeader>
+        ) : null}
         <div className="ant-drawer-body" style={bodyStyle}>
           {shouldMountDrawer ? (children ?? lastRenderedChildren ?? null) : null}
         </div>

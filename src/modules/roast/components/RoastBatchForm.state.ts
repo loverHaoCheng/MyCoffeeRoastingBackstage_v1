@@ -8,6 +8,7 @@ import type { RoastBatchFormState } from './RoastBatchForm';
 export const createDefaultRoastBatchFormState = (): RoastBatchFormState => ({
   evaluation: createDefaultRoastBatchEvaluation(),
   developmentRatio: undefined,
+  beanAgtronColor: undefined,
   firstCrackTime: undefined,
   finalSaleUnitPrice: undefined,
   greenBeanId: '',
@@ -15,8 +16,10 @@ export const createDefaultRoastBatchFormState = (): RoastBatchFormState => ({
   inputWeightGrams: 200,
   notes: '',
   outputWeightGrams: 180,
+  groundAgtronColor: undefined,
   roastDate: dayjs().second(0).millisecond(0).toISOString(),
   roastLevel: getRoastLevelSuggestion(200, 180),
+  roastLevelSource: 'dehydrationRate',
   roastPlanId: '',
   roastPlanName: '',
   roastedBeanName: '',

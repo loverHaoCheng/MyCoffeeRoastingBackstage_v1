@@ -1,7 +1,9 @@
 import SaveOutlined from '@ant-design/icons/SaveOutlined';
+import CloseOutlined from '@ant-design/icons/CloseOutlined';
+import CheckOutlined from '@ant-design/icons/CheckOutlined';
 import Button from 'antd/es/button';
 import type { ReactNode, SyntheticEvent } from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { AppDrawer } from './AppDrawer';
 import { DrawerActionBar } from './DrawerActionBar';
@@ -35,6 +37,7 @@ export function FieldEditorDrawer({
   width,
 }: FieldEditorDrawerProps) {
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -66,8 +69,14 @@ export function FieldEditorDrawer({
       placement={placement}
       title={title}
       width={width}
+      headerActions={
+        <>
+          <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={onClose} shape="circle" />
+          <Button aria-label={submitLabel} className={styles.headerSubmitButton} icon={<CheckOutlined />} loading={submitting} onClick={() => { formRef.current?.requestSubmit(); }} shape="circle" />
+        </>
+      }
     >
-      <form className={styles.form} onSubmit={handleSubmit}>
+      <form className={styles.form} ref={formRef} onSubmit={handleSubmit}>
         <div className={styles.inner}>
           <div className={styles.content}>{children}</div>
           <DrawerActionBar compact>

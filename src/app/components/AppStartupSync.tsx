@@ -2,9 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import App from 'antd/es/app';
 
-import { refreshAllAppData } from '@/app/services/appDataRefresh.service';
+import { refreshAllAppData, refreshQuickAppData } from '@/app/services/appDataRefresh.service';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { AppError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger/logger';
+import { preloadAdjacentRoutes } from '@/router/routePreload';
 
 const scheduleWhenIdle = (callback: () => void): (() => void) => {
   if (typeof window === 'undefined') {
@@ -59,9 +61,18 @@ export function AppStartupSync() {
 
     syncedUserIdRef.current = userId;
 
+    // Warm adjacent route chunks while the bean inventory is already visible.
+    // Start code preloading independently so a slow data sync cannot delay route switches.
+    const cancelModulePreload = scheduleWhenIdle(preloadAdjacentRoutes);
+
+    void refreshQuickAppData(queryClient, 'bean').catch((error: unknown) => {
+      logger.warn('priority bean inventory sync failed', { error });
+    });
+
     const cancelSchedule = scheduleWhenIdle(() => {
       void (async () => {
         try {
+          preloadAdjacentRoutes();
           const result = await refreshAllAppData(queryClient);
 
           if (result.failed > 0) {
@@ -84,6 +95,7 @@ export function AppStartupSync() {
     });
 
     return () => {
+      cancelModulePreload();
       cancelSchedule();
     };
   }, [isAuthenticated, message, queryClient, userId]);

@@ -18,8 +18,19 @@ Use PocketBase `v0.39.5` and Go `1.25`:
 CGO_ENABLED=0 go build -trimpath -o easybake-pocketbase .
 ```
 
+Release builds should inject an identifier so the running service can be verified:
+
+```sh
+CGO_ENABLED=0 go build -trimpath \
+  -ldflags "-X main.buildVersion=<release> -X main.buildCommit=<commit> -X main.buildAt=<utc-time>" \
+  -o pocketbase-<release> .
+```
+
+`GET /api/easybake/health` returns `status`, `version`, `commit`, and `buildAt`.
+The roast-batch transaction endpoints reject unknown payload fields instead of silently dropping them.
+
 ## Deployment
 
-Deploy a sibling candidate binary. Configure the target systemd service with an override that points at the candidate, restart only that service, then verify `/api/easybake/health`. Keep the prior binary and remove the override to roll back.
+`deploy.sh` and `deploy_test.sh` build and deploy the extension together with the BFF and frontend. They configure a sibling candidate binary, restart only the selected PocketBase service, verify the health version, and remove the release override to roll back if verification fails.
 
 Deploy staging before production. The BFF routes `/api/roast-batches` to these endpoints and must be deployed with the same release.

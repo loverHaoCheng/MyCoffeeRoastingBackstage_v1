@@ -2,9 +2,10 @@
 
 import Spin from 'antd/es/spin';
 import { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, Outlet, useLocation, createHashRouter, type RouteObject } from 'react-router-dom';
+import { Navigate, useLocation, createHashRouter, type RouteObject } from 'react-router-dom';
 
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
+import { RoastSectionLayout } from '@/layouts/components/RoastSectionLayout';
 
 const MainLayout = lazy(() => import('@/layouts/MainLayout').then((module) => ({ default: module.MainLayout })));
 const loadAuthModule = () => import('@/modules/auth');
@@ -28,15 +29,22 @@ const VerifyEmailPage = lazy(() =>
 );
 const LegalPage = lazy(() => import('@/modules/legal').then((module) => ({ default: module.LegalPage })));
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));
+// The default authenticated route is the bean inventory; fetch its chunk immediately.
+void import('@/modules/bean');
 const RoastPage = lazy(() =>
   import('@/modules/roast').then((module) => ({ default: module.RoastPage })),
 );
+// The roast workspace has two sibling routes. Fetch both page chunks while the
+// authenticated shell is mounting so switching between them does not start a
+// network request after the user taps the secondary navigation.
+void import('@/modules/roast');
 const RoastAssistantPage = lazy(() =>
   import('@/modules/roast').then((module) => ({ default: module.RoastAssistantPage })),
 );
 const ProductionPage = lazy(() =>
   import('@/modules/production').then((module) => ({ default: module.ProductionPage })),
 );
+void import('@/modules/production');
 const FinancePage = lazy(() =>
   import('@/modules/finance').then((module) => ({ default: module.FinancePage })),
 );
@@ -48,7 +56,17 @@ const withPageFallback = (children: ReactNode) => {
   return (
     <Suspense
       fallback={
-        <div style={{ display: 'grid', minHeight: 320, placeItems: 'center' }}>
+        <div
+          aria-label="页面加载中"
+          style={{
+            alignItems: 'start',
+            color: 'var(--app-text-secondary)',
+            display: 'grid',
+            justifyItems: 'center',
+            minHeight: 160,
+            paddingTop: 56,
+          }}
+        >
           <Spin />
         </div>
       }
@@ -114,7 +132,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'roasts',
-        element: <Outlet />,
+        element: <RoastSectionLayout />,
         children: [
           {
             index: true,

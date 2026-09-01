@@ -21,6 +21,7 @@
 | 出售单份重量 | `bean_sale_specs.unit_weight_grams` | 支持未来多规格 |
 | 出售单份售价 | `bean_sale_specs.unit_price` | 支持未来多渠道定价 |
 | 烘焙记录 | `roast_records` | 一次实际烘焙一条 |
+| 历史销售快照 | `roast_batches.sale_unit_price_snapshot` 等 | 保存销售时的售价、生豆成本和非生豆成本，避免后续模板调整改写已实现利润 |
 | 烘焙方案 | `roast_profiles` | 与生豆一对多 |
 | 产地 | `green_beans.origin_country` | 国家级来源 |
 | 等级 | `green_beans.grade` | 供应商等级、杯测等级或贸易分级 |
@@ -67,5 +68,5 @@
   - 其他费用
   - 单份熟豆重量
   - 单份熟豆售价
-  - 目标利润率
-  - 推算出豆量、单锅总成本、单份成本、建议售价、利润率
+  - 毛利率
+  - 推算出豆量、可销售份数、单锅总成本、单份成本、建议售价、毛利率

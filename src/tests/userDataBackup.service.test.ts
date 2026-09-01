@@ -19,6 +19,9 @@ const backupCollectionNames = [
   'ai_roast_reviews',
   'ai_roast_recommendations',
   'ai_roast_feedback',
+  'ai_roast_conversations',
+  'ai_roast_messages',
+  'ai_analysis_tasks',
   'finance_expense_records',
   'finance_income_records',
   'cost_calculations',
@@ -90,6 +93,20 @@ describe('userDataBackupService', () => {
         ai_roast_reviews: 0,
       },
     });
+  });
+
+  it('exports current AI conversations, messages, and analysis tasks', async () => {
+    vi.spyOn(PocketBaseRestClient.prototype, 'list').mockImplementation(
+      <TOutput,>(collectionName: string): Promise<TOutput[]> => {
+        return Promise.resolve([{ id: `${collectionName}-1` }] as TOutput[]);
+      },
+    );
+
+    const backup = await userDataBackupService.createBackup();
+
+    expect(backup.collections.ai_roast_conversations).toEqual([{ id: 'ai_roast_conversations-1' }]);
+    expect(backup.collections.ai_roast_messages).toEqual([{ id: 'ai_roast_messages-1' }]);
+    expect(backup.collections.ai_analysis_tasks).toEqual([{ id: 'ai_analysis_tasks-1' }]);
   });
 
   it('retries backup export without sorting when a legacy collection rejects the created_at sort', async () => {
@@ -781,10 +798,13 @@ describe('userDataBackupService', () => {
     const collections: UserDataBackupFile['collections'] = {
       app_settings: [{ id: 'app_settings-old', key: 'cost_template_settings', owner: 'old-user', value: {} }],
       ai_roast_consents: [{ id: 'ai_roast_consents-old', owner: 'old-user' }],
+      ai_roast_conversations: [{ id: 'ai_roast_conversations-old', owner: 'old-user' }],
       ai_roast_feedback: [{ id: 'ai_roast_feedback-old', owner: 'old-user' }],
+      ai_roast_messages: [{ id: 'ai_roast_messages-old', owner: 'old-user' }],
       ai_roast_profiles: [{ id: 'ai_roast_profiles-old', owner: 'old-user' }],
       ai_roast_recommendations: [{ id: 'ai_roast_recommendations-old', owner: 'old-user' }],
       ai_roast_reviews: [{ id: 'ai_roast_reviews-old', owner: 'old-user' }],
+      ai_analysis_tasks: [{ id: 'ai_analysis_tasks-old', owner: 'old-user' }],
       bean_sale_specs: [{ id: 'bean_sale_specs-old', owner: 'old-user' }],
       cost_calculations: [{ id: 'cost_calculations-old', owner: 'old-user' }],
       finance_expense_records: [{ id: 'finance_expense_records-old', owner: 'old-user' }],

@@ -56,13 +56,13 @@ describe('BeanForm', () => {
     const finalPriceInput = screen.getByRole('spinbutton', { name: '最终定价' });
 
     await waitFor(() => {
-      expect(finalPriceInput).toHaveValue('7.25');
+      expect(finalPriceInput).toHaveValue('8.57');
     });
 
     fireEvent.change(purchaseTotalInput, { target: { value: '100' } });
 
     await waitFor(() => {
-      expect(finalPriceInput).toHaveValue('31.45');
+      expect(finalPriceInput).toHaveValue('37.14');
     });
 
     fireEvent.change(finalPriceInput, { target: { value: '' } });
@@ -75,6 +75,50 @@ describe('BeanForm', () => {
 
     await waitFor(() => {
       expect(finalPriceInput).toHaveValue('0.00');
+    });
+  });
+
+  it('shows a template error instead of crashing when no complete sale unit can be formed', async () => {
+    const template = useSettingsStore.getState().costTemplateSettings.templates[0];
+
+    if (!template) {
+      throw new Error('Expected a default cost template.');
+    }
+
+    useSettingsStore.setState({
+      costTemplateSettings: {
+        defaultTemplateId: 'template-1',
+        templates: [
+          {
+            ...template,
+            saleUnitWeightGrams: 500,
+          },
+        ],
+        updatedAt: null,
+      },
+    });
+    const onSubmit = vi.fn();
+
+    renderWithQuery(
+      <BeanForm
+        autoApplyDefaultCostTemplate
+        enableCostTemplateSelection
+        initialValues={{
+          ...createDefaultBeanFormValues(),
+          displayName: '测试生豆',
+          processMethod: '水洗',
+          variety: 'Heirloom',
+        }}
+        onSubmit={onSubmit}
+        submitLabel="创建生豆"
+      />,
+    );
+
+    expect(await screen.findAllByText('无法形成完整销售份数，请调整模板参数。')).not.toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: /创建生豆/ }));
+
+    await waitFor(() => {
+      expect(onSubmit).not.toHaveBeenCalled();
     });
   });
 

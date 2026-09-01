@@ -1,4 +1,5 @@
 import App from 'antd/es/app';
+import Segmented from 'antd/es/segmented';
 import { Select } from '@/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
 import Input from '@/shared/components/ui/input';
@@ -8,7 +9,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { calculateRoastSaleCapacity, resolveBeanCostTemplate } from '@/modules/finance/services/financeProfitCalculation.service';
-import { ROAST_LEVEL_OPTIONS, normalizeRoastLevel } from '@/modules/roast/constants/roastLevel';
+import {
+  ROAST_LEVEL_OPTIONS,
+  ROAST_LEVEL_SOURCE_OPTIONS,
+  normalizeRoastLevel,
+  resolveRoastLevelFromAgtron,
+} from '@/modules/roast/constants/roastLevel';
 import { useRoastPlans } from '@/modules/roast/hooks';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { useUpdateRoastBatch } from '@/modules/roast/hooks/useRoastBatches';
@@ -20,14 +26,17 @@ import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 
 export type RoastBatchEditableFieldPath =
+  | 'beanAgtronColor'
   | 'developmentRatio'
   | 'firstCrackTime'
+  | 'groundAgtronColor'
   | 'greenBeanId'
   | 'inputWeightGrams'
   | 'notes'
   | 'outputWeightGrams'
   | 'roastDate'
   | 'roastLevel'
+  | 'roastLevelSource'
   | 'roastPlanId'
   | 'roastedBeanName'
   | 'salesMode'
@@ -52,8 +61,10 @@ const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | nu
   }
 
   return {
+    beanAgtronColor: batch.beanAgtronColor,
     developmentRatio: batch.developmentRatio,
     firstCrackTime: batch.firstCrackTime,
+    groundAgtronColor: batch.groundAgtronColor,
     greenBeanId: batch.greenBeanId,
     greenBeanName: batch.greenBeanName,
     inputWeightGrams: batch.inputWeightGrams,
@@ -61,6 +72,7 @@ const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | nu
     outputWeightGrams: batch.outputWeightGrams,
     roastDate: batch.roastDate,
     roastLevel: normalizeRoastLevel(batch.roastLevel),
+    roastLevelSource: batch.roastLevelSource ?? 'dehydrationRate',
     roastPlanId: batch.roastPlanId,
     roastPlanName: batch.roastPlanName,
     roastedBeanName: batch.roastedBeanName,
@@ -105,10 +117,14 @@ export function RoastBatchFieldEditorDrawer({
   const effectiveFieldPath = open && editableFieldPath != null ? editableFieldPath : lastOpenContext?.fieldPath;
   const fieldLabel = useMemo(() => {
     switch (effectiveFieldPath) {
+      case 'beanAgtronColor':
+        return '咖啡豆表色值';
       case 'developmentRatio':
         return '发展比';
       case 'firstCrackTime':
         return '一爆时间';
+      case 'groundAgtronColor':
+        return '咖啡粉色值';
       case 'greenBeanId':
         return '生豆';
       case 'inputWeightGrams':
@@ -121,6 +137,8 @@ export function RoastBatchFieldEditorDrawer({
         return '烘焙日期';
       case 'roastLevel':
         return '烘焙程度';
+      case 'roastLevelSource':
+        return '烘焙程度根据';
       case 'roastPlanId':
         return '烘焙计划';
       case 'roastedBeanName':
@@ -239,8 +257,10 @@ export function RoastBatchFieldEditorDrawer({
     }
 
     const updateInput: RoastBatchUpdateInput = {
+      beanAgtronColor: draft.beanAgtronColor,
       developmentRatio: draft.developmentRatio,
       firstCrackTime: draft.firstCrackTime,
+      groundAgtronColor: draft.groundAgtronColor,
       greenBeanId: draft.greenBeanId,
       greenBeanName: draft.greenBeanName,
       inputWeightGrams: draft.inputWeightGrams,
@@ -248,6 +268,7 @@ export function RoastBatchFieldEditorDrawer({
       outputWeightGrams: draft.outputWeightGrams,
       roastDate: draft.roastDate,
       roastLevel: draft.roastLevel,
+      roastLevelSource: draft.roastLevelSource,
       roastPlanId: draft.roastPlanId,
       roastPlanName: draft.roastPlanName,
       roastedBeanName: draft.roastedBeanName,
@@ -386,16 +407,62 @@ export function RoastBatchFieldEditorDrawer({
             value={draft.outputWeightGrams ?? 0}
           />
         );
+      case 'beanAgtronColor':
+        return (
+          <InputNumber
+            aria-label={fieldLabel}
+            max={100}
+            min={0}
+            onChange={(value) => {
+              updateDraft('beanAgtronColor', value ?? undefined);
+            }}
+            precision={1}
+            style={{ width: '100%' }}
+            value={draft.beanAgtronColor ?? null}
+          />
+        );
+      case 'groundAgtronColor':
+        return (
+          <InputNumber
+            aria-label={fieldLabel}
+            max={100}
+            min={0}
+            onChange={(value) => {
+              updateDraft('groundAgtronColor', value ?? undefined);
+            }}
+            precision={1}
+            style={{ width: '100%' }}
+            value={draft.groundAgtronColor ?? null}
+          />
+        );
       case 'roastLevel':
         return (
           <Select
             aria-label={fieldLabel}
             onChange={(value) => {
               updateDraft('roastLevel', value);
+              updateDraft('roastLevelSource', 'manual');
             }}
             options={ROAST_LEVEL_OPTIONS.map((level) => ({ label: level, value: level }))}
             showSearch={false}
             value={draft.roastLevel}
+          />
+        );
+      case 'roastLevelSource':
+        return (
+          <Segmented
+            block
+            options={ROAST_LEVEL_SOURCE_OPTIONS.map((option) => ({ label: option.label, value: option.value }))}
+            value={draft.roastLevelSource ?? 'dehydrationRate'}
+            onChange={(value) => {
+              const source = value as NonNullable<RoastBatchUpdateInput['roastLevelSource']>;
+              const agtronValue = source === 'beanAgtron' ? draft.beanAgtronColor : draft.groundAgtronColor;
+              const nextLevel = source === 'manual' ? draft.roastLevel : resolveRoastLevelFromAgtron(agtronValue ?? Number.NaN);
+              updateDraft('roastLevelSource', source);
+              if (nextLevel != null) {
+                updateDraft('roastLevel', nextLevel);
+              }
+            }}
           />
         );
       case 'developmentRatio':

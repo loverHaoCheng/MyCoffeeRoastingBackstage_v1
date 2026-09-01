@@ -6,7 +6,7 @@ import {
   buildCostTemplateById,
   calculateEstimatedBeanProfit,
   calculateRoastBatchProfit,
-  resolveEffectiveSaleUnitPrice,
+  resolveRoastBatchSaleUnitPrice,
 } from './financeProfitCalculation.service';
 
 import type {
@@ -31,6 +31,7 @@ interface CalculateFinanceOverviewInput {
   incomeRecords: FinanceIncomeRecord[];
   roastBatches: RoastBatchRecord[];
   range: FinanceDateRange;
+  defaultTemplateId?: null | string;
   templates: CostTemplate[];
 }
 
@@ -42,6 +43,7 @@ interface BuildFinanceOverviewDrilldownInput {
   key: FinanceOverviewDrilldownKey;
   roastBatches: RoastBatchRecord[];
   range: FinanceDateRange;
+  defaultTemplateId?: null | string;
   templates: CostTemplate[];
 }
 
@@ -101,14 +103,28 @@ const buildBeanMap = (beans: Bean[]): Map<string, Bean> => {
   return new Map(beans.map((bean) => [String(bean.id), bean]));
 };
 
+const buildBeanNameMap = (beans: Bean[]): Map<string, Bean> => {
+  return new Map(beans.map((bean) => [bean.name.trim(), bean]));
+};
+
 const buildRoastBatchRevenueRecords = (
   roastBatches: RoastBatchRecord[],
   beans: Bean[],
   range: FinanceDateRange,
   templatesById: Map<string, CostTemplate>,
   shippingCostByBatchId: Map<string, number>,
+  calculations: CostCalculationRecord[] = [],
+  fallbackTemplate?: CostTemplate,
 ): RoastBatchRevenueDetail[] => {
   const beanMap = buildBeanMap(beans);
+  const beanNameMap = buildBeanNameMap(beans);
+  const calculationByBeanId = new Map<string, CostCalculationRecord>();
+  calculations.forEach((calculation) => {
+    const current = calculationByBeanId.get(calculation.beanId);
+    if (!current || calculation.updatedAt > current.updatedAt) {
+      calculationByBeanId.set(calculation.beanId, calculation);
+    }
+  });
 
   return roastBatches
     .filter((batch) => {
@@ -118,10 +134,18 @@ const buildRoastBatchRevenueRecords = (
     })
     .map((batch) => {
       const roastDate = getFinanceDateTextFromTimestamp(batch.roastDate);
-      const bean = beanMap.get(batch.greenBeanId);
+      const bean = beanMap.get(batch.greenBeanId) ?? beanNameMap.get(batch.greenBeanName.trim());
+      const historicalCalculation = calculationByBeanId.get(batch.greenBeanId);
       const shippingCost = shippingCostByBatchId.get(batch.id) ?? 0;
-      const metrics = calculateRoastBatchProfit(batch, bean, templatesById, shippingCost);
-      const saleUnitPrice = resolveEffectiveSaleUnitPrice(bean, batch.finalSaleUnitPrice);
+      const metrics = calculateRoastBatchProfit(
+        batch,
+        bean,
+        templatesById,
+        shippingCost,
+        historicalCalculation,
+        fallbackTemplate,
+      );
+      const saleUnitPrice = resolveRoastBatchSaleUnitPrice(batch, bean, historicalCalculation?.saleUnitPrice);
       const saleUnitCount = batch.soldUnitCount ?? 1;
       const amount = metrics?.revenue ?? 0;
       const roastedBeanName = batch.roastedBeanName?.trim();
@@ -251,9 +275,10 @@ export const calculateFinanceOverview = ({
   roastBatches,
   range,
   templates,
+  defaultTemplateId,
 }: CalculateFinanceOverviewInput): FinanceOverviewMetrics => {
-  void calculations;
   const templatesById = buildCostTemplateById(templates);
+  const fallbackTemplate = defaultTemplateId ? templatesById.get(defaultTemplateId) : undefined;
   const shippingCostByBatchId = buildShippingCostByBatchId(expenseRecords, range);
   const roastBatchRevenueRecords = buildRoastBatchRevenueRecords(
     roastBatches,
@@ -261,6 +286,8 @@ export const calculateFinanceOverview = ({
     range,
     templatesById,
     shippingCostByBatchId,
+    calculations,
+    fallbackTemplate,
   );
   const estimatedProfitMetrics = beans
     .map((bean) => calculateEstimatedBeanProfit(bean, templatesById))
@@ -327,6 +354,7 @@ export const buildFinanceOverviewDrilldown = ({
   key,
   roastBatches,
   range,
+  defaultTemplateId,
   templates,
 }: BuildFinanceOverviewDrilldownInput): FinanceOverviewDrilldownPayload => {
   if (key === 'estimatedRevenue' || key === 'estimatedBeanCost' || key === 'estimatedProfit') {
@@ -388,6 +416,8 @@ export const buildFinanceOverviewDrilldown = ({
       range,
       buildCostTemplateById(templates),
       buildShippingCostByBatchId(expenseRecords, range),
+      calculations,
+      defaultTemplateId ? buildCostTemplateById(templates).get(defaultTemplateId) : undefined,
     );
     const manualIncomeRecords: FinanceOverviewDetailItem[] = key === 'realizedIncome' ? incomeRecords
       .filter((record) => record.status === 'received' && isDateWithinFinanceRange(record.incomeDate, range))

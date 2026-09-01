@@ -24,7 +24,7 @@ describe('roastBatchService', () => {
     vi.restoreAllMocks();
   });
 
-  it('falls back to roast_batches when roast_batch_overview misses sales_mode', async () => {
+  it('falls back to roast_batches when roast_batch_overview misses required sales fields', async () => {
     const listSpy = vi.spyOn(PocketBaseRestClient.prototype, 'list').mockImplementation((collectionName) => {
       if (collectionName === 'roast_batch_overview') {
         return Promise.resolve([{

@@ -14,10 +14,10 @@ const NON_TEXT_INPUT_TYPES = new Set([
   'submit',
 ]);
 
-const VIEWPORT_EDGE_PADDING_PX = 12;
+const VIEWPORT_EDGE_PADDING_PX = 16;
 const SCROLL_TOLERANCE_PX = 6;
 const KEYBOARD_VISIBLE_THRESHOLD_PX = 120;
-const KEYBOARD_SETTLE_DELAY_MS = 180;
+const KEYBOARD_SETTLE_DELAY_MS = 260;
 const MOBILE_EDITING_ATTRIBUTE = 'data-app-mobile-editing';
 const VISUAL_VIEWPORT_HEIGHT_VARIABLE = '--app-visual-viewport-height';
 const VISUAL_VIEWPORT_OFFSET_TOP_VARIABLE = '--app-visual-viewport-offset-top';
@@ -370,11 +370,15 @@ export function useMobileKeyboardViewportFocus({
     };
 
     const scheduleKeyboardAwareSync = () => {
-      scheduleSync('auto');
-      keyboardSettleTimerRef.current = window.setTimeout(() => {
-        keyboardSettleTimerRef.current = null;
-        scheduleSync('smooth');
-      }, KEYBOARD_SETTLE_DELAY_MS);
+      // The first frame prevents the browser's native focus scroll from racing our correction.
+      animationFrameRef.current = window.requestAnimationFrame(() => {
+        animationFrameRef.current = null;
+        scheduleSync('auto');
+        keyboardSettleTimerRef.current = window.setTimeout(() => {
+          keyboardSettleTimerRef.current = null;
+          scheduleSync('smooth');
+        }, KEYBOARD_SETTLE_DELAY_MS);
+      });
     };
 
     const handleFocusIn = (event: FocusEvent) => {

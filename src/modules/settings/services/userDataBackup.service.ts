@@ -23,6 +23,9 @@ const backupCollections = [
   'ai_roast_reviews',
   'ai_roast_recommendations',
   'ai_roast_feedback',
+  'ai_roast_conversations',
+  'ai_roast_messages',
+  'ai_analysis_tasks',
   'finance_expense_records',
   'finance_income_records',
   'cost_calculations',
@@ -37,6 +40,9 @@ const optionalBackupCollections = new Set<BackupCollectionName>([
   'ai_roast_profiles',
   'ai_roast_recommendations',
   'ai_roast_reviews',
+  'ai_roast_conversations',
+  'ai_roast_messages',
+  'ai_analysis_tasks',
   'app_settings',
   'bean_sale_specs',
   'cost_calculations',
@@ -192,6 +198,16 @@ const relationFieldMappings: Partial<Record<BackupCollectionName, Partial<Record
     machine_id: 'roasting_machines',
     roast_batch_id: 'roast_batches',
   },
+  ai_roast_conversations: {
+    green_bean_id: 'green_beans',
+    roast_batch_id: 'roast_batches',
+  },
+  ai_roast_messages: {
+    conversation_id: 'ai_roast_conversations',
+  },
+  ai_analysis_tasks: {
+    roast_batch_id: 'roast_batches',
+  },
 };
 
 const clearWhenRelationTargetMissing = new Set<string>([
@@ -203,6 +219,10 @@ const clearWhenRelationTargetMissing = new Set<string>([
   'ai_roast_reviews.curve_record_id',
   'ai_roast_reviews.machine_id',
   'ai_roast_reviews.roast_batch_id',
+  'ai_roast_conversations.green_bean_id',
+  'ai_roast_conversations.roast_batch_id',
+  'ai_roast_messages.conversation_id',
+  'ai_analysis_tasks.roast_batch_id',
   'roast_profiles.roaster_machine_id',
 ]);
 

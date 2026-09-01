@@ -13,7 +13,7 @@ export const costCalculationFormSchema = z.object({
   otherCost: z.number().nonnegative('其他费用不能为负数'),
   saleUnitWeightGrams: z.number().int().positive('请输入单份熟豆重量'),
   saleUnitPrice: z.number().nonnegative('单份熟豆售价不能为负数'),
-  targetProfitRate: z.number().min(0, '目标利润率不能为负数').max(1000, '目标利润率过高'),
+  targetProfitRate: z.number().min(0, '毛利率不能为负数').max(99.9, '毛利率必须小于 100%'),
   notes: z.string().trim().max(2000, '备注长度不能超过 2000 个字符').nullable().optional(),
 });
 

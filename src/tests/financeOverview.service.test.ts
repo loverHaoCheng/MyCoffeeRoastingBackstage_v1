@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildHistoricalSaleSnapshotUpdate,
   buildReservedShippingUnitCountByBatchId,
   buildFinanceOverviewDrilldown,
   calculateFinanceOverview,
@@ -97,6 +98,181 @@ describe('finance profit calculations', () => {
       revenue: 240,
       saleUnitCount: 3,
     });
+  });
+
+  it('uses sales snapshots after bean costs and templates change', () => {
+    const batch: RoastBatchRecord = {
+      ...createBatch('snapshot-batch', 2),
+      beanCostPerSaleUnitSnapshot: 24,
+      nonBeanCostPerSaleUnitSnapshot: 10,
+      saleUnitPriceSnapshot: 80,
+    };
+    const changedBean: Bean = { ...bean, costPerKg: 300, defaultSaleUnitPrice: 120 };
+    const changedTemplate: CostTemplate = {
+      ...template,
+      energyCost: 30,
+      otherCost: 20,
+      packagingCost: 50,
+      roastInputWeightGrams: 500,
+    };
+
+    expect(calculateRoastBatchProfit(batch, changedBean, new Map([[changedTemplate.id, changedTemplate]]), 12))
+      .toMatchObject({ beanCost: 48, nonBeanCost: 20, profit: 80, revenue: 160, shippingCost: 12 });
+  });
+
+  it('falls back to a saved cost calculation when the current bean is unavailable', () => {
+    const calculation = {
+      ...template,
+      beanId: 'bean-1',
+      beanName: bean.name,
+      calculationName: '历史核算',
+      costPerRoastedKg: 0,
+      costPerSaleUnit: 0,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      dataSource: 'greenBean' as const,
+      greenBeanCost: 24,
+      id: 'calculation-1',
+      laborCost: 10,
+      profitPerSaleUnit: 0,
+      profitRate: 0,
+      purchaseCostPerKg: 120,
+      roastedOutputWeightGrams: 160,
+      saleUnitCount: 2,
+      saleUnitPrice: 80,
+      saleUnitWeightGrams: 80,
+      suggestedSalePrice: 0,
+      targetProfitRate: 20,
+      totalBatchCost: 44,
+      updatedAt: '2026-07-08T00:00:00.000Z',
+    };
+
+    expect(calculateRoastBatchProfit(createBatch('calculation-batch', 2), undefined, new Map(), 0, calculation))
+      .toMatchObject({ beanCost: 24, nonBeanCost: 10, profit: 126, revenue: 160 });
+  });
+
+  it('uses the default template for a historical sale whose bean has no template relation', () => {
+    const beanWithoutTemplate: Bean = { ...bean, costTemplateId: null };
+
+    expect(calculateRoastBatchProfit(
+      createBatch('default-template-batch', 2),
+      beanWithoutTemplate,
+      new Map([[template.id, template]]),
+      0,
+      undefined,
+      template,
+    )).toMatchObject({ beanCost: 48, nonBeanCost: 20, profit: 92, revenue: 160 });
+  });
+
+  it('matches a historical sale to the current bean by name when IDs changed', () => {
+    const historicalBatch = { ...createBatch('name-match-batch', 1), greenBeanId: 'old-bean-id' };
+    const overview = calculateFinanceOverview({
+      beans: [bean],
+      calculations: [],
+      defaultTemplateId: template.id,
+      expenseRecords: [],
+      incomeRecords: [],
+      range,
+      roastBatches: [historicalBatch],
+      templates: [template],
+    });
+
+    expect(overview.realizedBeanCost).toBe(24);
+  });
+
+  it('creates one-time snapshots only for completed sale records', () => {
+    const templatesById = new Map([[template.id, template]]);
+
+    expect(buildHistoricalSaleSnapshotUpdate(createBatch('batch-1', 2), bean, templatesById)).toEqual({
+      beanCostPerSaleUnitSnapshot: 24,
+      nonBeanCostPerSaleUnitSnapshot: 10,
+      saleUnitPriceSnapshot: 80,
+    });
+    expect(buildHistoricalSaleSnapshotUpdate({ ...createBatch('batch-2', 1), salesMode: 'selfUse' }, bean, templatesById))
+      .toBeNull();
+    expect(buildHistoricalSaleSnapshotUpdate({
+      ...createBatch('batch-3', 1),
+      beanCostPerSaleUnitSnapshot: 24,
+      nonBeanCostPerSaleUnitSnapshot: 10,
+      saleUnitPriceSnapshot: 80,
+    }, bean, templatesById)).toBeNull();
+  });
+
+  it('repairs all-zero snapshots from historical calculation data first', () => {
+    const allZeroBatch: RoastBatchRecord = {
+      ...createBatch('all-zero-batch', 1),
+      finalSaleUnitPrice: 36,
+      saleUnitPriceSnapshot: 0,
+      beanCostPerSaleUnitSnapshot: 0,
+      nonBeanCostPerSaleUnitSnapshot: 0,
+    };
+    const calculation = {
+      ...template,
+      beanId: bean.id.toString(),
+      beanName: bean.name,
+      calculationName: '历史核算',
+      costPerRoastedKg: 0,
+      costPerSaleUnit: 0,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      dataSource: 'greenBean' as const,
+      greenBeanCost: 24,
+      id: 'calculation-all-zero',
+      laborCost: 10,
+      profitPerSaleUnit: 0,
+      profitRate: 0,
+      purchaseCostPerKg: 120,
+      roastedOutputWeightGrams: 160,
+      saleUnitCount: 2,
+      saleUnitPrice: 80,
+      saleUnitWeightGrams: 80,
+      suggestedSalePrice: 0,
+      targetProfitRate: 20,
+      totalBatchCost: 44,
+      updatedAt: '2026-07-08T00:00:00.000Z',
+    };
+
+    expect(buildHistoricalSaleSnapshotUpdate(allZeroBatch, bean, new Map([[template.id, template]]), calculation))
+      .toEqual({
+        beanCostPerSaleUnitSnapshot: 12,
+        nonBeanCostPerSaleUnitSnapshot: 5,
+        saleUnitPriceSnapshot: 36,
+      });
+  });
+
+  it('does not use all-zero snapshots as historical costs while backfill is pending', () => {
+    const allZeroBatch: RoastBatchRecord = {
+      ...createBatch('all-zero-calculation-batch', 2),
+      finalSaleUnitPrice: 36,
+      saleUnitPriceSnapshot: 0,
+      beanCostPerSaleUnitSnapshot: 0,
+      nonBeanCostPerSaleUnitSnapshot: 0,
+    };
+    const calculation = {
+      ...template,
+      beanId: bean.id.toString(),
+      beanName: bean.name,
+      calculationName: '历史核算',
+      costPerRoastedKg: 0,
+      costPerSaleUnit: 0,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      dataSource: 'greenBean' as const,
+      greenBeanCost: 24,
+      id: 'calculation-all-zero-profit',
+      laborCost: 10,
+      profitPerSaleUnit: 0,
+      profitRate: 0,
+      purchaseCostPerKg: 120,
+      roastedOutputWeightGrams: 160,
+      saleUnitCount: 2,
+      saleUnitPrice: 80,
+      saleUnitWeightGrams: 80,
+      suggestedSalePrice: 0,
+      targetProfitRate: 20,
+      totalBatchCost: 44,
+      updatedAt: '2026-07-08T00:00:00.000Z',
+    };
+
+    expect(calculateRoastBatchProfit(allZeroBatch, bean, new Map([[template.id, template]]), 0, calculation))
+      .toMatchObject({ beanCost: 24, nonBeanCost: 10, profit: 38, revenue: 72 });
   });
 
   it('allocates related paid shipping by the number of associated sale units', () => {

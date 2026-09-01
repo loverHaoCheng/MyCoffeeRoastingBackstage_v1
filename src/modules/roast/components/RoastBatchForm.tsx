@@ -3,19 +3,26 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import Button from 'antd/es/button';
 import App from 'antd/es/app';
+import Segmented from 'antd/es/segmented';
 import { Select } from '@/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
 
 import type { Bean, RoastPlan } from '@/types/domain';
-import type { RoastBatchEvaluation, RoastBatchSalesMode } from '@/modules/roast/types/roastBatch';
-import { calculateRoastSaleCapacity, resolveBeanCostTemplate } from '@/modules/finance/services/financeProfitCalculation.service';
+import type { RoastBatchEvaluation, RoastBatchSalesMode, RoastLevelSource } from '@/modules/roast/types/roastBatch';
+import {
+  buildRoastBatchSaleSnapshot,
+  calculateRoastSaleCapacity,
+  resolveBeanCostTemplate,
+} from '@/modules/finance/services/financeProfitCalculation.service';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import {
   ROAST_LEVEL_OPTIONS,
+  ROAST_LEVEL_SOURCE_OPTIONS,
   calculateDehydrationRate,
   normalizeRoastLevel,
+  resolveRoastLevelFromAgtron,
   resolveRoastLevelFromDehydrationRate,
 } from '@/modules/roast/constants/roastLevel';
 import { getSelectableRoastPlans, isGenericRoastPlan } from '@/modules/roast/utils/roastPlanSelection';
@@ -37,6 +44,9 @@ export interface RoastBatchFormState {
   inputWeightGrams: number;
   outputWeightGrams: number;
   roastLevel: string;
+  roastLevelSource: RoastLevelSource;
+  beanAgtronColor: number | undefined;
+  groundAgtronColor: number | undefined;
   developmentRatio: number | undefined;
   firstCrackTime: number | undefined;
   totalRoastTime: number | undefined;
@@ -56,12 +66,18 @@ export interface RoastBatchFormSubmitValue {
   outputWeightGrams: number;
   roastDate: string;
   roastLevel: string;
+  roastLevelSource: RoastLevelSource;
+  beanAgtronColor: number | undefined;
+  groundAgtronColor: number | undefined;
   roastPlanId: string | undefined;
   roastPlanName: string | undefined;
   roastedBeanName: string;
   salesMode: RoastBatchSalesMode;
   totalRoastTime: number | undefined;
   finalSaleUnitPrice: number | null | undefined;
+  saleUnitPriceSnapshot: number | undefined;
+  beanCostPerSaleUnitSnapshot: number | undefined;
+  nonBeanCostPerSaleUnitSnapshot: number | undefined;
   soldUnitCount: number;
 }
 
@@ -78,6 +94,7 @@ interface RoastBatchFormProps {
   submitDisabled?: boolean;
   submitIcon: ReactNode;
   submitLabel: string;
+  actionBarAtTop?: boolean;
   trainingSection?: ReactNode;
   value: RoastBatchFormState;
 }
@@ -106,6 +123,7 @@ export function RoastBatchForm({
   submitDisabled = false,
   submitIcon,
   submitLabel,
+  actionBarAtTop = false,
   trainingSection,
   value,
 }: RoastBatchFormProps) {
@@ -120,22 +138,38 @@ export function RoastBatchForm({
     () => beans.find((bean) => String(bean.id) === value.greenBeanId) ?? null,
     [beans, value.greenBeanId],
   );
-  const maximumSoldUnitCount = useMemo(() => {
+  const selectedCostTemplate = useMemo(() => {
     if (!selectedBean) {
       return null;
     }
 
-    const template = resolveBeanCostTemplate(selectedBean, new Map(costTemplateSettings.templates.map((item) => [item.id, item])));
-    return template ? calculateRoastSaleCapacity(value.inputWeightGrams, template).maximumSoldUnitCount : null;
-  }, [costTemplateSettings.templates, selectedBean, value.inputWeightGrams]);
+    return resolveBeanCostTemplate(
+      selectedBean,
+      new Map(costTemplateSettings.templates.map((item) => [item.id, item])),
+    );
+  }, [costTemplateSettings.templates, selectedBean]);
+  const maximumSoldUnitCount = useMemo(() => {
+    return selectedCostTemplate
+      ? calculateRoastSaleCapacity(value.inputWeightGrams, selectedCostTemplate).maximumSoldUnitCount
+      : null;
+  }, [selectedCostTemplate, value.inputWeightGrams]);
   const dehydrationRate = useMemo(
     () => calculateDehydrationRate(value.inputWeightGrams, value.outputWeightGrams),
     [value.inputWeightGrams, value.outputWeightGrams],
   );
-  const suggestedRoastLevel = useMemo(
-    () => resolveRoastLevelFromDehydrationRate(dehydrationRate),
-    [dehydrationRate],
-  );
+  const suggestedRoastLevel = useMemo(() => {
+    if (value.roastLevelSource === 'beanAgtron') {
+      return resolveRoastLevelFromAgtron(value.beanAgtronColor ?? Number.NaN)
+        ?? normalizeRoastLevel(value.roastLevel);
+    }
+
+    if (value.roastLevelSource === 'groundAgtron') {
+      return resolveRoastLevelFromAgtron(value.groundAgtronColor ?? Number.NaN)
+        ?? normalizeRoastLevel(value.roastLevel);
+    }
+
+    return resolveRoastLevelFromDehydrationRate(dehydrationRate);
+  }, [dehydrationRate, value.beanAgtronColor, value.groundAgtronColor, value.roastLevel, value.roastLevelSource]);
   const normalizedRoastLevel = normalizeRoastLevel(value.roastLevel);
   const lossRate = value.inputWeightGrams > 0
     ? (((value.inputWeightGrams - value.outputWeightGrams) / value.inputWeightGrams) * 100).toFixed(1)
@@ -146,14 +180,14 @@ export function RoastBatchForm({
   }, [resetKey]);
 
   useEffect(() => {
-    if (roastLevelManualOverrideRef.current) {
+    if (roastLevelManualOverrideRef.current || value.roastLevelSource === 'manual') {
       return;
     }
 
     onChange((current) =>
       current.roastLevel === suggestedRoastLevel ? current : { ...current, roastLevel: suggestedRoastLevel },
     );
-  }, [onChange, suggestedRoastLevel]);
+  }, [onChange, suggestedRoastLevel, value.roastLevelSource]);
 
   const handleSubmit = () => {
     if (!value.roastDate) {
@@ -186,7 +220,13 @@ export function RoastBatchForm({
       return;
     }
 
+    const saleSnapshot = value.salesMode === 'sale' && selectedBean && selectedCostTemplate
+      ? buildRoastBatchSaleSnapshot(selectedBean, selectedCostTemplate, value.finalSaleUnitPrice)
+      : null;
+
     onSubmit({
+      beanAgtronColor: value.beanAgtronColor,
+      beanCostPerSaleUnitSnapshot: saleSnapshot?.beanCostPerSaleUnit,
       evaluation: {
         allowTraining: value.evaluation.allowTraining,
         defectNotes: value.evaluation.defectNotes?.trim() ? value.evaluation.defectNotes.trim() : undefined,
@@ -199,6 +239,7 @@ export function RoastBatchForm({
       },
       developmentRatio: value.developmentRatio,
       firstCrackTime: value.firstCrackTime,
+      groundAgtronColor: value.groundAgtronColor,
       greenBeanId: value.greenBeanId,
       greenBeanName: value.greenBeanName,
       inputWeightGrams: value.inputWeightGrams,
@@ -206,18 +247,28 @@ export function RoastBatchForm({
       outputWeightGrams: value.outputWeightGrams,
       roastDate: value.roastDate,
       roastLevel: normalizedRoastLevel,
+      roastLevelSource: value.roastLevelSource,
       roastPlanId: value.roastPlanId === '' ? undefined : value.roastPlanId,
       roastPlanName: value.roastPlanName === '' ? undefined : value.roastPlanName,
       roastedBeanName: value.roastedBeanName.trim() || value.greenBeanName,
       salesMode: value.salesMode,
       totalRoastTime: value.totalRoastTime,
       finalSaleUnitPrice: value.salesMode === 'sale' ? value.finalSaleUnitPrice ?? 0 : null,
+      nonBeanCostPerSaleUnitSnapshot: saleSnapshot?.nonBeanCostPerSaleUnit,
+      saleUnitPriceSnapshot: saleSnapshot?.saleUnitPrice,
       soldUnitCount: value.salesMode === 'sale' ? value.soldUnitCount : 0,
     });
   };
 
   return (
-    <div className={styles.form}>
+    <form
+      className={styles.form}
+      data-action-bar-at-top={actionBarAtTop ? 'true' : undefined}
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSubmit();
+      }}
+    >
       <section className={styles.section}>
         <h4>基本信息</h4>
         <div className={styles.fieldGrid}>
@@ -238,19 +289,48 @@ export function RoastBatchForm({
           </div>
           <div className={styles.field} data-field-path="roastLevel">
             {renderRequiredLabel('烘焙程度')}
+            <span className={styles.fieldLabel}>烘焙程度根据</span>
+            <Segmented
+              block
+              options={ROAST_LEVEL_SOURCE_OPTIONS.map((option) => ({ label: option.label, value: option.value }))}
+              value={value.roastLevelSource}
+              onChange={(nextValue) => {
+                const nextSource: RoastLevelSource = nextValue;
+                const nextLevel = nextSource === 'manual'
+                  ? value.roastLevel
+                  : nextSource === 'beanAgtron'
+                    ? resolveRoastLevelFromAgtron(value.beanAgtronColor ?? Number.NaN)
+                    : nextSource === 'groundAgtron'
+                      ? resolveRoastLevelFromAgtron(value.groundAgtronColor ?? Number.NaN)
+                      : resolveRoastLevelFromDehydrationRate(dehydrationRate);
+
+                roastLevelManualOverrideRef.current = nextSource === 'manual';
+                onChange((current) => ({
+                  ...current,
+                  roastLevel: nextLevel ?? current.roastLevel,
+                  roastLevelSource: nextSource,
+                }));
+              }}
+            />
             <Select
               aria-label="烘焙程度"
               value={normalizedRoastLevel}
               onChange={(nextValue) => {
                 roastLevelManualOverrideRef.current = true;
-                onChange((current) => ({ ...current, roastLevel: normalizeRoastLevel(nextValue) }));
+                onChange((current) => ({
+                  ...current,
+                  roastLevel: normalizeRoastLevel(nextValue),
+                  roastLevelSource: 'manual',
+                }));
               }}
               options={ROAST_LEVEL_OPTIONS.map((level) => ({ label: level, value: level }))}
               showSearch={false}
               style={{ width: '100%' }}
             />
             <div className={styles.inlineHint}>
-              自动匹配：{suggestedRoastLevel}，当前脱水率 {dehydrationRate.toFixed(1)}%
+              当前判断：{suggestedRoastLevel}；脱水率 {dehydrationRate.toFixed(1)}%
+              {value.roastLevelSource === 'beanAgtron' && value.beanAgtronColor == null ? '；请输入咖啡豆表色值后自动判断' : null}
+              {value.roastLevelSource === 'groundAgtron' && value.groundAgtronColor == null ? '；请输入咖啡粉色值后自动判断' : null}
             </div>
           </div>
         </div>
@@ -425,6 +505,34 @@ export function RoastBatchForm({
               style={{ width: '100%' }}
             />
           </div>
+          <div className={styles.field} data-field-path="beanAgtronColor">
+            <span className={styles.fieldLabel}>咖啡豆表色值 (Agtron)</span>
+            <InputNumber
+              aria-label="咖啡豆表色值"
+              max={100}
+              min={0}
+              precision={1}
+              value={value.beanAgtronColor}
+              onChange={(nextValue) => {
+                onChange((current) => ({ ...current, beanAgtronColor: nextValue ?? undefined }));
+              }}
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div className={styles.field} data-field-path="groundAgtronColor">
+            <span className={styles.fieldLabel}>咖啡粉色值 (Agtron)</span>
+            <InputNumber
+              aria-label="咖啡粉色值"
+              max={100}
+              min={0}
+              precision={1}
+              value={value.groundAgtronColor}
+              onChange={(nextValue) => {
+                onChange((current) => ({ ...current, groundAgtronColor: nextValue ?? undefined }));
+              }}
+              style={{ width: '100%' }}
+            />
+          </div>
           <div className={styles.field} data-field-path="developmentRatio">
             <span className={styles.fieldLabel}>失水率</span>
             <span className={styles.fieldValue}>{lossRate}%</span>
@@ -497,22 +605,24 @@ export function RoastBatchForm({
         />
       </section>
 
-      <DrawerActionBar compact>
-        {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
-        <Button
-          aria-label={submitLabel}
-          block
-          className={styles.submitButton}
-          disabled={isSubmitting || submitDisabled}
-          icon={submitIcon}
-          loading={isSubmitting}
-          onClick={handleSubmit}
-          size="large"
-          type="primary"
-        >
-          {submitLabel}
-        </Button>
-      </DrawerActionBar>
-    </div>
+      {!actionBarAtTop ? (
+        <DrawerActionBar compact>
+          {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
+          <Button
+            aria-label={submitLabel}
+            block
+            className={styles.submitButton}
+            disabled={isSubmitting || submitDisabled}
+            icon={submitIcon}
+            loading={isSubmitting}
+            size="large"
+            htmlType="submit"
+            type="primary"
+          >
+            {submitLabel}
+          </Button>
+        </DrawerActionBar>
+      ) : null}
+    </form>
   );
 }

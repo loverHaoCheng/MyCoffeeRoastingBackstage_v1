@@ -30,7 +30,7 @@ export function RoastPlanJsonImporter({ onCancel, onImport, resetSignal = 0 }: R
   };
 
   return (
-    <section className={styles.panel}>
+    <form className={styles.panel} onSubmit={(event) => { event.preventDefault(); handleImport(); }}>
       <div className={styles.header}>
         <div>
           <h2>根据 JSON 快速创建</h2>
@@ -57,10 +57,10 @@ export function RoastPlanJsonImporter({ onCancel, onImport, resetSignal = 0 }: R
       />
       <DrawerActionBar compact>
         {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
-        <Button icon={<ImportOutlined />} onClick={handleImport} type="primary">
+        <Button htmlType="submit" icon={<ImportOutlined />} type="primary">
           回填到表单
         </Button>
       </DrawerActionBar>
-    </section>
+    </form>
   );
 }

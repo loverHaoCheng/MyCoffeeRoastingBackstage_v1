@@ -24,6 +24,12 @@ FRONTEND_RELEASES_PATH="${FRONTEND_RELEASES_PATH:-/var/www/easybake-releases}"
 FRONTEND_CURRENT_LINK="${FRONTEND_CURRENT_LINK:-${FRONTEND_REMOTE_PATH%/}}"
 FRONTEND_RELEASES_TO_KEEP="${FRONTEND_RELEASES_TO_KEEP:-5}"
 FRONTEND_DEPLOY_LOCK_PATH="${FRONTEND_DEPLOY_LOCK_PATH:-${FRONTEND_RELEASES_PATH}/.easybake-deploy.lock}"
+POCKETBASE_DEPLOY_ENABLED="${POCKETBASE_DEPLOY_ENABLED:-true}"
+POCKETBASE_SERVICE_NAME="${POCKETBASE_SERVICE_NAME:-pocketbase}"
+POCKETBASE_REMOTE_DIR="${POCKETBASE_REMOTE_DIR:-/opt/pocketbase}"
+POCKETBASE_EXTENSION_REMOTE_DIR="${POCKETBASE_EXTENSION_REMOTE_DIR:-/opt/easybake-pocketbase-extension}"
+POCKETBASE_HTTP_URL="${POCKETBASE_HTTP_URL:-http://127.0.0.1:8090}"
+POCKETBASE_RELEASE_ID="${POCKETBASE_RELEASE_ID:-easybake-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
 VERSION_URL="${APP_URL%/}/version.json"
 HEALTH_URL="${APP_URL%/}/api/health"
 AUTH_LOGIN_URL="${APP_URL%/}/api/auth/login"
@@ -406,6 +412,96 @@ done < <(find "${releases_path}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -p
 REMOTE_SCRIPT
 }
 
+deploy_pocketbase_extension_with_rollback() {
+  if [[ "${POCKETBASE_DEPLOY_ENABLED}" != "true" ]]; then
+    echo "PocketBase extension deployment disabled."
+    return
+  fi
+
+  local source_dir="/tmp/${POCKETBASE_RELEASE_ID}-extension"
+  local binary_tmp="/tmp/${POCKETBASE_RELEASE_ID}-pocketbase"
+  local binary_name="pocketbase-${POCKETBASE_RELEASE_ID}"
+  local commit
+  commit="$(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+
+  ssh "${REMOTE_SSH_TARGET}" "rm -rf '${source_dir}' '${binary_tmp}' && mkdir -p '${source_dir}'"
+  rsync -az --delete --checksum server/pocketbase-extension/ "${REMOTE_SSH_TARGET}:${source_dir}/"
+
+  ssh "${REMOTE_SSH_TARGET}" bash -s -- \
+    "${source_dir}" "${binary_tmp}" "${binary_name}" "${POCKETBASE_REMOTE_DIR}" \
+    "${POCKETBASE_EXTENSION_REMOTE_DIR}" "${POCKETBASE_SERVICE_NAME}" \
+    "${POCKETBASE_HTTP_URL}" "${POCKETBASE_RELEASE_ID}" "${commit}" <<'REMOTE_SCRIPT'
+set -euo pipefail
+
+source_dir="$1"
+binary_tmp="$2"
+binary_name="$3"
+pocketbase_dir="$4"
+extension_dir="$5"
+service_name="$6"
+health_url="$7"
+release_id="$8"
+commit="$9"
+http_bind="${health_url#http://}"
+override_path="/etc/systemd/system/${service_name}.service.d/90-easybake-release.conf"
+override_backup="${override_path}.before-${release_id}"
+
+cd "${source_dir}"
+GOTOOLCHAIN=auto CGO_ENABLED=0 go build -trimpath \
+  -ldflags "-X main.buildVersion=${release_id} -X main.buildCommit=${commit} -X main.buildAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  -o "${binary_tmp}" .
+
+sudo install -m 0755 "${binary_tmp}" "${pocketbase_dir}/${binary_name}"
+sudo mkdir -p "${extension_dir}"
+sudo cp -f ./*.go ./go.mod ./go.sum "${extension_dir}/"
+
+rollback() {
+  if [[ -f "${override_backup}" ]]; then
+    sudo mv -f "${override_backup}" "${override_path}"
+  else
+    sudo rm -f "${override_path}"
+  fi
+  sudo systemctl daemon-reload
+  sudo systemctl restart "${service_name}" || true
+}
+
+if [[ -f "${override_path}" ]]; then
+  sudo cp -f "${override_path}" "${override_backup}"
+fi
+sudo mkdir -p "/etc/systemd/system/${service_name}.service.d"
+printf '[Service]\nExecStart=\nExecStart=%s/%s serve --dir=%s/pb_data --http=%s\n' \
+  "${pocketbase_dir}" "${binary_name}" "${pocketbase_dir}" "${http_bind}" \
+  | sudo tee "${override_path}" >/dev/null
+sudo systemctl daemon-reload
+
+if ! sudo systemctl restart "${service_name}" || ! sudo systemctl is-active --quiet "${service_name}"; then
+  echo "PocketBase service failed to start." >&2
+  rollback
+  exit 1
+fi
+
+health_payload=""
+for attempt in $(seq 1 15); do
+  health_payload="$(curl --max-time 8 --fail --silent "${health_url}/api/easybake/health" || true)"
+  [[ -n "${health_payload}" ]] && break
+  sleep 1
+done
+if [[ -z "${health_payload}" ]]; then
+  echo "PocketBase health endpoint did not become available." >&2
+  rollback
+  exit 1
+fi
+health_version="$(printf '%s' "${health_payload}" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')"
+if [[ "${health_version}" != "${release_id}" ]]; then
+  echo "PocketBase health version mismatch. Expected ${release_id}, got ${health_version:-unknown}." >&2
+  rollback
+  exit 1
+fi
+
+rm -rf "${source_dir}" "${binary_tmp}"
+REMOTE_SCRIPT
+}
+
 publish_frontend_release() {
   local release_id="$1"
   local staged_path="${FRONTEND_RELEASES_PATH}/${release_id}.next"
@@ -565,6 +661,9 @@ acquire_frontend_deploy_lock
 
 echo "🚀 Deploying and verifying BFF..."
 deploy_bff_with_rollback
+
+echo "🚀 Building, deploying and verifying PocketBase extension..."
+deploy_pocketbase_extension_with_rollback
 
 frontend_version="$(tr -d '[:space:]' < "${FRONTEND_RELEASE_DIR}/version.json")"
 frontend_release_label="$(node -e "const manifest = JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')); process.stdout.write(manifest.version);" "${FRONTEND_RELEASE_DIR}/version.json")"
