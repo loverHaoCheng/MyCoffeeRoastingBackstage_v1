@@ -375,6 +375,14 @@ export const handleSendRoastConversationMessage = async (request: IncomingMessag
       : 'batch_analysis';
   if (!content || content.length > MAX_MESSAGE_LENGTH) { sendApiError(response, 400, '请输入不超过 2000 个字符的问题。'); return; }
   let usageContext: RoastAiUsageContext | null = null;
+  const requestHeaders = (request as unknown as { headers?: IncomingMessage['headers'] }).headers;
+  const isStreaming = typeof requestHeaders?.accept === 'string' && requestHeaders.accept.includes('text/event-stream');
+  if (isStreaming && typeof response.writeHead === 'function') {
+    response.writeHead(200, { 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'Content-Type': 'text/event-stream; charset=utf-8', 'X-Accel-Buffering': 'no' });
+  }
+  const sendEvent = (event: string, data: unknown): void => {
+    if (isStreaming && typeof response.write === 'function') response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
 
   try {
     const selectedRoastBatchId = mode === 'general' ? '' : roastBatchId;
@@ -416,7 +424,10 @@ export const handleSendRoastConversationMessage = async (request: IncomingMessag
     );
     ensureRoastAiUsageAvailable(usageContext);
     await reserveRoastAiUsage(usageContext);
-    const reply = await requestRoastConversationReply({ batch, bean, history: conversationHistory, mode, question: content });
+    const replyInput = { batch, bean, history: conversationHistory, mode, question: content };
+    const reply = isStreaming
+      ? await requestRoastConversationReply(replyInput, { onDelta: (answer) => { sendEvent('delta', { answer }); } })
+      : await requestRoastConversationReply(replyInput);
     const planDraft = mode !== 'general' && reply.planDraft
       ? {
           ...reply.planDraft,
@@ -425,7 +436,7 @@ export const handleSendRoastConversationMessage = async (request: IncomingMessag
         }
       : undefined;
     const assistantMessage = await createRecord(session.token, MESSAGES, { owner: session.record.id, conversation_id: conversationId, role: 'assistant', content: reply.answer, ...(planDraft ? { plan_draft: planDraft } : {}) });
-    sendApiSuccess(response, {
+    const conversationPayload = {
       conversation: toConversation(conversation, sortConversationMessages([
         ...legacyMessages,
         ...batchConversationMessages,
@@ -433,7 +444,13 @@ export const handleSendRoastConversationMessage = async (request: IncomingMessag
         { content, id: `pending-user-${conversationId}`, role: 'user' },
         toConversationMessageRecord(assistantMessage),
       ])),
-    });
+    };
+    if (isStreaming) {
+      sendEvent('done', conversationPayload);
+      response.end();
+    } else {
+      sendApiSuccess(response, conversationPayload);
+    }
   } catch (error) {
     if (usageContext) {
       await releaseRoastAiUsageReservation(
@@ -442,6 +459,11 @@ export const handleSendRoastConversationMessage = async (request: IncomingMessag
       );
     }
     const message = error instanceof PocketBaseGatewayError ? normalizeErrorPayload(error.payload).message ?? 'AI 对话保存失败。' : error instanceof Error ? error.message : 'AI 对话失败。';
-    sendApiError(response, error instanceof PocketBaseGatewayError ? error.status : 502, message);
+    if (isStreaming) {
+      sendEvent('error', { message });
+      response.end();
+    } else {
+      sendApiError(response, error instanceof PocketBaseGatewayError ? error.status : 502, message);
+    }
   }
 };

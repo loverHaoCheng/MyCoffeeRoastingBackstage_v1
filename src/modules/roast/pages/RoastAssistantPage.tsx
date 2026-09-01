@@ -75,6 +75,7 @@ export function RoastAssistantPage() {
   const [isNewConversation, setIsNewConversation] = useState(false);
   const [draft, setDraft] = useState<RoastPlanJsonInput | null>(null);
   const [pendingUserMessage, setPendingUserMessage] = useState<RoastConversationMessage | null>(null);
+  const [streamingAnswer, setStreamingAnswer] = useState('');
   const [isComposerFocused, setIsComposerFocused] = useState(false);
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const isNewConversationNavigationRef = useRef(false);
@@ -143,7 +144,7 @@ export function RoastAssistantPage() {
   const messages = conversationQuery.data?.messages ?? [];
   const sendMutation = useMutation({
     mutationFn: (submission: { beanId?: string; content: string; mode: RoastConversationMode; roastBatchId?: string }) =>
-      roastConversationService.send(submission.content, submission),
+      roastConversationService.send(submission.content, { ...submission, onDelta: setStreamingAnswer }),
     onSuccess: (conversation) => {
       const nextDisplayedBeanId = conversation.greenBeanId;
       const nextQueryKey = ['roast-conversation', nextDisplayedBeanId ? `bean-${nextDisplayedBeanId}` : 'general'];
@@ -154,6 +155,7 @@ export function RoastAssistantPage() {
         ...current.filter((item) => item.id !== conversation.id),
       ]);
       setPendingUserMessage(null);
+      setStreamingAnswer('');
       setIsNewConversation(false);
       setDisplayedBeanId(nextDisplayedBeanId);
       void queryClient.invalidateQueries({ queryKey: roastAiUsageQueryKeys.feature(usageFeature) });
@@ -161,6 +163,7 @@ export function RoastAssistantPage() {
     onError: (error: unknown, submission) => {
       setContent(submission.content);
       setPendingUserMessage(null);
+      setStreamingAnswer('');
       shouldAutoScrollReplyRef.current = false;
       void toast.error(getUserFacingErrorMessage(error, 'AI 对话发送失败，请稍后重试。'));
     },
@@ -224,6 +227,7 @@ export function RoastAssistantPage() {
 
     shouldAutoScrollReplyRef.current = true;
     setContent('');
+    setStreamingAnswer('');
     setPendingUserMessage({ content: submittedContent, id: 'pending-user-message', role: 'user' });
     void sendMutation.mutateAsync({
       ...(isGeneralMode ? {} : { beanId: activeBeanId, roastBatchId }),
@@ -280,7 +284,11 @@ export function RoastAssistantPage() {
     ]);
   }, [headerActionRegistration, openConversationHistory, startNewConversation]);
   const isGeneralConversationSelected = !displayedBeanId;
-  const visibleMessages = pendingUserMessage ? [...messages, pendingUserMessage] : messages;
+  const visibleMessages = [
+    ...messages,
+    ...(pendingUserMessage ? [pendingUserMessage] : []),
+    ...(streamingAnswer ? [{ content: streamingAnswer, id: 'streaming-assistant-message', role: 'assistant' as const }] : []),
+  ];
 
   return (
     <main className={styles.page}>

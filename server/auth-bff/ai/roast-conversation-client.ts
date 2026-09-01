@@ -10,6 +10,10 @@ export interface RoastConversationReply {
   planDraft?: Record<string, unknown>;
 }
 
+export interface RoastConversationReplyOptions {
+  onDelta?: (answer: string) => void;
+}
+
 const createSystemPrompt = (): string => [
   '你是 EasyBake 的 AI 烘焙助手。使用中文、简洁且专业地回答咖啡烘焙问题。',
   'mode 为 general 时，只回答咖啡与咖啡烘焙的常识性问题。不得引用、生豆、烘焙历史、曲线或计划上下文，不得生成 planDraft。',
@@ -31,7 +35,7 @@ const isBeanPlanReplyComplete = (answer: string, planDraft: unknown): planDraft 
 
 const buildRoastApiUrl = (path: string): string => new URL(path.replace(/^\//, ''), `${aiRoastBaseUrl}/`).toString();
 
-export const requestRoastConversationReply = async (input: Record<string, unknown>): Promise<RoastConversationReply> => {
+export const requestRoastConversationReply = async (input: Record<string, unknown>, options: RoastConversationReplyOptions = {}): Promise<RoastConversationReply> => {
   const apiKey = (process.env.AI_ROAST_API_KEY ?? '').trim();
   const model = (process.env.AI_ROAST_MODEL ?? '').trim() || aiRoastModel;
 
@@ -43,18 +47,85 @@ export const requestRoastConversationReply = async (input: Record<string, unknow
     body: JSON.stringify(buildRoastModelRequestBody([
       { content: createSystemPrompt(), role: 'system' },
       { content: JSON.stringify(input), role: 'user' },
-    ], model, 2200, 0.2)),
+    ], model, 2200, 0.2, Boolean(options.onDelta))),
     headers: getRoastModelRequestHeaders(apiKey),
     method: 'POST',
   }, aiRequestTimeoutMs);
-  const payload = await parseJsonResponse(upstream);
+  let payload: unknown;
+  let streamedText = '';
+  const contentType = upstream.headers.get('content-type') ?? '';
+  if (options.onDelta && upstream.ok && upstream.body && contentType.includes('text/event-stream')) {
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let raw = '';
+    let emittedAnswer = '';
+    const emit = (fragment: string) => {
+      raw += fragment;
+      streamedText = raw;
+      const match = /"answer"\s*:\s*"((?:\\.|[^"\\])*)/.exec(raw);
+      if (!match) return;
+      try {
+        const partial = JSON.parse(`"${match[1]}"`) as string;
+        if (partial.length > emittedAnswer.length) {
+          emittedAnswer = partial;
+          options.onDelta?.(partial);
+        }
+      } catch { /* JSON 字符串尚未闭合，等待下一段。 */ }
+    };
+    const getDeltaText = (event: unknown): string => {
+      if (!isRecord(event)) return '';
+      if (Array.isArray(event.content)) return event.content.map((part) => isRecord(part) ? toTrimmedString(part.text) : '').join('');
+      if (isRecord(event.delta)) {
+        const value = event.delta.text ?? event.delta.content;
+        return Array.isArray(value) ? value.map((part) => isRecord(part) ? toTrimmedString(part.text) : '').join('') : toTrimmedString(value);
+      }
+      if (Array.isArray(event.choices) && isRecord(event.choices[0]) && isRecord(event.choices[0].delta)) return toTrimmedString(event.choices[0].delta.content);
+      return '';
+    };
+    const processLine = (line: string): void => {
+      const data = line.startsWith('data:') ? line.slice(5).trim() : '';
+      if (!data || data === '[DONE]') return;
+      try {
+        const event = JSON.parse(data) as unknown;
+        const delta = getDeltaText(event);
+        if (delta) emit(delta);
+      } catch { /* 忽略非 JSON SSE 注释行。 */ }
+    };
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value as Uint8Array, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? '';
+      for (const line of lines) processLine(line);
+    }
+    processLine(buffer);
+    payload = extractJsonFromModelText(raw);
+  } else if (options.onDelta && upstream.ok) {
+    payload = await parseJsonResponse(upstream);
+    const fallbackText = getModelContentText(payload);
+    if (fallbackText) options.onDelta(fallbackText);
+  } else {
+    payload = await parseJsonResponse(upstream);
+  }
 
   if (!upstream.ok) {
     logger.error('roast_conversation_ai_request_failed', { model, provider: aiRoastProvider, status: upstream.status, upstreamMessage: getSafeUpstreamErrorMessage(payload) });
     throw new Error('AI 烘焙助手暂时无法回答，请稍后重试。');
   }
 
-  const parsed = extractJsonFromModelText(getModelContentText(payload));
+  let parsed: unknown;
+  try {
+    parsed = extractJsonFromModelText(streamedText || getModelContentText(payload));
+  } catch (error) {
+    const plainText = (streamedText || getModelContentText(payload)).trim();
+    if (toTrimmedString(input.mode) === 'general' && plainText) {
+      parsed = { answer: plainText };
+    } else {
+      throw error;
+    }
+  }
   if (!isRecord(parsed) || !toTrimmedString(parsed.answer)) {
     throw new Error('AI 烘焙助手返回内容不符合预期。');
   }

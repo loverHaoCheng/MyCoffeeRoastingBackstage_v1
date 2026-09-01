@@ -40,6 +40,7 @@ export const buildRoastModelRequestBody = (
   model: string,
   maxTokens: number,
   temperature: number,
+  stream = false,
 ): Record<string, unknown> => {
   if (isAnthropicRoastProvider()) {
     const system = messages
@@ -55,6 +56,7 @@ export const buildRoastModelRequestBody = (
         .map(({ content, role }) => ({ content, role })),
       model,
       ...(system ? { system } : {}),
+      ...(stream ? { stream: true } : {}),
     };
   }
 
@@ -63,6 +65,7 @@ export const buildRoastModelRequestBody = (
       max_completion_tokens: maxTokens,
       messages,
       model,
+      ...(stream ? { stream: true } : {}),
     };
   }
 
@@ -71,5 +74,6 @@ export const buildRoastModelRequestBody = (
     messages,
     model,
     temperature,
+    ...(stream ? { stream: true } : {}),
   };
 };

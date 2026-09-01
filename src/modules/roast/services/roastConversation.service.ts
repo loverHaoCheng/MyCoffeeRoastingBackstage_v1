@@ -1,4 +1,5 @@
-import { httpClient } from '@/services/httpClient';
+import { httpClient, resolveHttpClientAbsoluteUrl } from '@/services/httpClient';
+import { AppError } from '@/shared/errors/AppError';
 
 import type { RoastPlanJsonInput } from '../types';
 
@@ -42,8 +43,39 @@ export const roastConversationService = {
     const response = await httpClient.get<{ conversations: RoastConversation[] }>('/ai/roast-conversations?list=true');
     return response.data.conversations;
   },
-  async send(content: string, options: { beanId?: string; mode?: RoastConversationMode; roastBatchId?: string } = {}): Promise<RoastConversation> {
-    const response = await httpClient.post<{ conversation: RoastConversation }>('/ai/roast-conversations/messages', { content, ...options });
-    return response.data.conversation;
+  async send(content: string, options: { beanId?: string; mode?: RoastConversationMode; roastBatchId?: string; onDelta?: (answer: string) => void } = {}): Promise<RoastConversation> {
+    const { onDelta, ...payload } = options;
+    if (!onDelta) {
+      const response = await httpClient.post<{ conversation: RoastConversation }>('/ai/roast-conversations/messages', { content, ...payload });
+      return response.data.conversation;
+    }
+    const response = await fetch(resolveHttpClientAbsoluteUrl('/ai/roast-conversations/messages'), {
+      body: JSON.stringify({ content, ...payload }),
+      credentials: 'same-origin',
+      headers: { Accept: 'text/event-stream', 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+    if (!response.ok || !response.body) throw new AppError('AI 对话发送失败，请稍后重试。', { code: 'HTTP', status: response.status });
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let conversation: RoastConversation | undefined;
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      const events = buffer.split(/\r?\n\r?\n/);
+      buffer = events.pop() ?? '';
+      for (const event of events) {
+        const data = event.split(/\r?\n/).find((line) => line.startsWith('data:'))?.slice(5).trim();
+        if (!data) continue;
+        const parsed = JSON.parse(data) as { answer?: string; conversation?: RoastConversation; message?: string };
+        if (parsed.answer) onDelta(parsed.answer);
+        if (parsed.conversation) conversation = parsed.conversation;
+        if (parsed.message) throw new AppError(parsed.message, { code: 'BUSINESS' });
+      }
+    }
+    if (!conversation) throw new AppError('AI 对话未返回完整结果。', { code: 'UNKNOWN' });
+    return conversation;
   },
 };
