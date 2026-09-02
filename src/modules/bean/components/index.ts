@@ -1,4 +1,3 @@
-export {};
 export { BeanAiRecognitionPlaceholder } from './BeanAiRecognitionPlaceholder';
 export { BeanCreationFlow } from './BeanCreationFlow';
 export { BeanDetailDrawer } from './BeanDetailDrawer';

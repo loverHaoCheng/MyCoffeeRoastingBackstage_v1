@@ -2,7 +2,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import { forwardRef, type ComponentRef } from 'react';
 
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/shared/components/ui/separator';
 import { cn } from '@/shared/utils/cn';
 
 const isTestMode = import.meta.env.MODE === 'test';

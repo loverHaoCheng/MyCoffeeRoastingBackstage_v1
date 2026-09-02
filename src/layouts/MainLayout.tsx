@@ -9,7 +9,6 @@ import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { appNavigationItems, type AppRouteKey } from '@/router/navigation';
 import { preloadRoute } from '@/router/routePreload';
 import type { ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
-import { useAppStore } from '@/stores/useAppStore';
 
 import { DesktopNavigation } from './components/DesktopNavigation';
 import { FloatingActionDock } from './components/FloatingActionDock';
@@ -19,7 +18,6 @@ import { MobileSettingsOverlay } from './components/MobileSettingsOverlay';
 import { RouteTransitionStage } from './components/RouteTransitionStage';
 import { SettingsAuthBar } from './components/SettingsAuthBar';
 import { useMobileKeyboardViewportFocus } from './hooks/useMobileKeyboardViewportFocus';
-import { useMobileSwipeNavigation } from './hooks/useMobileSwipeNavigation';
 import { useViewportRuntimeFlags } from './hooks/useViewportRuntimeFlags';
 import { ViewportScrollContext } from './ViewportContext';
 import styles from './MainLayoutShell.module.css';
@@ -32,7 +30,7 @@ const MOBILE_SETTINGS_FALLBACK_PATH = '/roasts/history';
 
 export function MainLayout() {
   const { isRefreshing: isQuickRefreshing, refresh } = useQuickRefreshAction();
-  const { setSidebarCollapsed, sidebarCollapsed } = useAppStore();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { appDisplaySettings, loadAppDisplaySettings } = useAppDisplaySettings();
   const { isStandalonePwa, supportsTouchPullRefresh } = useViewportRuntimeFlags();
   const screens = useBreakpoint();
@@ -284,28 +282,6 @@ export function MainLayout() {
 
     openMobileSettingsPanel();
   };
-
-  useMobileSwipeNavigation({
-    bottomNavItems,
-    containerRef: scrollViewportRef,
-    enabled: !isWide,
-    isMobileSettingsOpen,
-    navigateByKey,
-    onCloseSettings: closeMobileSettingsPanel,
-    onOpenSettings: openMobileSettingsPanel,
-    selectedKey,
-  });
-
-  useMobileSwipeNavigation({
-    bottomNavItems,
-    containerRef: mobileSettingsPanelScrollRef,
-    enabled: !isWide && isMobileSettingsOpen,
-    isMobileSettingsOpen,
-    navigateByKey,
-    onCloseSettings: closeMobileSettingsPanel,
-    onOpenSettings: openMobileSettingsPanel,
-    selectedKey,
-  });
 
   useMobileKeyboardViewportFocus({
     enabled: !isWide,

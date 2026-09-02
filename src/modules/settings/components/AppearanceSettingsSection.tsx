@@ -32,7 +32,7 @@ import {
   FieldLegend,
   FieldSet,
 } from '@/shared/components/ui/field';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/shared/components/ui/separator';
 
 import styles from '../pages/SettingsPage.module.css';
 import accordionStyles from './SettingsAccordionItem.module.css';

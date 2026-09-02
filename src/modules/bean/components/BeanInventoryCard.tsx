@@ -1,5 +1,5 @@
 import { Repeat2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/shared/components/ui/separator';
 import { FlavorTagChips } from '@/modules/bean/components/FlavorTagChips';
 import { useCostTemplateSettings, useVisibleCardMetaItems } from '@/modules/settings/hooks';
 import { UnifiedDataCard } from '@/shared/components/UnifiedDataCard';

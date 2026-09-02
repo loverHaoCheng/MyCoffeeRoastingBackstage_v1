@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/shared/components/ui/separator';
 import { cn } from '@/shared/utils/cn';
 
 export interface ReadonlyFieldItem {

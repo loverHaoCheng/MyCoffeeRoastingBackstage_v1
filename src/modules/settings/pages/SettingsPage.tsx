@@ -31,7 +31,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/shared/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/shared/components/ui/separator';
 import { formatShanghaiBuildVersion } from '@/shared/time/shanghaiTime';
 import {
   userDataBackupService,

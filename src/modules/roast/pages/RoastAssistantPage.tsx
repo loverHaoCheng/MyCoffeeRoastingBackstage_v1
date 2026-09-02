@@ -79,7 +79,8 @@ export function RoastAssistantPage() {
   const [isComposerFocused, setIsComposerFocused] = useState(false);
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const isNewConversationNavigationRef = useRef(false);
-  const shouldAutoScrollReplyRef = useRef(false);
+  const shouldFollowLatestRef = useRef(true);
+  const isProgrammaticScrollRef = useRef(false);
   const { data: beans = [] } = useBeans();
   const { data: batches = [] } = useRoastBatches();
   const selectedBatch = batches.find((batch) => batch.id === roastBatchId);
@@ -164,7 +165,6 @@ export function RoastAssistantPage() {
       setContent(submission.content);
       setPendingUserMessage(null);
       setStreamingAnswer('');
-      shouldAutoScrollReplyRef.current = false;
       void toast.error(getUserFacingErrorMessage(error, 'AI 对话发送失败，请稍后重试。'));
     },
   });
@@ -186,28 +186,38 @@ export function RoastAssistantPage() {
     setBeanId(routeBeanId);
     setRoastBatchId(routeRoastBatchId);
     setDisplayedBeanId(nextDisplayedBeanId);
+    shouldFollowLatestRef.current = true;
     setMode(resolvedRouteMode);
     setIsNewConversation(false);
   }, [resolvedRouteMode, routeBatch?.greenBeanId, routeBeanId, routeMode, routeRoastBatchId]);
 
   useEffect(() => {
-    if (!shouldAutoScrollReplyRef.current) {
-      return undefined;
-    }
+    const messagesElement = messagesRef.current;
+    if (!messagesElement) return undefined;
+    const handleScroll = () => {
+      if (isProgrammaticScrollRef.current) return;
+      const isAtLatest = messagesElement.scrollTop + messagesElement.clientHeight >= messagesElement.scrollHeight - 2;
+      shouldFollowLatestRef.current = isAtLatest;
+    };
+    messagesElement.addEventListener('scroll', handleScroll, { passive: true });
+    return () => { messagesElement.removeEventListener('scroll', handleScroll); };
+  }, []);
 
+  useEffect(() => {
+    if (!shouldFollowLatestRef.current) return undefined;
     const messagesElement = messagesRef.current;
     const animationFrameId = window.requestAnimationFrame(() => {
-      messagesElement?.scrollTo({ behavior: 'auto', top: messagesElement.scrollHeight });
+      if (!messagesElement) return;
+      isProgrammaticScrollRef.current = true;
+      messagesElement.scrollTo({ behavior: 'auto', top: messagesElement.scrollHeight });
+      window.requestAnimationFrame(() => { isProgrammaticScrollRef.current = false; });
 
-      if (!sendMutation.isPending && pendingUserMessage == null) {
-        shouldAutoScrollReplyRef.current = false;
-      }
     });
 
     return () => {
       window.cancelAnimationFrame(animationFrameId);
     };
-  }, [messages.length, pendingUserMessage, sendMutation.isPending]);
+  }, [messages.length, pendingUserMessage, sendMutation.isPending, streamingAnswer]);
 
   useEffect(() => {
     if (isComposerFocused) {
@@ -225,7 +235,7 @@ export function RoastAssistantPage() {
     if (!content.trim() || sendMutation.isPending) return;
     const submittedContent = content.trim();
 
-    shouldAutoScrollReplyRef.current = true;
+    shouldFollowLatestRef.current = true;
     setContent('');
     setStreamingAnswer('');
     setPendingUserMessage({ content: submittedContent, id: 'pending-user-message', role: 'user' });

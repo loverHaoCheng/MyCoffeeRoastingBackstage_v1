@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { type MouseEvent, type PointerEvent, type ReactNode, useMemo, useRef } from 'react';
 
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/shared/components/ui/separator';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
