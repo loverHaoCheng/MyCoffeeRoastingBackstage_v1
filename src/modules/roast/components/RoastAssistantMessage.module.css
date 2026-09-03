@@ -23,6 +23,8 @@
 .messageContent {
   min-width: 0;
   flex: 1;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .message[data-role='assistant'] .messageContent > p {

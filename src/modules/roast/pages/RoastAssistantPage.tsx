@@ -9,7 +9,7 @@ import Segmented from 'antd/es/segmented';
 import Spin from 'antd/es/spin';
 import Tooltip from 'antd/es/tooltip';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { roastAiUsageQueryKeys, useRoastAiUsage, useRoastAssistantHistory, useRoastBatches } from '@/modules/roast/hooks';
@@ -246,6 +246,16 @@ export function RoastAssistantPage() {
     });
   };
 
+  const handleComposerTouchSend = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+
+    event.preventDefault();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    send();
+  };
+
   const selectMode = (nextMode: RoastConversationMode) => {
     setMode(nextMode);
 
@@ -375,7 +385,7 @@ export function RoastAssistantPage() {
         </div>
         <form className={styles.composer} data-skip-mobile-keyboard-recenter="true" onSubmit={(event) => { event.preventDefault(); send(); }}>
           <TextArea autoSize={{ maxRows: 5, minRows: 2 }} disabled={sendMutation.isPending} maxLength={2000} onBlur={() => { setIsComposerFocused(false); }} onChange={(event) => { setContent(event.target.value); }} onFocus={() => { setIsComposerFocused(true); }} placeholder={isGeneralMode ? '例如:浅烘焙一爆后 RoR 应如何控制？' : roastBatchId ? '例如:请复盘这次曲线,并给出下一炉计划。' : activeBeanId ? '例如:请根据这支豆子生成中浅烘计划。' : '例如:浅烘焙一爆后 RoR 应如何控制?'} value={content} />
-          <Button aria-label="发送问题" disabled={sendMutation.isPending || !content.trim()} htmlType="submit" icon={<ArrowUpOutlined />} loading={sendMutation.isPending} shape="circle" type="primary" />
+          <Button aria-label="发送问题" disabled={sendMutation.isPending || !content.trim()} htmlType="submit" icon={<ArrowUpOutlined />} loading={sendMutation.isPending} onPointerDown={handleComposerTouchSend} shape="circle" type="primary" />
         </form>
       </section>
       <Drawer destroyOnHidden onClose={() => { setIsContextOpen(false); }} open={isContextOpen} placement="right" title="历史对话" width={360}>
