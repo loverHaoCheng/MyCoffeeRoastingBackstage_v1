@@ -58,7 +58,7 @@ export function RoastPlanDetail({ mode, onClose, onUpdate, plan }: RoastPlanDeta
         <ReadonlyFieldSectionList sections={summarySections} />
 
         <section className="grid gap-2">
-          <h3 className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--app-text-tertiary)]">
+          <h3 className="px-1 text-sm font-semibold uppercase tracking-normal text-[var(--app-text-tertiary)]">
             烘焙节点
           </h3>
           <ReadonlyFieldSectionList sections={stepSections} />

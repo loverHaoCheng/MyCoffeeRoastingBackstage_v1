@@ -47,7 +47,7 @@
 }
 
 .row:first-child > div {
-  font-size: 13px;
+  font-size: var(--app-font-14);
 }
 
 @media (max-width: 767px) {
@@ -94,7 +94,7 @@
   .row > div::before {
     content: attr(data-label);
     color: var(--app-text-secondary);
-    font-size: 12px;
+    font-size: var(--app-font-14);
     font-weight: 700;
   }
 

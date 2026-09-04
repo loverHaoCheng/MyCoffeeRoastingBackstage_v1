@@ -259,6 +259,12 @@ const syncFocusedFieldIntoViewport = (
   fallbackContainer: HTMLDivElement | null,
   behavior: ScrollBehavior,
 ): void => {
+  const drawerContent = target.closest<HTMLElement>('.ant-drawer-content');
+
+  if (drawerContent?.scrollTop) {
+    drawerContent.scrollTop = 0;
+  }
+
   const container = resolveScrollContainer(target, fallbackContainer);
 
   if (!container) {
@@ -352,7 +358,7 @@ export function useMobileKeyboardViewportFocus({
     };
 
     const syncActionBarVisibility = () => {
-      syncMobileEditingAttribute(Boolean(activeTargetRef.current) || keyboardVisibleRef.current);
+      syncMobileEditingAttribute(keyboardVisibleRef.current);
     };
 
     const scheduleSync = (behavior: ScrollBehavior = 'auto') => {
@@ -408,7 +414,9 @@ export function useMobileKeyboardViewportFocus({
 
         if (!activeElement) {
           activeTargetRef.current = null;
-          syncActionBarVisibility();
+          keyboardVisibleRef.current = false;
+          syncMobileEditingAttribute(false);
+          resetVisualViewportMetrics();
           return;
         }
 
@@ -423,7 +431,7 @@ export function useMobileKeyboardViewportFocus({
       const keyboardOpen = isKeyboardVisible();
       keyboardVisibleRef.current = keyboardOpen;
 
-      if (!keyboardOpen && !activeTargetRef.current && lastFocusedTargetRef.current?.isConnected) {
+      if (!keyboardOpen && lastFocusedTargetRef.current?.isConnected) {
         syncMobileEditingAttribute(false);
         scheduleSync('smooth');
         return;

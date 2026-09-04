@@ -41,7 +41,7 @@
 .stepHeading span,
 .stepItem dt {
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   font-weight: 700;
 }
 

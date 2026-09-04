@@ -14,7 +14,7 @@
 .summaryBlock h5 {
   margin: 0;
   color: var(--app-text);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -35,7 +35,7 @@
   border-radius: 8px;
   background: var(--app-bg-soft);
   color: var(--app-text);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -51,7 +51,7 @@
   background: var(--app-bg-soft);
   color: var(--app-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   line-height: 1.35;
   text-align: left;
@@ -67,14 +67,14 @@
 
 .editableCard b {
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   font-weight: 600;
 }
 
 .metricGrid b,
 .eventList b {
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   font-weight: 600;
 }
 
@@ -106,7 +106,7 @@
   margin: 0;
   min-width: 0;
   padding: 9px 10px;
-  font-size: 12px;
+  font-size: var(--app-font-14);
   line-height: 1.45;
 }
 

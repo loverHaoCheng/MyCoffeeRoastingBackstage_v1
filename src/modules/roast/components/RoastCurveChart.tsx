@@ -37,9 +37,9 @@ const ROR_SMOOTHING_POINTS: Record<RoastCurveRorMode, number> = {
   sensitive: 1,
 };
 const PHASE_COLORS: Record<number, string> = {
-  2: '#0f8b4c',
-  3: '#b77a2b',
-  4: '#a4517a',
+  2: 'var(--app-chart-phase-dry)',
+  3: 'var(--app-chart-phase-maillard)',
+  4: 'var(--app-chart-phase-development)',
 };
 
 const EVENT_LABEL_POSITIONS: Partial<Record<RoastCurveEvent['type'], { anchor: 'end' | 'middle' | 'start'; dx: number; y: number }>> = {
@@ -300,7 +300,7 @@ export function RoastCurveChart({ events, phaseList, points, rorMode, temperatur
             <g key={`${phase.phase.toString()}-${phase.label}`}>
               <rect
                 className={styles.phaseSegment}
-                fill={PHASE_COLORS[phase.phase] ?? '#555'}
+                fill={PHASE_COLORS[phase.phase] ?? 'var(--app-chart-phase-fallback)'}
                 height={PHASE_BAR_HEIGHT}
                 width={phaseWidth}
                 x={phaseX}

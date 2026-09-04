@@ -310,6 +310,7 @@ export function RoastPage() {
 
   return (
     <main className={styles.page}>
+      <h1 className="sr-only">烘焙计划</h1>
       {/* 搜索栏 */}
       <UnifiedSearchBar
         inputAriaLabel="搜索烘焙计划"
@@ -361,7 +362,9 @@ export function RoastPage() {
         ) : null}
 
         {!isFetching && filteredPlans.length === 0 ? (
-          <Empty className={styles.empty} description="没有匹配的烘焙计划" />
+          <Empty className={styles.empty} description={keyword.trim() || Object.values(filterValues).some((values) => values.length > 0) ? '当前条件没有匹配的烘焙计划' : '没有匹配的烘焙计划'}>
+            {keyword.trim() || Object.values(filterValues).some((values) => values.length > 0) ? <Button onClick={() => { setKeyword(''); setFilterValues({ bean: [], level: [], purpose: [] }); }}>清除筛选</Button> : null}
+          </Empty>
         ) : null}
 
         <RoastPlanList

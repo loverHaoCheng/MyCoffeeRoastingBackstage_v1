@@ -28,10 +28,14 @@
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--app-touch-target-size);
+  padding-inline: 4px;
   color: var(--app-text);
   font-size: 18px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -43,13 +47,13 @@
 }
 
 .navLink {
-  min-height: 36px;
+  min-height: var(--app-touch-target-size);
   padding: 8px 12px;
   border: 1px solid var(--app-border-soft);
   border-radius: 999px;
   background: var(--app-bg-elevated);
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   text-decoration: none;
 }
@@ -61,7 +65,7 @@
 }
 
 .exitButton {
-  min-height: 36px;
+  min-height: var(--app-touch-target-size);
   border-radius: 999px;
 }
 
@@ -84,9 +88,9 @@
 
 .eyebrow {
   color: var(--app-text-tertiary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -119,7 +123,7 @@
   border: 1px solid var(--app-border-soft);
   border-radius: 999px;
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -157,7 +161,7 @@
   padding-top: 20px;
   border-top: 1px solid var(--app-border-soft);
   color: var(--app-text-tertiary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   line-height: 1.8;
   overflow-wrap: anywhere;
 }

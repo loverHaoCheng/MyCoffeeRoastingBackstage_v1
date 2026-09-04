@@ -28,7 +28,7 @@
 }
 
 .field :global(.ant-input-affix-wrapper) {
-  min-height: 38px;
+  min-height: var(--app-touch-target-size);
   padding: 0 12px;
   border-radius: 12px;
   align-items: center;

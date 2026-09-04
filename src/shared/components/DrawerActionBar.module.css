@@ -47,7 +47,7 @@
 }
 
 .compact :global(.ant-btn) {
-  min-height: 40px;
+  min-height: var(--app-touch-target-size);
   border-radius: 14px;
   font-size: 14px;
 }

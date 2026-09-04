@@ -43,7 +43,7 @@
 
 .fieldLabel {
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
 }
 
@@ -84,7 +84,7 @@
 .inlineHint {
   margin-top: 8px;
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   line-height: 1.45;
 }
 

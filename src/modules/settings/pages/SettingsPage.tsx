@@ -338,6 +338,7 @@ export function SettingsPage() {
 
   return (
     <main className={styles.page}>
+      <h1 className="sr-only">设置</h1>
       <form className={styles.form}>
         <Accordion
           className={accordionStyles.list}

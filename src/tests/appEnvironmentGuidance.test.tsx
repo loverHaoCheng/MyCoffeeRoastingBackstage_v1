@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { App as AntApp, ConfigProvider } from 'antd';
+import AntApp from 'antd/es/app';
+import ConfigProvider from 'antd/es/config-provider';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppEnvironmentGuidance } from '@/app/components/AppEnvironmentGuidance';

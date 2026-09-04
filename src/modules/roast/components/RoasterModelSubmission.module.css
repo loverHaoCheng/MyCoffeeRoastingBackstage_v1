@@ -32,7 +32,7 @@
 .sectionHeader p {
   margin: 0;
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   line-height: 1.5;
 }
 
@@ -55,7 +55,7 @@
 .labelText {
   overflow: hidden;
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;

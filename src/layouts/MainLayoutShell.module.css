@@ -8,9 +8,7 @@
   min-height: 100vh;
   overflow: hidden;
   padding: 12px;
-  background:
-    radial-gradient(circle at top left, var(--app-card-glow-start) 0%, var(--app-card-glow-end) 34%),
-    linear-gradient(180deg, var(--app-bg-soft) 0%, var(--app-bg-surface) 100%);
+  background: var(--app-bg-surface);
 }
 
 .shell[data-mobile='true'] {
@@ -53,22 +51,12 @@
 
 .viewportFrame::before {
   left: 0;
-  background: linear-gradient(
-    90deg,
-    var(--app-bg-surface) 0%,
-    color-mix(in srgb, var(--app-bg-surface) 68%, transparent) 52%,
-    transparent 100%
-  );
+  background: var(--app-bg-surface);
 }
 
 .viewportFrame::after {
   right: 0;
-  background: linear-gradient(
-    270deg,
-    var(--app-bg-surface) 0%,
-    color-mix(in srgb, var(--app-bg-surface) 68%, transparent) 52%,
-    transparent 100%
-  );
+  background: var(--app-bg-surface);
 }
 
 .viewportFrame[data-scaled='true']::before,
@@ -121,7 +109,7 @@
   --app-shell-content-top-space: calc(var(--app-shell-header-height) + 4px);
   height: 100vh;
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
+  background: var(--app-bg-surface);
 }
 
 @media (max-width: 767px) {
@@ -131,7 +119,7 @@
 
   .shell {
     padding: 0;
-    background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
+    background: var(--app-bg-surface);
   }
 
   .viewportFrame {
@@ -141,7 +129,7 @@
   .scrollViewport {
     border: 0;
     border-radius: 0 0 28px 28px;
-    background: linear-gradient(180deg, var(--app-bg-elevated) 0%, var(--app-bg-surface) 100%);
+    background: var(--app-bg-elevated);
     box-shadow: 0 8px 24px color-mix(in srgb, var(--app-text) 8%, transparent);
     scrollbar-gutter: auto;
     scrollbar-width: none;
@@ -170,7 +158,7 @@
     --app-shell-content-top-space: calc(var(--app-shell-header-height) + 4px);
     height: 100vh;
     min-height: 100vh;
-    background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-surface) 100%);
+    background: var(--app-bg-surface);
   }
 
   .viewportFrame {

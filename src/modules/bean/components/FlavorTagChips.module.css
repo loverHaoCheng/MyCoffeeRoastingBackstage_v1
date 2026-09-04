@@ -15,6 +15,6 @@
   margin-bottom: 0;
   border-radius: 999px;
   padding-inline: 10px;
-  font-size: 12px;
+  font-size: var(--app-font-14);
   line-height: 20px;
 }

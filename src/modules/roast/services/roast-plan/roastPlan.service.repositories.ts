@@ -123,6 +123,7 @@ class RemoteRoastPlanRepository implements RoastPlanRepository {
       roastLevel: draftPlan.targetRoastLevel,
       steps: draftPlan.steps.map((step) => ({
         airTemperature: step.airTemperature,
+        airDamper: step.airDamper,
         drumSpeed: step.drumSpeed,
         event: step.eventName,
         firePower: step.firePower,

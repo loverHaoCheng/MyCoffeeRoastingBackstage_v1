@@ -228,6 +228,38 @@ describe('resolveRecenteredScrollTop', () => {
     expect(scrollToMock.mock.calls.length).toBeGreaterThan(initialCallCount);
   });
 
+  it('restores the drawer viewport when the keyboard closes but the input remains focused', () => {
+    const visualViewportMock = {
+      addEventListener: vi.fn(),
+      height: 420,
+      offsetTop: 0,
+      removeEventListener: vi.fn(),
+      scrollTop: 0,
+      width: 360,
+    };
+
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: visualViewportMock,
+    });
+
+    render(createElement(KeyboardFocusFixture));
+    const input = screen.getByRole('textbox', { name: '备注' });
+
+    input.focus();
+    fireEvent.focusIn(input);
+    vi.runAllTimers();
+    expect(document.documentElement).toHaveAttribute(MOBILE_EDITING_ATTRIBUTE, 'true');
+
+    visualViewportMock.height = 800;
+    window.dispatchEvent(new Event('resize'));
+    vi.runAllTimers();
+
+    expect(document.activeElement).toBe(input);
+    expect(document.documentElement).not.toHaveAttribute(MOBILE_EDITING_ATTRIBUTE);
+    expect(document.documentElement.style.getPropertyValue(VISUAL_VIEWPORT_HEIGHT_VARIABLE)).toBe('800px');
+  });
+
   it('does not recenter inputs that are already anchored to the visual viewport', () => {
     render(createElement(KeyboardFocusFixture, { skipRecenter: true }));
 

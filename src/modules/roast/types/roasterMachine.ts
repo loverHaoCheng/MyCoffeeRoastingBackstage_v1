@@ -20,5 +20,6 @@ export interface RoastingMachine {
   id: string;
   modelId: string;
   modelKey: string;
+  roastType?: RoasterModel['roastType'];
   status: 'active' | 'archived';
 }

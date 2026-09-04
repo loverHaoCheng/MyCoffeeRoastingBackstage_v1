@@ -11,7 +11,7 @@ interface RoastPlanManualCreatorProps {
 }
 
 export function RoastPlanManualCreator({
-  initialValues = defaultRoastPlanFormValues,
+  initialValues = { ...defaultRoastPlanFormValues, beanId: 'generic', beanName: '通用' },
   onCancel,
   onCreate,
 }: RoastPlanManualCreatorProps) {

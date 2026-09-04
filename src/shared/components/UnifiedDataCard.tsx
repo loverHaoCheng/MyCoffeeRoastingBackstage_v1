@@ -51,8 +51,8 @@ interface UnifiedDataCardProps {
 
 const getCardStyle = (): React.CSSProperties => {
   return {
-    background: 'linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%)',
-    boxShadow: 'var(--app-card-shadow), inset 0 1px 0 var(--app-card-inset-highlight)',
+    background: 'var(--app-bg-elevated)',
+    boxShadow: 'var(--app-card-shadow)',
   };
 };
 
@@ -61,16 +61,16 @@ const PreviewRow = ({ item }: { item: UnifiedDataCardMetaItem }) => {
     <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-start gap-2 py-1">
       <span
         className="min-w-0 truncate whitespace-nowrap font-medium leading-[15px] text-[var(--app-text-tertiary)]"
-        style={{ fontSize: 'var(--app-font-11)' }}
+        style={{ fontSize: 'var(--app-font-14)' }}
       >
         {item.label}
       </span>
       <div
         className={cn(
-          'min-w-0 text-right font-semibold leading-[15px] tracking-[-0.02em] text-[var(--app-text)]',
+          'min-w-0 text-right font-semibold leading-[15px] tracking-normal text-[var(--app-text)]',
           item.multiline ? 'leading-[15px]' : undefined,
         )}
-        style={{ fontSize: 'var(--app-font-12)' }}
+        style={{ fontSize: 'var(--app-font-14)' }}
       >
         {item.value}
       </div>
@@ -157,26 +157,27 @@ export function UnifiedDataCard({
         onView ? 'cursor-pointer' : undefined,
       )}
       data-card-opens-detail={onView ? 'true' : undefined}
+      role={onView ? 'button' : undefined}
+      tabIndex={onView ? 0 : undefined}
       onClick={handleCardClick}
       onPointerCancel={handleCardPointerCancel}
       onPointerDown={handleCardPointerDown}
       onPointerMove={handleCardPointerMove}
+      onKeyDown={(event) => {
+        if (!onView || isInteractiveTarget(event.target)) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onView();
+        }
+      }}
       style={{ ...getCardStyle(), ...cardStyle }}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-16 opacity-80"
-        style={{
-          background:
-            'radial-gradient(circle at top, var(--app-card-glow-start) 0%, var(--app-card-glow-end) 68%)',
-        }}
-      />
       <div className="relative flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-0.5">
           <div className="flex items-start justify-between gap-2">
             <h3
-              className="min-w-0 font-semibold leading-[16px] tracking-[-0.02em] text-[var(--app-text)]"
-              style={{ fontSize: '14px' }}
+              className="min-w-0 font-semibold leading-[16px] tracking-normal text-[var(--app-text)]"
+              style={{ fontSize: 'var(--app-font-14)' }}
             >
               {title}
             </h3>
@@ -184,7 +185,7 @@ export function UnifiedDataCard({
           {subtitle ? (
             <div
               className="min-w-0 truncate font-semibold leading-[14px] tracking-normal text-[var(--app-text-tertiary)]"
-              style={{ fontSize: 'var(--app-font-11)' }}
+              style={{ fontSize: 'var(--app-font-14)' }}
             >
               {subtitle}
             </div>
@@ -195,7 +196,7 @@ export function UnifiedDataCard({
           {showActionMenu ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button aria-label={`更多操作 ${title}`} className="h-7 w-7" size="icon" variant="ghost">
+                <Button aria-label={`更多操作 ${title}`} className="h-11 w-11" size="icon" variant="ghost">
                   <Ellipsis className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

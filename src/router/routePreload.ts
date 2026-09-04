@@ -2,9 +2,9 @@ import type { AppRouteKey } from './navigation';
 
 const routeLoaders: Partial<Record<AppRouteKey, () => Promise<unknown>>> = {
   bean: () => import('@/modules/bean'),
-  roast: () => import('@/modules/roast'),
+  roast: () => import('@/modules/roast/pages/RoastPage'),
   production: () => import('@/modules/production'),
-  roastAssistant: () => import('@/modules/roast'),
+  roastAssistant: () => import('@/modules/roast/pages/RoastAssistantPage'),
   finance: () => import('@/modules/finance'),
   settings: () => import('@/modules/settings'),
 };

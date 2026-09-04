@@ -78,6 +78,31 @@ describe('BeanForm', () => {
     });
   });
 
+  it('allows explicitly leaving the cost template unselected', () => {
+    renderWithQuery(
+      <BeanForm
+        autoApplyDefaultCostTemplate
+        enableCostTemplateSelection
+        initialValues={{
+          ...createDefaultBeanFormValues(),
+          displayName: '测试生豆',
+          processMethod: '水洗',
+          variety: 'Heirloom',
+        }}
+        onSubmit={vi.fn()}
+        submitLabel="创建生豆"
+      />,
+    );
+
+    const templateSelect = screen.getByRole('combobox', { name: '成本模板' });
+    expect(screen.getByRole('option', { name: '暂不选择成本模板' })).toBeInTheDocument();
+
+    fireEvent.change(templateSelect, { target: { value: 'string:__no_cost_template__' } });
+
+    expect(templateSelect).toHaveValue('string:__no_cost_template__');
+    expect(screen.getByText(/没有模板时可手工填写这些字段/)).toBeInTheDocument();
+  });
+
   it('shows a template error instead of crashing when no complete sale unit can be formed', async () => {
     const template = useSettingsStore.getState().costTemplateSettings.templates[0];
 

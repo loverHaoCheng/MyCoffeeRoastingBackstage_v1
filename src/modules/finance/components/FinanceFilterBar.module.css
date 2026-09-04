@@ -19,13 +19,13 @@
 .presetButton {
   flex: 0 0 auto;
   min-width: 52px;
-  min-height: 38px;
+  min-height: var(--app-touch-target-size);
   padding: 0;
   padding-inline: 2px;
   border: none;
   border-radius: 0;
   background: transparent;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   box-shadow: none;
   font-size: 14px;
   font-weight: 700;
@@ -36,14 +36,14 @@
 }
 
 .presetButton[data-active='true'] {
-  color: #1d1d1f;
+  color: var(--app-text);
 }
 
 .presetButton:hover,
 .presetButton:focus,
 .presetButton:active {
   outline: none;
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   background: transparent;
   box-shadow: none;
   transform: none;
@@ -57,11 +57,11 @@
 .presetButton[data-active='true']:hover,
 .presetButton[data-active='true']:focus,
 .presetButton[data-active='true']:active {
-  color: #1d1d1f;
+  color: var(--app-text);
 }
 
 .presetButton[data-active='true']:focus-visible {
-  color: #1d1d1f;
+  color: var(--app-text);
 }
 
 .activeIndicator {
@@ -70,7 +70,7 @@
   bottom: 0;
   height: 2px;
   border-radius: 999px;
-  background: #1d1d1f;
+  background: var(--app-text);
   pointer-events: none;
   transition:
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -95,7 +95,7 @@
 
   .presetButton {
     min-width: 46px;
-    min-height: 34px;
-    font-size: 13px;
+    min-height: var(--app-touch-target-size);
+    font-size: var(--app-font-14);
   }
 }

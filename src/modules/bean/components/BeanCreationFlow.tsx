@@ -1,4 +1,6 @@
 import PlusOutlined from '@ant-design/icons/PlusOutlined';
+import CloseOutlined from '@ant-design/icons/CloseOutlined';
+import CheckOutlined from '@ant-design/icons/CheckOutlined';
 import App from 'antd/es/app';
 import Button from 'antd/es/button';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -18,7 +20,6 @@ import styles from '../pages/BeanPage.module.css';
 type BeanCreationMode = 'ai' | 'manual';
 
 interface BeanCreationFlowProps {
-  hasCostTemplate: boolean;
   onCreate: (input: GreenBeanCreateInput) => void;
   manualInitialValues?: GreenBeanCreateInput;
   openManualRequestKey?: number | null;
@@ -79,11 +80,11 @@ const mapAiRecognitionToBeanCreateInput = (recognition: BeanImageRecognitionResu
 };
 
 export function BeanCreationFlow({
-  hasCostTemplate,
   onCreate,
   manualInitialValues,
   openManualRequestKey = null,
 }: BeanCreationFlowProps) {
+  const manualFormId = 'bean-manual-creation-form';
   const { message } = App.useApp();
   const [isCreateActionSheetOpen, setIsCreateActionSheetOpen] = useState(false);
   const [aiRecognitionUsage, setAiRecognitionUsage] = useState<BeanImageRecognitionUsage | null>(null);
@@ -161,16 +162,11 @@ export function BeanCreationFlow({
   };
 
   const openManualCreation = useCallback((initialValues?: GreenBeanCreateInput) => {
-    if (!hasCostTemplate) {
-      void message.warning('请先前往财务页创建至少一个成本模板，再新增生豆。');
-      return;
-    }
-
     setIsCreateActionSheetOpen(false);
     setCreationMode('manual');
     setRecognizedBeanInitialValues(initialValues);
     setCreationDrawerOpen(true);
-  }, [hasCostTemplate, message]);
+  }, []);
 
   const openCreationDrawer = (mode: BeanCreationMode) => {
     if (mode === 'ai' && isAiRecognitionActionDisabled) {
@@ -186,11 +182,6 @@ export function BeanCreationFlow({
   const handleOpenCreateFlow = () => {
     setAiRecognitionUsage(null);
     setAiRecognitionUsageError('');
-    if (!hasCostTemplate) {
-      void message.warning('请先前往财务页创建至少一个成本模板，再新增生豆。');
-      return;
-    }
-
     setIsCreateActionSheetOpen(true);
   };
 
@@ -271,9 +262,15 @@ export function BeanCreationFlow({
         open={creationDrawerOpen}
         placement="bottom"
         title={creationMode === 'manual' ? '新增生豆' : 'AI 图片识别'}
+        headerActions={creationMode === 'manual' ? (
+          <>
+            <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={closeCreationDrawer} shape="circle" />
+            <Button aria-label="创建生豆" className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { const form = document.getElementById(manualFormId); if (form instanceof HTMLFormElement) form.requestSubmit(); }} shape="circle" />
+          </>
+        ) : null}
       >
         {creationMode === 'manual' ? (
-          <BeanManualCreator initialValues={recognizedBeanInitialValues} onCancel={closeCreationDrawer} onCreate={handleCreate} />
+          <BeanManualCreator formId={manualFormId} initialValues={recognizedBeanInitialValues} onCancel={closeCreationDrawer} onCreate={handleCreate} />
         ) : (
           <BeanAiRecognitionPlaceholder onApplyRecognition={handleApplyAiRecognition} />
         )}

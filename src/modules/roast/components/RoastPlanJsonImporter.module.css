@@ -25,7 +25,7 @@
 
 .editor {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--app-font-14);
   line-height: 1.55;
 }
 

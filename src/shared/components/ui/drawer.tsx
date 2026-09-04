@@ -324,7 +324,7 @@ export function DrawerContent({
           aria-labelledby={titleId}
           aria-modal="true"
           className={cn(
-            'ant-drawer-content relative flex h-full max-h-full flex-col overflow-hidden overscroll-contain bg-[var(--app-bg-elevated)] [touch-action:pan-y]',
+            'ant-drawer-content relative flex h-full max-h-full flex-col overflow-clip overscroll-contain bg-[var(--app-bg-elevated)] [touch-action:pan-y]',
             className,
           )}
           role="dialog"

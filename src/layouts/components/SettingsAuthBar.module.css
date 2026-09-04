@@ -58,6 +58,7 @@
   align-items: center;
   gap: 6px;
   width: 100%;
+  min-height: var(--app-touch-target-size);
   min-width: 0;
   padding: 0;
   border: 0;
@@ -106,7 +107,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--app-text-secondary) !important;
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 500;
   line-height: 1.3;
 }
@@ -123,7 +124,7 @@
 
 .authDrawerLabel {
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   font-weight: 700;
 }
 

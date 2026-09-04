@@ -19,7 +19,6 @@ import {
 import { createDefaultBeanFormValues } from '@/modules/bean/constants';
 import { beanQueryKeys, useBeans, useDeleteBean } from '@/modules/bean/hooks/useBeans';
 import { beanService, type RoastPlanDisposition } from '@/modules/bean/services';
-import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ResponsiveMasonry } from '@/shared/components/ResponsiveMasonry';
 import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
@@ -126,7 +125,6 @@ export function BeanPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
-  const { costTemplateSettings } = useCostTemplateSettings();
   const [keyword, setKeyword] = useState('');
   const [filterValues, setFilterValues] = useState<Record<BeanFilterKey, string[]>>({
     origin: [], process: [],
@@ -162,6 +160,7 @@ export function BeanPage() {
     return filteredBeans.filter((bean) => getBeanRemainingWeightGrams(bean) === 0);
   }, [filteredBeans]);
   const shouldShowEmptyState = activeBeans.length === 0 && zeroStockBeans.length === 0;
+  const hasActiveFilters = keyword.trim().length > 0 || Object.values(filterValues).some((values) => values.length > 0);
 
   const summary = useMemo(() => {
     const totalRemainingStockKg = beans.reduce((total, bean) => total + bean.stockKg, 0);
@@ -297,6 +296,7 @@ export function BeanPage() {
 
   return (
     <main className={styles.page}>
+      <h1 className="sr-only">生豆库存</h1>
       <UnifiedSearchBar
         className={styles.searchBar}
         inputAriaLabel="搜索生豆"
@@ -355,7 +355,9 @@ export function BeanPage() {
         ) : null}
 
         {!isLoading && shouldShowEmptyState ? (
-          <Empty className={styles.empty} description="没有匹配的生豆批次" />
+          <Empty className={styles.empty} description="没有匹配的生豆批次">
+            {hasActiveFilters ? <><span>当前筛选条件没有结果</span><Button onClick={() => { setKeyword(''); setFilterValues({ origin: [], process: [] }); }}>清除筛选</Button></> : null}
+          </Empty>
         ) : null}
 
         <ResponsiveMasonry ariaLabel="有库存生豆列表">
@@ -425,7 +427,6 @@ export function BeanPage() {
       </section>
 
       <BeanCreationFlow
-        hasCostTemplate={costTemplateSettings.templates.length > 0}
         manualInitialValues={restockInitialValues}
         onCreate={handleCreateBean}
         openManualRequestKey={restockRequestKey}

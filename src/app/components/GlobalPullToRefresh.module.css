@@ -27,7 +27,7 @@
   border-radius: 999px;
   background: var(--app-bg-elevated);
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   box-shadow: 0 10px 24px rgb(15 23 42 / 10%);
   opacity: 0;
   transform: translateY(-28px);
@@ -63,6 +63,6 @@
 
 .pullRefreshArrow {
   display: inline-flex;
-  font-size: 13px;
+  font-size: var(--app-font-14);
   line-height: 1;
 }

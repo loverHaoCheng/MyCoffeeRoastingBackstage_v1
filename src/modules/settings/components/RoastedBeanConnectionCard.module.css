@@ -25,18 +25,21 @@
 
 .fieldLabel {
   color: var(--app-text);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 600;
 }
 
 .helpText {
   margin: 0;
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   line-height: 1.5;
 }
 
 .helpLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--app-touch-target-size);
   margin-left: 4px;
   color: var(--app-text);
   font-weight: 600;

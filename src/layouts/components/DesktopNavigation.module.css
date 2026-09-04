@@ -16,9 +16,9 @@
   background: transparent;
   color: var(--app-text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   text-align: left;
   text-transform: uppercase;
   appearance: none;
@@ -56,6 +56,12 @@
     transform 180ms ease;
 }
 
+.desktopMenu :global(.ant-menu-submenu-title) {
+  min-height: var(--app-touch-target-size);
+  height: 52px;
+  margin-block: 8px;
+}
+
 .desktopMenu :global(.ant-menu-item-selected) {
   background: var(--app-selected-surface) !important;
   color: var(--app-accent) !important;
@@ -76,7 +82,7 @@
 .desktopMenu :global(.ant-menu-title-content) {
   font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
 }
 
 .desktopMenu :global(.ant-menu-item:active) {

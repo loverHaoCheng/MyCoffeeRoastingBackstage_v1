@@ -6,6 +6,7 @@ export const roastPlanJsonStepSchema = z.object({
   operation: z.string().min(1, '操作不能为空'),
   temperature: z.string().min(1, '炉温不能为空'),
   airTemperature: z.string().min(1, '风温不能为空'),
+  airDamper: z.string().optional(),
   firePower: z.string().min(1, '火力不能为空'),
   drumSpeed: z.string().min(1, '转速不能为空'),
   note: z.string().optional(),

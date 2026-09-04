@@ -72,7 +72,7 @@ const BaseInput = forwardRef<HTMLInputElement, SharedInputProps>(
         {allowClear && hasValue ? (
           <button
             aria-label="清空输入"
-            className="shrink-0 text-[var(--app-text-tertiary)] transition-colors hover:text-[var(--app-text)] disabled:pointer-events-none"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--app-text-tertiary)] transition-colors hover:bg-[var(--app-hover-surface)] hover:text-[var(--app-text)] disabled:pointer-events-none"
             disabled={disabled}
             onClick={() => {
               onChange?.({
@@ -109,7 +109,7 @@ const PasswordInput = forwardRef<HTMLInputElement, SharedPasswordInputProps>(
         {suffix ? <span className={inputAffixClassName}>{suffix}</span> : null}
         <button
           aria-label={visible ? '隐藏密码' : '显示密码'}
-          className="shrink-0 text-[var(--app-text-tertiary)] transition-colors hover:text-[var(--app-text)] disabled:pointer-events-none"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--app-text-tertiary)] transition-colors hover:bg-[var(--app-hover-surface)] hover:text-[var(--app-text)] disabled:pointer-events-none"
           disabled={disabled}
           onClick={() => {
             setVisible((current) => !current);

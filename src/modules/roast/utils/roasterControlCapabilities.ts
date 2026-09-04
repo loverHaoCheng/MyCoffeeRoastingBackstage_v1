@@ -1,10 +1,11 @@
 import type { RoastingMachine } from '@/modules/roast/types';
 
-export type RoasterControlKey = 'airTemperature' | 'drumSpeed' | 'firePower';
+export type RoasterControlKey = 'airDamper' | 'airTemperature' | 'drumSpeed' | 'firePower';
 
 const allControls: RoasterControlKey[] = ['firePower', 'airTemperature', 'drumSpeed'];
 
 const controlAliases: Record<RoasterControlKey, string[]> = {
+  airDamper: ['airdamper', 'air_damper', 'damper', '风门'],
   airTemperature: ['airtemperature', 'air_temperature', 'airtemp', 'windtemperature', '风温'],
   drumSpeed: ['drumspeed', 'drum_speed', 'rpm', 'rotation', '转速'],
   firePower: ['firepower', 'fire_power', 'gas', 'heat', 'power', '火力', '燃气'],
@@ -32,23 +33,25 @@ const hasControlAlias = (text: string, control: RoasterControlKey): boolean => {
   return controlAliases[control].some((alias) => text.includes(alias));
 };
 
-export const getRoasterControlCapabilities = (machine?: Pick<RoastingMachine, 'configuration' | 'displayName' | 'modelKey'> | null): RoasterControlKey[] => {
+export const getRoasterControlCapabilities = (machine?: Pick<RoastingMachine, 'configuration' | 'displayName' | 'modelKey' | 'roastType'> | null): RoasterControlKey[] => {
   if (!machine) {
     return allControls;
   }
+
+  const typeControls = machine.roastType === 'semi_hot_air' || machine.roastType === 'hot_air' ? ['airDamper' as const] : [];
 
   const configurationText = flattenControlText(machine.configuration);
   const configuredControls = allControls.filter((control) => hasControlAlias(configurationText, control));
 
   if (configuredControls.length > 0) {
-    return configuredControls;
+    return [...new Set([...configuredControls, ...typeControls])];
   }
 
   const machineText = `${normalizeText(machine.displayName)} ${normalizeText(machine.modelKey)}`;
 
   if (machineText.includes('tank200d')) {
-    return ['firePower'];
+    return ['firePower', ...typeControls];
   }
 
-  return allControls;
+  return [...allControls, ...typeControls];
 };

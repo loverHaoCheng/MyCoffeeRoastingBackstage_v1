@@ -27,7 +27,7 @@
 .sectionHeader p {
   margin: 0;
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   line-height: 1.5;
 }
 
@@ -59,7 +59,7 @@
 .labelText {
   overflow: hidden;
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -156,6 +156,100 @@
   gap: 10px;
 }
 
+.timeField {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.timeModeTabs :global([role='tablist']) {
+  width: 100%;
+}
+
+.timeModeTabs :global([role='tab']) {
+  flex: 1;
+}
+
+.timeValues {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.timeGroup {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 6px;
+}
+
+.timeGroup:only-child {
+  grid-column: 1 / -1;
+}
+
+.timeLabel {
+  color: var(--app-text-tertiary);
+  font-size: var(--app-font-14);
+  white-space: nowrap;
+}
+
+.timeGroup .timeLabel {
+  flex: 0 0 auto;
+}
+
+.timeEndpoint {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.timeValue {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.timeEndpoint :global(.ant-select) {
+  flex: 0 0 58px;
+  min-width: 0;
+  width: 58px !important;
+}
+
+.timeNumber {
+  width: 46px;
+  min-width: 0;
+  height: 44px;
+  padding: 0 6px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 14px;
+  background: var(--app-bg-soft);
+  color: var(--app-text);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  outline: none;
+}
+
+.timeNumber:focus {
+  border-color: var(--app-text);
+  background: var(--app-bg-elevated);
+  box-shadow: 0 0 0 2px var(--app-focus-ring);
+}
+
+.timeNumber::-webkit-inner-spin-button,
+.timeNumber::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 .actions {
   display: grid;
   justify-content: stretch;
@@ -174,7 +268,7 @@
 .actionHint {
   margin: 0;
   color: var(--app-text-tertiary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   line-height: 1.6;
   text-align: center;
 }
@@ -205,6 +299,25 @@
 
   .stepsHeader :global(.ant-btn) {
     width: 100%;
+  }
+
+  .timeValues {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .timeGroup {
+    gap: 4px;
+  }
+
+  .timeNumber {
+    width: 46px;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .timeLabel {
+    font-size: var(--app-font-14);
   }
 }
 

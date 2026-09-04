@@ -39,7 +39,7 @@
 .actionSheet :global(.ant-drawer-content) {
   overflow: hidden;
   border-radius: 28px 28px 0 0 !important;
-  background: #fff;
+  background: var(--app-bg-elevated);
 }
 
 .actionSheet :global(.ant-drawer-title) {
@@ -48,7 +48,7 @@
 
 .actionSheet :global(.ant-drawer-body) {
   padding: 0;
-  background: #fff;
+  background: var(--app-bg-elevated);
   overflow: hidden;
 }
 
@@ -63,14 +63,14 @@
 .actionSheetCancelGroup {
   display: grid;
   width: 100%;
-  background: #fff;
+  background: var(--app-bg-elevated);
   overflow: hidden;
   border-radius: 0;
 }
 
 .actionSheetSpacer {
   height: 8px;
-  background: rgb(242 242 247 / 0.94);
+  background: var(--app-bg-surface);
 }
 
 .actionSheetButton:global(.ant-btn) {
@@ -78,29 +78,29 @@
   min-height: 56px;
   border: 0;
   border-radius: 0;
-  background: #fff;
-  color: #1d1d1f;
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
   box-shadow: none;
   font-size: 16px;
   font-weight: 400;
 }
 
 .actionSheetButton:global(.ant-btn[disabled]) {
-  background: #fff !important;
-  color: rgb(142 142 147 / 0.7) !important;
+  background: var(--app-bg-elevated) !important;
+  color: var(--app-text-tertiary) !important;
   cursor: not-allowed;
 }
 
 .actionSheetButton:global(.ant-btn + .ant-btn) {
-  border-top: 1px solid rgb(229 229 234 / 0.9);
+  border-top: 1px solid var(--app-border-soft);
 }
 
 .actionSheetButton:global(.ant-btn:hover),
 .actionSheetButton:global(.ant-btn:focus-visible),
 .actionSheetButton:global(.ant-btn:active) {
   border-color: transparent !important;
-  background: #fff !important;
-  color: #1d1d1f !important;
+  background: var(--app-bg-elevated) !important;
+  color: var(--app-text) !important;
   box-shadow: none !important;
 }
 
@@ -120,11 +120,11 @@
 
 .actionSheetButtonMeta {
   color: var(--app-text-tertiary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
 }
 
 .actionSheetButton:global(.ant-btn[disabled]) .actionSheetButtonMeta {
-  color: rgb(142 142 147 / 0.66);
+  color: var(--app-text-tertiary);
 }
 
 .creationDrawer :global(.ant-drawer-header) {
@@ -163,7 +163,7 @@
 .aiPanelHeader p {
   margin: 0;
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   line-height: 1.6;
 }
 
@@ -189,7 +189,7 @@
 .aiStageItem p {
   margin: 0;
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   line-height: 1.55;
 }
 

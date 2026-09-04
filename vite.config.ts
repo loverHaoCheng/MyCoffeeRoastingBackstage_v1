@@ -66,12 +66,31 @@ export default defineConfig(({ mode }) => {
       },
     ],
     build: {
-      chunkSizeWarningLimit: 900,
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
-          manualChunks: {
-            react: ['react', 'react-dom', 'react-router-dom'],
-            state: ['@tanstack/react-query', 'zustand', 'zod'],
+          manualChunks(id) {
+            if (!id.includes('/node_modules/')) {
+              return undefined;
+            }
+
+            if (/\/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) {
+              return 'react';
+            }
+
+            if (/\/node_modules\/(@tanstack\/react-query|zustand|zod)\//.test(id)) {
+              return 'state';
+            }
+
+            if (id.includes('/node_modules/react-hook-form/')) {
+              return 'forms';
+            }
+
+            if (id.includes('/node_modules/@radix-ui/')) {
+              return 'radix';
+            }
+
+            return undefined;
           },
         },
       },

@@ -75,7 +75,7 @@ export function ResetPasswordPage() {
         <div aria-live="polite" className={styles.verificationState}>
           {result.state === 'success' ? <CheckCircleFilled className={styles.verificationSuccessIcon} /> : null}
           {result.state === 'error' ? <CloseCircleOutlined className={styles.verificationErrorIcon} /> : null}
-          <h1>{result.state === 'success' ? '密码重置成功' : '无法重置密码'}</h1>
+          <h2>{result.state === 'success' ? '密码重置成功' : '无法重置密码'}</h2>
           <p>{result.message}</p>
           <Button
             block

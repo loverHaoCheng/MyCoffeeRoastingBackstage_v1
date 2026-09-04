@@ -462,10 +462,10 @@ export function BeanFieldEditorDrawer({
     >
       <section style={{ display: 'grid', gap: '10px', padding: 0 }}>
         <label style={{ display: 'grid', gap: '6px' }}>
-          <span style={{ color: 'var(--app-text-secondary)', fontSize: '12px', fontWeight: 700 }}>{fieldLabel}</span>
+          <span style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--app-font-14)', fontWeight: 700 }}>{fieldLabel}</span>
           {renderFieldControl()}
           {editableFieldPath === 'flavorTags' ? (
-            <span style={{ color: 'var(--app-text-secondary)', fontSize: '12px' }}>
+            <span style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--app-font-14)' }}>
               最多 {String(beanFlavorTagMaxCount)} 个标签
             </span>
           ) : null}

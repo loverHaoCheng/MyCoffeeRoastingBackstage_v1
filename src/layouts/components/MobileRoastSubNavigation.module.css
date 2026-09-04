@@ -10,16 +10,15 @@
 
 .navigation button {
   position: relative;
-  min-height: 42px;
+  min-height: var(--app-touch-target-size);
   border: 0;
   background: transparent;
   color: var(--app-text-secondary);
-  color: #6e6e73;
   font-size: 14px;
   font-weight: 700;
 }
 
-.navigation button[aria-current='page'] { color: #1d1d1f; }
+.navigation button[aria-current='page'] { color: var(--app-text); }
 
 .navigation button[aria-current='page']::after {
   position: absolute;
@@ -28,6 +27,6 @@
   left: 30%;
   height: 2px;
   border-radius: 999px;
-  background: #1d1d1f;
+  background: var(--app-text);
   content: '';
 }

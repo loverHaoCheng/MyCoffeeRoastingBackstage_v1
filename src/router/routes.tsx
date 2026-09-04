@@ -10,10 +10,6 @@ import { RoastSectionLayout } from '@/layouts/components/RoastSectionLayout';
 const MainLayout = lazy(() => import('@/layouts/MainLayout').then((module) => ({ default: module.MainLayout })));
 const loadAuthModule = () => import('@/modules/auth');
 
-// Start fetching the shared auth chunk while the router is being initialized.
-// The chunk remains separate, but auth navigation does not pay the full request latency.
-void loadAuthModule();
-
 const ForgotPasswordPage = lazy(() =>
   loadAuthModule().then((module) => ({ default: module.ForgotPasswordPage })),
 );
@@ -29,22 +25,15 @@ const VerifyEmailPage = lazy(() =>
 );
 const LegalPage = lazy(() => import('@/modules/legal').then((module) => ({ default: module.LegalPage })));
 const BeanPage = lazy(() => import('@/modules/bean').then((module) => ({ default: module.BeanPage })));
-// The default authenticated route is the bean inventory; fetch its chunk immediately.
-void import('@/modules/bean');
 const RoastPage = lazy(() =>
-  import('@/modules/roast').then((module) => ({ default: module.RoastPage })),
+  import('@/modules/roast/pages/RoastPage').then((module) => ({ default: module.RoastPage })),
 );
-// The roast workspace has two sibling routes. Fetch both page chunks while the
-// authenticated shell is mounting so switching between them does not start a
-// network request after the user taps the secondary navigation.
-void import('@/modules/roast');
 const RoastAssistantPage = lazy(() =>
-  import('@/modules/roast').then((module) => ({ default: module.RoastAssistantPage })),
+  import('@/modules/roast/pages/RoastAssistantPage').then((module) => ({ default: module.RoastAssistantPage })),
 );
 const ProductionPage = lazy(() =>
   import('@/modules/production').then((module) => ({ default: module.ProductionPage })),
 );
-void import('@/modules/production');
 const FinancePage = lazy(() =>
   import('@/modules/finance').then((module) => ({ default: module.FinancePage })),
 );

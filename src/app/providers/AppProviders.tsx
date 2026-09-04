@@ -72,7 +72,7 @@ export function AppProviders({ children }: PropsWithChildren) {
       },
       components: {
         Button: {
-          controlHeight: 40,
+          controlHeight: 44,
         },
         Card: {
           headerFontSize: Number((15 * appDisplaySettings.scale).toFixed(2)),

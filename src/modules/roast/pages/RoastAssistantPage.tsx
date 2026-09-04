@@ -312,6 +312,7 @@ export function RoastAssistantPage() {
 
   return (
     <main className={styles.page}>
+      <h1 className="sr-only">AI 分析</h1>
       <section className={styles.chat} aria-label="AI 烘焙助手">
         <div className={styles.contextActions}>
           <Tooltip title="新建对话">

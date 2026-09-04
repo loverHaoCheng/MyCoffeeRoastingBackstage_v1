@@ -912,3 +912,51 @@ AI烘焙建议
 10.如需新增样式或功能，优先考虑ui.shadcn的组件。
 11.测试端与正式端的PocketBase、BFF、web等同步修改，如果需要单独修改时我会进行提示。
 ```
+
+## UI/UX 设计系统（EasyBake）
+
+本节由 `ui-ux-pro-max` 基于当前 React 19 + Vite 企业级烘焙运营后台生成，并在不违背本文件既有约束的前提下作为界面统一标准。
+
+### 产品与风格
+
+- 产品类型：咖啡烘焙生产与库存运营 SaaS / 管理后台。
+- 视觉方向：Minimalism & Swiss，Apple 风格；信息优先、克制留白、稳定层级。
+- 默认以浅色黑白灰为主，深色模式使用同一语义 token 的反差配对；禁止渐变装饰、彩色堆叠和 emoji 图标。
+- 页面优先移动端，再扩展至 768px、1024px、1440px；任何页面不得产生移动端横向滚动。
+
+### 颜色 Token
+
+组件不得直接写页面级 hex 颜色，统一使用 `src/app/styles/global.css` 中的语义变量：
+
+```text
+--app-bg / --app-bg-elevated / --app-bg-surface / --app-bg-soft
+--app-text / --app-text-secondary / --app-text-tertiary
+--app-border / --app-border-soft / --app-border-hover
+--app-selected-surface / --app-hover-surface
+--app-focus-ring / --app-danger / --app-danger-surface
+```
+
+品牌主色保持中性深灰；错误、成功、警告仅用于表达状态且必须同时有文字或图标，不得仅靠颜色传达信息。普通文本对背景保持至少 4.5:1 对比度。
+
+### 字体、尺寸与间距
+
+- 中文界面优先系统字体：`-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif`；数字、时间、批次和指标使用等宽数字。
+- 正文最小 14px（移动端可读文本优先 16px），行高 1.5–1.75；标题使用 600–700 字重，不使用负字间距。
+- 间距只使用 4/8px 节奏：4、8、12、16、24、32、48、64px。
+- 触控目标最小 44×44px，控件之间至少 8px 间距；输入框移动端高度不低于 44px。
+- 圆角按层级使用 6–16px，避免卡片嵌套卡片；阴影只使用轻量语义层级。
+
+### 组件与状态
+
+- 优先复用 Ant Design、现有 shared UI 与 `@/components/ui` 组件；新增通用交互组件必须先抽象后复用。
+- 所有按钮、链接、Tabs、Select、输入控件必须有明确 hover/pressed/disabled/focus-visible 状态，状态变化使用 150–300ms 过渡且不改变布局尺寸。
+- 图标统一使用 Lucide 或 Ant Design SVG 图标；图标按钮必须提供 `aria-label`，装饰图标设置 `aria-hidden="true"`。
+- 表单使用可见标签、关联控件、邻近错误提示；提交失败保留用户输入并聚焦首个错误字段。
+- 抽屉、弹窗和固定操作栏不得遮挡键盘焦点；关闭后恢复触发控件焦点。
+
+### 响应式与无障碍验收
+
+- 必须检查 375px、768px、1024px、1440px，以及窄屏横向布局；长文本可换行，禁止 `word-break: break-all`。
+- 页面固定头部/底部需预留安全区和滚动内边距；移动端优先使用 `dvh` 相关高度。
+- 支持键盘完整操作、可见焦点环、屏幕阅读器语义、`prefers-reduced-motion: reduce`；不依赖 hover 或颜色完成关键操作。
+- 视觉检查需覆盖浅色/深色主题，确保文本、边框、禁用态和选中态均可辨识。

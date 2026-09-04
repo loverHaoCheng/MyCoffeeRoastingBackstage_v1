@@ -45,6 +45,7 @@ export interface RemoteGreenBeanLookupRecord {
 }
 
 export interface RemoteRoastPlanStepRecord {
+  airDamper?: string;
   airTemperature?: string;
   drumSpeed?: string;
   event?: string;

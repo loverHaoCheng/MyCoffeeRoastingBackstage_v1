@@ -7,12 +7,12 @@
 
 .toggleButton {
   position: relative;
-  width: 38px !important;
-  min-height: 38px !important;
-  height: 38px !important;
+  width: var(--app-touch-target-size) !important;
+  min-height: var(--app-touch-target-size) !important;
+  height: var(--app-touch-target-size) !important;
   padding: 0 !important;
   border-radius: 10px !important;
-  font-size: 12px !important;
+  font-size: var(--app-font-14) !important;
 }
 
 .toggleChevron {
@@ -37,7 +37,7 @@
   border-radius: 50%;
   background: var(--app-text);
   color: var(--app-bg);
-  font-size: 10px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -56,7 +56,7 @@
 .panelTitle {
   margin: 0;
   color: var(--app-text);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   line-height: 18px;
 }
@@ -81,7 +81,7 @@
   align-items: center;
   gap: 4px;
   color: var(--app-text-tertiary);
-  font-size: 11px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   line-height: 14px;
   white-space: nowrap;
@@ -102,7 +102,7 @@
 .sectionTitle {
   margin: 0;
   color: var(--app-text);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 700;
   line-height: 18px;
 }
@@ -112,7 +112,7 @@
 }
 
 .field :global(.ant-select-selector) {
-  min-height: 36px !important;
+  min-height: var(--app-touch-target-size) !important;
   border-color: var(--app-border-soft) !important;
   border-radius: 10px !important;
   background: var(--app-bg-elevated) !important;
@@ -121,12 +121,12 @@
 
 .field :global(.ant-select-selection-placeholder),
 .field :global(.ant-select-selection-item) {
-  font-size: 12px;
+  font-size: var(--app-font-14);
 }
 
 .clearButton {
   width: 100%;
-  height: 36px;
+  min-height: var(--app-touch-target-size);
   border: 1px solid var(--app-border-soft) !important;
   border-radius: 10px !important;
   color: var(--app-text-secondary) !important;

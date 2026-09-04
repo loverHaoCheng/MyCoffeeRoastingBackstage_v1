@@ -227,7 +227,7 @@ export function BeanInventoryCard({ bean, onDelete, onEdit, onEditAll, onRestock
       <Separator className="w-full" />
       <Button
         aria-label={`立即续购 ${bean.name}`}
-        className="h-9 w-full rounded-none rounded-b-[15px] border-0 bg-transparent px-3 text-[11px] font-medium text-[var(--app-text-secondary)] shadow-none transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--app-text)_4%,transparent)] hover:text-[var(--app-text)] active:bg-[color-mix(in_srgb,var(--app-text)_7%,transparent)]"
+        className="h-11 w-full rounded-none rounded-b-[15px] border-0 bg-transparent px-3 text-sm font-medium text-[var(--app-text-secondary)] shadow-none transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--app-text)_4%,transparent)] hover:text-[var(--app-text)] active:bg-[color-mix(in_srgb,var(--app-text)_7%,transparent)]"
         onClick={() => {
           onRestock(bean);
         }}

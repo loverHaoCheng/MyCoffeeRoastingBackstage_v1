@@ -6,6 +6,7 @@ import UpOutlined from "@ant-design/icons/UpOutlined";
 import App from 'antd/es/app';
 import Button from "antd/es/button";
 import { Select } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
 import { useEffect } from 'react';
@@ -23,6 +24,96 @@ import styles from './RoastPlanManualCreator.module.css';
 
 const GENERIC_BEAN_ID = 'generic';
 const GENERIC_BEAN_NAME = '通用';
+const parseTimeValue = (value: string): { end?: string; start: string } => {
+  const parts = value.trim().split(/\s*(?:~|～|-)\s*/);
+  return { start: parts[0] ?? '00:00', end: parts[1] };
+};
+
+const normalizeTimePart = (value: string | undefined): string => {
+  const match = value?.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match?.[1] || !match[2]) return '00:00';
+  const minute = Math.min(59, Math.max(0, Number(match[1])));
+  const second = Math.min(59, Math.max(0, Number(match[2])));
+  return `${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+};
+
+const formatUnit = (value: string, unit: string): string => {
+  if (!value.trim() || value === '不可调' || value === '-') return value;
+  return `${value.trim().replace(/(?:℃|°C|rpm|r|%)$/i, '')}${unit}`;
+};
+
+const stripUnit = (value: string): string => value.replace(/(?:℃|°C|rpm|r|%)\s*$/i, '');
+
+interface TimeFieldProps {
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+const TimeField = ({ name, value, onChange }: TimeFieldProps) => {
+  const parsed = parseTimeValue(value);
+  const [startMinute, startSecond] = normalizeTimePart(parsed.start).split(':');
+  const [endMinute, endSecond] = normalizeTimePart(parsed.end).split(':');
+  const update = (start: string, end?: string): void => { onChange(end ? `${start}~${end}` : start); };
+  const endpoint = (minute: string, second: string, label: string, onValue: (next: string) => void) => (
+    <span className={styles.timeEndpoint}>
+      <input
+        aria-label={`${label}分钟`}
+        className={styles.timeNumber}
+        inputMode="numeric"
+        max={59}
+        min={0}
+        onBlur={(event) => {
+          const value = Math.min(59, Math.max(0, Number(event.currentTarget.value || 0)));
+          onValue(`${String(value).padStart(2, '0')}:${second}`);
+        }}
+        onChange={(event) => {
+          const value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
+          onValue(`${value || '00'}:${second}`);
+        }}
+        type="number"
+        value={minute}
+      />
+      <span>:</span>
+      <input
+        aria-label={`${label}秒`}
+        className={styles.timeNumber}
+        inputMode="numeric"
+        max={59}
+        min={0}
+        onBlur={(event) => {
+          const value = Math.min(59, Math.max(0, Number(event.currentTarget.value || 0)));
+          onValue(`${minute}:${String(value).padStart(2, '0')}`);
+        }}
+        onChange={(event) => {
+          const value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
+          onValue(`${minute}:${value || '00'}`);
+        }}
+        type="number"
+        value={second}
+      />
+    </span>
+  );
+
+  return (
+    <div className={styles.timeField}>
+      <input aria-hidden="true" className={styles.timeValue} name={name} onChange={(event) => { onChange(event.target.value); }} tabIndex={-1} type="text" value={value} />
+      <Tabs className={styles.timeModeTabs} value={parsed.end ? 'range' : 'single'} onValueChange={(next) => { update(normalizeTimePart(parsed.start), next === 'range' ? '00:00' : undefined); }}>
+        <TabsList>
+          <TabsTrigger value="single">单个时间</TabsTrigger>
+          <TabsTrigger value="range">时间范围</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <div className={styles.timeValues}>
+        <span className={styles.timeGroup}>
+          <span className={styles.timeLabel}>开始时间</span>
+          {endpoint(startMinute ?? '00', startSecond ?? '00', '开始时间', (next) => { update(next, parsed.end); })}
+        </span>
+        {parsed.end ? <span className={styles.timeGroup}><span className={styles.timeLabel}>结束时间</span>{endpoint(endMinute ?? '00', endSecond ?? '00', '结束时间', (next) => { update(normalizeTimePart(parsed.start), next); })}</span> : null}
+      </div>
+    </div>
+  );
+};
 
 interface RoastPlanFormProps {
   initialValues: RoastPlanJsonInput;
@@ -80,6 +171,7 @@ export function RoastPlanForm({
   const selectedMachine = roastingMachines.find((machine) => machine.id === selectedRoasterMachineId);
   const adjustableControls = getRoasterControlCapabilities(selectedMachine);
   const showAirTemperature = adjustableControls.includes('airTemperature');
+  const showAirDamper = adjustableControls.includes('airDamper');
   const showDrumSpeed = adjustableControls.includes('drumSpeed');
   const showFirePower = adjustableControls.includes('firePower');
 
@@ -105,9 +197,11 @@ export function RoastPlanForm({
       beanName: isGenericPlan ? GENERIC_BEAN_NAME : selectedBean?.name ?? values.beanName,
       steps: values.steps.map((step) => ({
         ...step,
-        airTemperature: submitControls.includes('airTemperature') ? step.airTemperature : '不可调',
-        drumSpeed: submitControls.includes('drumSpeed') ? step.drumSpeed : '不可调',
-        firePower: submitControls.includes('firePower') ? step.firePower : '不可调',
+        airDamper: showAirDamper ? formatUnit(step.airDamper ?? '', '%') : undefined,
+        airTemperature: submitControls.includes('airTemperature') ? formatUnit(step.airTemperature, '℃') : '不可调',
+        drumSpeed: submitControls.includes('drumSpeed') ? formatUnit(step.drumSpeed, 'r') : '不可调',
+        firePower: submitControls.includes('firePower') ? formatUnit(step.firePower, '%') : '不可调',
+        temperature: formatUnit(step.temperature, '℃'),
       })),
     };
     const validationResult = roastPlanJsonSchema.safeParse(payload);
@@ -265,6 +359,7 @@ export function RoastPlanForm({
             onClick={() => {
               append({
                 airTemperature: showAirTemperature ? '-' : '不可调',
+                airDamper: showAirDamper ? '' : undefined,
                 drumSpeed: showDrumSpeed ? '' : '不可调',
                 event: '',
                 firePower: showFirePower ? '' : '不可调',
@@ -329,7 +424,7 @@ export function RoastPlanForm({
                         <Controller
                           control={control}
                           name={`steps.${stepIndex}.time` as `steps.${number}.time`}
-                          render={({ field: itemField }) => <Input {...itemField} />}
+                          render={({ field: itemField }) => <TimeField name={itemField.name} value={itemField.value} onChange={itemField.onChange} />}
                         />
                       </label>
                       <label className={styles.field} data-field-path={`steps.${stepIndex}.event`}>
@@ -353,7 +448,7 @@ export function RoastPlanForm({
                         <Controller
                           control={control}
                           name={`steps.${stepIndex}.temperature` as `steps.${number}.temperature`}
-                          render={({ field: itemField }) => <Input {...itemField} />}
+                          render={({ field: itemField }) => <Input {...itemField} suffix="℃" value={stripUnit(itemField.value)} />}
                         />
                       </label>
                       {showFirePower ? (
@@ -362,7 +457,7 @@ export function RoastPlanForm({
                           <Controller
                             control={control}
                             name={`steps.${stepIndex}.firePower` as `steps.${number}.firePower`}
-                            render={({ field: itemField }) => <Input {...itemField} />}
+                            render={({ field: itemField }) => <Input {...itemField} suffix="%" />}
                           />
                         </label>
                       ) : null}
@@ -372,7 +467,7 @@ export function RoastPlanForm({
                           <Controller
                             control={control}
                             name={`steps.${stepIndex}.airTemperature` as `steps.${number}.airTemperature`}
-                            render={({ field: itemField }) => <Input {...itemField} />}
+                            render={({ field: itemField }) => <Input {...itemField} suffix="℃" value={stripUnit(itemField.value)} />}
                           />
                         </label>
                       ) : null}
@@ -382,8 +477,14 @@ export function RoastPlanForm({
                           <Controller
                             control={control}
                             name={`steps.${stepIndex}.drumSpeed` as `steps.${number}.drumSpeed`}
-                            render={({ field: itemField }) => <Input {...itemField} />}
+                            render={({ field: itemField }) => <Input {...itemField} suffix="r" value={stripUnit(itemField.value)} />}
                           />
+                        </label>
+                      ) : null}
+                      {showAirDamper ? (
+                        <label className={styles.field} data-field-path={`steps.${stepIndex}.airDamper`}>
+                          {renderLabel('风门', true)}
+                          <Controller control={control} name={`steps.${stepIndex}.airDamper` as `steps.${number}.airDamper`} render={({ field: itemField }) => <Input {...itemField} suffix="%" />} />
                         </label>
                       ) : null}
                     </div>

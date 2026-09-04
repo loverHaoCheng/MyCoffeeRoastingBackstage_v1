@@ -322,7 +322,7 @@ describe('RoastPage', () => {
     renderWithQuery(<RoastPage />);
 
     expect(screen.getByLabelText('烘焙计划列表')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '烘焙计划' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: '烘焙计划' })).toBeInTheDocument();
     expect(screen.queryByText('Roast Plan')).not.toBeInTheDocument();
     expect(screen.queryByText('按时间、事件、操作、炉温和火力管理烘焙节点，生产时可直接选择计划执行。')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'check-circle' })).not.toBeInTheDocument();

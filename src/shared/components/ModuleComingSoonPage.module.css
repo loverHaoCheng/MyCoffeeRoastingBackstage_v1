@@ -47,7 +47,7 @@
 
 .statCard span {
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
 }
 
 .statCard strong {

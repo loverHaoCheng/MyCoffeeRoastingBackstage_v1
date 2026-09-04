@@ -45,16 +45,9 @@
   z-index: 0;
   height: var(--app-shell-bottom-nav-height);
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    color-mix(in srgb, var(--app-bg) 18%, transparent) 34%,
-    color-mix(in srgb, var(--app-bg) 44%, transparent) 100%
-  );
+  background: color-mix(in srgb, var(--app-bg) 76%, transparent);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  mask: linear-gradient(180deg, transparent 0%, red 24%, red 100%);
-  -webkit-mask: linear-gradient(180deg, transparent 0%, red 24%, red 100%);
 }
 
 .bottomNavFrame {
@@ -91,7 +84,7 @@
   inset: 1px auto 1px 1px;
   width: calc((100% - 2px) / var(--bottom-nav-columns));
   border-radius: 24px;
-  background: linear-gradient(180deg, var(--app-selected-surface) 0%, var(--app-selected-surface-strong) 100%);
+  background: var(--app-selected-surface);
   box-shadow:
     0 1px 0 rgb(255 255 255 / 10%) inset,
     0 0 0 1px var(--app-emphasis-border-soft);
@@ -138,7 +131,7 @@
   max-height: none;
   opacity: 1;
   overflow: visible;
-  font-size: var(--app-font-12);
+  font-size: var(--app-font-14);
   font-weight: 500;
   line-height: 1;
   transform: none;
@@ -219,6 +212,6 @@
   }
 
   .bottomNavLabel {
-    font-size: var(--app-font-11);
+    font-size: var(--app-font-14);
   }
 }

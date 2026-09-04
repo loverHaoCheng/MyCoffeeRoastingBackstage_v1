@@ -6,6 +6,7 @@ export interface RoastPlanJsonStep {
   operation: string;
   temperature: string;
   airTemperature: string;
+  airDamper?: string;
   firePower: string;
   drumSpeed: string;
   note?: string;

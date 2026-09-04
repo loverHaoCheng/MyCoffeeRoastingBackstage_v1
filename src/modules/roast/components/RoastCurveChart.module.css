@@ -24,12 +24,12 @@
 
 .axisLabel {
   fill: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
 }
 
 .rorAxisLabel {
   fill: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
 }
 
 .gridLine {
@@ -56,25 +56,25 @@
 
 .eventLabel {
   fill: var(--app-text);
-  font-size: 12px;
+  font-size: var(--app-font-14);
   font-weight: 600;
 }
 
 .eventMarker {
-  fill: #f43f5e;
+  fill: var(--app-chart-temperature);
   stroke: var(--app-bg-elevated);
   stroke-width: 2;
 }
 
 .tempLine {
-  stroke: #f43f5e;
+  stroke: var(--app-chart-temperature);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.8;
 }
 
 .rorLine {
-  stroke: #f59e0b;
+  stroke: var(--app-chart-ror);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.4;
@@ -90,26 +90,26 @@
 }
 
 .phaseLabel {
-  fill: #ffffff;
+  fill: var(--app-chart-phase-label);
   font-size: 14px;
   font-weight: 600;
   pointer-events: none;
 }
 
 .tempDot {
-  fill: #f43f5e;
+  fill: var(--app-chart-temperature);
 }
 
 .rorDot {
-  fill: #f59e0b;
+  fill: var(--app-chart-ror);
 }
 
 .powerDot {
-  fill: #e11d48;
+  fill: var(--app-chart-power);
 }
 
 .drumDot {
-  fill: #4f46e5;
+  fill: var(--app-chart-drum);
 }
 
 .baseLine {
@@ -120,5 +120,5 @@
 .empty {
   margin: 0;
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
 }

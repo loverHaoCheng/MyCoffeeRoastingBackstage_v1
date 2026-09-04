@@ -20,9 +20,10 @@ const toModel = (value: unknown): RoasterModel => {
   return { brand: text(item.brand), id: text(item.id), modelName: text(item.model_name), reviewStatus: text(item.review_status) as RoasterModel['reviewStatus'], roastType: text(item.roast_type) as RoasterModel['roastType'], specifications: asRecord(item.specifications) };
 };
 
-const toMachine = (value: unknown): RoastingMachine => {
+const toMachine = (value: unknown, modelById?: ReadonlyMap<string, RoasterModel>): RoastingMachine => {
   const item = asRecord(value);
-  return { configuration: asRecord(item.configuration), displayName: text(item.display_name), id: text(item.id), modelId: text(item.model_id), modelKey: text(item.model_key), status: text(item.status) as RoastingMachine['status'] };
+  const modelId = text(item.model_id);
+  return { configuration: asRecord(item.configuration), displayName: text(item.display_name), id: text(item.id), modelId, modelKey: text(item.model_key), roastType: modelById?.get(modelId)?.roastType, status: text(item.status) as RoastingMachine['status'] };
 };
 
 export const roasterMachineService = {
@@ -51,7 +52,13 @@ export const roasterMachineService = {
     await client.update<Record<string, unknown>>('roasting_machines', { status: 'archived' }, { match: { id: machineId } });
   },
   async listMachines(): Promise<RoastingMachine[]> {
-    return (await client.list<Record<string, unknown>>('roasting_machines', { match: { status: 'active' }, orderBy: { column: 'created', ascending: false } })).map(toMachine);
+    const [records, models] = await Promise.all([
+      client.list<Record<string, unknown>>('roasting_machines', { match: { status: 'active' }, orderBy: { column: 'created', ascending: false } }),
+      this.listModels(),
+    ]);
+    const modelById = new Map(models.map((model) => [model.id, model]));
+
+    return records.map((record) => toMachine(record, modelById));
   },
   async listModels(): Promise<RoasterModel[]> {
     return (await roasterModelClient.list<Record<string, unknown>>('roaster_models', { orderBy: { column: 'model_name' } })).map(toModel);

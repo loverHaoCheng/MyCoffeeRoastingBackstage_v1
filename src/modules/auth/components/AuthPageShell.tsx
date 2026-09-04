@@ -34,6 +34,8 @@ export function AuthPageShell({
       <section className={joinClassNames(styles.shell, shellClassName)}>
         {brandTitle ? <div className={styles.brandTitle}>{brandTitle}</div> : null}
 
+        {heroHidden ? <h1 className="sr-only">{title}</h1> : null}
+
         {!heroHidden ? (
           <header className={styles.hero}>
             <span className={styles.eyebrow}>{eyebrow}</span>

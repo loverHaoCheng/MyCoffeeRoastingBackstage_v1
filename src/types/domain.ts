@@ -61,6 +61,7 @@ export interface RoastPlanStep {
   operation: string;
   drumTemperature: string;
   airTemperature: string;
+  airDamper?: string;
   firePower: string;
   drumSpeed: string;
   note?: string;

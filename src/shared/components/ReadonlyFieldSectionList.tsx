@@ -43,7 +43,7 @@ export function ReadonlyFieldSectionList({
       {visibleSections.map((section) => (
         <section className="grid gap-2" key={section.key}>
           {section.title ? (
-            <h3 className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--app-text-tertiary)]">
+            <h3 className="px-1 text-sm font-semibold uppercase tracking-normal text-[var(--app-text-tertiary)]">
               {section.title}
             </h3>
           ) : null}
@@ -60,13 +60,13 @@ export function ReadonlyFieldSectionList({
                     'grid min-h-[38px] grid-cols-[minmax(72px,96px)_minmax(0,1fr)] items-center gap-3 px-3 py-2',
                   )}
                 >
-                  <span className="truncate whitespace-nowrap text-[11px] font-semibold text-[var(--app-text-secondary)]">
+                  <span className="truncate whitespace-nowrap text-sm font-semibold text-[var(--app-text-secondary)]">
                     {item.label}
                   </span>
                   <div className="flex min-w-0 items-start justify-end text-right">
                     <span
                       className={cn(
-                        'min-w-0 text-[12px] font-semibold text-[var(--app-text)]',
+                        'min-w-0 text-sm font-semibold text-[var(--app-text)]',
                         item.multiline
                           ? 'whitespace-normal break-words leading-[18px]'
                           : 'truncate',

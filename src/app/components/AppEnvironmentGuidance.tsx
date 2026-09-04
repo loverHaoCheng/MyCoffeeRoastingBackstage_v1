@@ -1,4 +1,5 @@
-import { App, Typography } from 'antd';
+import App from 'antd/es/app';
+import Typography from 'antd/es/typography';
 import { type ReactNode, useEffect } from 'react';
 
 import {

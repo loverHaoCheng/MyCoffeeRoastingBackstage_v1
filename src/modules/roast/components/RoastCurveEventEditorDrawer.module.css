@@ -12,7 +12,7 @@
 
 .field > span {
   color: var(--app-text-secondary);
-  font-size: 13px;
+  font-size: var(--app-font-14);
   font-weight: 600;
 }
 
@@ -28,7 +28,7 @@
   border: 1px solid var(--app-border);
   border-radius: 8px;
   color: var(--app-text-secondary);
-  font-size: 12px;
+  font-size: var(--app-font-14);
 }
 
 .preview b {

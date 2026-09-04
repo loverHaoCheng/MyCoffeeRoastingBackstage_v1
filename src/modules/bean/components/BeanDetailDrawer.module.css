@@ -28,9 +28,9 @@
 }
 
 .summaryItem span {
-  font-size: 12px;
+  font-size: var(--app-font-14);
   color: var(--app-text-secondary);
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .summaryItem strong {
@@ -56,7 +56,7 @@
 }
 
 .detailLabel {
-  font-size: 13px;
+  font-size: var(--app-font-14);
   color: var(--app-text-secondary);
 }
 

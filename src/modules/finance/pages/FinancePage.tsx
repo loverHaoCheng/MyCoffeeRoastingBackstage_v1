@@ -209,6 +209,7 @@ export function FinancePage() {
 
   return (
     <main className={styles.page}>
+      <h1 className="sr-only">财务</h1>
       <FinanceFilterBar
         onPresetChange={setPreset}
         preset={preset}

@@ -8,8 +8,7 @@
   padding: 16px 16px 11px;
   border: 1px solid var(--app-border);
   border-radius: 15px;
-  background:
-    linear-gradient(180deg, var(--app-card-top-surface) 0%, var(--app-card-bottom-surface) 100%);
+  background: var(--app-bg-elevated);
   box-shadow:
     var(--app-card-shadow),
     inset 0 1px 0 var(--app-card-inset-highlight);
@@ -21,12 +20,7 @@
 }
 
 .card::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 56px;
-  background: linear-gradient(180deg, var(--app-card-glow-start), var(--app-card-glow-end));
-  pointer-events: none;
+  display: none;
 }
 
 .header {
@@ -198,7 +192,7 @@
 }
 
 .rowEditIcon :global(.anticon) {
-  font-size: 12px;
+  font-size: var(--app-font-14);
 }
 
 .footer {
@@ -232,9 +226,9 @@
   box-shadow: none;
   appearance: none;
   -webkit-appearance: none;
-  font-size: 9px;
+  font-size: var(--app-font-14);
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   line-height: 1;
   transition: none;
 }
@@ -264,7 +258,7 @@
 }
 
 .expandIcon :global(.anticon) {
-  font-size: 8px;
+  font-size: var(--app-font-14);
 }
 
 .expandButton[data-expanded-level='2'] .expandIcon {
@@ -341,7 +335,7 @@
   }
 
   .rowLabel {
-    font-size: 13px;
+    font-size: var(--app-font-14);
   }
 
   .rowValue {
@@ -351,7 +345,7 @@
   .expandButton:global(.ant-btn) {
     min-height: var(--app-touch-target-size);
     height: var(--app-touch-target-size);
-    font-size: 8px;
+    font-size: var(--app-font-14);
   }
 }
 

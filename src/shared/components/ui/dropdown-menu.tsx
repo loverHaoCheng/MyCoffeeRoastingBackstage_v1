@@ -142,7 +142,7 @@ export const DropdownMenuLabel = forwardRef<
   }
 >(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
-    className={cn('px-3 py-2 text-xs font-semibold text-[var(--app-text-tertiary)]', inset && 'pl-8', className)}
+    className={cn('px-3 py-2 text-sm font-semibold text-[var(--app-text-tertiary)]', inset && 'pl-8', className)}
     ref={ref}
     {...props}
   />
@@ -167,5 +167,5 @@ export const DropdownMenuShortcut = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLSpanElement>) => {
-  return <span className={cn('ml-auto text-xs tracking-[0.18em] text-[var(--app-text-tertiary)]', className)} {...props} />;
+  return <span className={cn('ml-auto text-sm tracking-normal text-[var(--app-text-tertiary)]', className)} {...props} />;
 };

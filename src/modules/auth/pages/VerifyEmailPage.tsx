@@ -86,7 +86,7 @@ export function VerifyEmailPage() {
         {status.state === 'loading' ? <Spin size="large" /> : null}
         {status.state === 'success' ? <CheckCircleFilled className={styles.verificationSuccessIcon} /> : null}
         {status.state === 'error' ? <CloseCircleOutlined className={styles.verificationErrorIcon} /> : null}
-        <h1>邮箱验证</h1>
+        <h2>邮箱验证</h2>
         <p>{status.message}</p>
         {status.state !== 'loading' ? (
           <Button

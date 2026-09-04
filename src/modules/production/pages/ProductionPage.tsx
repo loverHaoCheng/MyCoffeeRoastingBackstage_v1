@@ -245,6 +245,7 @@ export function ProductionPage() {
 
   return (
     <main className={styles.page}>
+      <h1 className="sr-only">烘焙历史</h1>
       {/* 搜索栏 */}
       <UnifiedSearchBar
         inputAriaLabel="搜索烘焙历史"
@@ -296,7 +297,9 @@ export function ProductionPage() {
         ) : null}
 
         {!isFetching && filteredBatches.length === 0 ? (
-          <Empty className={styles.empty} description="没有匹配的烘焙记录" />
+          <Empty className={styles.empty} description={keyword.trim() || Object.values(filterValues).some((values) => values.length > 0) ? '当前条件没有匹配的烘焙记录' : '没有匹配的烘焙记录'}>
+            {keyword.trim() || Object.values(filterValues).some((values) => values.length > 0) ? <Button onClick={() => { setKeyword(''); setFilterValues({ bean: [], level: [], saleProgress: [], salesMode: [] }); }}>清除筛选</Button> : null}
+          </Empty>
         ) : null}
 
         <ResponsiveMasonry ariaLabel="烘焙历史卡片列表">

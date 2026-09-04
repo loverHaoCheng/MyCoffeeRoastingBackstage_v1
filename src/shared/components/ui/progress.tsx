@@ -80,7 +80,7 @@ export function Progress({
 export function ProgressLabel({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={cn('text-[11px] font-medium leading-4 text-[var(--app-text-tertiary)]', className)}
+      className={cn('text-sm font-medium leading-5 text-[var(--app-text-tertiary)]', className)}
       {...props}
     />
   );
@@ -91,7 +91,7 @@ export function ProgressValue({ children, className, ...props }: HTMLAttributes<
 
   return (
     <span
-      className={cn('shrink-0 text-[11px] font-semibold leading-4 text-[var(--app-text-secondary)]', className)}
+      className={cn('shrink-0 text-sm font-semibold leading-5 text-[var(--app-text-secondary)]', className)}
       {...props}
     >
       {children ?? `${String(Math.round(value))}%`}

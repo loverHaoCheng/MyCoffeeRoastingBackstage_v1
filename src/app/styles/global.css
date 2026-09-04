@@ -33,10 +33,6 @@
   --app-text-tertiary: #8e8e93;
   --app-focus-ring: #1d1d1f;
   --app-font-scale: 1;
-  --app-font-10: calc(10px * var(--app-font-scale));
-  --app-font-11: calc(11px * var(--app-font-scale));
-  --app-font-12: calc(12px * var(--app-font-scale));
-  --app-font-13: calc(13px * var(--app-font-scale));
   --app-font-14: calc(14px * var(--app-font-scale));
   --app-font-15: calc(15px * var(--app-font-scale));
   --app-font-16: calc(16px * var(--app-font-scale));
@@ -48,6 +44,20 @@
   --app-font-24: calc(24px * var(--app-font-scale));
   --app-font-26: calc(26px * var(--app-font-scale));
   --app-touch-target-size: 44px;
+  --app-space-1: 4px;
+  --app-space-2: 8px;
+  --app-space-3: 12px;
+  --app-space-4: 16px;
+  --app-space-6: 24px;
+  --app-space-8: 32px;
+  --app-space-12: 48px;
+  --app-space-16: 64px;
+  --app-radius-sm: 6px;
+  --app-radius-md: 10px;
+  --app-radius-lg: 16px;
+  --app-motion-fast: 150ms;
+  --app-motion-standard: 220ms;
+  --app-motion-slow: 300ms;
   --app-muted-surface: #f5f5f7;
   --app-selected-surface: rgb(232 232 236 / 98%);
   --app-selected-surface-strong: rgb(222 222 227 / 96%);
@@ -57,6 +67,15 @@
   --app-emphasis-border-soft: rgb(29 29 31 / 8%);
   --app-emphasis-text-strong: #1d1d1f;
   --app-emphasis-text-muted: #4b5563;
+  --app-chart-temperature: #b42318;
+  --app-chart-ror: #9a6700;
+  --app-chart-power: #b42318;
+  --app-chart-drum: #4f46e5;
+  --app-chart-phase-dry: #176b45;
+  --app-chart-phase-maillard: #8a5a00;
+  --app-chart-phase-development: #87406d;
+  --app-chart-phase-fallback: #555555;
+  --app-chart-phase-label: #ffffff;
   --app-viewport-height: 100vh;
   --app-visual-viewport-height: 100vh;
   --app-visual-viewport-offset-top: 0px;
@@ -80,6 +99,7 @@
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-synthesis: none;
+  font-variant-numeric: tabular-nums;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -121,6 +141,22 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+button,
+a,
+[role='button'],
+[role='tab'],
+select {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed;
 }
 
 a {
@@ -172,6 +208,11 @@ select,
 
 .ant-message .ant-message-custom-content {
   align-items: center;
+}
+
+.ant-tag {
+  font-size: var(--app-font-14);
+  line-height: 1.5;
 }
 
 :root[data-standalone-pwa="true"],
@@ -251,6 +292,15 @@ select,
   --app-emphasis-border-soft: rgb(245 245 247 / 10%);
   --app-emphasis-text-strong: #f5f5f7;
   --app-emphasis-text-muted: #d4d4d8;
+  --app-chart-temperature: #ff8f87;
+  --app-chart-ror: #f6c453;
+  --app-chart-power: #ff8f87;
+  --app-chart-drum: #a5b4fc;
+  --app-chart-phase-dry: #5fcf9a;
+  --app-chart-phase-maillard: #f0bd58;
+  --app-chart-phase-development: #e29bc5;
+  --app-chart-phase-fallback: #a1a1aa;
+  --app-chart-phase-label: #111111;
 }
 
 :root[data-app-theme='dark'] body,
@@ -357,4 +407,24 @@ select,
 ):focus-visible {
   outline: 2px solid var(--app-focus-ring) !important;
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
 }

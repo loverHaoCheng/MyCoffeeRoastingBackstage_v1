@@ -22,6 +22,8 @@ interface BeanFormProps {
   enableCostTemplateSelection?: boolean;
   focusFieldPath?: FieldPath<GreenBeanFormInput>;
   initialValues: GreenBeanFormInput;
+  formId?: string;
+  showBottomActions?: boolean;
   onCancel?: () => void;
   onSubmit: (input: GreenBeanFormInput) => Promise<void> | void;
   resetOnSubmit?: boolean;
@@ -31,6 +33,7 @@ interface BeanFormProps {
 const getErrorMessage = (message: string | undefined, fallback: string): string => message ?? fallback;
 const toNullableNumber = (value: null | number): null | number => value ?? null;
 const joinClassNames = (...classNames: (string | undefined)[]): string => classNames.filter(Boolean).join(' ');
+const NO_COST_TEMPLATE_OPTION = '__no_cost_template__';
 
 const renderLabel = (label: string, required = false) => {
   return (
@@ -53,6 +56,8 @@ export function BeanForm({
   onCancel,
   onSubmit,
   resetOnSubmit = false,
+  formId,
+  showBottomActions = true,
   submitLabel,
 }: BeanFormProps) {
   const { costTemplateSettings } = useCostTemplateSettings();
@@ -92,12 +97,9 @@ export function BeanForm({
     }
 
     return (
-      costTemplateSettings.templates.find((template) => template.id === selectedTemplateId) ??
-      costTemplateSettings.templates.find((template) => template.id === costTemplateSettings.defaultTemplateId) ??
-      null
+      costTemplateSettings.templates.find((template) => template.id === selectedTemplateId) ?? null
     );
   }, [
-    costTemplateSettings.defaultTemplateId,
     costTemplateSettings.templates,
     enableCostTemplateSelection,
     selectedTemplateId,
@@ -145,7 +147,12 @@ export function BeanForm({
       return;
     }
 
-    if (selectedTemplateId == null && autoApplyDefaultCostTemplate && costTemplateSettings.defaultTemplateId) {
+    if (
+      selectedTemplateId == null &&
+      !templateSyncShouldDirtyRef.current &&
+      autoApplyDefaultCostTemplate &&
+      costTemplateSettings.defaultTemplateId
+    ) {
       templateSyncShouldDirtyRef.current = false;
       setSelectedTemplateId(costTemplateSettings.defaultTemplateId);
       setValue('costTemplateId', costTemplateSettings.defaultTemplateId, { shouldDirty: false });
@@ -304,6 +311,7 @@ export function BeanForm({
   return (
     <form
       className={styles.form}
+      id={formId}
       onSubmit={handleSubmit((values) => {
         void submitForm(values);
       })}
@@ -319,36 +327,37 @@ export function BeanForm({
         <div className={styles.fieldGrid}>
           {enableCostTemplateSelection ? (
             <label className={joinClassNames(styles.field, styles.fieldWide)} data-field-path="costTemplate">
-              {renderLabel('成本模板', true)}
+              {renderLabel('成本模板')}
               <Select
                 aria-label="成本模板"
                 onChange={(value: string | undefined) => {
-                  if (!value) {
-                    return;
-                  }
-
                   templateSyncShouldDirtyRef.current = true;
                   manualSaleDefaultsRef.current = {
                     price: false,
                     weight: false,
                   };
-                  setSelectedTemplateId(value);
+                  const nextTemplateId = value === NO_COST_TEMPLATE_OPTION ? null : value ?? null;
+                  setSelectedTemplateId(nextTemplateId);
+                  setValue('costTemplateId', nextTemplateId, { shouldDirty: true });
                 }}
-                options={costTemplateSettings.templates.map((template) => ({
-                  label: template.name,
-                  value: template.id,
-                }))}
+                options={[
+                  { label: '暂不选择成本模板', value: NO_COST_TEMPLATE_OPTION },
+                  ...costTemplateSettings.templates.map((template) => ({
+                    label: template.name,
+                    value: template.id,
+                  })),
+                ]}
                 placeholder="选择一个成本模板"
                 showSearch={false}
-                value={selectedTemplate?.id ?? undefined}
+                value={selectedTemplate?.id ?? NO_COST_TEMPLATE_OPTION}
               />
               <span className={joinClassNames(styles.helpText, errors.costTemplateId ? styles.helpTextError : undefined)}>
                 {errors.costTemplateId?.message ??
                   (selectedTemplate
                   ? '会带入默认单次烘焙量，并根据当前采购重量与总价实时给出参考售价'
                   : autoApplyDefaultCostTemplate
-                    ? '请先在设置中建立成本模板后再录入生豆'
-                    : '必须选择成本模板，用于计算库存预估和销售利润')}
+                    ? '暂无默认模板，可先手工填写售价和规格，之后再补充模板'
+                    : '可选：用于计算库存预估和销售利润，也可以稍后补充')}
               </span>
               <div className={joinClassNames(styles.linkedHint, styles.inlineHint)}>
                 {selectedTemplate ? (
@@ -361,7 +370,7 @@ export function BeanForm({
                     </>
                   )
                 ) : (
-                  '选择成本模板后，会先生成最终单份出售重量、最终定价与默认单次烘焙量的参考值。'
+                  '选择成本模板后，会生成最终单份出售重量、最终定价与默认单次烘焙量的参考值；没有模板时可手工填写这些字段。'
                 )}
               </div>
             </label>
@@ -525,7 +534,7 @@ export function BeanForm({
       </section>
       <BeanNotesSection control={control} />
 
-      <BeanFormActions onCancel={onCancel} submitLabel={submitLabel} />
+      {showBottomActions ? <BeanFormActions onCancel={onCancel} submitLabel={submitLabel} /> : null}
     </form>
   );
 }

@@ -47,6 +47,7 @@ const mapRoastPlanSteps = (steps: unknown): RoastPlan['steps'] => {
       operation: record.operation ?? '',
       drumTemperature: record.temperature ?? '-',
       airTemperature: record.airTemperature ?? '-',
+      airDamper: record.airDamper,
       firePower: record.firePower ?? '',
       drumSpeed: record.drumSpeed ?? '-',
       note: record.note,
@@ -177,6 +178,7 @@ export const toRemoteRoastPlanPayload = async (
     status,
     steps: input.steps.map((step) => ({
       airTemperature: step.airTemperature,
+      airDamper: step.airDamper,
       drumSpeed: step.drumSpeed,
       event: step.event,
       firePower: step.firePower,

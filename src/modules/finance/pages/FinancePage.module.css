@@ -21,16 +21,16 @@
 }
 
 .formulaLabel {
-  color: #3a3a3c;
-  font-size: 12px;
+  color: var(--app-text);
+  font-size: var(--app-font-14);
   font-weight: 600;
   line-height: 1.5;
 }
 
 .formulaText {
   margin: 0;
-  color: #6e6e73;
-  font-size: 12px;
+  color: var(--app-text-secondary);
+  font-size: var(--app-font-14);
   line-height: 1.6;
 }
 
@@ -50,7 +50,7 @@
 .actionSheet :global(.ant-drawer-content) {
   overflow: hidden;
   border-radius: 28px 28px 0 0 !important;
-  background: #fff;
+  background: var(--app-bg-elevated);
 }
 
 .actionSheet :global(.ant-drawer-title) {
@@ -59,7 +59,7 @@
 
 .actionSheet :global(.ant-drawer-body) {
   padding: 0;
-  background: #fff;
+  background: var(--app-bg-elevated);
   overflow: hidden;
 }
 
@@ -75,14 +75,14 @@
 .actionSheetCancelGroup {
   display: grid;
   width: 100%;
-  background: #fff;
+  background: var(--app-bg-elevated);
   overflow: hidden;
   border-radius: 0;
 }
 
 .actionSheetSpacer {
   height: 8px;
-  background: rgb(242 242 247 / 0.94);
+  background: var(--app-bg-surface);
 }
 
 .actionSheetButton:global(.ant-btn) {
@@ -90,29 +90,29 @@
   width: 100%;
   border: 0;
   border-radius: 0;
-  background: #fff;
-  color: #1d1d1f;
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
   box-shadow: none;
   font-size: 16px;
   font-weight: 400;
 }
 
 .actionSheetButton:global(.ant-btn + .ant-btn) {
-  border-top: 1px solid rgb(229 229 234 / 0.9);
+  border-top: 1px solid var(--app-border-soft);
 }
 
 .actionSheetButton:global(.ant-btn.ant-btn-primary),
 .actionSheetButton:global(.ant-btn.ant-btn-default) {
-  background: #fff;
-  color: #1d1d1f;
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
 }
 
 .actionSheetButton:global(.ant-btn:hover),
 .actionSheetButton:global(.ant-btn:focus-visible),
 .actionSheetButton:global(.ant-btn:active) {
   border-color: transparent !important;
-  background: #fff !important;
-  color: #1d1d1f !important;
+  background: var(--app-bg-elevated) !important;
+  color: var(--app-text) !important;
   box-shadow: none !important;
 }
 
@@ -124,7 +124,7 @@
 
 .expenseDrawer :global(.ant-drawer-body) {
   padding: 0 24px 24px;
-  background: #fff;
+  background: var(--app-bg-elevated);
   overflow-x: hidden;
 }
 
@@ -134,11 +134,11 @@
 .headerSubmitButton, .headerSubmitButton:hover, .headerSubmitButton:focus { background: var(--app-text) !important; color: var(--app-bg-elevated) !important; }
 
 .expenseDrawer :global(.ant-drawer-content) {
-  background: #fff;
+  background: var(--app-bg-elevated);
 }
 
 .expenseDrawer :global(.ant-drawer-title) {
-  color: #1d1d1f;
+  color: var(--app-text);
   font-size: 18px;
   font-weight: 700;
 }
@@ -152,7 +152,7 @@
 }
 
 .expenseDrawer :global(.ant-drawer-close svg) {
-  color: #6e6e73;
+  color: var(--app-text-secondary);
   font-size: 18px;
 }
 
