@@ -428,3 +428,32 @@ select,
     overflow-x: hidden;
   }
 }
+
+.driver-popover {
+  max-width: min(360px, calc(100vw - 32px));
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--app-text) 18%, transparent);
+  font-family: inherit;
+}
+
+.driver-popover-title,
+.driver-popover-description { color: var(--app-text); }
+.driver-popover-description { color: var(--app-text-secondary); line-height: 1.6; }
+.driver-popover-progress-text { color: var(--app-text-tertiary); }
+.driver-popover-footer button {
+  min-height: 36px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
+  font: inherit;
+}
+.driver-popover-footer .driver-popover-next-btn,
+.driver-popover-footer .driver-popover-done-btn {
+  border-color: var(--app-text);
+  background: var(--app-text);
+  color: var(--app-bg-elevated);
+}

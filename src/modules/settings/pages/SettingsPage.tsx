@@ -339,7 +339,7 @@ export function SettingsPage() {
   return (
     <main className={styles.page}>
       <h1 className="sr-only">设置</h1>
-      <form className={styles.form}>
+      <form aria-label="设置表单" className={styles.form}>
         <Accordion
           className={accordionStyles.list}
           defaultValue={import.meta.env.MODE === 'test' ? ['appearance'] : []}

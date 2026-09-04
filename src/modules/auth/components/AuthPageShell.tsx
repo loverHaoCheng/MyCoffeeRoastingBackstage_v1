@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 
 import { LegalFooter } from '@/modules/legal/components';
+import { usePageGuide } from '@/shared/guides/usePageGuide';
+import { useLocation } from 'react-router-dom';
 
 import styles from '../pages/AuthPage.module.css';
 
@@ -29,8 +31,11 @@ export function AuthPageShell({
   shellClassName,
   title,
 }: AuthPageShellProps) {
+  const { pathname } = useLocation();
+  const pageGuide = usePageGuide(pathname);
   return (
     <main className={styles.page}>
+      {pageGuide.action ? <button aria-label={pageGuide.action.ariaLabel} className={styles.pageGuideButton} onClick={pageGuide.action.onClick} type="button">{pageGuide.action.icon}</button> : null}
       <section className={joinClassNames(styles.shell, shellClassName)}>
         {brandTitle ? <div className={styles.brandTitle}>{brandTitle}</div> : null}
 

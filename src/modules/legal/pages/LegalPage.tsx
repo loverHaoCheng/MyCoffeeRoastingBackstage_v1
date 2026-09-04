@@ -3,6 +3,7 @@ import Button from "antd/es/button";
 import { Link, useLocation } from 'react-router-dom';
 
 import { LegalFooter } from '@/modules/legal/components';
+import { usePageGuide } from '@/shared/guides/usePageGuide';
 
 import {
   dataDeletionDocument,
@@ -40,9 +41,11 @@ const joinClassNames = (...classNames: (string | false | null | undefined)[]) =>
 export function LegalPage({ kind }: LegalPageProps) {
   const location = useLocation();
   const document = documents[kind];
+  const pageGuide = usePageGuide(location.pathname);
 
   return (
     <main className={styles.page}>
+      {pageGuide.action ? <button aria-label={pageGuide.action.ariaLabel} className={styles.pageGuideButton} onClick={pageGuide.action.onClick} type="button">{pageGuide.action.icon}</button> : null}
       <div className={styles.shell}>
         <header className={styles.topBar}>
           <Link className={styles.brand} to="/login">

@@ -385,7 +385,7 @@ export function RoastAssistantPage() {
           </span>
         </div>
         <form className={styles.composer} data-skip-mobile-keyboard-recenter="true" onSubmit={(event) => { event.preventDefault(); send(); }}>
-          <TextArea autoSize={{ maxRows: 5, minRows: 2 }} disabled={sendMutation.isPending} maxLength={2000} onBlur={() => { setIsComposerFocused(false); }} onChange={(event) => { setContent(event.target.value); }} onFocus={() => { setIsComposerFocused(true); }} placeholder={isGeneralMode ? '例如:浅烘焙一爆后 RoR 应如何控制？' : roastBatchId ? '例如:请复盘这次曲线,并给出下一炉计划。' : activeBeanId ? '例如:请根据这支豆子生成中浅烘计划。' : '例如:浅烘焙一爆后 RoR 应如何控制?'} value={content} />
+          <TextArea aria-label="AI 对话输入框" autoSize={{ maxRows: 5, minRows: 2 }} disabled={sendMutation.isPending} maxLength={2000} onBlur={() => { setIsComposerFocused(false); }} onChange={(event) => { setContent(event.target.value); }} onFocus={() => { setIsComposerFocused(true); }} placeholder={isGeneralMode ? '例如:浅烘焙一爆后 RoR 应如何控制？' : roastBatchId ? '例如:请复盘这次曲线,并给出下一炉计划。' : activeBeanId ? '例如:请根据这支豆子生成中浅烘计划。' : '例如:浅烘焙一爆后 RoR 应如何控制?'} value={content} />
           <Button aria-label="发送问题" disabled={sendMutation.isPending || !content.trim()} htmlType="submit" icon={<ArrowUpOutlined />} loading={sendMutation.isPending} onPointerDown={handleComposerTouchSend} shape="circle" type="primary" />
         </form>
       </section>

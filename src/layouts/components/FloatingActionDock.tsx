@@ -12,6 +12,7 @@ interface FloatingActionDockProps {
   onRefresh: () => void;
   showRefreshAction: boolean;
   viewportAction: null | ViewportFloatingActionButtonProps;
+  guideAction: null | ViewportFloatingActionButtonProps;
 }
 
 export function FloatingActionDock({
@@ -20,10 +21,10 @@ export function FloatingActionDock({
   onRefresh,
   showRefreshAction,
   viewportAction,
+  guideAction,
 }: FloatingActionDockProps) {
   return (
     <div
-      aria-hidden="true"
       className={styles.floatingActionRoot}
       data-visible={isVisible}
     >
@@ -44,6 +45,16 @@ export function FloatingActionDock({
           className={floatingActionStyles.button}
           icon={viewportAction.icon}
           onClick={viewportAction.onClick}
+          shape="circle"
+          type="default"
+        />
+      ) : null}
+      {guideAction ? (
+        <Button
+          aria-label={guideAction.ariaLabel}
+          className={floatingActionStyles.button}
+          icon={guideAction.icon}
+          onClick={guideAction.onClick}
           shape="circle"
           type="default"
         />

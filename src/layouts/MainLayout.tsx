@@ -9,6 +9,7 @@ import { useAppDisplaySettings } from '@/modules/settings/hooks';
 import { appNavigationItems, type AppRouteKey } from '@/router/navigation';
 import { preloadRoute } from '@/router/routePreload';
 import type { ViewportFloatingActionButtonProps } from '@/shared/components/ViewportFloatingActionButton.context';
+import { usePageGuide } from '@/shared/guides/usePageGuide';
 
 import { DesktopNavigation } from './components/DesktopNavigation';
 import { FloatingActionDock } from './components/FloatingActionDock';
@@ -36,6 +37,7 @@ export function MainLayout() {
   const screens = useBreakpoint();
   const navigate = useNavigate();
   const location = useLocation();
+  const pageGuide = usePageGuide(location.pathname);
   const outlet = useOutlet();
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const mobileSettingsPanelScrollRef = useRef<HTMLDivElement | null>(null);
@@ -265,9 +267,10 @@ export function MainLayout() {
   const isMobileSettingsRoute = !isWide && location.pathname === '/settings';
   const isMobileSettingsOpen = !isWide && isMobileSettingsPanelMounted;
   const mobileHeaderActionConfigs = !isWide && !isMobileSettingsOpen
-    ? headerActionConfigs.length > 0
-      ? headerActionConfigs
-      : renderedFloatingActionConfig ? [renderedFloatingActionConfig] : []
+    ? [
+        ...(pageGuide.action ? [pageGuide.action] : []),
+        ...(headerActionConfigs.length > 0 ? headerActionConfigs : renderedFloatingActionConfig ? [renderedFloatingActionConfig] : []),
+      ]
     : [];
   const handleMobileHeaderLeftButtonClick = () => {
     if (isMobileSettingsOpen) {
@@ -365,6 +368,7 @@ export function MainLayout() {
           }}
           showRefreshAction={shouldShowWebRefreshAction}
           viewportAction={renderedFloatingActionConfig}
+          guideAction={pageGuide.action}
         />
       </Layout>
     </ViewportScrollContext.Provider>
