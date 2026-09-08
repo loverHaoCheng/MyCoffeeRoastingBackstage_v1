@@ -106,11 +106,12 @@ const buildOptimisticEditableDetail = (
   };
 };
 
-export function useBeans() {
+export function useBeans(options: { enabled?: boolean } = {}) {
   const initialBeans = beanService.getBootstrappedBeans();
 
   return useQuery({
     initialData: initialBeans.length > 0 ? initialBeans : undefined,
+    enabled: options.enabled ?? true,
     queryKey: beanQueryKeys.list(),
     queryFn: async () => {
       const response = await beanService.listBeans();

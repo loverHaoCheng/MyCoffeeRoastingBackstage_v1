@@ -8,6 +8,7 @@ import { AppAuthBootstrap } from '@/app/components/AppAuthBootstrap';
 import { AppEnvironmentGuidance } from '@/app/components/AppEnvironmentGuidance';
 import { AppRoastedBeanConnectionProbe } from '@/app/components/AppRoastedBeanConnectionProbe';
 import { AppUpdateBanner } from '@/app/components/AppUpdateBanner';
+import { AppStartupSplash } from '@/app/components/AppStartupSplash';
 import { AppProviders } from '@/app/providers/AppProviders';
 import { router } from '@/router/routes';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
@@ -27,6 +28,7 @@ export function App() {
       <AppRealtimeSync />
       <AppStartupSync />
       <RouterProvider router={router} />
+      <AppStartupSplash />
     </AppProviders>
   );
 }

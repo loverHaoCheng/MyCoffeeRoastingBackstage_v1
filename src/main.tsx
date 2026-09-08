@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from '@/app/App';
 import { syncViewportMetrics } from '@/app/services/viewportMetrics.service';
+import { initializeClarity } from '@/shared/services/clarity.service';
 
 const ensureViewportFitCover = () => {
   const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
@@ -53,6 +54,7 @@ if (!rootElement) {
 
 ensureViewportFitCover();
 syncViewportMetrics(window, document);
+initializeClarity();
 
 createRoot(rootElement).render(
   <StrictMode>

@@ -1,3 +1,5 @@
+import { appBuildVersionStorageKey } from '@/app/services/appBuildVersion.service';
+
 const APP_STORAGE_PREFIX = 'coffee-roasting-backstage:';
 
 const canUseStorage = (): boolean => {
@@ -10,7 +12,7 @@ const collectAppStorageKeys = (): string[] => {
   for (let index = 0; index < window.localStorage.length; index += 1) {
     const key = window.localStorage.key(index);
 
-    if (key?.startsWith(APP_STORAGE_PREFIX)) {
+    if (key?.startsWith(APP_STORAGE_PREFIX) && key !== appBuildVersionStorageKey) {
       keys.push(key);
     }
   }

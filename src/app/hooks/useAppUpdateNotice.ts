@@ -38,12 +38,12 @@ export function useAppUpdateNotice() {
   useEffect(() => {
     let disposed = false;
 
-    const checkForUpdate = async () => {
+    const checkForUpdate = async (): Promise<boolean> => {
       try {
         const hasAvailableUpdate = await checkForAvailableAppUpdate();
 
         if (!hasAvailableUpdate || disposed) {
-          return;
+          return false;
         }
 
         setNotice((current) => {
@@ -56,12 +56,28 @@ export function useAppUpdateNotice() {
             message: '检测到线上已有新版本。当前页面可能仍在使用旧缓存，建议现在刷新，避免样式或数据结构不一致。',
           };
         });
+        return true;
       } catch (error) {
         logger.warn('app version check failed', { error });
+        return false;
       }
     };
 
     void checkForUpdate();
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) {
+        return;
+      }
+
+      void checkForUpdate().then((hasAvailableUpdate) => {
+        if (hasAvailableUpdate && !disposed) {
+          reloadToLatestApp();
+        }
+      });
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
 
     const intervalId = window.setInterval(() => {
       void checkForUpdate();
@@ -69,6 +85,7 @@ export function useAppUpdateNotice() {
 
     return () => {
       disposed = true;
+      window.removeEventListener('pageshow', handlePageShow);
       window.clearInterval(intervalId);
     };
   }, []);

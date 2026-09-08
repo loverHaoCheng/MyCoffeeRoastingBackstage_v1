@@ -9,6 +9,7 @@ describe('localStorageCleanupService', () => {
     window.localStorage.setItem('coffee-roasting-backstage:cost-templates:backup', 'legacy');
     window.localStorage.setItem('coffee-roasting-backstage:submission-backups', 'legacy');
     window.localStorage.setItem('coffee-roasting-backstage:unknown-key', 'legacy');
+    window.localStorage.setItem('coffee-roasting-backstage:last-seen-build-version', '01020260905130054');
     window.localStorage.setItem('third-party:key', 'keep');
 
     const removedKeys = localStorageCleanupService.cleanupObsoleteKeys();
@@ -21,6 +22,7 @@ describe('localStorageCleanupService', () => {
     ]);
     expect(window.localStorage.getItem('coffee-roasting-backstage:cost-templates')).toBeNull();
     expect(window.localStorage.getItem('third-party:key')).toBe('keep');
+    expect(window.localStorage.getItem('coffee-roasting-backstage:last-seen-build-version')).toBe('01020260905130054');
   });
 
   it('clears cost templates during app state reset so account data can be fully resynced', () => {

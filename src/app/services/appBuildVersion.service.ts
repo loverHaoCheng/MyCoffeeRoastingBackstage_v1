@@ -3,6 +3,20 @@ export const appBuildVersionUpdatedEventName = 'coffee-roasting-backstage:app-bu
 
 let currentAppBuildVersion: null | string = null;
 
+const readPersistedVersion = (): null | string => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const value = window.localStorage.getItem(appBuildVersionStorageKey);
+
+    return value && value.trim().length > 0 ? value.trim() : null;
+  } catch {
+    return null;
+  }
+};
+
 const emitUpdate = (): void => {
   if (typeof window === 'undefined') {
     return;
@@ -14,10 +28,21 @@ const emitUpdate = (): void => {
 export const appBuildVersionService = {
   clear(): void {
     currentAppBuildVersion = null;
+
+    try {
+      window.localStorage.removeItem(appBuildVersionStorageKey);
+    } catch {
+      // Restricted storage should not block authentication state cleanup.
+    }
+
     emitUpdate();
   },
   get(): null | string {
-    const value = currentAppBuildVersion;
+    const value = currentAppBuildVersion ?? readPersistedVersion();
+
+    if (value != null) {
+      currentAppBuildVersion = value;
+    }
 
     return value && value.trim().length > 0 ? value.trim() : null;
   },
@@ -29,6 +54,13 @@ export const appBuildVersionService = {
     }
 
     currentAppBuildVersion = normalizedVersion;
+
+    try {
+      window.localStorage.setItem(appBuildVersionStorageKey, normalizedVersion);
+    } catch {
+      // Private browsing or restricted storage should not block startup.
+    }
+
     emitUpdate();
   },
 };
