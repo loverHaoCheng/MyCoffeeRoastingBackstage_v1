@@ -43,6 +43,10 @@ export function RoastAssistantPage() {
   const [isComposerFocused, setIsComposerFocused] = useState(false);
   const { data: beans = [] } = useBeans();
   const { data: batches = [] } = useRoastBatches();
+
+  const [displayedBeanId, setDisplayedBeanId] = useState<string | undefined>(undefined);
+  const [isNewConversation, setIsNewConversation] = useState(false);
+
   const {
     beanId,
     isNewConversationNavigationRef,
@@ -55,22 +59,20 @@ export function RoastAssistantPage() {
     setRoastBatchId,
   } = useRouteSync(
     batches.find((batch) => batch.id === routeRoastBatchId) as RoastBatchRecord | undefined,
-    (value) => { conversationSendHook.setDisplayedBeanId(value); },
-    (value) => { conversationSendHook.setIsNewConversation(value); },
+    setDisplayedBeanId,
+    setIsNewConversation,
   );
+
   const { messagesRef, shouldFollowLatestRef } = useAutoScroll(0, false, false, '');
   const usageFeature = getUsageFeature(mode);
-  const conversationSendHook = useConversationSend(usageFeature, shouldFollowLatestRef);
   const {
     content,
-    displayedBeanId,
-    isNewConversation,
     pendingUserMessage,
     send: sendMessage,
     sendMutation,
     setContent,
     streamingAnswer,
-  } = conversationSendHook;
+  } = useConversationSend(usageFeature, shouldFollowLatestRef, displayedBeanId, setDisplayedBeanId, setIsNewConversation);
   const selectedBatch = batches.find((batch) => batch.id === roastBatchId);
   const isBeanPlanMode = mode === 'bean_plan_recommendation';
   const isGeneralMode = mode === 'general';
@@ -152,11 +154,11 @@ export function RoastAssistantPage() {
     window.location.hash = getRoastAssistantPath({ mode: 'batch_analysis' });
     setBeanId(undefined);
     setRoastBatchId(undefined);
-    conversationSendHook.setDisplayedBeanId(undefined);
+    setDisplayedBeanId(undefined);
     setContent('');
     setMode('batch_analysis');
-    conversationSendHook.setIsNewConversation(true);
-  }, [conversationSendHook, isNewConversationNavigationRef, setBeanId, setMode, setRoastBatchId]);
+    setIsNewConversation(true);
+  }, [isNewConversationNavigationRef, setBeanId, setMode, setRoastBatchId, setDisplayedBeanId, setContent, setIsNewConversation]);
 
   const openConversationHistory = useCallback(() => {
     setIsContextOpen(true);
@@ -240,7 +242,7 @@ export function RoastAssistantPage() {
       </section>
       <Drawer destroyOnHidden onClose={() => { setIsContextOpen(false); }} open={isContextOpen} placement="right" title="历史对话" width={360}>
         <section className={styles.historySection}>
-          <button className={cn(styles.historyItem, isGeneralConversationSelected && styles.historyItemSelected)} onClick={() => { window.location.hash = getRoastAssistantPath({ mode: 'general' }); setIsContextOpen(false); conversationSendHook.setIsNewConversation(false); }} type="button">
+          <button className={cn(styles.historyItem, isGeneralConversationSelected && styles.historyItemSelected)} onClick={() => { window.location.hash = getRoastAssistantPath({ mode: 'general' }); setIsContextOpen(false); setIsNewConversation(false); }} type="button">
             <span>常识性提问</span>
             {generalConversation ? <span className={styles.historyItemMeta}>已保存</span> : null}
           </button>
@@ -248,7 +250,7 @@ export function RoastAssistantPage() {
             const isSelected = displayedBeanId === group.beanId;
             const representativeBatchId = group.conversations.find((conversation) => conversation.roastBatchId)?.roastBatchId;
 
-            return <button className={cn(styles.historyItem, isSelected && styles.historyItemSelected)} key={group.beanId} onClick={() => { window.location.hash = representativeBatchId ? getRoastAssistantPath({ roastBatchId: representativeBatchId }) : getRoastAssistantPath({ beanId: group.beanId, mode: 'bean_plan_recommendation' }); setIsContextOpen(false); conversationSendHook.setIsNewConversation(false); }} type="button">{group.beanName}</button>;
+            return <button className={cn(styles.historyItem, isSelected && styles.historyItemSelected)} key={group.beanId} onClick={() => { window.location.hash = representativeBatchId ? getRoastAssistantPath({ roastBatchId: representativeBatchId }) : getRoastAssistantPath({ beanId: group.beanId, mode: 'bean_plan_recommendation' }); setIsContextOpen(false); setIsNewConversation(false); }} type="button">{group.beanName}</button>;
           })}
           {isDiscoveringAnalysisHistory ? <p className={styles.historyLoading}>正在查找已保存的 AI 分析...</p> : null}
         </section>

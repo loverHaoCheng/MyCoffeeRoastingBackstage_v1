@@ -16,14 +16,15 @@ const conversationHistoryQueryKey = ['roast-conversation-history'] as const;
 export const useConversationSend = (
   usageFeature: RoastAiFeature,
   shouldFollowLatestRef: React.MutableRefObject<boolean>,
+  displayedBeanId: string | undefined,
+  setDisplayedBeanId: (value: string | undefined) => void,
+  setIsNewConversation: (value: boolean) => void,
 ) => {
   const { message: toast } = App.useApp();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
   const [pendingUserMessage, setPendingUserMessage] = useState<RoastConversationMessage | null>(null);
   const [streamingAnswer, setStreamingAnswer] = useState('');
-  const [displayedBeanId, setDisplayedBeanId] = useState<string | undefined>(undefined);
-  const [isNewConversation, setIsNewConversation] = useState(false);
 
   const sendMutation = useMutation({
     mutationFn: (submission: { beanId?: string; content: string; mode: RoastConversationMode; roastBatchId?: string }) =>
@@ -73,14 +74,10 @@ export const useConversationSend = (
 
   return {
     content,
-    displayedBeanId,
-    isNewConversation,
     pendingUserMessage,
     send,
     sendMutation,
     setContent,
-    setDisplayedBeanId,
-    setIsNewConversation,
     streamingAnswer,
   };
 };
