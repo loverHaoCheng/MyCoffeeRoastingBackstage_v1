@@ -58,7 +58,7 @@ export function RoastAssistantPage() {
     setMode,
     setRoastBatchId,
   } = useRouteSync(
-    batches.find((batch) => batch.id === routeRoastBatchId) as RoastBatchRecord | undefined,
+    batches,
     setDisplayedBeanId,
     setIsNewConversation,
   );

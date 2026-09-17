@@ -5,7 +5,7 @@ import type { RoastConversationMode } from '../../services/roastConversation.ser
 import { resolveRouteMode } from './modeUtils';
 
 export const useRouteSync = (
-  routeBatch: RoastBatchRecord | undefined,
+  batches: RoastBatchRecord[],
   setDisplayedBeanId: (value: string | undefined) => void,
   setIsNewConversation: (value: boolean) => void,
 ) => {
@@ -29,6 +29,7 @@ export const useRouteSync = (
 
     isNewConversationNavigationRef.current = false;
 
+    const routeBatch = batches.find((batch) => batch.id === routeRoastBatchId);
     const nextDisplayedBeanId = routeBeanId ?? routeBatch?.greenBeanId;
 
     setBeanId(routeBeanId);
@@ -36,7 +37,7 @@ export const useRouteSync = (
     setDisplayedBeanId(nextDisplayedBeanId);
     setMode(resolvedRouteMode);
     setIsNewConversation(false);
-  }, [resolvedRouteMode, routeBatch?.greenBeanId, routeBeanId, routeMode, routeRoastBatchId, setDisplayedBeanId, setIsNewConversation]);
+  }, [batches, resolvedRouteMode, routeBeanId, routeMode, routeRoastBatchId, setDisplayedBeanId, setIsNewConversation]);
 
   return {
     beanId,
