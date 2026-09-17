@@ -3,6 +3,7 @@ import type { Bean } from '@/types/domain';
 
 import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../../types';
 
+export type { GreenBeanEditableDetail };
 export type RoastPlanDisposition = 'delete' | 'makeGeneric';
 
 export interface GreenBeanTableUpdateInput {

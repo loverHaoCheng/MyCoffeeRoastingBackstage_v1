@@ -1,48 +1,21 @@
-import App from 'antd/es/app';
-import Segmented from 'antd/es/segmented';
-import { Select } from '@/shared/components/ui/select';
-import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
-import Input from '@/shared/components/ui/input';
-import InputNumber from '@/shared/components/ui/input-number';
-import Spin from "antd/es/spin";
+import Spin from 'antd/es/spin';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { calculateRoastSaleCapacity, resolveBeanCostTemplate } from '@/modules/finance/services/financeProfitCalculation.service';
-import {
-  ROAST_LEVEL_OPTIONS,
-  ROAST_LEVEL_SOURCE_OPTIONS,
-  normalizeRoastLevel,
-  resolveRoastLevelFromAgtron,
-} from '@/modules/roast/constants/roastLevel';
 import { useRoastPlans } from '@/modules/roast/hooks';
 import { useCostTemplateSettings } from '@/modules/settings/hooks';
 import { useUpdateRoastBatch } from '@/modules/roast/hooks/useRoastBatches';
 import type { RoastBatchRecord, RoastBatchUpdateInput } from '@/modules/roast/types/roastBatch';
-import { getSelectableRoastPlans, isGenericRoastPlan } from '@/modules/roast/utils/roastPlanSelection';
 import { FieldEditorDrawer } from '@/shared/components/FieldEditorDrawer';
 import { AppDrawer } from '@/shared/components/AppDrawer';
-import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
-import { submissionBackupService } from '@/shared/services/submissionBackup.service';
+import { createRoastBatchDraft } from './RoastBatchFieldEditorDrawer/createRoastBatchDraft';
+import { FIELD_LABELS, type RoastBatchEditableFieldPath } from './RoastBatchFieldEditorDrawer/fieldLabels';
+import { updateRoastBatchDraft } from './RoastBatchFieldEditorDrawer/updateRoastBatchDraft';
+import { useValidateAndSubmit } from './RoastBatchFieldEditorDrawer/useValidateAndSubmit';
+import { renderBatchField } from './RoastBatchFieldEditorDrawer/renderBatchField';
 
-export type RoastBatchEditableFieldPath =
-  | 'beanAgtronColor'
-  | 'developmentRatio'
-  | 'firstCrackTime'
-  | 'groundAgtronColor'
-  | 'greenBeanId'
-  | 'inputWeightGrams'
-  | 'notes'
-  | 'outputWeightGrams'
-  | 'roastDate'
-  | 'roastLevel'
-  | 'roastLevelSource'
-  | 'roastPlanId'
-  | 'roastedBeanName'
-  | 'salesMode'
-  | 'soldUnitCount'
-  | 'status'
-  | 'totalRoastTime';
+export type { RoastBatchEditableFieldPath };
 
 interface RoastBatchFieldEditorDrawerProps {
   batch: RoastBatchRecord | null;
@@ -54,35 +27,6 @@ interface RoastBatchFieldEditorDrawerProps {
   width?: number;
 }
 
-
-const createDraft = (batch: RoastBatchRecord | null): RoastBatchUpdateInput | null => {
-  if (!batch) {
-    return null;
-  }
-
-  return {
-    beanAgtronColor: batch.beanAgtronColor,
-    developmentRatio: batch.developmentRatio,
-    firstCrackTime: batch.firstCrackTime,
-    groundAgtronColor: batch.groundAgtronColor,
-    greenBeanId: batch.greenBeanId,
-    greenBeanName: batch.greenBeanName,
-    inputWeightGrams: batch.inputWeightGrams,
-    notes: batch.notes,
-    outputWeightGrams: batch.outputWeightGrams,
-    roastDate: batch.roastDate,
-    roastLevel: normalizeRoastLevel(batch.roastLevel),
-    roastLevelSource: batch.roastLevelSource ?? 'dehydrationRate',
-    roastPlanId: batch.roastPlanId,
-    roastPlanName: batch.roastPlanName,
-    roastedBeanName: batch.roastedBeanName,
-    salesMode: batch.salesMode,
-    soldUnitCount: batch.soldUnitCount,
-    status: batch.status,
-    totalRoastTime: batch.totalRoastTime,
-  };
-};
-
 export function RoastBatchFieldEditorDrawer({
   batch,
   fieldPath,
@@ -92,11 +36,11 @@ export function RoastBatchFieldEditorDrawer({
   placement,
   width,
 }: RoastBatchFieldEditorDrawerProps) {
-  const { message } = App.useApp();
   const { data: beans = [] } = useBeans();
   const { data: plans = [] } = useRoastPlans();
   const { costTemplateSettings } = useCostTemplateSettings();
   const updateBatchMutation = useUpdateRoastBatch();
+  const { validateAndSubmit } = useValidateAndSubmit();
   const [draft, setDraft] = useState<RoastBatchUpdateInput | null>(null);
   const [lastOpenContext, setLastOpenContext] = useState<{
     batch: RoastBatchRecord;
@@ -115,51 +59,8 @@ export function RoastBatchFieldEditorDrawer({
 
   const effectiveBatch = open && batch != null ? batch : lastOpenContext?.batch ?? null;
   const effectiveFieldPath = open && editableFieldPath != null ? editableFieldPath : lastOpenContext?.fieldPath;
-  const fieldLabel = useMemo(() => {
-    switch (effectiveFieldPath) {
-      case 'beanAgtronColor':
-        return '咖啡豆表色值';
-      case 'developmentRatio':
-        return '发展比';
-      case 'firstCrackTime':
-        return '一爆时间';
-      case 'groundAgtronColor':
-        return '咖啡粉色值';
-      case 'greenBeanId':
-        return '生豆';
-      case 'inputWeightGrams':
-        return '入豆量';
-      case 'notes':
-        return '备注';
-      case 'outputWeightGrams':
-        return '出豆量';
-      case 'roastDate':
-        return '烘焙日期';
-      case 'roastLevel':
-        return '烘焙程度';
-      case 'roastLevelSource':
-        return '烘焙程度根据';
-      case 'roastPlanId':
-        return '烘焙计划';
-      case 'roastedBeanName':
-        return '熟豆名称';
-      case 'salesMode':
-        return '去向';
-      case 'soldUnitCount':
-        return '已售份数';
-      case 'status':
-        return '状态';
-      case 'totalRoastTime':
-        return '总烘焙时间';
-      default:
-        return '信息';
-    }
-  }, [effectiveFieldPath]);
+  const fieldLabel = effectiveFieldPath ? FIELD_LABELS[effectiveFieldPath] : '信息';
 
-  const availablePlans = useMemo(
-    () => getSelectableRoastPlans(plans, draft?.greenBeanId),
-    [draft?.greenBeanId, plans],
-  );
   const maximumSoldUnitCount = useMemo(() => {
     const bean = beans.find((item) => String(item.id) === String(draft?.greenBeanId));
 
@@ -172,7 +73,7 @@ export function RoastBatchFieldEditorDrawer({
   }, [beans, costTemplateSettings.templates, draft?.greenBeanId, draft?.inputWeightGrams]);
 
   useEffect(() => {
-    setDraft(createDraft(effectiveBatch));
+    setDraft(createRoastBatchDraft(effectiveBatch));
   }, [effectiveBatch, effectiveFieldPath]);
 
   if (effectiveBatch == null || effectiveFieldPath == null) {
@@ -203,339 +104,18 @@ export function RoastBatchFieldEditorDrawer({
         return current;
       }
 
-      const nextDraft: RoastBatchUpdateInput = { ...current };
-      nextDraft[key] = value;
-
-      if (key === 'greenBeanId') {
-        const nextBean = beans.find((bean) => String(bean.id) === String(value));
-        nextDraft.greenBeanName = nextBean?.name ?? nextDraft.greenBeanName ?? '';
-        nextDraft.roastPlanId = undefined;
-        nextDraft.roastPlanName = undefined;
-      }
-
-      if (key === 'roastPlanId') {
-        const nextPlan = plans.find((plan) => String(plan.id) === String(value));
-        nextDraft.roastPlanName = nextPlan?.name ?? undefined;
-      }
-
-      if (key === 'roastedBeanName' && typeof value === 'string' && value.trim().length === 0) {
-        nextDraft.roastedBeanName = undefined;
-      }
-
-      return nextDraft;
+      return updateRoastBatchDraft(current, key, value, beans, plans);
     });
   };
 
   const handleSubmit = () => {
-    if (!draft.roastDate) {
-      void message.warning('请选择烘焙日期。');
-      return;
-    }
-
-    if (!draft.greenBeanId) {
-      void message.warning('请选择生豆。');
-      return;
-    }
-
-    if ((draft.inputWeightGrams ?? 0) <= 0) {
-      void message.warning('请输入有效的入豆量。');
-      return;
-    }
-
-    if ((draft.outputWeightGrams ?? 0) < 0) {
-      void message.warning('请输入有效的出豆量。');
-      return;
-    }
-
-    if (
-      draft.salesMode === 'sale' &&
-      maximumSoldUnitCount != null &&
-      (draft.soldUnitCount ?? 0) > maximumSoldUnitCount
-    ) {
-      void message.warning(`已售份数不能超过本锅最多可售的 ${String(maximumSoldUnitCount)} 份。`);
-      return;
-    }
-
-    const updateInput: RoastBatchUpdateInput = {
-      beanAgtronColor: draft.beanAgtronColor,
-      developmentRatio: draft.developmentRatio,
-      firstCrackTime: draft.firstCrackTime,
-      groundAgtronColor: draft.groundAgtronColor,
-      greenBeanId: draft.greenBeanId,
-      greenBeanName: draft.greenBeanName,
-      inputWeightGrams: draft.inputWeightGrams,
-      notes: draft.notes,
-      outputWeightGrams: draft.outputWeightGrams,
-      roastDate: draft.roastDate,
-      roastLevel: draft.roastLevel,
-      roastLevelSource: draft.roastLevelSource,
-      roastPlanId: draft.roastPlanId,
-      roastPlanName: draft.roastPlanName,
-      roastedBeanName: draft.roastedBeanName,
-      salesMode: draft.salesMode,
-      soldUnitCount: draft.soldUnitCount,
-      status: draft.status,
-      totalRoastTime: draft.totalRoastTime,
-    };
-
-    onClose();
-    const backupId = submissionBackupService.save('update', { batchId: effectiveBatch.id, input: updateInput }, 'roastBatch');
-
-    const updateTask = updateBatchMutation
-      .mutateAsync({ batchId: effectiveBatch.id, input: updateInput })
-      .then(() => {
-        submissionBackupService.clear(backupId);
-      })
-      .catch((error: unknown) => {
-        void message.error(getUserFacingErrorMessage(error, '烘焙记录同步失败，本次修改未保存，请保留编辑内容并重试。'));
-      });
-
-    void updateTask;
-  };
-
-  const renderField = () => {
-    switch (effectiveFieldPath) {
-      case 'roastDate':
-        return (
-          <AdaptiveDateTimeField
-            ariaLabel={fieldLabel}
-            mode="datetime"
-            placeholder="选择烘焙日期与时间"
-            value={draft.roastDate ?? ''}
-            onChange={(nextValue) => {
-              updateDraft('roastDate', nextValue);
-            }}
-          />
-        );
-      case 'greenBeanId':
-        return (
-          <Select
-            aria-label={fieldLabel}
-            onChange={(value) => {
-              updateDraft('greenBeanId', value);
-            }}
-            options={beans.map((bean) => ({ label: bean.name, value: String(bean.id) }))}
-            placeholder="选择生豆"
-            showSearch={false}
-            value={draft.greenBeanId}
-          />
-        );
-      case 'roastedBeanName':
-        return (
-          <Input
-            aria-label={fieldLabel}
-            onChange={(event) => {
-              updateDraft('roastedBeanName', event.target.value);
-            }}
-            placeholder="未填写时默认继承生豆名称"
-            value={draft.roastedBeanName ?? ''}
-          />
-        );
-      case 'salesMode':
-        return (
-          <Select
-            aria-label={fieldLabel}
-            onChange={(value) => {
-              updateDraft('salesMode', value);
-            }}
-            options={[
-              { label: '销售', value: 'sale' },
-              { label: '自留', value: 'selfUse' },
-            ]}
-            showSearch={false}
-            value={draft.salesMode ?? 'sale'}
-          />
-        );
-      case 'soldUnitCount':
-        return (
-          <InputNumber
-            aria-label={fieldLabel}
-            min={0}
-            max={maximumSoldUnitCount ?? undefined}
-            onChange={(value) => {
-              updateDraft('soldUnitCount', value ?? 0);
-            }}
-            precision={0}
-            style={{ width: '100%' }}
-            value={draft.soldUnitCount ?? 0}
-          />
-        );
-      case 'roastPlanId':
-        return (
-          <Select
-            aria-label={fieldLabel}
-            allowClear
-            onChange={(value) => {
-              const nextPlanId = value;
-              updateDraft('roastPlanId', nextPlanId);
-            }}
-            options={availablePlans.map((plan) => ({
-              label: `${plan.name}${isGenericRoastPlan(plan) ? ' · 通用' : ''}`,
-              value: String(plan.id),
-            }))}
-            disabled={availablePlans.length === 0}
-            placeholder={draft.greenBeanId ? '选择通用计划或当前生豆对应计划' : '可先选择通用计划'}
-            showSearch={false}
-            value={draft.roastPlanId}
-          />
-        );
-      case 'inputWeightGrams':
-        return (
-          <InputNumber
-            aria-label={fieldLabel}
-            min={0}
-            onChange={(value) => {
-              updateDraft('inputWeightGrams', value ?? 0);
-            }}
-            precision={0}
-            suffix="g"
-            style={{ width: '100%' }}
-            value={draft.inputWeightGrams ?? 0}
-          />
-        );
-      case 'outputWeightGrams':
-        return (
-          <InputNumber
-            aria-label={fieldLabel}
-            min={0}
-            onChange={(value) => {
-              updateDraft('outputWeightGrams', value ?? 0);
-            }}
-            precision={0}
-            suffix="g"
-            style={{ width: '100%' }}
-            value={draft.outputWeightGrams ?? 0}
-          />
-        );
-      case 'beanAgtronColor':
-        return (
-          <InputNumber
-            aria-label={fieldLabel}
-            max={100}
-            min={0}
-            onChange={(value) => {
-              updateDraft('beanAgtronColor', value ?? undefined);
-            }}
-            precision={1}
-            style={{ width: '100%' }}
-            value={draft.beanAgtronColor ?? null}
-          />
-        );
-      case 'groundAgtronColor':
-        return (
-          <InputNumber
-            aria-label={fieldLabel}
-            max={100}
-            min={0}
-            onChange={(value) => {
-              updateDraft('groundAgtronColor', value ?? undefined);
-            }}
-            precision={1}
-            style={{ width: '100%' }}
-            value={draft.groundAgtronColor ?? null}
-          />
-        );
-      case 'roastLevel':
-        return (
-          <Select
-            aria-label={fieldLabel}
-            onChange={(value) => {
-              updateDraft('roastLevel', value);
-              updateDraft('roastLevelSource', 'manual');
-            }}
-            options={ROAST_LEVEL_OPTIONS.map((level) => ({ label: level, value: level }))}
-            showSearch={false}
-            value={draft.roastLevel}
-          />
-        );
-      case 'roastLevelSource':
-        return (
-          <Segmented
-            block
-            options={ROAST_LEVEL_SOURCE_OPTIONS.map((option) => ({ label: option.label, value: option.value }))}
-            value={draft.roastLevelSource ?? 'dehydrationRate'}
-            onChange={(value) => {
-              const source = value as NonNullable<RoastBatchUpdateInput['roastLevelSource']>;
-              const agtronValue = source === 'beanAgtron' ? draft.beanAgtronColor : draft.groundAgtronColor;
-              const nextLevel = source === 'manual' ? draft.roastLevel : resolveRoastLevelFromAgtron(agtronValue ?? Number.NaN);
-              updateDraft('roastLevelSource', source);
-              if (nextLevel != null) {
-                updateDraft('roastLevel', nextLevel);
-              }
-            }}
-          />
-        );
-      case 'developmentRatio':
-        return (
-          <InputNumber
-            aria-label={fieldLabel}
-            max={100}
-            min={0}
-            onChange={(value) => {
-              updateDraft('developmentRatio', value ?? undefined);
-            }}
-            precision={1}
-            suffix="%"
-            style={{ width: '100%' }}
-            value={draft.developmentRatio ?? null}
-          />
-        );
-      case 'firstCrackTime':
-        return (
-          <InputNumber
-            aria-label={fieldLabel}
-            min={0}
-            onChange={(value) => {
-              updateDraft('firstCrackTime', value ?? undefined);
-            }}
-            precision={0}
-            suffix="s"
-            style={{ width: '100%' }}
-            value={draft.firstCrackTime ?? null}
-          />
-        );
-      case 'totalRoastTime':
-        return (
-          <InputNumber
-            aria-label={fieldLabel}
-            min={0}
-            onChange={(value) => {
-              updateDraft('totalRoastTime', value ?? undefined);
-            }}
-            precision={0}
-            suffix="s"
-            style={{ width: '100%' }}
-            value={draft.totalRoastTime ?? null}
-          />
-        );
-      case 'notes':
-        return (
-          <Input.TextArea
-            aria-label={fieldLabel}
-            autoSize={{ minRows: 3, maxRows: 6 }}
-            onChange={(event) => {
-              updateDraft('notes', event.target.value || undefined);
-            }}
-            placeholder="记录烘焙心得、调整建议等..."
-            value={draft.notes ?? ''}
-          />
-        );
-      case 'status':
-        return (
-          <Select
-            aria-label={fieldLabel}
-            onChange={(value) => {
-              updateDraft('status', value);
-            }}
-            options={[
-              { label: '草稿', value: 'draft' },
-              { label: '已完成', value: 'completed' },
-            ]}
-            showSearch={false}
-            value={draft.status}
-          />
-        );
-    }
+    validateAndSubmit({
+      draft,
+      batchId: effectiveBatch.id,
+      maximumSoldUnitCount,
+      onClose,
+      updateBatchMutation,
+    });
   };
 
   return (
@@ -553,7 +133,15 @@ export function RoastBatchFieldEditorDrawer({
       <section style={{ display: 'grid', gap: '10px', padding: 0 }}>
         <label style={{ display: 'grid', gap: '6px' }}>
           <span style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--app-font-14)', fontWeight: 700 }}>{fieldLabel}</span>
-          {renderField()}
+          {renderBatchField({
+            draft,
+            effectiveFieldPath,
+            fieldLabel,
+            beans,
+            plans,
+            maximumSoldUnitCount,
+            updateDraft,
+          })}
         </label>
       </section>
     </FieldEditorDrawer>

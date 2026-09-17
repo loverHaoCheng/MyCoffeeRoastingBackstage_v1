@@ -6,99 +6,19 @@ import UpOutlined from "@ant-design/icons/UpOutlined";
 import App from 'antd/es/app';
 import Button from "antd/es/button";
 import { Select } from '@/shared/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
-import { TimePicker } from '@/shared/components/ui/time-picker';
-import { useEffect } from 'react';
-import { Controller, type FieldPath, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
 
-import { useBeans } from '@/modules/bean/hooks/useBeans';
-import { useRoastingMachines } from '@/modules/roast/hooks';
-import { roastPlanJsonSchema } from '@/modules/roast/schemas/roastPlanJson.schema';
-import { getRoasterControlCapabilities } from '@/modules/roast/utils/roasterControlCapabilities';
 import { DrawerActionBar } from '@/shared/components/DrawerActionBar';
 
 import type { RoastPlanJsonInput } from '../types';
 
+import { GENERIC_BEAN_ID, GENERIC_BEAN_NAME, renderLabel } from './RoastPlanForm/formConstants';
+import { stripUnit } from './RoastPlanForm/formatUtils';
+import { TimeField } from './RoastPlanForm/TimeField';
+import { useRoastPlanForm } from './RoastPlanForm/useRoastPlanForm';
 import styles from './RoastPlanManualCreator.module.css';
-
-const GENERIC_BEAN_ID = 'generic';
-const GENERIC_BEAN_NAME = '通用';
-const parseTimeValue = (value: string): { end?: string; start: string } => {
-  const parts = value.trim().split(/\s*(?:~|～|-)\s*/);
-  return { start: parts[0] ?? '00:00', end: parts[1] };
-};
-
-const normalizeTimePart = (value: string | undefined): string => {
-  const match = value?.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match?.[1] || !match[2]) return '00:00';
-  const minute = Math.min(59, Math.max(0, Number(match[1])));
-  const second = Math.min(59, Math.max(0, Number(match[2])));
-  return `${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
-};
-
-const formatUnit = (value: string, unit: string): string => {
-  if (!value.trim() || value === '不可调' || value === '-') return value;
-  return `${value.trim().replace(/(?:℃|°C|rpm|r|%)$/i, '')}${unit}`;
-};
-
-const stripUnit = (value: string): string => value.replace(/(?:℃|°C|rpm|r|%)\s*$/i, '');
-
-interface TimeFieldProps {
-  name: string;
-  value: string;
-  onChange: (value: string) => void;
-}
-
-const TimeField = ({ name, value, onChange }: TimeFieldProps) => {
-  const parsed = parseTimeValue(value);
-  const [startMinute, startSecond] = normalizeTimePart(parsed.start).split(':');
-  const [endMinute, endSecond] = normalizeTimePart(parsed.end).split(':');
-  const update = (start: string, end?: string): void => { onChange(end ? `${start}~${end}` : start); };
-  const endpoint = (minute: string, second: string, label: string, onValue: (next: string) => void) => (
-    <span className={styles.timeEndpoint}>
-      <TimePicker
-        label={`${label}分钟`}
-        max={59}
-        min={0}
-        onChange={(value) => {
-          onValue(`${String(value).padStart(2, '0')}:${second}`);
-        }}
-        value={Number(minute)}
-      />
-      <span>:</span>
-      <TimePicker
-        label={`${label}秒`}
-        max={59}
-        min={0}
-        onChange={(value) => {
-          onValue(`${minute}:${String(value).padStart(2, '0')}`);
-        }}
-        value={Number(second)}
-      />
-    </span>
-  );
-
-  return (
-    <div className={styles.timeField}>
-      <input aria-hidden="true" className={styles.timeValue} name={name} onChange={(event) => { onChange(event.target.value); }} tabIndex={-1} type="text" value={value} />
-      <Tabs className={styles.timeModeTabs} value={parsed.end ? 'range' : 'single'} onValueChange={(next) => { update(normalizeTimePart(parsed.start), next === 'range' ? '00:00' : undefined); }}>
-        <TabsList>
-          <TabsTrigger value="single">单个时间</TabsTrigger>
-          <TabsTrigger value="range">时间范围</TabsTrigger>
-        </TabsList>
-      </Tabs>
-      <div className={styles.timeValues}>
-        <span className={styles.timeGroup}>
-          <span className={styles.timeLabel}>开始时间</span>
-          {endpoint(startMinute ?? '00', startSecond ?? '00', '开始时间', (next) => { update(next, parsed.end); })}
-        </span>
-        {parsed.end ? <span className={styles.timeGroup}><span className={styles.timeLabel}>结束时间</span>{endpoint(endMinute ?? '00', endSecond ?? '00', '结束时间', (next) => { update(normalizeTimePart(parsed.start), next); })}</span> : null}
-      </div>
-    </div>
-  );
-};
 
 interface RoastPlanFormProps {
   initialValues: RoastPlanJsonInput;
@@ -108,19 +28,6 @@ interface RoastPlanFormProps {
   submitLabel: string;
 }
 
-const renderLabel = (label: string, required = false) => {
-  return (
-    <span className={styles.labelText}>
-      {label}
-      {required ? (
-        <em aria-hidden="true" className={styles.requiredMark}>
-          *
-        </em>
-      ) : null}
-    </span>
-  );
-};
-
 export function RoastPlanForm({
   initialValues,
   onCancel,
@@ -129,88 +36,26 @@ export function RoastPlanForm({
   submitLabel,
 }: RoastPlanFormProps) {
   const { message } = App.useApp();
-  const { data: beans = [], isLoading: beansLoading } = useBeans();
-  const { data: roastingMachines = [], isLoading: roastingMachinesLoading } = useRoastingMachines();
-  const beanOptions = [
-    { label: GENERIC_BEAN_NAME, value: GENERIC_BEAN_ID },
-    ...beans.map((bean) => ({
-      label: bean.name,
-      value: String(bean.id),
-    })),
-  ];
-  const roastingMachineOptions = roastingMachines.map((machine) => ({
-    label: `${machine.displayName} · ${machine.modelKey}`,
-    value: machine.id,
-  }));
-  const { control, handleSubmit, reset, setFocus, setValue } = useForm<RoastPlanJsonInput>({
-    defaultValues: initialValues,
-  });
-  const { append, fields, move, remove } = useFieldArray({
+  const {
     control,
-    name: 'steps',
-  });
-  const selectedRoasterMachineId = useWatch({
-    control,
-    name: 'roasterMachineId',
-  });
-  const selectedMachine = roastingMachines.find((machine) => machine.id === selectedRoasterMachineId);
-  const adjustableControls = getRoasterControlCapabilities(selectedMachine);
-  const showAirTemperature = adjustableControls.includes('airTemperature');
-  const showAirDamper = adjustableControls.includes('airDamper');
-  const showDrumSpeed = adjustableControls.includes('drumSpeed');
-  const showFirePower = adjustableControls.includes('firePower');
-
-  useEffect(() => {
-    reset(initialValues);
-  }, [initialValues, reset]);
-
-  const submitForm = async (values: RoastPlanJsonInput) => {
-    if (values.beanId == null || String(values.beanId).trim().length === 0) {
-      void message.warning('请选择生豆或“通用”后再保存烘焙计划。');
-      window.requestAnimationFrame(() => {
-        setFocus('beanId');
-      });
-      return;
-    }
-
-    const selectedBean = beans.find((bean) => String(bean.id) === String(values.beanId));
-    const isGenericPlan = String(values.beanId) === GENERIC_BEAN_ID;
-    const submitMachine = roastingMachines.find((machine) => machine.id === values.roasterMachineId);
-    const submitControls = getRoasterControlCapabilities(submitMachine);
-    const payload = {
-      ...values,
-      beanName: isGenericPlan ? GENERIC_BEAN_NAME : selectedBean?.name ?? values.beanName,
-      steps: values.steps.map((step) => ({
-        ...step,
-        airDamper: showAirDamper ? formatUnit(step.airDamper ?? '', '%') : undefined,
-        airTemperature: submitControls.includes('airTemperature') ? formatUnit(step.airTemperature, '℃') : '不可调',
-        drumSpeed: submitControls.includes('drumSpeed') ? formatUnit(step.drumSpeed, 'r') : '不可调',
-        firePower: submitControls.includes('firePower') ? formatUnit(step.firePower, '%') : '不可调',
-        temperature: formatUnit(step.temperature, '℃'),
-      })),
-    };
-    const validationResult = roastPlanJsonSchema.safeParse(payload);
-
-    if (!validationResult.success) {
-      void message.error(validationResult.error.issues.map((issue) => issue.message).join('；'));
-      const firstFieldPath = validationResult.error.issues
-        .map((issue) => issue.path.join('.') as FieldPath<RoastPlanJsonInput>)
-        .find(Boolean);
-
-      if (firstFieldPath) {
-        window.requestAnimationFrame(() => {
-          setFocus(firstFieldPath);
-        });
-      }
-      return;
-    }
-
-    await onSubmit(validationResult.data);
-
-    if (resetOnSubmit) {
-      reset(initialValues);
-    }
-  };
+    handleSubmit,
+    setValue,
+    fields,
+    move,
+    remove,
+    beans,
+    beansLoading,
+    beanOptions,
+    roastingMachines,
+    roastingMachinesLoading,
+    roastingMachineOptions,
+    showAirTemperature,
+    showAirDamper,
+    showDrumSpeed,
+    showFirePower,
+    submitForm,
+    handleAppendStep,
+  } = useRoastPlanForm(initialValues, onSubmit, resetOnSubmit, message);
 
   return (
     <form className={styles.form} onSubmit={(event) => void handleSubmit(submitForm)(event)}>
@@ -341,18 +186,7 @@ export function RoastPlanForm({
           <Button
             aria-label="添加节点"
             icon={<PlusOutlined />}
-            onClick={() => {
-              append({
-                airTemperature: showAirTemperature ? '-' : '不可调',
-                airDamper: showAirDamper ? '' : undefined,
-                drumSpeed: showDrumSpeed ? '' : '不可调',
-                event: '',
-                firePower: showFirePower ? '' : '不可调',
-                operation: '',
-                temperature: '-',
-                time: '',
-              });
-            }}
+            onClick={handleAppendStep}
           >
             添加节点
           </Button>

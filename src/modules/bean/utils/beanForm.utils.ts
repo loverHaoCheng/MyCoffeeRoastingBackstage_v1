@@ -1,4 +1,5 @@
-import type { FieldPath } from 'react-hook-form';
+import type { FieldPath, FieldValues, UseFormSetError, UseFormSetFocus } from 'react-hook-form';
+import type { ZodIssue } from 'zod';
 
 import { calculateCostMetrics } from '@/modules/finance/services';
 import type { CostTemplate } from '@/modules/settings/types';
@@ -50,3 +51,23 @@ export const calculateTemplateDrivenSaleDefaults = (
 
   return { defaultSaleUnitPrice: metrics.suggestedSalePrice, defaultSaleUnitWeightGrams: template.saleUnitWeightGrams };
 };
+
+export const formatOptionalHelp = (text: string): string => `选填。${text}`;
+
+export function handleValidationErrors<T extends FieldValues>(
+  issues: ZodIssue[],
+  fieldPathMap: Record<string, FieldPath<T>>,
+  setError: UseFormSetError<T>,
+  setFocus: UseFormSetFocus<T>,
+): void {
+  const firstIssue = issues[0];
+
+  if (firstIssue) {
+    const fieldPath = fieldPathMap[firstIssue.path[0] as string];
+
+    if (fieldPath) {
+      setError(fieldPath, { message: firstIssue.message });
+      setFocus(fieldPath);
+    }
+  }
+}

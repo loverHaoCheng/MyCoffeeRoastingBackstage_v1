@@ -27,103 +27,22 @@ import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
 import { FilterSortToggle, MultiFilterSortBar, type MultiFilterDefinition } from '@/shared/components/MultiFilterSortBar';
 import type { Bean } from '@/types/domain';
 import type { GreenBeanCreateInput } from '@/modules/bean/types';
-import type { FieldPath } from 'react-hook-form';
 
-import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';
-
+import { matchesKeyword, getFilterOptions, getBeanRemainingWeightGrams } from './BeanPage/beanUtils';
+import { sortBeans, type BeanSortKey } from './BeanPage/beanSorting';
+import { useBeanCreation } from './BeanPage/useBeanCreation';
+import { useBeanDeletion } from './BeanPage/useBeanDeletion';
+import { useBeanDetailDrawer } from './BeanPage/useBeanDetailDrawer';
 import styles from './BeanPage.module.css';
 
-type BeanDetailMode = 'view' | 'edit';
-type BeanSortKey = 'costAsc' | 'costDesc' | 'createdAsc' | 'createdDesc' | 'stockAsc' | 'stockDesc';
 type BeanFilterKey = 'origin' | 'process';
 
 const formatKg = new Intl.NumberFormat('zh-CN', {
   maximumFractionDigits: 1,
 });
 
-const matchesKeyword = (bean: Bean, keyword: string): boolean => {
-  const normalizedKeyword = keyword.trim().toLowerCase();
-
-  if (!normalizedKeyword) {
-    return true;
-  }
-
-  return [bean.name, bean.origin, bean.process, bean.grade, bean.flavorTags?.join(' ') ?? '']
-    .join(' ')
-    .toLowerCase()
-    .includes(normalizedKeyword);
-};
-
-const sortBeansByCreatedAt = (beans: Bean[]): Bean[] => {
-  return [...beans].sort((left, right) => {
-    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-  });
-};
-
-const getBeanRemainingWeightGrams = (bean: Bean): number => {
-  return Math.max(0, Math.round(bean.remainingWeightGrams ?? bean.stockKg * 1000));
-};
-
-const getFilterOptions = (values: (null | string | undefined)[]) => {
-  return Array.from(new Set(values.map((value) => value?.trim() ?? '').filter(Boolean)))
-    .sort((left, right) => left.localeCompare(right, 'zh-CN'))
-    .map((value) => ({ label: value, value }));
-};
-
-const sortBeans = (beans: Bean[], sortKey: BeanSortKey): Bean[] => {
-  return [...beans].sort((left, right) => {
-    switch (sortKey) {
-      case 'createdAsc': return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
-      case 'costAsc': return left.costPerKg - right.costPerKg;
-      case 'costDesc': return right.costPerKg - left.costPerKg;
-      case 'stockAsc': return getBeanRemainingWeightGrams(left) - getBeanRemainingWeightGrams(right);
-      case 'stockDesc': return getBeanRemainingWeightGrams(right) - getBeanRemainingWeightGrams(left);
-      default: return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-    }
-  });
-};
-
-const mapBeanToRestockInitialValues = (bean: Bean): GreenBeanCreateInput => {
-  const defaultValues = createDefaultBeanFormValues();
-  const totalPurchasedWeightGrams = Math.max(
-    0,
-    Math.round(bean.purchasedWeightGrams ?? bean.remainingWeightGrams ?? bean.stockKg * 1000),
-  );
-  const nextPurchasedWeightGrams = totalPurchasedWeightGrams > 0 ? totalPurchasedWeightGrams : 1000;
-
-  return {
-    ...defaultValues,
-    agingDays: bean.agingDays ?? defaultValues.agingDays,
-    altitudeMetersMax: bean.altitudeMetersMax ?? null,
-    altitudeMetersMin: bean.altitudeMetersMin ?? null,
-    costTemplateId: bean.costTemplateId ?? null,
-    defaultRoastInputGrams: bean.defaultRoastInputGrams ?? defaultValues.defaultRoastInputGrams,
-    defaultSaleUnitPrice: bean.defaultSaleUnitPrice ?? 0,
-    defaultSaleUnitWeightGrams: bean.defaultSaleUnitWeightGrams ?? null,
-    densityGPerL: bean.densityGPerL ?? null,
-    displayName: bean.name,
-    flavorTags: [...(bean.flavorTags ?? [])],
-    grade: bean.grade,
-    harvestSeason: bean.harvestSeason ?? '',
-    millName: bean.millName ?? '',
-    moisturePercent: bean.moisturePercent ?? null,
-    notes: bean.notes ?? '',
-    originArea: bean.originArea ?? '',
-    originCountry: bean.originCountry ?? '',
-    originRegion: bean.originRegion ?? '',
-    processMethod: bean.process,
-    purchasedTotalPrice: bean.purchasedTotalPrice ?? 0,
-    purchasedWeightGrams: nextPurchasedWeightGrams,
-    remainingWeightGrams: nextPurchasedWeightGrams,
-    supplierName: bean.supplierName ?? '',
-    tastingEndDays: bean.tastingEndDays ?? defaultValues.tastingEndDays,
-    variety: bean.variety ?? '',
-  };
-};
-
 export function BeanPage() {
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
   const [keyword, setKeyword] = useState('');
   const [filterValues, setFilterValues] = useState<Record<BeanFilterKey, string[]>>({
@@ -132,13 +51,39 @@ export function BeanPage() {
   const [sortKey, setSortKey] = useState<BeanSortKey>('createdDesc');
   const [isFilterPanelExpanded, setIsFilterPanelExpanded] = useState(false);
   const [isZeroStockCollapsed, setIsZeroStockCollapsed] = useState(true);
-  const [selectedBeanId, setSelectedBeanId] = useState<null | Bean['id']>(null);
-  const [selectedBeanFieldPath, setSelectedBeanFieldPath] = useState<FieldPath<GreenBeanFormInput> | undefined>();
-  const [detailMode, setDetailMode] = useState<BeanDetailMode | null>(null);
-  const [restockInitialValues, setRestockInitialValues] = useState<GreenBeanCreateInput | undefined>();
-  const [restockRequestKey, setRestockRequestKey] = useState<number | null>(null);
   const { data: beans = [], isLoading } = useBeans();
-  const deleteBeanMutation = useDeleteBean();
+
+  const { handleDeleteBean } = useBeanDeletion(message, modal, (bean, onDispositionChange) => (
+    <div>
+      <p>
+        删除 {bean.name} 后，关联的采购批次、烘焙历史及其曲线都会永久删除，且无法复原。
+      </p>
+      <p>请选择关联烘焙计划的处理方式：</p>
+      <Radio.Group
+        aria-label="关联烘焙计划的处理方式"
+        onChange={(event) => {
+          onDispositionChange(event.target.value as RoastPlanDisposition);
+        }}
+      >
+        <Radio value="makeGeneric">全部改为通用计划：保留计划并解除与当前生豆的关联</Radio>
+        <Radio value="delete">全部删除：永久删除这些烘焙计划，且无法复原</Radio>
+      </Radio.Group>
+    </div>
+  ));
+  const { handleCreateBean } = useBeanCreation(message);
+  const {
+    selectedBean,
+    selectedBeanId,
+    selectedBeanFieldPath,
+    detailMode,
+    restockInitialValues,
+    restockRequestKey,
+    handleViewBean,
+    handleEditBean,
+    handleEditBeanAll,
+    handleRestockBean,
+    closeDetailDrawer,
+  } = useBeanDetailDrawer(beans);
 
   const filterDefinitions = useMemo<MultiFilterDefinition[]>(() => [
     { key: 'process', label: '处理法', options: getFilterOptions(beans.map((bean) => bean.process)) },
@@ -173,126 +118,7 @@ export function BeanPage() {
     };
   }, [beans]);
 
-  const selectedBean = useMemo(() => {
-    return beans.find((b) => b.id === selectedBeanId) ?? null;
-  }, [beans, selectedBeanId]);
-
   const isWide = screens.md ?? false;
-  const handleViewBean = (beanId: Bean['id']) => {
-    setSelectedBeanId(beanId);
-    setSelectedBeanFieldPath(undefined);
-    setDetailMode('view');
-  };
-
-  const handleEditBean = (beanId: Bean['id'], fieldPath?: FieldPath<GreenBeanFormInput>) => {
-    setSelectedBeanId(beanId);
-    setSelectedBeanFieldPath(fieldPath);
-    setDetailMode('edit');
-  };
-
-  const handleEditBeanAll = (beanId: Bean['id']) => {
-    setSelectedBeanId(beanId);
-    setSelectedBeanFieldPath(undefined);
-    setDetailMode('edit');
-  };
-
-  const handleRestockBean = (bean: Bean) => {
-    setRestockInitialValues(mapBeanToRestockInitialValues(bean));
-    setRestockRequestKey(Date.now());
-  };
-
-  const commitDeleteBean = async (bean: Bean, roastPlanDisposition: RoastPlanDisposition) => {
-    const result = await deleteBeanMutation.mutateAsync({
-      beanId: bean.id,
-      roastPlanDisposition,
-    });
-
-    if (!result.synced) {
-      void message.error('删除已保存到本地，但远程 PocketBase 删除未同步成功，请稍后重试。');
-    }
-  };
-
-  const handleDeleteBean = (bean: Bean) => {
-    if (import.meta.env.MODE === 'test' && typeof modal.confirm !== 'function') {
-      void commitDeleteBean(bean, 'makeGeneric').catch((error: unknown) => {
-        void message.error(
-          getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
-        );
-      });
-      return;
-    }
-
-    let selectedDisposition: RoastPlanDisposition | undefined;
-    const confirmation: ReturnType<typeof modal.confirm> = modal.confirm({
-
-      centered: true,
-      content: (
-        <div>
-          <p>
-            删除「{bean.name}」后，关联的采购批次、烘焙历史及其曲线都会永久删除，且无法复原。
-          </p>
-          <p>请选择关联烘焙计划的处理方式：</p>
-          <Radio.Group
-            aria-label="关联烘焙计划的处理方式"
-            onChange={(event) => {
-              selectedDisposition = event.target.value as RoastPlanDisposition;
-              confirmation.update({
-                okButtonProps: { danger: true, disabled: false },
-              });
-            }}
-          >
-            <Radio value="makeGeneric">全部改为通用计划：保留计划并解除与当前生豆的关联</Radio>
-            <Radio value="delete">全部删除：永久删除这些烘焙计划，且无法复原</Radio>
-          </Radio.Group>
-        </div>
-      ),
-      okButtonProps: { danger: true, disabled: true },
-      okText: '删除',
-      title: '确认删除',
-      async onOk() {
-        if (!selectedDisposition) {
-          return;
-        }
-
-        try {
-          await commitDeleteBean(bean, selectedDisposition);
-        } catch (error) {
-          void message.error(
-            getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
-          );
-          throw error;
-        }
-      },
-    });
-  };
-
-  const handleCreateBean = (input: GreenBeanCreateInput) => {
-    const backupId = submissionBackupService.save('create', input, 'bean');
-    const optimisticBean = beanService.createOptimisticBean(input);
-
-    queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), (current = []) => {
-      return sortBeansByCreatedAt([
-        optimisticBean,
-        ...current.filter((bean) => String(bean.id) !== String(optimisticBean.id)),
-      ]);
-    });
-
-    const createTask = (async () => {
-      try {
-        const response = await beanService.createRemoteBean(input);
-        const nextBeans = beanService.finalizeOptimisticBean(String(optimisticBean.id), response.data);
-
-        queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
-        submissionBackupService.clear(backupId);
-      } catch (error) {
-        const nextBeans = beanService.rollbackOptimisticBean(String(optimisticBean.id));
-        queryClient.setQueryData<Bean[]>(beanQueryKeys.list(), nextBeans);
-        void message.error(getUserFacingErrorMessage(error, '生豆同步失败，已回滚本次新建，请检查后重试。'));
-      }
-    })();
-
-    void createTask;
-  };
 
   return (
     <main className={styles.page}>
@@ -437,9 +263,7 @@ export function BeanPage() {
         data-placement={isWide ? 'right' : 'bottom'}
         height={isWide ? undefined : '86dvh'}
         onClose={() => {
-          setSelectedBeanId(null);
-          setSelectedBeanFieldPath(undefined);
-          setDetailMode(null);
+          closeDetailDrawer();
         }}
         open={
           selectedBean !== null &&
@@ -449,7 +273,7 @@ export function BeanPage() {
         title={detailMode === 'edit' ? '编辑生豆' : '查看生豆详情'}
         headerActions={detailMode === 'edit' ? (
           <>
-            <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={() => { setSelectedBeanId(null); setSelectedBeanFieldPath(undefined); setDetailMode(null); }} shape="circle" />
+            <Button aria-label="取消" className={styles.headerCancelButton} icon={<CloseOutlined />} onClick={closeDetailDrawer} shape="circle" />
             <Button aria-label="保存生豆" className={styles.headerSubmitButton} icon={<CheckOutlined />} onClick={() => { document.querySelector<HTMLFormElement>('[data-app-drawer="true"][data-state="open"] form')?.requestSubmit(); }} shape="circle" />
           </>
         ) : null}
@@ -460,11 +284,7 @@ export function BeanPage() {
             bean={selectedBean}
             focusFieldPath={selectedBeanFieldPath}
             mode={detailMode}
-            onClose={() => {
-              setSelectedBeanId(null);
-              setSelectedBeanFieldPath(undefined);
-              setDetailMode(null);
-            }}
+            onClose={closeDetailDrawer}
           />
         ) : null}
       </AppDrawer>
@@ -473,11 +293,7 @@ export function BeanPage() {
         bean={selectedBean}
         fieldPath={selectedBeanFieldPath}
         height={isWide ? undefined : '360px'}
-        onClose={() => {
-          setSelectedBeanId(null);
-          setSelectedBeanFieldPath(undefined);
-          setDetailMode(null);
-        }}
+        onClose={closeDetailDrawer}
         open={selectedBean != null && detailMode === 'edit' && selectedBeanFieldPath != null}
         placement={isWide ? 'right' : 'bottom'}
         width={720}

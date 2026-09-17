@@ -31,7 +31,7 @@ export interface RoastConversation {
 }
 
 export const roastConversationService = {
-  async get(context: { beanId?: string; roastBatchId?: string } = {}): Promise<RoastConversation | null> {
+  async get(context: { beanId?: string | null; roastBatchId?: string } = {}): Promise<RoastConversation | null> {
     const queryParams = new URLSearchParams();
     if (context.beanId) queryParams.set('beanId', context.beanId);
     if (context.roastBatchId) queryParams.set('roastBatchId', context.roastBatchId);

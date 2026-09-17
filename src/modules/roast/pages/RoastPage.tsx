@@ -7,7 +7,6 @@ import Empty from "antd/es/empty";
 import Grid from "antd/es/grid";
 import Spin from "antd/es/spin";
 import { useState, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 
 import {
   RoastPlanDetail,
@@ -16,34 +15,26 @@ import {
   RoastPlanManualCreator,
   RoastPlanJsonImporter,
 } from '@/modules/roast/components';
-import { defaultRoastPlanFormValues } from '@/modules/roast/constants';
-import type { RoastPlanEditableFieldPath } from '@/modules/roast/components/RoastPlanFieldEditorDrawer';
 import {
-  roastPlanQueryKeys,
-  useDeleteRoastPlan,
   useRoastBatches,
   useRoastPlans,
   useRoastingMachines,
-  useUpdateRoastPlan,
 } from '@/modules/roast/hooks';
 import { getEffectiveRoastPlanStatus } from '@/modules/roast/constants/roastPlanStatus';
-import { parseRoastPlanJsonDraft } from '@/modules/roast/services';
-import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { AppDrawer } from '@/shared/components/AppDrawer';
-import { getUserFacingErrorMessage } from '@/shared/errors/errorMessage';
 import { ViewportFloatingActionButton } from '@/shared/components/ViewportFloatingActionButton';
-import { submissionBackupService } from '@/shared/services/submissionBackup.service';
 import { UnifiedSearchBar } from '@/shared/components/UnifiedSearchBar';
 import { FilterSortToggle, MultiFilterSortBar, type MultiFilterDefinition } from '@/shared/components/MultiFilterSortBar';
-import type { RoastPlan } from '@/types/domain';
-import type { RoastPlanJsonInput } from '@/modules/roast/types';
 
+import { matchesKeyword } from './RoastPage/planUtils';
+import { sortPlans, type RoastPlanSortKey } from './RoastPage/planSorting';
+import { getFilterOptions, type RoastPlanFilterKey } from './RoastPage/planFiltering';
+import { usePlanDeletion } from './RoastPage/usePlanDeletion';
+import { usePlanCreation } from './RoastPage/usePlanCreation';
+import { usePlanUpdate } from './RoastPage/usePlanUpdate';
+import { useCreationDrawer } from './RoastPage/useCreationDrawer';
+import { useDetailDrawer } from './RoastPage/useDetailDrawer';
 import styles from './RoastPage.module.css';
-
-type DetailMode = 'view' | 'edit';
-type CreationMode = 'json' | 'manual';
-type RoastPlanSortKey = 'nameAsc' | 'updatedAsc' | 'updatedDesc' | 'weightAsc' | 'weightDesc';
-type RoastPlanFilterKey = 'bean' | 'level' | 'purpose';
 
 const actionSheetStyles = {
   body: {
@@ -59,7 +50,7 @@ const actionSheetStyles = {
   },
 };
 
-const getDetailDrawerTitle = (mode: DetailMode | null): string => {
+const getDetailDrawerTitle = (mode: 'view' | 'edit' | null): string => {
   if (mode === 'view') {
     return '烘焙计划详情';
   }
@@ -71,57 +62,17 @@ const getDetailDrawerTitle = (mode: DetailMode | null): string => {
   return '';
 };
 
-const matchesKeyword = (plan: RoastPlan, keyword: string): boolean => {
-  const normalized = keyword.trim().toLowerCase();
-  if (!normalized) return true;
-  return [plan.name, plan.beanName, plan.roasterModel, plan.targetRoastLevel, plan.roastPurpose]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-    .includes(normalized);
-};
-
-const sortPlansByUpdatedAt = (plans: RoastPlan[]): RoastPlan[] => {
-  return [...plans].sort((left, right) => {
-    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-  });
-};
-
-const getFilterOptions = (values: string[]) => Array.from(new Set(values.filter(Boolean)))
-  .sort((left, right) => left.localeCompare(right, 'zh-CN'))
-  .map((value) => ({ label: value, value }));
-
-const sortPlans = (plans: RoastPlan[], sortKey: RoastPlanSortKey): RoastPlan[] => [...plans].sort((left, right) => {
-  switch (sortKey) {
-    case 'nameAsc': return left.name.localeCompare(right.name, 'zh-CN');
-    case 'updatedAsc': return new Date(left.updatedAt).getTime() - new Date(right.updatedAt).getTime();
-    case 'weightAsc': return left.batchWeightGrams - right.batchWeightGrams;
-    case 'weightDesc': return right.batchWeightGrams - left.batchWeightGrams;
-    default: return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-  }
-});
-
 export function RoastPage() {
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const screens = Grid.useBreakpoint();
   const [keyword, setKeyword] = useState('');
   const [filterValues, setFilterValues] = useState<Record<RoastPlanFilterKey, string[]>>({ bean: [], level: [], purpose: [] });
   const [sortKey, setSortKey] = useState<RoastPlanSortKey>('updatedDesc');
   const [isFilterPanelExpanded, setIsFilterPanelExpanded] = useState(false);
-  const [selectedPlanId, setSelectedPlanId] = useState<RoastPlan['id'] | null>(null);
-  const [selectedPlanFieldPath, setSelectedPlanFieldPath] = useState<RoastPlanEditableFieldPath | 'steps' | undefined>();
-  const [detailMode, setDetailMode] = useState<DetailMode | null>(null);
   const [isCreateActionSheetOpen, setIsCreateActionSheetOpen] = useState(false);
-  const [creationDrawerOpen, setCreationDrawerOpen] = useState(false);
-  const [creationMode, setCreationMode] = useState<CreationMode>('manual');
-  const [creationInitialValues, setCreationInitialValues] = useState<RoastPlanJsonInput | undefined>();
-  const [creationResetSignal, setCreationResetSignal] = useState(0);
 
   const { data: plans = [], isFetching } = useRoastPlans();
   const { data: roastingMachines = [] } = useRoastingMachines();
-  const updateMutation = useUpdateRoastPlan();
-  const deleteMutation = useDeleteRoastPlan();
   const createActionSheetHeight = 176;
 
   const isWide = screens.md ?? false;
@@ -135,6 +86,35 @@ export function RoastPage() {
       })),
     [batches, plans],
   );
+
+  const {
+    selectedPlanId,
+    selectedPlanFieldPath,
+    detailMode,
+    handleView,
+    handleEdit,
+    handleEditAll,
+    closeDetail,
+  } = useDetailDrawer();
+
+  const { handleDelete } = usePlanDeletion(message, modal, closeDetail);
+  const { handleUpdate } = usePlanUpdate(message);
+
+  const {
+    creationDrawerOpen,
+    creationMode,
+    creationInitialValues,
+    creationResetSignal,
+    resetCreationDraft,
+    handleFillFormFromJson,
+    handleOpenCreationMode,
+    closeCreationDrawer,
+  } = useCreationDrawer(message, plans, roastingMachines);
+
+  const { handleCreateManual } = usePlanCreation(message, () => {
+    closeCreationDrawer();
+    resetCreationDraft();
+  });
 
   const filterDefinitions = useMemo<MultiFilterDefinition[]>(() => [
     { key: 'bean', label: '生豆', options: getFilterOptions(effectivePlans.map((plan) => plan.beanName)) },
@@ -151,161 +131,9 @@ export function RoastPage() {
 
   const selectedPlan = effectivePlans.find((p) => p.id === selectedPlanId) ?? null;
 
-  const resetCreationDraft = () => {
-    const latestBeanPlan = sortPlansByUpdatedAt(plans).find((plan) => {
-      return String(plan.beanId) !== 'generic' && plan.beanName.trim().length > 0;
-    });
-    const latestAssociatedMachineId = latestBeanPlan?.roasterMachineId;
-    const defaultMachine = roastingMachines.find((machine) => machine.id === latestAssociatedMachineId)
-      ?? roastingMachines[0];
-
-    setCreationMode('manual');
-    setCreationInitialValues({
-      ...defaultRoastPlanFormValues,
-      ...(latestBeanPlan
-        ? {
-            beanId: latestBeanPlan.beanId,
-            beanName: latestBeanPlan.beanName,
-          }
-        : {}),
-      roasterMachineId: defaultMachine?.id,
-      roasterModel: defaultMachine?.displayName ?? '',
-    });
-    setCreationResetSignal((current) => current + 1);
-  };
-
-  // 查看
-  const handleView = (planId: RoastPlan['id']) => {
-    setSelectedPlanId(planId);
-    setSelectedPlanFieldPath(undefined);
-    setDetailMode('view');
-  };
-
-  // 编辑
-  const handleEdit = (planId: RoastPlan['id'], fieldPath?: RoastPlanEditableFieldPath | 'steps') => {
-    setSelectedPlanId(planId);
-    setSelectedPlanFieldPath(fieldPath);
-    setDetailMode('edit');
-  };
-
-  const handleEditAll = (planId: RoastPlan['id']) => {
-    setSelectedPlanId(planId);
-    setSelectedPlanFieldPath(undefined);
-    setDetailMode('edit');
-  };
-
-  // 删除
-  const handleDelete = (plan: RoastPlan) => {
-    modal.confirm({
-      centered: true,
-      content: `确定要删除「${plan.name}」吗？此操作不可撤销。`,
-      okButtonProps: { danger: true },
-      okText: '删除',
-      title: '确认删除',
-      onOk() {
-        void deleteMutation
-          .mutateAsync(plan.id)
-          .then(() => {
-            setSelectedPlanId(null);
-            setSelectedPlanFieldPath(undefined);
-            setDetailMode(null);
-          })
-          .catch((error: unknown) => {
-            void message.error(
-              getUserFacingErrorMessage(error, '删除失败，未能同步到 PocketBase，请检查网络或服务状态。'),
-            );
-          });
-      },
-    });
-  };
-
-  // 更新计划
-  const handleUpdate = (planId: RoastPlan['id'], input: RoastPlanJsonInput) => {
-    const backupId = submissionBackupService.save('update', { input, planId }, 'roastPlan');
-
-    const updateTask = (async () => {
-      try {
-        await updateMutation.mutateAsync({ planId, input });
-        submissionBackupService.clear(backupId);
-      } catch (error: unknown) {
-        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，本次修改未保存，请保留编辑内容并重试。'));
-      }
-    })();
-
-    void updateTask;
-  };
-
-  // 手动创建
-  const handleCreateManual = (input: RoastPlanJsonInput) => {
-    setCreationDrawerOpen(false);
-    resetCreationDraft();
-    const backupId = submissionBackupService.save('create', input, 'roastPlan');
-    const optimisticPlan = roastPlanService.createOptimisticPlan(input);
-
-    queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), (current = []) => {
-      return sortPlansByUpdatedAt([
-        optimisticPlan,
-        ...current.filter((plan) => String(plan.id) !== String(optimisticPlan.id)),
-      ]);
-    });
-
-    const createTask = (async () => {
-      try {
-        const response = await roastPlanService.createPlan(input);
-        const nextPlans = roastPlanService.finalizeOptimisticPlan(optimisticPlan.id, response.data);
-
-        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        submissionBackupService.clear(backupId);
-      } catch (error: unknown) {
-        const nextPlans = roastPlanService.rollbackOptimisticPlan(optimisticPlan.id);
-        queryClient.setQueryData<RoastPlan[]>(roastPlanQueryKeys.list(), nextPlans);
-        void message.error(getUserFacingErrorMessage(error, '烘焙计划同步失败，已回滚本次新建，请检查后重试。'));
-      }
-    })();
-
-    void createTask;
-  };
-
-  // JSON 导入仅回填表单，最终创建仍由手动表单提交。
-  const handleFillFormFromJson = (jsonText: string) => {
-    try {
-      const nextInitialValues = parseRoastPlanJsonDraft(
-        jsonText,
-        creationInitialValues ?? defaultRoastPlanFormValues,
-      );
-
-      submissionBackupService.save('create', { input: nextInitialValues, jsonText }, 'roastPlan');
-      setCreationInitialValues(nextInitialValues);
-      setCreationMode('manual');
-      setCreationDrawerOpen(true);
-      void message.success('JSON 已回填到创建表单，可继续补充和修改。');
-    } catch (error: unknown) {
-      void message.error(getUserFacingErrorMessage(error, 'JSON 解析失败，请检查内容后重试。'));
-    }
-  };
-
-  // 关闭详情
-  const closeDetail = () => {
-    setSelectedPlanId(null);
-    setSelectedPlanFieldPath(undefined);
-    setDetailMode(null);
-  };
-
   const handleOpenCreateDrawer = () => {
     resetCreationDraft();
     setIsCreateActionSheetOpen(true);
-  };
-
-  const handleOpenCreationMode = (mode: CreationMode) => {
-    setIsCreateActionSheetOpen(false);
-    resetCreationDraft();
-    setCreationMode(mode);
-    setCreationDrawerOpen(true);
-  };
-
-  const closeCreationDrawer = () => {
-    setCreationDrawerOpen(false);
-    setCreationMode('manual');
   };
 
   return (

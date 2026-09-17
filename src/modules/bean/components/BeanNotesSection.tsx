@@ -1,11 +1,11 @@
 import Input from '@/shared/components/ui/input';
-import { Controller, type Control } from 'react-hook-form';
+import { Controller, type Control, type FieldErrors } from 'react-hook-form';
 import type { GreenBeanFormInput } from '@/modules/bean/types/localGreenBean';
 import styles from './BeanForm.module.css';
 
 const { TextArea } = Input;
 
-export function BeanNotesSection({ control }: { control: Control<GreenBeanFormInput> }) {
+export function BeanNotesSection({ control, errors }: { control: Control<GreenBeanFormInput>; errors: FieldErrors<GreenBeanFormInput> }) {
   return (
     <section className={styles.section}>
       <header className={styles.sectionHeader}>

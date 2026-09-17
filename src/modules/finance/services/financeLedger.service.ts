@@ -1,11 +1,7 @@
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/shared/services/api.types';
-import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 import { ok as createOkResponse } from '@/shared/services/apiResponse.utils';
-import { normalizeText as sharedNormalizeText } from '@/shared/utils/text.utils';
-import { sortByDateDesc } from '@/shared/utils/sort.utils';
-import { createSyncSnapshot } from '@/shared/utils/sync.utils';
 
 import type {
   FinanceExpenseFormInput,
@@ -14,255 +10,34 @@ import type {
   FinanceIncomeRecord,
 } from '../types';
 
-interface FinanceLedgerConnectionCandidate {
-  client: Pick<PocketBaseRestClient, 'delete' | 'insert' | 'list'>;
-}
-
-interface RemoteFinanceExpenseRecord {
-  amount: number;
-  category: FinanceExpenseRecord['category'];
-  created_at: string;
-  custom_category_label: null | string;
-  expense_date: string;
-  id: string;
-  notes: null | string;
-  roast_batch_ids?: string[];
-  source: FinanceExpenseRecord['source'];
-  source_entity_id: null | string;
-  status: FinanceExpenseRecord['status'];
-  title: string;
-  updated_at: string;
-}
-
-interface RemoteFinanceIncomeRecord {
-  amount: number;
-  channel: FinanceIncomeRecord['channel'];
-  created_at: string;
-  id: string;
-  income_date: string;
-  notes: null | string;
-  source?: FinanceIncomeRecord['source'];
-  source_entity_id?: null | string;
-  status: FinanceIncomeRecord['status'];
-  title: string;
-  updated_at: string;
-}
-
-const EXPENSE_COLLECTION = 'finance_expense_records';
-const INCOME_COLLECTION = 'finance_income_records';
-
-let currentExpenseRecords: FinanceExpenseRecord[] = [];
-let currentIncomeRecords: FinanceIncomeRecord[] = [];
+import { resolveLedgerConnectionCandidates } from './financeLedger.service/connectionResolver';
+import {
+  createMissingIncomeCollectionError,
+  isIncomeCollectionNotReadyError,
+  isMissingRemoteResourceError,
+} from './financeLedger.service/errorHandlers';
+import {
+  clearCurrentRecords,
+  getCurrentExpenseRecords,
+  getCurrentIncomeRecords,
+  getLedgerSyncSnapshot,
+  setCurrentExpenseRecords,
+  setCurrentIncomeRecords,
+} from './financeLedger.service/recordState';
+import { createRemoteLedgerRepository } from './financeLedger.service/remoteRepository';
+import { EXPENSE_COLLECTION, INCOME_COLLECTION } from './financeLedger.service/types';
 
 const ok = <T,>(data: T): ApiResponse<T> => createOkResponse(data);
 
-const normalizeText = sharedNormalizeText;
-
-const normalizeExpenseInput = (input: FinanceExpenseFormInput): FinanceExpenseFormInput => ({
-  ...input,
-  customCategoryLabel: normalizeText(input.customCategoryLabel),
-  notes: normalizeText(input.notes),
-  roastBatchIds: input.roastBatchIds ?? [],
-  title: input.title.trim(),
-});
-
-const normalizeIncomeInput = (input: FinanceIncomeFormInput): FinanceIncomeFormInput => ({
-  ...input,
-  notes: normalizeText(input.notes),
-  title: input.title.trim(),
-});
-
-const sortByUpdatedAt = <TRecord extends { updatedAt: string }>(records: TRecord[]): TRecord[] => {
-  return sortByDateDesc(records);
-};
-
-const getLedgerSyncSnapshot = (records: { id: string; updatedAt: string }[]): string => {
-  return createSyncSnapshot(records);
-};
-
-const setCurrentExpenseRecords = (records: FinanceExpenseRecord[]): FinanceExpenseRecord[] => {
-  currentExpenseRecords = sortByUpdatedAt(records);
-  return currentExpenseRecords;
-};
-
-const setCurrentIncomeRecords = (records: FinanceIncomeRecord[]): FinanceIncomeRecord[] => {
-  currentIncomeRecords = sortByUpdatedAt(records);
-  return currentIncomeRecords;
-};
-
-const createLedgerTimestamps = (): { createdAt: string; updatedAt: string } => {
-  const timestamp = new Date().toISOString();
-
-  return {
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-};
-
-const mapRemoteExpenseRecord = (record: RemoteFinanceExpenseRecord): FinanceExpenseRecord => ({
-  amount: record.amount,
-  category: record.category,
-  createdAt: record.created_at,
-  customCategoryLabel: record.custom_category_label,
-  expenseDate: record.expense_date,
-  id: record.id,
-  notes: record.notes,
-  roastBatchIds: record.roast_batch_ids ?? [],
-  source: record.source,
-  sourceEntityId: record.source_entity_id,
-  status: record.status,
-  title: record.title,
-  updatedAt: record.updated_at,
-});
-
-const mapRemoteIncomeRecord = (record: RemoteFinanceIncomeRecord): FinanceIncomeRecord => ({
-  amount: record.amount,
-  channel: record.channel,
-  createdAt: record.created_at,
-  id: record.id,
-  incomeDate: record.income_date,
-  notes: record.notes,
-  source: record.source ?? 'manual',
-  sourceEntityId: record.source_entity_id ?? null,
-  status: record.status,
-  title: record.title,
-  updatedAt: record.updated_at,
-});
-
-const mapExpenseInputToRemotePayload = (input: FinanceExpenseFormInput) => {
-  const timestamps = createLedgerTimestamps();
-  const normalizedInput = normalizeExpenseInput(input);
-
-  return {
-    amount: normalizedInput.amount,
-    category: normalizedInput.category,
-    created_at: timestamps.createdAt,
-    custom_category_label: normalizeText(normalizedInput.customCategoryLabel),
-    expense_date: normalizedInput.expenseDate,
-    notes: normalizeText(normalizedInput.notes),
-    roast_batch_ids: normalizedInput.roastBatchIds ?? [],
-    source: 'manual' as const,
-    source_entity_id: null,
-    status: normalizedInput.status,
-    title: normalizedInput.title.trim(),
-    updated_at: timestamps.updatedAt,
-  };
-};
-
-const mapIncomeInputToRemotePayload = (input: FinanceIncomeFormInput) => {
-  const timestamps = createLedgerTimestamps();
-  const normalizedInput = normalizeIncomeInput(input);
-
-  return {
-    amount: normalizedInput.amount,
-    channel: normalizedInput.channel,
-    created_at: timestamps.createdAt,
-    income_date: normalizedInput.incomeDate,
-    notes: normalizeText(normalizedInput.notes),
-    status: normalizedInput.status,
-    title: normalizedInput.title.trim(),
-    updated_at: timestamps.updatedAt,
-  };
-};
-
-const resolveLedgerConnectionCandidates = (): FinanceLedgerConnectionCandidate[] => {
-  return [{
-    client: new PocketBaseRestClient({
-      projectUrl: '',
-      publishableKey: '',
-    }),
-  }];
-};
-
-const isMissingRemoteResourceError = (error: unknown): boolean => {
-  if (!(error instanceof AppError)) {
-    return false;
-  }
-
-  const cause = error.cause;
-  const payload = typeof cause === 'object' && cause != null ? (cause as { code?: string; message?: string }) : null;
-  const message = payload?.message ?? error.message;
-
-  return error.status === 404 || payload?.code?.startsWith('PGRST') === true || message.includes('不存在');
-};
-
-// 收入集合是可选集合：远端集合缺失（404）或规则未配置完成（403）时按“尚未就绪”
-// 处理为空数据；网络抖动、超时、5xx 等临时错误必须向上抛出，
-// 禁止用空数组覆盖已有收入数据（否则财务总览会静默清零）。
-const isIncomeCollectionNotReadyError = (error: unknown): boolean => {
-  return isMissingRemoteResourceError(error) || (error instanceof AppError && error.status === 403);
-};
-
-const createRemoteLedgerRepository = (client: Pick<PocketBaseRestClient, 'delete' | 'insert' | 'list'>) => ({
-  async listExpenseRecords(): Promise<ApiResponse<FinanceExpenseRecord[]>> {
-    const rows = await client.list<RemoteFinanceExpenseRecord>(EXPENSE_COLLECTION, {
-      orderBy: {
-        ascending: false,
-        column: 'updated_at',
-      },
-    });
-
-    return ok(rows.map(mapRemoteExpenseRecord));
-  },
-  async listIncomeRecords(): Promise<ApiResponse<FinanceIncomeRecord[]>> {
-    const rows = await client.list<RemoteFinanceIncomeRecord>(INCOME_COLLECTION, {
-      orderBy: {
-        ascending: false,
-        column: 'updated_at',
-      },
-    });
-
-    return ok(rows.map(mapRemoteIncomeRecord));
-  },
-  async saveExpenseRecord(input: FinanceExpenseFormInput): Promise<ApiResponse<FinanceExpenseRecord>> {
-    const rows = await client.insert<RemoteFinanceExpenseRecord>(
-      EXPENSE_COLLECTION,
-      mapExpenseInputToRemotePayload(input),
-      { select: '*' },
-    );
-    const savedRow = rows[0];
-
-    if (!savedRow) {
-      throw new AppError('支出记录保存失败：未返回数据。', { code: 'DATA' });
-    }
-
-    return ok(mapRemoteExpenseRecord(savedRow));
-  },
-  async saveIncomeRecord(input: FinanceIncomeFormInput): Promise<ApiResponse<FinanceIncomeRecord>> {
-    const rows = await client.insert<RemoteFinanceIncomeRecord>(
-      INCOME_COLLECTION,
-      mapIncomeInputToRemotePayload(input),
-      { select: '*' },
-    );
-    const savedRow = rows[0];
-
-    if (!savedRow) {
-      throw new AppError('收入记录保存失败：未返回数据。', { code: 'DATA' });
-    }
-
-    return ok(mapRemoteIncomeRecord(savedRow));
-  },
-});
-
-const createMissingIncomeCollectionError = (): AppError => {
-  return new AppError(
-    '收入记录保存失败：远端 finance_income_records 集合或主业务 BFF 白名单尚未就绪，请同步最新服务端配置。',
-    {
-      code: 'BUSINESS',
-    },
-  );
-};
-
 export const financeLedgerService = {
   clear(): void {
-    currentExpenseRecords = [];
-    currentIncomeRecords = [];
+    clearCurrentRecords();
   },
   getBootstrappedExpenseRecords(): FinanceExpenseRecord[] {
-    return currentExpenseRecords;
+    return getCurrentExpenseRecords();
   },
   getBootstrappedIncomeRecords(): FinanceIncomeRecord[] {
-    return currentIncomeRecords;
+    return getCurrentIncomeRecords();
   },
   async listExpenseRecords(): Promise<ApiResponse<FinanceExpenseRecord[]>> {
     const candidates = resolveLedgerConnectionCandidates();
@@ -335,7 +110,8 @@ export const financeLedgerService = {
     for (const candidate of candidates) {
       try {
         const response = await createRemoteLedgerRepository(candidate.client).saveExpenseRecord(input);
-        setCurrentExpenseRecords([response.data, ...currentExpenseRecords.filter((record) => record.id !== response.data.id)]);
+        const currentRecords = getCurrentExpenseRecords();
+        setCurrentExpenseRecords([response.data, ...currentRecords.filter((record) => record.id !== response.data.id)]);
         return response;
       } catch (error) {
         lastError = error;
@@ -362,7 +138,8 @@ export const financeLedgerService = {
     for (const candidate of candidates) {
       try {
         const response = await createRemoteLedgerRepository(candidate.client).saveIncomeRecord(input);
-        setCurrentIncomeRecords([response.data, ...currentIncomeRecords.filter((record) => record.id !== response.data.id)]);
+        const currentRecords = getCurrentIncomeRecords();
+        setCurrentIncomeRecords([response.data, ...currentRecords.filter((record) => record.id !== response.data.id)]);
         return response;
       } catch (error) {
         lastError = error;
@@ -399,7 +176,8 @@ export const financeLedgerService = {
           },
         });
 
-        setCurrentExpenseRecords(currentExpenseRecords.filter((record) => record.id !== expenseRecordId));
+        const currentRecords = getCurrentExpenseRecords();
+        setCurrentExpenseRecords(currentRecords.filter((record) => record.id !== expenseRecordId));
         return;
       } catch (error) {
         lastError = error;
@@ -435,7 +213,8 @@ export const financeLedgerService = {
           },
         });
 
-        setCurrentIncomeRecords(currentIncomeRecords.filter((record) => record.id !== incomeRecordId));
+        const currentRecords = getCurrentIncomeRecords();
+        setCurrentIncomeRecords(currentRecords.filter((record) => record.id !== incomeRecordId));
         return;
       } catch (error) {
         lastError = error;
@@ -466,8 +245,10 @@ export const financeLedgerService = {
     for (const candidate of candidates) {
       try {
         const repository = createRemoteLedgerRepository(candidate.client);
-        const beforeExpenseSignature = getLedgerSyncSnapshot(currentExpenseRecords);
-        const beforeIncomeSignature = getLedgerSyncSnapshot(currentIncomeRecords);
+        const currentExpenses = getCurrentExpenseRecords();
+        const currentIncomes = getCurrentIncomeRecords();
+        const beforeExpenseSignature = getLedgerSyncSnapshot(currentExpenses);
+        const beforeIncomeSignature = getLedgerSyncSnapshot(currentIncomes);
         const remoteExpenses = await repository.listExpenseRecords();
         let remoteIncomes: ApiResponse<FinanceIncomeRecord[]>;
 
@@ -485,14 +266,16 @@ export const financeLedgerService = {
 
         setCurrentExpenseRecords(remoteExpenses.data);
         setCurrentIncomeRecords(remoteIncomes.data);
-        const afterExpenseSignature = getLedgerSyncSnapshot(currentExpenseRecords);
-        const afterIncomeSignature = getLedgerSyncSnapshot(currentIncomeRecords);
+        const updatedExpenses = getCurrentExpenseRecords();
+        const updatedIncomes = getCurrentIncomeRecords();
+        const afterExpenseSignature = getLedgerSyncSnapshot(updatedExpenses);
+        const afterIncomeSignature = getLedgerSyncSnapshot(updatedIncomes);
 
         return {
           downloaded:
             beforeExpenseSignature === afterExpenseSignature && beforeIncomeSignature === afterIncomeSignature
               ? 0
-              : currentExpenseRecords.length + currentIncomeRecords.length,
+              : updatedExpenses.length + updatedIncomes.length,
           uploaded: 0,
         };
       } catch (error) {

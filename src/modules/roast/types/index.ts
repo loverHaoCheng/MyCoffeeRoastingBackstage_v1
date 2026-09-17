@@ -3,6 +3,13 @@ export type { RoastPlanJsonInput, RoastPlanJsonStep } from './roastPlanJson';
 export type { RoastAiFeature, RoastAiUsage } from './roastAiUsage';
 export type { RoasterModel, RoasterModelRecognition, RoastingMachine } from './roasterMachine';
 export type {
+  RoastBatchCreateInput,
+  RoastBatchEvaluation,
+  RoastBatchRecord,
+  RoastBatchUpdateInput,
+  RoastLevelSource,
+} from './roastBatch';
+export type {
   RoastCurveBeanSnapshot,
   RoastCurveDeviceInfo,
   RoastCurveEvent,

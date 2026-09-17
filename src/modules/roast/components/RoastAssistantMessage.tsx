@@ -3,13 +3,13 @@ import DownOutlined from '@ant-design/icons/DownOutlined';
 import OpenAIOutlined from '@ant-design/icons/OpenAIOutlined';
 
 import type { RoastConversationLegacyContent, RoastConversationMessage } from '../services/roastConversation.service';
-import type { RoastPlanJsonStep } from '../types';
+import type { RoastPlanJsonInput, RoastPlanJsonStep } from '../types';
 
 import styles from './RoastAssistantMessage.module.css';
 
 interface RoastAssistantMessageProps {
   message: RoastConversationMessage;
-  onCreatePlan: (message: RoastConversationMessage) => void;
+  onCreatePlan: (planDraft: RoastPlanJsonInput) => void;
 }
 
 const getPlanStepTitle = (
@@ -105,7 +105,14 @@ export function RoastAssistantMessage({ message, onCreatePlan }: RoastAssistantM
                 </ol>
               </details>
             ) : null}
-            <Button onClick={() => { onCreatePlan(message); }} type="primary">
+            <Button
+              onClick={() => {
+                if (message.planDraft && message.planDraft.name) {
+                  onCreatePlan(message.planDraft as RoastPlanJsonInput);
+                }
+              }}
+              type="primary"
+            >
               创建此计划
             </Button>
           </section>
