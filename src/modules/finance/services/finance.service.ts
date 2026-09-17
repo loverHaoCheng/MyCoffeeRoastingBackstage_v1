@@ -2,6 +2,9 @@ import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/shared/services/api.types';
 import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import { ok as createOkResponse } from '@/shared/services/apiResponse.utils';
+import { normalizeText as sharedNormalizeText } from '@/shared/utils/text.utils';
+import { createSyncSnapshot } from '@/shared/utils/sync.utils';
 
 import type {
   CostCalculationFormInput,
@@ -52,24 +55,12 @@ interface RemoteCostCalculationRecord {
 const COST_CALCULATIONS_TABLE = 'cost_calculations';
 let currentCostCalculationRecords: CostCalculationRecord[] = [];
 
-const ok = <T,>(data: T): ApiResponse<T> => ({
-  code: 0,
-  data,
-  message: 'ok',
-});
+const ok = <T,>(data: T): ApiResponse<T> => createOkResponse(data);
 
-const normalizeText = (value: null | string | undefined): null | string => {
-  const nextValue = value?.trim() ?? '';
-
-  return nextValue.length > 0 ? nextValue : null;
-};
+const normalizeText = sharedNormalizeText;
 
 const getCalculationSyncSnapshot = (records: CostCalculationRecord[]): string => {
-  return JSON.stringify(
-    [...records]
-      .sort((left, right) => left.id.localeCompare(right.id))
-      .map((record) => `${record.id}:${record.updatedAt}`),
-  );
+  return createSyncSnapshot(records);
 };
 
 export const calculateCostMetrics = (input: CostCalculationFormInput): CostCalculationMetrics => {

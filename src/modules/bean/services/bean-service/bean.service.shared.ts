@@ -4,6 +4,14 @@ import type { ApiResponse } from '@/shared/services/api.types';
 import type { Bean } from '@/types/domain';
 import { parseFlavorTags, serializeFlavorTags } from '@/modules/bean/utils/flavorTags';
 import { normalizeAgingDays, normalizeTastingEndDays } from '@/modules/bean/utils/postProcessDays';
+import { ok as createOkResponse } from '@/shared/services/apiResponse.utils';
+import { normalizeText as sharedNormalizeText } from '@/shared/utils/text.utils';
+import {
+  toFiniteNumber,
+  toNonNegativeNumber,
+  toPositiveNumberOrNull,
+} from '@/shared/utils/number.utils';
+import { sortByDateDesc } from '@/shared/utils/sort.utils';
 
 import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../../types';
 import type { LocalGreenBeanRecord } from '../../types/localGreenBean';
@@ -19,25 +27,14 @@ import type {
   RemoteBeanRecord,
 } from './bean.service.types';
 
-export const ok = <T,>(data: T): ApiResponse<T> => ({
-  code: 0,
-  data,
-  message: 'ok',
-});
+export const ok = <T,>(data: T): ApiResponse<T> => createOkResponse(data);
 
-export const normalizeText = (value: null | string | undefined): null | string => {
-  const nextValue = value?.trim() ?? '';
+export const normalizeText = sharedNormalizeText;
 
-  return nextValue.length > 0 ? nextValue : null;
-};
-
-const toNullablePositiveNumber = (value: null | number | undefined): null | number => {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
-};
+const toNullablePositiveNumber = toPositiveNumberOrNull;
 
 const toFiniteInteger = (value: unknown, fallback = 0): number => {
-  const normalizedValue = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-  return Math.round(normalizedValue);
+  return Math.round(toFiniteNumber(value, fallback));
 };
 
 const toNonNegativeInteger = (value: unknown, fallback = 0): number => {
@@ -86,9 +83,7 @@ export const mergeBeans = (beans: Bean[]): Bean[] => {
     }
   });
 
-  return Array.from(mergedMap.values()).sort((left, right) => {
-    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-  });
+  return sortByDateDesc(Array.from(mergedMap.values()));
 };
 
 export const getBootstrappedBeans = (): Bean[] => {

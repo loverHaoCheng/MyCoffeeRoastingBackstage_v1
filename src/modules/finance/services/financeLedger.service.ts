@@ -2,6 +2,10 @@ import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/shared/services/api.types';
 import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import { ok as createOkResponse } from '@/shared/services/apiResponse.utils';
+import { normalizeText as sharedNormalizeText } from '@/shared/utils/text.utils';
+import { sortByDateDesc } from '@/shared/utils/sort.utils';
+import { createSyncSnapshot } from '@/shared/utils/sync.utils';
 
 import type {
   FinanceExpenseFormInput,
@@ -50,17 +54,9 @@ const INCOME_COLLECTION = 'finance_income_records';
 let currentExpenseRecords: FinanceExpenseRecord[] = [];
 let currentIncomeRecords: FinanceIncomeRecord[] = [];
 
-const ok = <T,>(data: T): ApiResponse<T> => ({
-  code: 0,
-  data,
-  message: 'ok',
-});
+const ok = <T,>(data: T): ApiResponse<T> => createOkResponse(data);
 
-const normalizeText = (value: null | string | undefined): null | string => {
-  const nextValue = value?.trim() ?? '';
-
-  return nextValue.length > 0 ? nextValue : null;
-};
+const normalizeText = sharedNormalizeText;
 
 const normalizeExpenseInput = (input: FinanceExpenseFormInput): FinanceExpenseFormInput => ({
   ...input,
@@ -77,17 +73,11 @@ const normalizeIncomeInput = (input: FinanceIncomeFormInput): FinanceIncomeFormI
 });
 
 const sortByUpdatedAt = <TRecord extends { updatedAt: string }>(records: TRecord[]): TRecord[] => {
-  return [...records].sort((left, right) => {
-    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-  });
+  return sortByDateDesc(records);
 };
 
 const getLedgerSyncSnapshot = (records: { id: string; updatedAt: string }[]): string => {
-  return JSON.stringify(
-    [...records]
-      .sort((left, right) => left.id.localeCompare(right.id))
-      .map((record) => `${record.id}:${record.updatedAt}`),
-  );
+  return createSyncSnapshot(records);
 };
 
 const setCurrentExpenseRecords = (records: FinanceExpenseRecord[]): FinanceExpenseRecord[] => {

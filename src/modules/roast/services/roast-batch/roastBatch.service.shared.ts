@@ -5,6 +5,8 @@ import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 import type { ApiResponse } from '@/shared/services/api.types';
 import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import { ok as createOkResponse } from '@/shared/services/apiResponse.utils';
+import { isMissingRemoteResourceError } from '@/shared/utils/errorDetection.utils';
 
 import {
   calculateDehydrationRate,
@@ -18,26 +20,13 @@ import type {
   RoastBatchUpdateInput,
 } from '../../types/roastBatch';
 
-export const ok = <T,>(data: T): ApiResponse<T> => ({
-  code: 0,
-  data,
-  message: 'ok',
-});
+export const ok = <T,>(data: T): ApiResponse<T> => createOkResponse(data);
 
 export const createDefaultRoastBatchEvaluation = (): RoastBatchEvaluation => ({
   allowTraining: false,
 });
 
-export const isMissingRemoteResourceError = (error: unknown): boolean => {
-  if (!(error instanceof AppError)) {
-    return false;
-  }
-
-  const cause = error.cause;
-  const payload = typeof cause === 'object' && cause != null ? (cause as { code?: string }) : null;
-
-  return error.status === 404 || payload?.code?.startsWith('PGRST') === true;
-};
+export { isMissingRemoteResourceError };
 
 export const isMissingRoastedBeanNameColumnError = (error: unknown): boolean => {
   if (!(error instanceof AppError)) {

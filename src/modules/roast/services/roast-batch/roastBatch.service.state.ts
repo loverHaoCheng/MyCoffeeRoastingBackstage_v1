@@ -1,5 +1,7 @@
 import type { RoastBatchRecord } from '../../types/roastBatch';
 import { createDefaultRoastBatchEvaluation } from './roastBatch.service.shared';
+import { sortByDateField } from '@/shared/utils/sort.utils';
+import { createSyncSnapshot } from '@/shared/utils/sync.utils';
 
 const STORAGE_KEY = 'coffee-roasting-backstage:roast-batches';
 
@@ -12,9 +14,7 @@ type LegacyRoastBatchRecord = Omit<RoastBatchRecord, 'evaluation'> & {
 };
 
 export const sortBatches = (batches: RoastBatchRecord[]): RoastBatchRecord[] => {
-  return [...batches].sort((a, b) => {
-    return new Date(b.roastDate).getTime() - new Date(a.roastDate).getTime();
-  });
+  return sortByDateField(batches, 'roastDate', 'desc');
 };
 
 const normalizeStoredBatch = (batch: LegacyRoastBatchRecord): RoastBatchRecord => ({
@@ -61,11 +61,7 @@ export const isOptimisticLocalBatchId = (batchId: string): boolean => {
 };
 
 export const getBatchSyncSnapshot = (batches: RoastBatchRecord[]): string => {
-  return JSON.stringify(
-    [...batches]
-      .sort((left, right) => left.id.localeCompare(right.id))
-      .map((batch) => `${batch.id}:${batch.updatedAt}`),
-  );
+  return createSyncSnapshot(batches);
 };
 
 export const saveBatchRecord = (record: RoastBatchRecord): void => {
