@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { createDefaultPocketBaseConnectionSettings } from '@/modules/settings/types';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 
 describe('roastPlanService', () => {
   beforeEach(() => {

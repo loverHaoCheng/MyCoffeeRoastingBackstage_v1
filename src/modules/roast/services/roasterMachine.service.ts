@@ -1,8 +1,8 @@
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
-import { resolvePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import { resolvePocketBaseBaseUrl } from '@/shared/services/pocketBaseConfig';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
 import { AppError } from '@/shared/errors/AppError';
-import { httpClient } from '@/services/httpClient';
+import { httpClient } from '@/shared/services/httpClient';
 
 import type { RoasterModel, RoasterModelRecognition, RoastingMachine } from '../types/roasterMachine';
 

@@ -5,10 +5,11 @@ import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import UpOutlined from "@ant-design/icons/UpOutlined";
 import App from 'antd/es/app';
 import Button from "antd/es/button";
-import { Select } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select } from '@/shared/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
+import { TimePicker } from '@/shared/components/ui/time-picker';
 import { useEffect } from 'react';
 import { Controller, type FieldPath, useFieldArray, useForm, useWatch } from 'react-hook-form';
 
@@ -57,40 +58,24 @@ const TimeField = ({ name, value, onChange }: TimeFieldProps) => {
   const update = (start: string, end?: string): void => { onChange(end ? `${start}~${end}` : start); };
   const endpoint = (minute: string, second: string, label: string, onValue: (next: string) => void) => (
     <span className={styles.timeEndpoint}>
-      <input
-        aria-label={`${label}分钟`}
-        className={styles.timeNumber}
-        inputMode="numeric"
+      <TimePicker
+        label={`${label}分钟`}
         max={59}
         min={0}
-        onBlur={(event) => {
-          const value = Math.min(59, Math.max(0, Number(event.currentTarget.value || 0)));
+        onChange={(value) => {
           onValue(`${String(value).padStart(2, '0')}:${second}`);
         }}
-        onChange={(event) => {
-          const value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
-          onValue(`${value || '00'}:${second}`);
-        }}
-        type="number"
-        value={minute}
+        value={Number(minute)}
       />
       <span>:</span>
-      <input
-        aria-label={`${label}秒`}
-        className={styles.timeNumber}
-        inputMode="numeric"
+      <TimePicker
+        label={`${label}秒`}
         max={59}
         min={0}
-        onBlur={(event) => {
-          const value = Math.min(59, Math.max(0, Number(event.currentTarget.value || 0)));
+        onChange={(value) => {
           onValue(`${minute}:${String(value).padStart(2, '0')}`);
         }}
-        onChange={(event) => {
-          const value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
-          onValue(`${minute}:${value || '00'}`);
-        }}
-        type="number"
-        value={second}
+        value={Number(second)}
       />
     </span>
   );

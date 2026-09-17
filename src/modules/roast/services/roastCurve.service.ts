@@ -1,5 +1,5 @@
 import { AppError } from '@/shared/errors/AppError';
-import type { ApiResponse } from '@/services/api.types';
+import type { ApiResponse } from '@/shared/services/api.types';
 
 import {
   getGreenBeanClient,

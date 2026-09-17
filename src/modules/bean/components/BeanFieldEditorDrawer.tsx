@@ -1,5 +1,5 @@
 import App from 'antd/es/app';
-import { Select } from '@/components/ui/select';
+import { Select } from '@/shared/components/ui/select';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';
 import AntdSelect from "antd/es/select";

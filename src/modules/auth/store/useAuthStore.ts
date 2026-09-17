@@ -7,7 +7,7 @@ import {
   pocketBaseSessionService,
   type PocketBaseSession,
   type PocketBaseSessionUser,
-} from '@/services/pocketBaseSession.service';
+} from '@/shared/services/pocketBaseSession.service';
 import { browserDataCleanupService } from '@/shared/services/browserDataCleanup.service';
 import { localStorageCleanupService } from '@/shared/services/localStorageCleanup.service';
 

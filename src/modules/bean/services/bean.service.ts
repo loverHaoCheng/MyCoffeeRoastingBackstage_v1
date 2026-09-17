@@ -5,7 +5,7 @@ import {
   mapLocalGreenBeanRecordToBean,
 } from '@/modules/bean/services/localGreenBean.service';
 import { AppError } from '@/shared/errors/AppError';
-import type { ApiResponse } from '@/services/api.types';
+import type { ApiResponse } from '@/shared/services/api.types';
 import type { Bean } from '@/types/domain';
 
 import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../types';

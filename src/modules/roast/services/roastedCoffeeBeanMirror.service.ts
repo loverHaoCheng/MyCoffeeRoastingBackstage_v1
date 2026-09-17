@@ -1,12 +1,12 @@
 import { beanService } from '@/modules/bean/services';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
-import { isSupabaseProjectUrl } from '@/services/pocketBaseConfig';
+import { isSupabaseProjectUrl } from '@/shared/services/pocketBaseConfig';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
-import { RoastedBeanSupabaseDataClient } from '@/services/roastedBeanSupabaseDataClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
+import { RoastedBeanSupabaseDataClient } from '@/shared/services/roastedBeanSupabaseDataClient';
 import type { Bean } from '@/types/domain';
 
 import { normalizeRoastLevel } from '../constants/roastLevel';

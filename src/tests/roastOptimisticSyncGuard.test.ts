@@ -4,7 +4,7 @@ import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
 import { roastPlanService } from '@/modules/roast/services/roastPlan.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { createDefaultPocketBaseConnectionSettings } from '@/modules/settings/types';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 
 const clearLocalRoastState = (): void => {
   roastBatchService.getBootstrappedBatches().forEach((batch) => {

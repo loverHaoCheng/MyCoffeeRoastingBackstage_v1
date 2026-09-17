@@ -4,7 +4,7 @@ import {
   normalizePocketBaseBaseUrl,
   normalizeSupabaseProjectUrl,
   resolvePocketBaseBaseUrl,
-} from '@/services/pocketBaseConfig';
+} from '@/shared/services/pocketBaseConfig';
 
 export type PocketBaseDataSource = 'greenBean' | 'roastedBean';
 export type AppThemeMode = 'dark' | 'light';

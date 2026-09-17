@@ -13,7 +13,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState, type Poi
 import { useSearchParams } from 'react-router-dom';
 import { useBeans } from '@/modules/bean/hooks/useBeans';
 import { roastAiUsageQueryKeys, useRoastAiUsage, useRoastAssistantHistory, useRoastBatches } from '@/modules/roast/hooks';
-import { Select } from '@/components/ui/select';
+import { Select } from '@/shared/components/ui/select';
 
 import { defaultRoastPlanFormValues } from '@/modules/roast/constants';
 import { RoastAssistantMessage } from '@/modules/roast/components/RoastAssistantMessage';

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppRealtimeSync } from '@/app/components/AppRealtimeSync';
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
 
 const { refreshQuickAppDataMock } = vi.hoisted(() => ({
   refreshQuickAppDataMock: vi.fn(),

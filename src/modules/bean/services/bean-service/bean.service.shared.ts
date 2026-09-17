@@ -1,6 +1,6 @@
 import { beanCacheService } from '@/modules/bean/services/beanCache.service';
 import { getVisibleLocalBeans } from '@/modules/bean/services/bean.service.state';
-import type { ApiResponse } from '@/services/api.types';
+import type { ApiResponse } from '@/shared/services/api.types';
 import type { Bean } from '@/types/domain';
 import { parseFlavorTags, serializeFlavorTags } from '@/modules/bean/utils/flavorTags';
 import { normalizeAgingDays, normalizeTastingEndDays } from '@/modules/bean/utils/postProcessDays';

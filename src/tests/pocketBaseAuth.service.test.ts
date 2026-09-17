@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { pocketBaseAuthService } from '@/modules/auth/services/pocketBaseAuth.service';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
 import { AppError } from '@/shared/errors/AppError';
 
 describe('pocketBaseAuthService', () => {

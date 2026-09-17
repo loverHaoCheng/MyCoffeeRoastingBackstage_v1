@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Workbox } from 'workbox-window';
 
-import { checkForAvailableAppUpdate, reloadToLatestApp } from '@/app/services/appVersionCheck.service';
-import { appBuildVersionService } from '@/app/services/appBuildVersion.service';
 import { logger } from '@/shared/logger/logger';
-const versionCheckIntervalMs = 60_000;
 
 type AppUpdateNotice =
   | {
@@ -17,76 +15,61 @@ type AppUpdateNotice =
 
 export function useAppUpdateNotice() {
   const [notice, setNotice] = useState<AppUpdateNotice | null>(null);
+  const [workbox, setWorkbox] = useState<Workbox | null>(null);
 
   useEffect(() => {
-    try {
-      const lastSeenVersion = appBuildVersionService.get();
-
-      if (lastSeenVersion && lastSeenVersion !== __APP_BUILD_VERSION__) {
-        setNotice({
-          type: 'updated',
-          message: '应用刚完成更新。若你仍看到旧页面内容，建议立即刷新一次，避免本地缓存影响本次更新。',
-        });
-      }
-
-      appBuildVersionService.save(__APP_BUILD_VERSION__);
-    } catch (error) {
-      logger.warn('app build version persistence failed', { error });
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    let disposed = false;
+    const wb = new Workbox('/service-worker.js');
 
-    const checkForUpdate = async (): Promise<boolean> => {
-      try {
-        const hasAvailableUpdate = await checkForAvailableAppUpdate();
-
-        if (!hasAvailableUpdate || disposed) {
-          return false;
-        }
-
-        setNotice((current) => {
-          if (current?.type === 'updated') {
-            return current;
-          }
-
-          return {
-            type: 'available',
-            message: '检测到线上已有新版本。当前页面可能仍在使用旧缓存，建议现在刷新，避免样式或数据结构不一致。',
-          };
+    wb.addEventListener('installed', (event) => {
+      if (event.isUpdate) {
+        logger.info('new service worker installed', { isUpdate: true });
+        setNotice({
+          type: 'available',
+          message: '检测到线上已有新版本。建议现在刷新页面以应用更新，避免样式或数据结构不一致。',
         });
-        return true;
-      } catch (error) {
-        logger.warn('app version check failed', { error });
-        return false;
+      } else {
+        logger.info('service worker installed', { isUpdate: false });
       }
-    };
+    });
 
-    void checkForUpdate();
-
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (!event.persisted) {
-        return;
-      }
-
-      void checkForUpdate().then((hasAvailableUpdate) => {
-        if (hasAvailableUpdate && !disposed) {
-          reloadToLatestApp();
-        }
+    wb.addEventListener('waiting', () => {
+      logger.info('service worker waiting');
+      setNotice({
+        type: 'available',
+        message: '检测到线上已有新版本。建议现在刷新页面以应用更新,避免样式或数据结构不一致。',
       });
-    };
+    });
 
-    window.addEventListener('pageshow', handlePageShow);
+    wb.addEventListener('controlling', () => {
+      logger.info('service worker controlling');
+      setNotice({
+        type: 'updated',
+        message: '应用刚完成更新。若你仍看到旧页面内容,建议立即刷新一次,避免本地缓存影响本次更新。',
+      });
+    });
 
-    const intervalId = window.setInterval(() => {
-      void checkForUpdate();
-    }, versionCheckIntervalMs);
+    wb.register()
+      .then((registration) => {
+        logger.info('service worker registered', { scope: registration?.scope });
+      })
+      .catch((error: unknown) => {
+        logger.error('service worker registration failed', { error });
+      });
+
+    setWorkbox(wb);
 
     return () => {
-      disposed = true;
-      window.removeEventListener('pageshow', handlePageShow);
-      window.clearInterval(intervalId);
+      const installedHandler = () => undefined;
+      const waitingHandler = () => undefined;
+      const controllingHandler = () => undefined;
+
+      wb.removeEventListener('installed', installedHandler);
+      wb.removeEventListener('waiting', waitingHandler);
+      wb.removeEventListener('controlling', controllingHandler);
     };
   }, []);
 
@@ -95,6 +78,13 @@ export function useAppUpdateNotice() {
       setNotice(null);
     },
     notice,
-    refreshToUpdate: reloadToLatestApp,
+    refreshToUpdate: () => {
+      if (workbox) {
+        workbox.messageSkipWaiting();
+        window.location.reload();
+      } else {
+        window.location.reload();
+      }
+    },
   };
 }

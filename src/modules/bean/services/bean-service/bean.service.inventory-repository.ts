@@ -1,6 +1,6 @@
 import { beanCacheService } from '@/modules/bean/services/beanCache.service';
 import { AppError } from '@/shared/errors/AppError';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 import type { Bean } from '@/types/domain';
 
 import type { GreenBeanEditableDetail, GreenBeanUpdateInput } from '../../types';

@@ -1,4 +1,4 @@
-import { httpClient, resolveHttpClientAbsoluteUrl } from '@/services/httpClient';
+import { httpClient, resolveHttpClientAbsoluteUrl } from '@/shared/services/httpClient';
 import { AppError } from '@/shared/errors/AppError';
 
 import type { RoastPlanJsonInput } from '../types';

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Select } from '@/components/ui/select';
+import { Select } from '@/shared/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
 import InputNumber from '@/shared/components/ui/input-number';
 import { Controller, type FieldPath, useForm } from 'react-hook-form';

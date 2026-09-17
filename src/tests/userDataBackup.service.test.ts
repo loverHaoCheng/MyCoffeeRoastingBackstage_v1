@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { userDataBackupService, type UserDataBackupFile } from '@/modules/settings/services/userDataBackup.service';
 import { AppError } from '@/shared/errors/AppError';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
 
 const backupCollectionNames = [
   'green_beans',

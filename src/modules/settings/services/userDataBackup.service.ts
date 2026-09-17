@@ -1,7 +1,7 @@
 import { getShanghaiDateParts } from '@/shared/time/shanghaiTime';
 import { AppError } from '@/shared/errors/AppError';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
 
 const backupSchema = 'easybake.user-data-backup';
 const backupVersion = 1;

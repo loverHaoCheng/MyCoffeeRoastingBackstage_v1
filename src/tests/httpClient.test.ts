@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppError } from '@/shared/errors/AppError';
-import { HttpClient, resolveHttpClientAbsoluteUrl } from '@/services/httpClient';
+import { HttpClient, resolveHttpClientAbsoluteUrl } from '@/shared/services/httpClient';
 
 describe('HttpClient', () => {
   afterEach(() => {

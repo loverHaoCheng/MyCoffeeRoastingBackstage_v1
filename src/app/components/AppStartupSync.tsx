@@ -76,19 +76,11 @@ export function AppStartupSync() {
           const result = await refreshAllAppData(queryClient);
 
           if (result.failed > 0) {
-            void message.warning('登录后同步未完全成功，部分数据稍后会继续重试。');
-            return;
+            void message.error('登录后同步失败，部分数据稍后会继续重试。');
           }
-
-          if (result.downloaded + result.uploaded + result.success > 0) {
-            void message.info('登录后已完成本地与 PocketBase 数据同步。');
-            return;
-          }
-
-          void message.info('登录后已校验当前数据，与 PocketBase 保持一致。');
         } catch (error) {
           syncedUserIdRef.current = null;
-          void message.warning(getErrorMessage(error));
+          void message.error(getErrorMessage(error));
           return;
         }
       })();

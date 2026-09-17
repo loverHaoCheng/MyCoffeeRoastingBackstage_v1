@@ -6,7 +6,7 @@ import { beanService } from '@/modules/bean/services';
 import { useSettingsStore } from '@/modules/settings/store';
 import { createDefaultAppDisplaySettings, createDefaultCostTemplateSettings } from '@/modules/settings/types';
 import { renderWithQuery } from '@/tests/renderWithProviders';
-import type { ApiResponse } from '@/services/api.types';
+import type { ApiResponse } from '@/shared/services/api.types';
 import type { GreenBeanEditableDetail } from '@/modules/bean/types';
 import type { Bean } from '@/types/domain';
 

@@ -4,7 +4,7 @@ import { financeLedgerService } from '@/modules/finance/services';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { createDefaultPocketBaseConnectionSettings } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 
 describe('financeLedgerService', () => {
   beforeEach(() => {

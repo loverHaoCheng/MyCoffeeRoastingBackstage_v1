@@ -1,4 +1,4 @@
-import type { ApiResponse } from '@/services/api.types';
+import type { ApiResponse } from '@/shared/services/api.types';
 import type { RoastPlan } from '@/types/domain';
 
 import type { RoastPlanJsonInput } from '../types';

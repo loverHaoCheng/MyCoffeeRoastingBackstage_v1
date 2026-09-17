@@ -4,7 +4,7 @@ import DatePicker from 'antd/es/date-picker';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 
-import { Select } from '@/components/ui/select';
+import { Select } from '@/shared/components/ui/select';
 import { cn } from '@/shared/utils/cn';
 
 import { AppDrawer } from './AppDrawer';

@@ -1,4 +1,4 @@
-import { httpClient } from '@/services/httpClient';
+import { httpClient } from '@/shared/services/httpClient';
 
 export type AiAnalysisTaskStatus = 'completed' | 'failed' | 'processing' | 'queued';
 export type AiAnalysisTaskType = 'curve_review';

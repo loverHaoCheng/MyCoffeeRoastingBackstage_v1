@@ -2,7 +2,7 @@ import SaveOutlined from '@ant-design/icons/SaveOutlined';
 import Button from "antd/es/button";
 import AntdSelect from 'antd/es/select';
 import { useMemo } from 'react';
-import { Select } from '@/components/ui/select';
+import { Select } from '@/shared/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';

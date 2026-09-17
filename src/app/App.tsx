@@ -7,7 +7,7 @@ import { AppAiAnalysisTaskNotifications } from '@/app/components/AppAiAnalysisTa
 import { AppAuthBootstrap } from '@/app/components/AppAuthBootstrap';
 import { AppEnvironmentGuidance } from '@/app/components/AppEnvironmentGuidance';
 import { AppRoastedBeanConnectionProbe } from '@/app/components/AppRoastedBeanConnectionProbe';
-import { AppUpdateBanner } from '@/app/components/AppUpdateBanner';
+import { AppUpdateModal } from '@/app/components/AppUpdateModal';
 import { AppStartupSplash } from '@/app/components/AppStartupSplash';
 import { AppProviders } from '@/app/providers/AppProviders';
 import { router } from '@/router/routes';
@@ -24,7 +24,7 @@ export function App() {
       <AppAiAnalysisTaskNotifications />
       <AppRoastedBeanConnectionProbe />
       <AppEnvironmentGuidance />
-      <AppUpdateBanner />
+      <AppUpdateModal />
       <AppRealtimeSync />
       <AppStartupSync />
       <RouterProvider router={router} />

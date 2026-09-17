@@ -50,6 +50,7 @@ export function RoastPlanDetail({ mode, onClose, onUpdate, plan }: RoastPlanDeta
         { key: `airTemperature-${String(step.id)}`, label: '风温', value: step.airTemperature || '-' },
         { key: `firePower-${String(step.id)}`, label: '火力', value: step.firePower || '-' },
         { key: `drumSpeed-${String(step.id)}`, label: '转速', value: step.drumSpeed || '-' },
+        { key: `airDamper-${String(step.id)}`, label: '风门', value: step.airDamper ?? '-' },
       ],
     }));
 

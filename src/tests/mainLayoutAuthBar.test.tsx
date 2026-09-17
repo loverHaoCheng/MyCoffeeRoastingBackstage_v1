@@ -7,7 +7,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 
 import { useAuthStore } from '@/modules/auth/store/useAuthStore';
 import { routes } from '@/router/routes';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
 
 const renderSettingsRoute = () => {
   const queryClient = new QueryClient({

@@ -2,7 +2,7 @@ import {
   pocketBaseSessionService,
   type PocketBaseSession,
   type PocketBaseSessionUser,
-} from '@/services/pocketBaseSession.service';
+} from '@/shared/services/pocketBaseSession.service';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
 

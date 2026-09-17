@@ -1,4 +1,4 @@
-import type { ApiResponse } from '@/services/api.types';
+import type { ApiResponse } from '@/shared/services/api.types';
 import type { Bean } from '@/types/domain';
 
 import type { GreenBeanCreateInput, GreenBeanEditableDetail, GreenBeanUpdateInput } from '../../types';

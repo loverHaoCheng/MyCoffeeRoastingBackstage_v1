@@ -3,7 +3,7 @@ import {
   type PocketBaseDataSource,
 } from '@/modules/settings/types';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 
 export interface AppSettingRecord {
   id: string;

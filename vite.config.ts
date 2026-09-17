@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import { loadEnv } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 const packageJson = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
@@ -47,6 +48,21 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'service-worker.ts',
+        injectManifest: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        },
+        devOptions: {
+          enabled: false,
+          type: 'module',
+        },
+        injectRegister: null,
+        manifest: false,
+      }),
       {
         name: 'app-version-manifest',
         generateBundle() {
@@ -66,7 +82,7 @@ export default defineConfig(({ mode }) => {
       },
     ],
     build: {
-      chunkSizeWarningLimit: 600,
+      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -78,16 +94,20 @@ export default defineConfig(({ mode }) => {
               return 'react';
             }
 
-            if (/\/node_modules\/(@tanstack\/react-query|zustand|zod)\//.test(id)) {
+            if (/\/node_modules\/(@tanstack\/react-query|zustand)\//.test(id)) {
               return 'state';
             }
 
-            if (id.includes('/node_modules/react-hook-form/')) {
+            if (/\/node_modules\/(react-hook-form|zod)\//.test(id)) {
               return 'forms';
             }
 
-            if (id.includes('/node_modules/@radix-ui/')) {
-              return 'radix';
+            if (/\/node_modules\/(antd|@ant-design)\//.test(id)) {
+              return 'antd';
+            }
+
+            if (/\/node_modules\/(workbox-core|workbox-precaching|workbox-window)\//.test(id)) {
+              return 'workbox';
             }
 
             return undefined;

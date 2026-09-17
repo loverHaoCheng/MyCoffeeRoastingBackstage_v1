@@ -1,4 +1,4 @@
-import { httpClient } from '@/services/httpClient';
+import { httpClient } from '@/shared/services/httpClient';
 
 export interface RoastAnalysisResult {
   confidence: number;

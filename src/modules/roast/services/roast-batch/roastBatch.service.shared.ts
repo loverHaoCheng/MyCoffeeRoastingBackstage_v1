@@ -3,8 +3,8 @@ import { pocketBaseConnectionSettingsService } from '@/modules/settings/services
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
-import type { ApiResponse } from '@/services/api.types';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import type { ApiResponse } from '@/shared/services/api.types';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 
 import {
   calculateDehydrationRate,

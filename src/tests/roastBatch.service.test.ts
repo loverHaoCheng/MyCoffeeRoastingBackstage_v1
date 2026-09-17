@@ -4,7 +4,7 @@ import { roastBatchService } from '@/modules/roast/services/roastBatch.service';
 import { beanService } from '@/modules/bean/services';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { createDefaultPocketBaseConnectionSettings } from '@/modules/settings/types';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 import type { Bean } from '@/types/domain';
 import { saveBatchRecord, saveLocalBatches } from '@/modules/roast/services/roast-batch/roastBatch.service.state';
 

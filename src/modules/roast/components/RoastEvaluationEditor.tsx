@@ -1,4 +1,4 @@
-import { Select } from '@/components/ui/select';
+import { Select } from '@/shared/components/ui/select';
 import Input from '@/shared/components/ui/input';
 import type { RoastBatchEvaluation } from '@/modules/roast/types/roastBatch';
 

@@ -1,6 +1,6 @@
 import App from 'antd/es/app';
 import Segmented from 'antd/es/segmented';
-import { Select } from '@/components/ui/select';
+import { Select } from '@/shared/components/ui/select';
 import { AdaptiveDateTimeField } from '@/shared/components/AdaptiveDateTimeField';
 import Input from '@/shared/components/ui/input';
 import InputNumber from '@/shared/components/ui/input-number';

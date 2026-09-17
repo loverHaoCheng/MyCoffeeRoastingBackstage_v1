@@ -1,12 +1,12 @@
-import { resolvePocketBaseBaseUrl, normalizePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
+import { resolvePocketBaseBaseUrl, normalizePocketBaseBaseUrl } from '@/shared/services/pocketBaseConfig';
 import { AppError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger/logger';
-import { parseJsonResponse, toAppError } from '@/services/pocketbase-rest/pocketBaseRestClient.errors';
+import { parseJsonResponse, toAppError } from '@/shared/services/pocketbase-rest/pocketBaseRestClient.errors';
 import type {
   Fetcher,
   PocketBaseRestClientOptions,
   PocketBaseRestListOptions,
-} from '@/services/pocketbase-rest/pocketBaseRestClient.types';
+} from '@/shared/services/pocketbase-rest/pocketBaseRestClient.types';
 import {
   buildCollectionUrl,
   buildFilterExpression,
@@ -20,7 +20,7 @@ import {
   toRecordArray,
   toRecordId,
   withTimestampFields,
-} from '@/services/pocketbase-rest/pocketBaseRestClient.utils';
+} from '@/shared/services/pocketbase-rest/pocketBaseRestClient.utils';
 
 export class PocketBaseRestClient {
   private readonly fetcher: Fetcher;

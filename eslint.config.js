@@ -36,6 +36,9 @@ export default tseslint.config(
         'error',
         { checksVoidReturn: { attributes: false } },
       ],
+      'max-lines': ['error', { max: 500, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['warn', { max: 100, skipBlankLines: true, skipComments: true }],
+      'complexity': ['warn', { max: 20 }],
     },
   },
   {
@@ -48,9 +51,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/tests/**/*.{ts,tsx}'],
+    files: ['src/tests/**/*.{ts,tsx}', 'server/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-floating-promises': 'off',
+      'max-lines': 'off',
+      'max-lines-per-function': 'off',
+      'complexity': 'off',
     },
   },
 );

@@ -6,7 +6,7 @@ import { beanSyncService } from '@/modules/bean/services/beanSync.service';
 import { localGreenBeanService } from '@/modules/bean/services/localGreenBean.service';
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { createDefaultPocketBaseConnectionSettings } from '@/modules/settings/types';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 
 const createInput = () => ({
   agingDays: 14,

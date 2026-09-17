@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
 
 describe('PocketBaseRestClient', () => {
   it('falls back to the current origin when project url is omitted', async () => {

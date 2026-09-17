@@ -5,15 +5,9 @@ import {
 } from 'lucide-react';
 import { type MouseEvent, type PointerEvent, type ReactNode, useMemo, useRef } from 'react';
 
+import { Dropdown } from 'antd';
 import { Separator } from '@/shared/components/ui/separator';
 import { Button } from '@/shared/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/utils/cn';
 
 const isTestMode = import.meta.env.MODE === 'test';
@@ -194,41 +188,48 @@ export function UnifiedDataCard({
 
         <div className="flex shrink-0 items-center">
           {showActionMenu ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button aria-label={`更多操作 ${title}`} className="h-11 w-11" size="icon" variant="ghost">
-                  <Ellipsis className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {onEditAll ? (
-                  <DropdownMenuItem
-                    aria-label={editAllLabel ?? `全部编辑 ${title}`}
-                    onSelect={() => {
-                      onEditAll();
-                    }}
-                  >
-                    {editAllIcon ?? <PencilLine className="h-4 w-4 text-[var(--app-text-secondary)]" />}
-                    {editAllMenuText ?? '全部编辑'}
-                  </DropdownMenuItem>
-                ) : null}
-                {onDelete ? (
-                  <>
-                    {onEditAll ? <DropdownMenuSeparator /> : null}
-                    <DropdownMenuItem
-                      aria-label={deleteLabel ?? `删除 ${title}`}
-                      className="text-[var(--app-danger)] focus:text-[var(--app-danger)]"
-                      onSelect={() => {
-                        onDelete();
+            <Dropdown
+              popupRender={() => (
+                <div className="min-w-[12rem] overflow-hidden rounded-[24px] border border-[var(--app-emphasis-border-soft)] bg-[color-mix(in_srgb,var(--app-bg-elevated)_96%,transparent)] p-1.5 text-[var(--app-text)] shadow-[0_28px_60px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+                  {onEditAll ? (
+                    <div
+                      aria-label={editAllLabel ?? `全部编辑 ${title}`}
+                      className="relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-[var(--app-text)] outline-none transition-colors hover:bg-[var(--app-hover-surface)] focus:bg-[var(--app-hover-surface)]"
+                      onClick={() => {
+                        onEditAll();
                       }}
+                      role="menuitem"
+                      tabIndex={0}
                     >
-                      <Trash2 className="h-4 w-4" />
-                      删除
-                    </DropdownMenuItem>
-                  </>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                      {editAllIcon ?? <PencilLine className="h-4 w-4 text-[var(--app-text-secondary)]" />}
+                      {editAllMenuText ?? '全部编辑'}
+                    </div>
+                  ) : null}
+                  {onDelete ? (
+                    <>
+                      {onEditAll ? <Separator className="-mx-1 my-1" /> : null}
+                      <div
+                        aria-label={deleteLabel ?? `删除 ${title}`}
+                        className="relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-[var(--app-danger)] outline-none transition-colors hover:bg-[var(--app-hover-surface)] focus:bg-[var(--app-hover-surface)] focus:text-[var(--app-danger)]"
+                        onClick={() => {
+                          onDelete();
+                        }}
+                        role="menuitem"
+                        tabIndex={0}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        删除
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              )}
+              trigger={['click']}
+            >
+              <Button aria-label={`更多操作 ${title}`} className="h-11 w-11" size="icon" variant="ghost">
+                <Ellipsis className="h-4 w-4" />
+              </Button>
+            </Dropdown>
           ) : null}
 
           {isTestMode && onView ? <button aria-label={`查看 ${title}`} className="sr-only" onClick={onView} type="button">查看</button> : null}

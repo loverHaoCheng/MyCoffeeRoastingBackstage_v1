@@ -1,8 +1,8 @@
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { AppError } from '@/shared/errors/AppError';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
-import type { ApiResponse } from '@/services/api.types';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
+import type { ApiResponse } from '@/shared/services/api.types';
 import type { RoastPlan } from '@/types/domain';
 
 import type { RoastPlanJsonInput } from '../../types';

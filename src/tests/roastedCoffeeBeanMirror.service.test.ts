@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildMirrorData } from '@/modules/roast/services/roastedCoffeeBeanMirror.service';
-import { pocketBaseSessionService } from '@/services/pocketBaseSession.service';
+import { pocketBaseSessionService } from '@/shared/services/pocketBaseSession.service';
 import type { Bean } from '@/types/domain';
 import type { RoastBatchRecord } from '@/modules/roast/types/roastBatch';
 

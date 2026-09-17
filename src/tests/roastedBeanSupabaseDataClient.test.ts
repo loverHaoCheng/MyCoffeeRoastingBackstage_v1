@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { RoastedBeanSupabaseDataClient } from '@/services/roastedBeanSupabaseDataClient';
+import { RoastedBeanSupabaseDataClient } from '@/shared/services/roastedBeanSupabaseDataClient';
 
 describe('RoastedBeanSupabaseDataClient', () => {
   it('uses supabase rest endpoints with anon key headers', async () => {

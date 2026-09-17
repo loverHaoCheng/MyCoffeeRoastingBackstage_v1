@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createGreenBeanInventoryRepository } from '@/modules/bean/services/bean.service';
 import { AppError } from '@/shared/errors/AppError';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 
 describe('createGreenBeanInventoryRepository', () => {
   it('aggregates purchase batches into weighted cost and remaining stock totals', async () => {

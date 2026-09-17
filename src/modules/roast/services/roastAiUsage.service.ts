@@ -1,5 +1,5 @@
-import type { ApiResponse } from '@/services/api.types';
-import { httpClient } from '@/services/httpClient';
+import type { ApiResponse } from '@/shared/services/api.types';
+import { httpClient } from '@/shared/services/httpClient';
 
 import type { RoastAiFeature, RoastAiUsage } from '../types/roastAiUsage';
 

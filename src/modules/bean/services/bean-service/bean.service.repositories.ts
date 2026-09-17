@@ -1,7 +1,7 @@
 import { pocketBaseConnectionSettingsService } from '@/modules/settings/services/pocketBaseConnectionSettings.service';
 import { isPocketBaseProjectConnectionConfigured } from '@/modules/settings/types';
 import { logger } from '@/shared/logger/logger';
-import { PocketBaseRestClient } from '@/services/pocketBaseRestClient';
+import { PocketBaseRestClient } from '@/shared/services/pocketBaseRestClient';
 
 import { createGreenBeanInventoryRepository } from './bean.service.inventory-repository';
 import { MockBeanRepository } from './bean.service.mock-repository';

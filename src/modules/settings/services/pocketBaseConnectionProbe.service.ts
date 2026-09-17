@@ -3,8 +3,8 @@ import {
   type PocketBaseDataSource,
   type PocketBaseProjectConnection,
 } from '@/modules/settings/types';
-import { isSupabaseProjectUrl, resolvePocketBaseBaseUrl } from '@/services/pocketBaseConfig';
-import { RoastedBeanSupabaseDataClient } from '@/services/roastedBeanSupabaseDataClient';
+import { isSupabaseProjectUrl, resolvePocketBaseBaseUrl } from '@/shared/services/pocketBaseConfig';
+import { RoastedBeanSupabaseDataClient } from '@/shared/services/roastedBeanSupabaseDataClient';
 import { AppError } from '@/shared/errors/AppError';
 
 const isConfiguredConnection = (connection: PocketBaseProjectConnection): boolean => {

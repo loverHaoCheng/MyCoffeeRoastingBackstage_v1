@@ -1,5 +1,5 @@
-import { resolveHttpClientAbsoluteUrl, resolveHttpClientUrl } from '@/services/httpClient';
-import type { ApiResponse } from '@/services/api.types';
+import { resolveHttpClientAbsoluteUrl, resolveHttpClientUrl } from '@/shared/services/httpClient';
+import type { ApiResponse } from '@/shared/services/api.types';
 import { AppError } from '@/shared/errors/AppError';
 
 import type {
